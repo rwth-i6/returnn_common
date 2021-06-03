@@ -7,7 +7,7 @@ for some initial discussion.
 Usage example for config:
 
     from returnn.import_ import import_
-    test = import_("github.com/rwth-i6/returnn-experiments", "common/test.py", "20210302-01094bef2761")
+    test = import_("github.com/rwth-i6/returnn_common", "test.py", "20210602-1bc6822")
     print(test.hello())
 
 You can also make use of auto-completion features in your editor (e.g. PyCharm).
@@ -15,8 +15,8 @@ Add `~/returnn/_pkg_import` to your Python paths,
 and use this alternative code:
 
     from returnn.import_ import import_
-    import_("github.com/rwth-i6/returnn-experiments", "common", "20210302-01094bef2761")
-    from returnn_import.github_com.rwth_i6.returnn_experiments.v20210302133012_01094bef2761.common import test
+    import_("github.com/rwth-i6/returnn_common", ".", "20210602-1bc6822")
+    from returnn_import.github_com.rwth_i6.returnn_common.v20210302133012_01094bef2761 import test
     print(test.hello())
 
 During development of a new feature in `returnn-experiments`,
@@ -25,12 +25,12 @@ such that you can directly work in the checked out repo.
 The config code looks like this:
 
     from returnn.import_ import import_
-    import_("github.com/rwth-i6/returnn-experiments", "common", None)
-    from returnn_import.github_com.rwth_i6.returnn_experiments.dev.common import test
+    import_("github.com/rwth-i6/returnn_common", ".", None)
+    from returnn_import.github_com.rwth_i6.returnn_common.dev import test
     print(test.hello())
 
 You would also edit the code in `~/returnn/pkg/...`,
-and once finished, you would commit and push to `returnn-experiments`,
+and once finished, you would commit and push to `returnn_common`,
 and then change the config to that specific version (date & commit).
 
 
