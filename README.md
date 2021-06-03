@@ -1,8 +1,8 @@
 # Usage
 
-This is intended to be used for the RETURNN `returnn.import_` mechanism.
-See [here](https://github.com/rwth-i6/returnn/discussions/436)
-for some initial discussion.
+This is intended to be used for the [RETURNN](https://github.com/rwth-i6/returnn) `returnn.import_` mechanism.
+See [returnn #436 for initial `import_` discussions](https://github.com/rwth-i6/returnn/discussions/436).
+See [#2 for discussions on `import_` usage here](https://github.com/rwth-i6/returnn_common/issues/2).
 
 Usage example for config:
 
