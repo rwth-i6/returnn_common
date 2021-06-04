@@ -117,13 +117,7 @@ def find_all_py_source_files():
       assert root.startswith(_root_dir + "/")
       root = root[len(_root_dir) + 1:]  # relative to the root
       root += "/"
-    # Ignore tests, or other irrelevant directories.
-    if root == "":
-      dirs[:] = ["returnn", "demos", "tools"]
-    else:
-      dirs[:] = sorted(dirs)
-      # Ignore extern git submodules.
-      dirs[:] = [d for d in dirs if not os.path.exists("%s/%s%s/.git" % (_root_dir, root, d))]
+    dirs[:] = sorted(dirs)
     for file in sorted(files):
       if not file.endswith(".py"):
         continue
