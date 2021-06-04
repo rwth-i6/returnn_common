@@ -7,7 +7,7 @@ plus comparisons against reference implementations.
 
 import sys
 from returnn.tf.compat import v1 as tf
-from returnn.tf.util.data import Data
+
 NEG_INF = -float("inf")
 
 

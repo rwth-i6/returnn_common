@@ -1,11 +1,17 @@
 
-import numpy
+"""
+LSTM encoder with initial CNN and SpecAugment.
+"""
+
 from typing import Dict, Any, Union, Tuple
 
 from ...asr.specaugment import specaugment_eval_func
 
 
 def make_encoder(src="data", **kwargs):
+  """
+  Make encoder as a single layer (subnet).
+  """
   return {"class": "subnetwork", "subnetwork": make_net(**kwargs), "from": src}
 
 
@@ -16,6 +22,9 @@ def make_net(
     with_specaugment=True,
     l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,
 ) -> Dict[str, Any]:
+  """
+  Make the whole net dict.
+  """
   net_dict = {
     "source": {"class": "eval", "eval": specaugment_eval_func}
     if with_specaugment else {"class": "copy"},

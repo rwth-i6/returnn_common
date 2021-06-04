@@ -59,30 +59,35 @@ def random_mask(x, batch_axis, axis, min_num, max_num, max_dims, mask_value=0.):
       x = _mask(x, batch_axis=batch_axis, axis=axis, pos=indices[:, i], max_amount=max_dims, mask_value=mask_value)
   else:
     _, x = tf.while_loop(
-      cond=lambda i, _: tf.less(i, tf.reduce_max(num)),
-      body=lambda i, x: (
-        i + 1,
+      cond=lambda i_, _: tf.less(i_, tf.reduce_max(num)),
+      body=lambda i_, x_: (
+        i_ + 1,
         tf.where(
-          tf.less(i, num),
-          _mask(x, batch_axis=batch_axis, axis=axis, pos=indices[:, i], max_amount=max_dims, mask_value=mask_value),
-          x)),
+          tf.less(i_, num),
+          _mask(x_, batch_axis=batch_axis, axis=axis, pos=indices[:, i_], max_amount=max_dims, mask_value=mask_value),
+          x_)),
       loop_vars=(0, x))
   return x
 
 
 # Use this for an EvalLayer
 def specaugment_eval_func(source, **kwargs):
+  """
+  :rtype: tf.Tensor
+  """
   from returnn.tf.compat import v1 as tf
   data = source(0, as_data=True)
   time_factor = 1  # for switchout == 6
   x = data.placeholder
   network = kwargs["self"].network
-  from returnn.tf.compat import v1 as tf
   step = network.global_train_step
   step1 = tf.where(tf.greater_equal(step, 1000), 1, 0)
   step2 = tf.where(tf.greater_equal(step, 2000), 1, 0)
 
   def get_masked():
+    """
+    :return: masked tensor
+    """
     x_masked = x
     x_masked = random_mask(
       x_masked, batch_axis=data.batch_dim_axis, axis=data.time_dim_axis,

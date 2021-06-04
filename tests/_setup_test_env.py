@@ -83,7 +83,7 @@ def setup():
   debug.install_lib_sig_segfault()
 
   try:
-    import faulthandler
+    import faulthandler  # noqa
     # Enable after libSigSegfault, so that we have both,
     # because faulthandler will also call the original sig handler.
     faulthandler.enable()

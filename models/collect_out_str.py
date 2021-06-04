@@ -1,10 +1,17 @@
 
+"""
+Helper for collecting output str.
+"""
 
 from returnn.tf.layers.basic import EvalLayer
 from returnn.datasets.generating import Vocabulary, BytePairEncoding
 
 
 def get_vocab_tf(vocab: Vocabulary):
+  """
+  :return: tensor shape [num_labels]
+  :rtype: tf.Tensor
+  """
   from returnn.tf.util.basic import get_shared_vocab
   labels = list(vocab.labels)  # bpe labels ("@@" at end, or not), excluding blank
   if isinstance(vocab, BytePairEncoding):
@@ -29,10 +36,17 @@ _out_str_func_cache = {}
 
 
 def make_out_str_func(*, target: str):
+  """
+  :return: func out_str(self: EvalLayer, source, **) -> tf.Tensor
+  """
   if target in _out_str_func_cache:
     return _out_str_func_cache[target]
 
   def out_str(self: EvalLayer, source, **_other):
+    """
+    :return: tensor representing the vocab
+    :rtype: tf.Tensor
+    """
     # sources: ["prev:out_str", "output_emit", "output"]
     from returnn.tf.compat import v1 as tf
     from returnn.tf.util.basic import where_bc

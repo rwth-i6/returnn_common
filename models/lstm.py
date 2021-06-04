@@ -1,6 +1,13 @@
 
+"""
+LSTM.
+"""
+
 
 def make_lstm(source: str = "data", **kwargs):
+  """
+  Make LSTM layer.
+  """
   return {
     "class": "subnetwork", "from": source,
     "subnetwork": make_net(**kwargs)
@@ -16,6 +23,9 @@ def make_net(
     embed=True, embed_dim=256, embed_with_bias=False,
     embed_dropout=0.0
 ):
+  """
+  Make LSTM network.
+  """
   net_dict = {}
   if embed:
     net_dict["input_embed"] = {

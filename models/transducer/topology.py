@@ -1,4 +1,9 @@
-from .loss import (rnnt_loss, rnnt_loss_out_type,
+
+"""
+Label Topology.
+"""
+
+from .loss import (rnnt_loss_out_type,
                    rnnt_tf_loss, rna_tf_loss, rna_loss_out_type)
 from .alignment import (rnnt_alignment, rnnt_alignment_out_type,
                         rna_alignment, rna_alignment_out_type)

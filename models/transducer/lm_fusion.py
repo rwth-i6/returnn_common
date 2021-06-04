@@ -1,4 +1,8 @@
 
+"""
+LM fusion.
+"""
+
 import sys
 from returnn.config import get_global_config
 from ..lm import Lm

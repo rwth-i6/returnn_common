@@ -1,10 +1,15 @@
+
+"""
+Switchout.
+"""
+
 from ..asr.specaugment import random_mask
 
 
 def switchout_target(self, source, targetb_blank_idx: int,
                      target_num_labels: int, time_factor: int = 6,
                      switchout_prob: float = 0.05,
-                     switchout_blank_prob: float = 0.5, **kwargs):
+                     switchout_blank_prob: float = 0.5, **_kwargs):
   """Switchout. It takes as input a batch of outputs and returns a switchout version of it.
   Usage:
     {
@@ -13,6 +18,7 @@ def switchout_target(self, source, targetb_blank_idx: int,
     "initial_output": 0
     }
   Args:
+      self:
       source ([Data]): (B,T,)
       targetb_blank_idx (int): index for blank label
       target_num_labels (int): size of vocab
@@ -31,6 +37,10 @@ def switchout_target(self, source, targetb_blank_idx: int,
   x = data.placeholder
 
   def get_switched():
+    """
+    :return: switched-out values
+    :rtype: tf.Tensor
+    """
     x_ = x
     shape = tf.shape(x)
     take_rnd_mask = tf.less(tf.random_uniform(shape=shape, minval=0., maxval=1.), switchout_prob)

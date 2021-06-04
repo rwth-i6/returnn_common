@@ -1,3 +1,8 @@
+
+"""
+Alignment helpers.
+"""
+
 from returnn.tf.util.basic import get_shape_dim, check_input_dim
 from returnn.tf.util.data import Data
 from returnn.tf.layers.basic import LayerBase

@@ -1,3 +1,8 @@
+
+"""
+Loss definitions.
+"""
+
 from returnn.tf.util.data import Data
 import tensorflow as tf
 
@@ -14,7 +19,7 @@ def rnnt_loss(source, **_kwargs) -> tf.Tensor:
   Returns:
       costs: [B]
   """
-  from returnn.extern.HawkAaronWarpTransducer import rnnt_loss
+  from returnn.extern.HawkAaronWarpTransducer import rnnt_loss  # noqa
 
   log_probs = source(0, as_data=True, auto_convert=False)
   targets = source(1, as_data=True, auto_convert=False)
@@ -32,7 +37,7 @@ def rnnt_loss(source, **_kwargs) -> tf.Tensor:
   return costs
 
 
-def rnnt_tf_loss(source, **kwargs) -> tf.Tensor:
+def rnnt_tf_loss(source, **_kwargs) -> tf.Tensor:
   """ Computes the RNN-T loss function. Pure TF.
   B: batch, T: time, U:target/labels, V: vocabulary
   Args:
@@ -62,7 +67,7 @@ def rnnt_tf_loss(source, **kwargs) -> tf.Tensor:
   return costs
 
 
-def rna_tf_loss(source, **kwargs) -> tf.Tensor:
+def rna_tf_loss(source, **_kwargs) -> tf.Tensor:
   """ Computes the RNA loss. Pure TF.
   B: batch, T: time, U:target/labels, V: vocabulary
   Args:
@@ -75,7 +80,6 @@ def rna_tf_loss(source, **kwargs) -> tf.Tensor:
       costs: [B]
   """
   from .rna_align_sum_max_pure_tf import tf_forward_shifted_rna
-  from returnn.tf.compat import v1 as tf
 
   log_probs = source(0, as_data=True, auto_convert=False)
   targets = source(1, as_data=True, auto_convert=False)
@@ -88,13 +92,19 @@ def rna_tf_loss(source, **kwargs) -> tf.Tensor:
   costs = -tf_forward_shifted_rna(
     log_probs.get_placeholder_as_batch_major(), targets.get_placeholder_as_batch_major(), enc_lens, dec_lens,
     blank_index=blank_idx, debug=False)
-  costs = tf.where(tf.is_finite(costs), costs, tf.zeros_like(costs))
+  costs = tf.where(tf.math.is_finite(costs), costs, tf.zeros_like(costs))
   return costs
 
 
 def rnnt_loss_out_type(**_kwargs) -> Data:
+  """
+  RNNT loss out type.
+  """
   return Data(name="rnnt_loss", shape=())
 
 
 def rna_loss_out_type(**_kwargs) -> Data:
+  """
+  RNA loss out type.
+  """
   return Data(name="rnna_loss", shape=())

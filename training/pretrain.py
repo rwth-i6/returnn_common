@@ -1,4 +1,9 @@
 
+"""
+Automatic pretrain constructions,
+including other scheduling and learning rate warmup.
+"""
+
 from __future__ import annotations
 from typing import Dict, Tuple, Union, Any, Optional
 from returnn.config import get_global_config
@@ -21,6 +26,10 @@ class Pretrain:
   """
 
   def __init__(self, make_net, make_net_args: Optional[Dict[str, Tuple[_Num, _Num]]] = None, num_epochs: int = 10):
+    """
+    :param make_net: function which gets the make_net_args and is supposed to return a net dict
+    :param num_epochs: num epochs of pretraining construction
+    """
     self._is_initialized = False  # we lazily init late, to make sure all config opts are set (e.g. learning_rate)
     self._make_net = make_net
     self._make_net_args = make_net_args or {}
@@ -28,10 +37,16 @@ class Pretrain:
     self._pretrain_num_epochs = num_epochs
 
   def get_network(self, epoch: int, **_kwargs) -> Dict[str, Any]:
+    """
+    Get network.
+    """
     self._lazy_init()
     epoch0 = epoch - 1  # RETURNN starts with epoch 1, but 0-indexed is easier here
 
     def resolve(arg, **kwargs):
+      """
+      Resolve args
+      """
       return self._resolve_make_net_arg(epoch0, arg, **kwargs)
 
     make_net_args = {k: resolve(v) for (k, v) in self._make_net_args.items()}

@@ -1,5 +1,14 @@
 
+"""
+Beam search hyp recombination code,
+to be used for recognition.
+"""
+
+
 def get_filtered_score_op(verbose=False):
+  """
+  :return: TF op
+  """
   cpp_code = """
     #include "tensorflow/core/framework/op.h"
     #include "tensorflow/core/framework/op_kernel.h"
@@ -104,7 +113,7 @@ def get_filtered_score_cpp(out_str, scores):
     return get_filtered_score_op()(out_str, scores)
 
 
-def targetb_recomb_recog(layer, batch_dim, scores_in, scores_base, base_beam_in, end_flags, **kwargs):
+def targetb_recomb_recog(layer, batch_dim, scores_in, scores_base, base_beam_in, end_flags, **_kwargs):
   """
   :param ChoiceLayer layer:
   :param tf.Tensor batch_dim: scalar
@@ -115,6 +124,7 @@ def targetb_recomb_recog(layer, batch_dim, scores_in, scores_base, base_beam_in,
   :rtype: tf.Tensor
   :return: (batch,base_beam_in,dim), combined scores
   """
+  end_flags  # noqa
   from returnn.tf.compat import v1 as tf
 
   out_str = layer.explicit_search_sources[0].output  # [B*beam], str

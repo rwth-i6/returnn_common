@@ -68,6 +68,9 @@ from ...datasets.interface import TargetConfig
 
 
 class Context:
+  """
+  Context
+  """
   def __init__(self, *, task: Optional[str], beam_size: int, target: TargetConfig):
     self.task = task
     self.train = (task == "train")
@@ -88,24 +91,42 @@ class _IMaker:
     self.ctx = ctx
 
   def make(self, *args, **kwargs):
+    """
+    Make layer dict, or multiple.
+    """
     raise NotImplementedError
 
 
 class IEncoder(_IMaker):
+  """
+  Represents an encoder.
+  """
   def make(self, source: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     raise NotImplementedError
 
 
 class IDecoderSlowRnn(_IMaker):
+  """
+  Represents SlowRNN.
+  """
   def make(self, *,
            prev_sparse_label_nb: LayerRef,
            prev_emit: LayerRef,
            unmasked_sparse_label_nb_seq: Optional[LayerRef] = None,
            prev_fast_rnn: LayerRef, encoder: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     raise NotImplementedError
 
 
 class DecoderSlowRnnLstmIndependent(IDecoderSlowRnn):
+  """
+  SlowRNN which is independent.
+  """
   def __init__(self, num_layers=1, lstm_dim=512, zoneout=True, embed_dim=256, embed_dropout=0.2, **kwargs):
     super().__init__(**kwargs)
     self._lstm_opts = dict(
@@ -118,6 +139,9 @@ class DecoderSlowRnnLstmIndependent(IDecoderSlowRnn):
            prev_emit: LayerRef,
            unmasked_sparse_label_nb_seq: Optional[LayerRef] = None,
            prev_fast_rnn: LayerRef, encoder: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     return make_masked(
       source=prev_sparse_label_nb,
       mask=prev_emit,
@@ -127,6 +151,9 @@ class DecoderSlowRnnLstmIndependent(IDecoderSlowRnn):
 
 
 class IDecoderFastRnn(_IMaker):
+  """
+  FastRNN
+  """
   def make(self, *, prev_label_wb: LayerRef, encoder: LayerRef, slow_rnn: LayerRef) -> LayerDict:
     """
     prev_label_wb and encoder use the same time dim (T) (or none).
@@ -138,6 +165,9 @@ class IDecoderFastRnn(_IMaker):
 
 
 class DecoderFastRnnOnlyReadout(IDecoderFastRnn):
+  """
+  FastRNN which is not recurrent and only consists of the readout FFNN.
+  """
   def __init__(self, *, readout_dim: int = 1024, readout_dropout=0.1, readout_l2=0.0001, **kwargs):
     super().__init__(**kwargs)
     self.readout_dim = readout_dim
@@ -145,6 +175,9 @@ class DecoderFastRnnOnlyReadout(IDecoderFastRnn):
     self.readout_l2 = readout_l2
 
   def make(self, *, prev_label_wb: LayerRef, encoder: LayerRef, slow_rnn: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     return {
       "class": "subnetwork", "from": [],
       "subnetwork": {
@@ -159,28 +192,52 @@ class DecoderFastRnnOnlyReadout(IDecoderFastRnn):
 
 
 class IDecoderLogProbSeparateNb(_IMaker):
+  """
+  Log prob separate without blank.
+  """
   def make(self, fast_rnn: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     raise NotImplementedError
 
 
 class DecoderLogProbSeparateNb(IDecoderLogProbSeparateNb):
+  """
+  Log prob separate without blank, using just a linear + log_softmax from fast RNN.
+  """
   def __init__(self, *, dropout=0.3, **kwargs):
     super().__init__(**kwargs)
     self.dropout = dropout
 
   def make(self, fast_rnn: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     return {
       "class": "linear", "activation": "log_softmax", "n_out": self.ctx.num_labels_nb,
       "from": fast_rnn, "dropout": self.dropout}
 
 
 class IDecoderLogProbSeparateWb(_IMaker):
+  """
+  Log prob with blank.
+  """
   def make(self, fast_rnn: LayerRef, log_prob_nb: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     raise NotImplementedError
 
 
 class DecoderLogProbSeparateWb(IDecoderLogProbSeparateWb):
+  """
+  Log prob with blank, separately modelled with sigmoid.
+  """
   def make(self, fast_rnn: LayerRef, log_prob_nb: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     return {
       "class": "subnetwork", "from": [],
       "subnetwork": {
@@ -201,6 +258,9 @@ class DecoderLogProbSeparateWb(IDecoderLogProbSeparateWb):
 
 
 class Decoder(_IMaker):
+  """
+  Decoder
+  """
   def __init__(self, *,
                slow_rnn: IDecoderSlowRnn = None,
                fast_rnn: IDecoderFastRnn = None,
@@ -222,6 +282,9 @@ class Decoder(_IMaker):
     self.log_prob_separate_wb = log_prob_separate_wb
 
   def make(self, encoder: LayerRef):
+    """
+    Make layer dict.
+    """
     target = self.ctx.target
     beam_size = self.ctx.beam_size
     train = self.ctx.train
@@ -318,6 +381,9 @@ class Decoder(_IMaker):
 
 
 class EncoderBLstmCnnSpecAug(IEncoder):
+  """
+  Encoder BLSTM + CNN + SpecAugment.
+  """
   def __init__(self,
                num_layers=6, lstm_dim=1024,
                time_reduction=(3, 2), with_specaugment=True,
@@ -330,10 +396,16 @@ class EncoderBLstmCnnSpecAug(IEncoder):
       l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
   def make(self, source: LayerRef) -> LayerDict:
+    """
+    Make layer dict.
+    """
     return blstm_cnn_specaug.make_encoder(source, **self._encoder_opts)
 
 
 class Net:
+  """
+  Transducer Network.
+  """
   def __init__(self, *, ctx: Context, encoder: IEncoder = None, decoder: Decoder = None, aux_ctc_loss=False):
     self.ctx = ctx
     if not encoder:
@@ -345,6 +417,9 @@ class Net:
     self.aux_ctc_loss = aux_ctc_loss
 
   def make_net(self) -> Dict[str, Any]:
+    """
+    Make net dict.
+    """
     net = {
       "encoder": self.encoder.make("data"),
       "output": self.decoder.make("encoder"),
@@ -369,6 +444,9 @@ def make_net(
     l2=0.0001,
     **kwargs
 ) -> Dict[str, Any]:
+  """
+  Make net dict.
+  """
   if not task:
     task = get_global_config().value("task", "train")
   if not target:
@@ -417,12 +495,18 @@ def _make_decoder(
 
 
 def make_ctc_loss(src: LayerRef, *, target: TargetConfig):
+  """
+  Make CTC loss.
+  """
   return {
     "class": "softmax", "from": src, "loss": "ctc", "target": target.key,
     "loss_opts": {"beam_width": 1, "use_native": True}}
 
 
 def make_output_without_blank(decoder: str, *, target: TargetConfig = None):
+  """
+  Make out wo blank
+  """
   if not target:
     target = TargetConfig.global_from_config()
   return {
@@ -442,6 +526,9 @@ def make_masked(
       masked_from: Optional[str] = None,
       unmask: bool = True,
       unit: Dict[str, Any]) -> Dict[str, Any]:
+  """
+  Make masked
+  """
   return {
     "class": "subnetwork", "from": [], "subnetwork": {
       "masked": {
@@ -458,6 +545,9 @@ def make_masked(
 
 
 class LinearCombine(_IMaker):
+  """
+  Linear combine.
+  """
   def __init__(self, *, dim: int, dropout: float = 0, l2: float = 0, **kwargs):
     super().__init__(**kwargs)
     self.dim = dim
@@ -465,6 +555,9 @@ class LinearCombine(_IMaker):
     self.l2 = l2
 
   def make(self, inputs: Dict[str, LayerRef]) -> LayerDict:
+    """
+    Make layer dict.
+    """
     return {
       "class": "subnetwork", "from": [],
       "subnetwork": {
