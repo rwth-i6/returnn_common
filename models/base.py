@@ -172,7 +172,10 @@ class _NameCtx:
 
   def _get_name(self) -> str:
     assert self.parent and self.parent.maker
+    reserved_names = set(self.childs.keys()) | {"output"}
     for key, value in vars(self.parent.maker):
+      if key in reserved_names:
+        continue
       if value is self.maker:
         return key
     return self._get_unique_name()
