@@ -96,6 +96,7 @@ import os
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.dirname(_my_dir)
 assert os.path.exists("%s/.github" % _root_dir)
+_prefix = "returnn_common/"
 
 
 # Proceed like this: Fix all warnings for some file, then remove it from this list.
@@ -123,5 +124,5 @@ def find_all_py_source_files():
         continue
       if file == "_setup_info_generated.py":
         continue
-      src_files.append(root + file)
+      src_files.append(_prefix + root + file)
   return src_files
