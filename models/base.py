@@ -161,10 +161,6 @@ class _NameCtx:
     self.layer = None  # type: Optional[Layer]
     self.childs = {}  # type: Dict[str, _NameCtx]
     self.parent = self.stack[-1] if self.stack else None
-    if self.parent:
-      assert self.maker
-    else:
-      assert not self.maker
     self.name = name if name else (self._get_name() if self.parent else None)
     if self.parent:
       assert self.name not in self.parent.childs
