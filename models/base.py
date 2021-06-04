@@ -27,11 +27,12 @@ class Layer:
     extend this by functions __add__, __sub__, etc.
   """
 
-  def __init__(self, *, maker: ILayerMaker, layer_dict: LayerDictRaw, name_ctx: _NameCtx):
+  def __init__(self, maker: ILayerMaker, layer_dict: LayerDictRaw):
     self.maker = maker
     self.layer_dict = layer_dict
-    self.name_ctx = name_ctx
-    name_ctx.layer = self
+    self.name_ctx = _NameCtx.top()
+    assert self.name_ctx.maker is maker
+    self.name_ctx.layer = self
 
   def get_name(self) -> str:
     """
@@ -68,8 +69,8 @@ class ILayerMaker:
     raise NotImplementedError
 
   def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
-    with _NameCtx(maker=self, name=name) as name_ctx:
-      return Layer(maker=self, layer_dict=self.make_layer_dict(*args, **kwargs), name_ctx=name_ctx)
+    with _NameCtx(maker=self, name=name):
+      return Layer(self, self.make_layer_dict(*args, **kwargs))
 
 
 class CopyLayer(ILayerMaker):
