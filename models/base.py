@@ -37,8 +37,7 @@ class Layer:
     """
     Return layer name, valid in the current active name context.
     """
-    assert _NameCtx.stack
-    cur_scope = _NameCtx.stack[-1]
+    cur_scope = _NameCtx.top()
     if self.name_ctx.parent is cur_scope:  # fast path
       return self.name_ctx.name
     cur_scope_abs = cur_scope.get_abs_name_ctx_list()
@@ -60,7 +59,7 @@ class ILayerMaker:
   """
   Makes a layer.
   """
-  def call(self, *args, **kwargs) -> LayerDictRaw:
+  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
     """
     Return layer dict.
 
@@ -70,14 +69,14 @@ class ILayerMaker:
 
   def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
     with _NameCtx(maker=self, name=name) as name_ctx:
-      return Layer(maker=self, layer_dict=self.call(*args, **kwargs), name_ctx=name_ctx)
+      return Layer(maker=self, layer_dict=self.make_layer_dict(*args, **kwargs), name_ctx=name_ctx)
 
 
 class CopyLayer(ILayerMaker):
   """
   Copy the (single) input.
   """
-  def call(self, source: Layer) -> LayerDictRaw:
+  def make_layer_dict(self, source: Layer) -> LayerDictRaw:
     """
     Create CopyLayer.
     """
@@ -97,7 +96,7 @@ class Module(ILayerMaker):
         self.linear = Linear(dim)
         self.activation = activation
 
-      def call(self, x: Layer):
+      def forward(self, x: Layer) -> Layer:
         x_ = x
         x = self.layer_norm(x)
         x = self.linear(x)
@@ -106,23 +105,40 @@ class Module(ILayerMaker):
 
   """
 
-  def call(self, *args, **kwargs) -> Layer:
+  def forward(self, *args, **kwargs) -> Layer:
     """
     Constructs the output.
     You can write PyTorch-style code here.
     """
     raise NotImplementedError
 
-  def __call__(self, *args, **kwargs) -> Layer:
-    with _NameCtx(maker=self) as name_ctx:
-      res = self.call(*args, **kwargs)
-      CopyLayer()(res, name="output")
-      layer_dict = {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
-      return Layer(maker=self, layer_dict=layer_dict, name_ctx=name_ctx)
+  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
+    """
+    Make subnet layer dict.
+    """
+    res = self.forward(*args, **kwargs)
+    CopyLayer()(res, name="output")
+    name_ctx = _NameCtx.top()
+    assert name_ctx.maker is self
+    return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
 
 class _NameCtx:
+  """
+  This is a helper class to keep track of the current name context when creating layers.
+  Usually you do not need to access this directly.
+  """
+
   stack = []  # type: List[_NameCtx]
+
+  @classmethod
+  def top(cls) -> _NameCtx:
+    """
+    Return the top of the stack.
+    Assumes that it exists.
+    """
+    assert cls.stack
+    return cls.stack[-1]
 
   def __init__(self, *, maker: Optional[ILayerMaker], name: Optional[str] = None):
     self.maker = maker
