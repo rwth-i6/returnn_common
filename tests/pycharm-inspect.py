@@ -23,14 +23,16 @@ import argparse
 from xml.dom import minidom
 from xml.etree import ElementTree
 
+from returnn.util import better_exchook  # noqa
+from returnn.util.basic import pip_install, which_pip, pip_check_is_installed, hms  # noqa
+
+
 my_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(my_dir)
 parent_root_dir = os.path.dirname(root_dir)
 sys.path.insert(0, parent_root_dir)
 os.chdir(parent_root_dir)
 
-from returnn.util import better_exchook  # noqa
-from returnn.util.basic import pip_install, which_pip, pip_check_is_installed, hms  # noqa
 
 travis_env = os.environ.get("TRAVIS") == "true"
 github_env = os.environ.get("GITHUB_ACTIONS") == "true"
@@ -485,7 +487,7 @@ def run_inspect(pycharm_dir, src_dir, skip_pycharm_inspect=False):
   # https://youtrack.jetbrains.com/issue/PY-43901
   # Do that now.
   root = ElementTree.Element("problems")
-  from .lint_common import find_all_py_source_files
+  from lint_common import find_all_py_source_files
   for py_src_file in find_all_py_source_files():
     ignore_codes = "E121,E123,E126,E226,E24,E704,W503,W504"  # PyCharm defaults
     ignore_codes += ",E111,E114"  # our defaults (4 space indents for code/comment)
