@@ -53,6 +53,14 @@ class LayerRef:
     assert common_len == len(self_name_abs) - 2  # not implemented otherwise
     return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name_ctx.name
 
+  def get_abs_name(self) -> str:
+    """
+    Return absolute layer name starting from root context.
+    """
+    ls = self.name_ctx.get_abs_name_ctx_list()
+    assert len(ls) >= 2 and not ls[0].name and ls[-1] is self.name_ctx and ls[-1].name
+    return "/".join(ctx.name for ctx in ls[1:])
+
 
 class Layer(LayerRef):
   """
