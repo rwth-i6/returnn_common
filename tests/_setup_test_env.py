@@ -6,8 +6,23 @@ In the test code, you would have this::
 
 This is a relative import because `tests` is a package.
 
-Also see :mod:`_setup_path`.
-See :func:`setup` below for details.
+You can run tests either by calling them directly like this::
+
+    python -m tests.test_hello
+
+Or::
+
+    python -m returnn_code.tests.test_hello
+
+You can also pass a specific test function like::
+
+    python -m tests.test_hello test_hello
+
+You can also use nosetests::
+
+    nosetests tests/test_hello.py
+
+See :func:`setup` below for implementation details.
 """
 
 import sys
