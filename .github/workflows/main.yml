@@ -46,7 +46,12 @@ jobs:
         echo "pip: $(type pip)"
 
         pip install --user --upgrade pip setuptools wheel
-        pip install --user typing | cat  # needed for Python 2 in some cases
+        pip install --user typing | cat
+
+        # pip install --user -r requirements.txt | cat
+        pip install --user --upgrade tensorflow==${{ matrix.tf-version }} | cat
+        pip install --user nose
+
         pip install --user --upgrade returnn
 
         # Enforce the right Python interpreter for nosetests.
