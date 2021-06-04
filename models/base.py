@@ -14,7 +14,11 @@ NetDictRaw = Dict[str, LayerDictRaw]
 class Layer:
   """
   Represents a layer and its output, created by :class:`ILayerMaker`.
+
+  TODO:
+    extend this by functions __add__, __sub__, etc.
   """
+
   def __init__(self, *, maker: ILayerMaker, layer_dict: LayerDictRaw, name_ctx: _NameCtx):
     self.maker = maker
     self.layer_dict = layer_dict
@@ -25,10 +29,19 @@ class Layer:
     """
     Return layer name, valid in the current active name context.
     """
-    # TODO extend this to go up and go down, relative names...
-    assert _NameCtx.stack and self.name_ctx.parent is _NameCtx.stack[-1]
-    assert self.name_ctx.name
-    return self.name_ctx.name
+    assert _NameCtx.stack
+    cur_scope = _NameCtx.stack[-1]
+    if self.name_ctx.parent is cur_scope:  # fast path
+      return self.name_ctx.name
+    cur_scope_abs = cur_scope.get_abs_name_ctx_list()
+    self_name_abs = self.name_ctx.get_abs_name_ctx_list()
+    assert cur_scope_abs[0] is self_name_abs[0]  # same root
+    assert len(cur_scope_abs) > len(self_name_abs)  # not implemented otherwise
+    common_len = 0
+    while cur_scope_abs[common_len] is self_name_abs[common_len]:
+      common_len += 1
+    assert common_len == len(self_name_abs) - 2  # not implemented otherwise
+    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name_ctx.name
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper
@@ -69,11 +82,27 @@ class Module(ILayerMaker):
   Like PyTorch.
   This represents a subnetwork in RETURNN, or the root network.
   Or some other layer which has a subnetwork, like RecLayer.
+
+  You can write PyTorch-like code here, like::
+
+      def __init__(self, dim, activation=tanh):
+        self.layer_norm = LayerNorm()
+        self.linear = Linear(dim)
+        self.activation = activation
+
+      def call(self, x: Layer):
+        x_ = x
+        x = self.layer_norm(x)
+        x = self.linear(x)
+        x = self.activation(x)
+        return x_ + x
+
   """
 
   def call(self, *args, **kwargs) -> Layer:
     """
     Constructs the output.
+    You can write PyTorch-style code here.
     """
     raise NotImplementedError
 
@@ -110,6 +139,17 @@ class _NameCtx:
     for key, value in self.childs.items():
       net_dict[key] = value.layer
     return net_dict
+
+  def get_abs_name_ctx_list(self) -> List[_NameCtx]:
+    """
+    Return list [root name ctx, ..., self].
+    """
+    ls = []
+    cur = self
+    while cur:
+      ls.append(cur)
+      cur = cur.parent
+    return list(reversed(ls))
 
   def __enter__(self):
     if self.parent:
