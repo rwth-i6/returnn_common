@@ -2,9 +2,11 @@
 Setups the environment for tests.
 In the test code, you would have this::
 
-    import _setup_test_env  # noqa
+    from . import _setup_test_env  # noqa
 
-Also see :mod:`_setup_returnn_env`.
+This is a relative import because `tests` is a package.
+
+Also see :mod:`_setup_path`.
 See :func:`setup` below for details.
 """
 
@@ -63,9 +65,9 @@ def setup():
   except ImportError:
     print("no faulthandler")
 
-  import _setup_path  # noqa
+  from . import _setup_path  # noqa
 
-  import returnn_common
+  import returnn_common  # noqa
 
 
 setup()
