@@ -8,6 +8,11 @@ The core interfaces for the user are:
 
 Instances of both objects can be called directly,
 and return instances of type :class:`Layer`.
+
+TODO: we should prepare sth for extern data. see comment in make_root_net_dict
+
+TODO: losses should be handled explicitly, more like PyTorch,
+  and then mark_as_loss() or so (which would set "loss": "as_is").
 """
 
 from __future__ import annotations
@@ -137,6 +142,20 @@ class Module(ILayerMaker):
     name_ctx = _NameCtx.top()
     assert name_ctx.maker is self
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
+
+  def make_root_net_dict(self) -> NetDictRaw:
+    """
+    Make net dict, to be used as the main RETURNN network, not within a subnetwork.
+
+    TODO Extern data need to be handled somehow differently...
+      We could explicitly pass it to this function here.
+      But this could be annoying for many streams.
+      Maybe some submodule want to use its own data stream
+      and this root module should not need to know about this.
+    """
+    with _NameCtx(maker=self) as name_ctx:
+      self.forward()
+      return name_ctx.make_net_dict()
 
 
 class _NameCtx:
