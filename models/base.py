@@ -7,10 +7,10 @@ The core interfaces for the user are:
 * :class:`Module`, to write PyTorch-style code
 
 Instances of both objects can be called directly,
-and return instances of type :class:`LayerRef`.
+and return instances of type :class:`LayerRef`,
+which can be thought of as analogue to :class:`torch.Tensor` or :class:`tf.Tensor`.
 
-TODO: losses should be handled explicitly, more like PyTorch,
-  and then mark_as_loss() or so (which would set "loss": "as_is").
+Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
 """
 
 from __future__ import annotations
@@ -61,6 +61,12 @@ class LayerRef:
     assert len(ls) >= 2 and not ls[0].name and ls[-1] is self.name_ctx and ls[-1].name
     return "/".join(ctx.name for ctx in ls[1:])
 
+  def mark_as_loss(self):
+    """
+    Mark this as a loss.
+    """
+    raise TypeError("mark_as_loss can only be called on a layer, not a layer-ref.")
+
 
 class Layer(LayerRef):
   """
@@ -74,6 +80,13 @@ class Layer(LayerRef):
     self.name_ctx.layer = self
     self.maker = maker
     self.layer_dict = layer_dict
+
+  def mark_as_loss(self):
+    """
+    Mark this as a loss.
+    """
+    assert "loss" not in self.layer_dict
+    self.layer_dict["loss"] = "as_is"
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper
@@ -106,6 +119,7 @@ class ILayerMaker:
       layer_dict = self.make_layer_dict(*args, **kwargs)
       if self.calls:
         layer_dict = layer_dict.copy()
+        assert "reuse_params" not in layer_dict
         layer_dict["reuse_params"] = self.calls[0].get_name()
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
