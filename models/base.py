@@ -216,8 +216,8 @@ class _NameCtx:
     for call in self.maker.calls:
       if call is self:
         continue  # ignore this
-      if call.parent is self.parent:
-        return call.name
+      if call.name_ctx.parent is self.parent:
+        return call.name_ctx.name
     return self.maker.get_canonical_name()
 
   def _get_unique_name(self) -> str:
