@@ -60,6 +60,9 @@ class ILayerMaker:
   """
   Makes a layer.
   """
+  def __init__(self):
+    self.calls = []  # type: List[Layer]
+
   def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
     """
     Return layer dict.
@@ -68,9 +71,21 @@ class ILayerMaker:
     """
     raise NotImplementedError
 
+  def get_canonical_name(self) -> str:
+    """
+    Get a canonical layer name if we do not have a Module attribute.
+    """
+    return self.__class__.__name__
+
   def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
     with _NameCtx(maker=self, name=name):
-      return Layer(self, self.make_layer_dict(*args, **kwargs))
+      layer_dict = self.make_layer_dict(*args, **kwargs)
+      if self.calls:
+        layer_dict = layer_dict.copy()
+        layer_dict["reuse_params"] = self.calls[0].get_name()
+      layer = Layer(self, layer_dict)
+      self.calls.append(layer)
+      return layer
 
 
 class CopyLayer(ILayerMaker):
@@ -197,8 +212,16 @@ class _NameCtx:
         return key
     return self._get_unique_name()
 
+  def _get_suggested_name(self) -> str:
+    for call in self.maker.calls:
+      if call is self:
+        continue  # ignore this
+      if call.parent is self.parent:
+        return call.name
+    return self.maker.get_canonical_name()
+
   def _get_unique_name(self) -> str:
-    name = self.maker.__class__.__name__
+    name = self._get_suggested_name()
     reserved_names = set(vars(self.parent.maker).keys()) | set(self.childs.keys()) | {"output"}
     if name not in reserved_names:
       return name
