@@ -10,6 +10,16 @@ Also see :mod:`_setup_path`.
 See :func:`setup` below for details.
 """
 
+import sys
+import os
+
+my_dir = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
+root_dir = os.path.dirname(my_dir)
+parent_root_dir = os.path.dirname(root_dir)
+_my_old_mod_name = __name__
+_expected_package_name = "returnn_common.tests"
+_expected_mod_name = _expected_package_name + "._setup_test_env"
+
 
 def setup():
   """
@@ -65,9 +75,57 @@ def setup():
   except ImportError:
     print("no faulthandler")
 
-  from . import _setup_path  # noqa
+  # ----------------
+  # So far only external deps.
+  # Now setup the paths for this repo and do some basic checks.
+
+  if parent_root_dir not in sys.path:
+    sys.path.insert(0, parent_root_dir)  # make `import returnn_common` work
+
+  import importlib
+
+  if _expected_mod_name != _my_old_mod_name:
+    globals()["__package__"] = _expected_mod_name[:_expected_mod_name.rfind(".")]
+    globals()["__name__"] = _expected_mod_name
+    sys.modules[_expected_mod_name] = sys.modules[_my_old_mod_name]
+    mod = importlib.import_module(_expected_mod_name)
+    assert vars(mod) is globals()
 
   import returnn_common  # noqa
+
+  main_mod = sys.modules.get("__main__")
+  if main_mod and os.path.dirname(os.path.realpath(os.path.abspath(main_mod.__file__))) == my_dir:
+    main_mod_ = importlib.import_module(
+      _expected_package_name + "." + os.path.splitext(os.path.basename(main_mod.__file__))[0])
+    _main(main_mod_)
+
+
+def _main(mod):
+  print("Test module:", mod)
+  sep = "-" * 80 + "\n"
+
+  if len(sys.argv) > 1:
+    tests = sys.argv[1:]
+    print("Running functions:", tests)
+    print(sep)
+    for name in tests:
+      print(f"{name}()")
+      test = getattr(mod, name)
+      test()
+      print("Ok.")
+      print(sep)
+    print("All ok.")
+    return
+
+  print("Running tests.")
+  print(sep)
+  for key, value in vars(mod).items():
+    if key.startswith("test_") and callable(value):
+      print(f"{key}()")
+      value()
+      print("Ok.")
+      print(sep)
+  print("All ok.")
 
 
 setup()
