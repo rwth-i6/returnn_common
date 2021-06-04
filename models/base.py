@@ -1,5 +1,13 @@
 """
-Base interfaces
+Base interfaces.
+
+The core interfaces for the user are:
+
+* :class:`ILayerMaker`, to directly create a layer dict
+* :class:`Module`, to write PyTorch-style code
+
+Instances of both objects can be called directly,
+and return instances of type :class:`Layer`.
 """
 
 from __future__ import annotations
@@ -48,9 +56,6 @@ class Layer:
     return sis_hash_helper(self.layer_dict)
 
 
-NetDict = Dict[str, Layer]
-
-
 class ILayerMaker:
   """
   Makes a layer.
@@ -58,6 +63,8 @@ class ILayerMaker:
   def call(self, *args, **kwargs) -> LayerDictRaw:
     """
     Return layer dict.
+
+    The :class:`LayerDictRaw` can references other layers by using ``layer.get_name()``.
     """
     raise NotImplementedError
 
@@ -131,13 +138,13 @@ class _NameCtx:
       assert self.name not in self.parent.childs
       self.parent.childs[self.name] = self
 
-  def make_net_dict(self) -> NetDict:
+  def make_net_dict(self) -> NetDictRaw:
     """
     Create net dict.
     """
     net_dict = {}
     for key, value in self.childs.items():
-      net_dict[key] = value.layer
+      net_dict[key] = value.layer.layer_dict
     return net_dict
 
   def get_abs_name_ctx_list(self) -> List[_NameCtx]:
