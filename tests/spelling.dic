@@ -36,6 +36,7 @@ irie
 kenlm
 kingma
 horovod
+librispeech
 librosa
 logits
 luong
@@ -43,7 +44,9 @@ lstm
 maxout
 mdlstm
 menne
+merboldt
 mfcc
+minibatch
 nadam
 nativelstm
 ndarray
@@ -69,7 +72,9 @@ rwth
 rwthasr
 rwthlm
 soundfile
+specaugment
 subword
+switchout
 tanh
 tensorflow
 tfdbg
@@ -77,6 +82,7 @@ timit
 tuske
 uint
 vanhoucke
+vieting
 viterbi
 voigtlaender
 warprnnt
