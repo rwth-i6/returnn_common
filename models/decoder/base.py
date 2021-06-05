@@ -11,4 +11,3 @@ class Decoder:
   Can use label-sync label topology, or time-sync (RNA/CTC), or with vertical transitions (RNN-T).
   """
   pass
-
