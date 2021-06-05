@@ -204,6 +204,21 @@ def get_root_extern_data(data_key: str) -> LayerRef:
   return name_.layer_ref
 
 
+def get_special_layer(name: str) -> LayerRef:
+  """
+  Special layer can be "data:..." or whatever.
+  """
+  scope = _NameCtx.top()  # must exist
+  if name in scope.childs:
+    name_ = scope.childs[name]
+    assert name_.layer_ref
+  else:
+    name_ = _NameCtx(name=name, parent=scope, maker=None)
+    LayerRef(name_ctx=name_)
+    assert name_.layer_ref
+  return name_.layer_ref
+
+
 class _NameCtx:
   """
   This is a helper class to keep track of the current name context when creating layers.
