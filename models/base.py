@@ -188,7 +188,7 @@ class Module(ILayerMaker):
 
 def get_root_extern_data(data_key: str) -> LayerRef:
   """
-  Get extern data.
+  Get extern data from root.
   """
   scope = _NameCtx.top()  # must exist
   scope_abs = scope.get_abs_name_ctx_list()
@@ -202,6 +202,13 @@ def get_root_extern_data(data_key: str) -> LayerRef:
     LayerRef(name_ctx=name_)
     assert name_.layer_ref
   return name_.layer_ref
+
+
+def get_extern_data(data_key: str) -> LayerRef:
+  """
+  Get extern data from current scope.
+  """
+  return get_special_layer(f"data:{data_key}")
 
 
 def get_special_layer(name: str) -> LayerRef:
