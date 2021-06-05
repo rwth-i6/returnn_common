@@ -139,9 +139,7 @@ class CopyLayer(ILayerMaker):
 
 class Module(ILayerMaker):
   """
-  Like PyTorch.
   This represents a subnetwork in RETURNN, or the root network.
-  Or some other layer which has a subnetwork, like RecLayer.
 
   You can write PyTorch-like code here, like::
 
@@ -184,6 +182,29 @@ class Module(ILayerMaker):
     with _NameCtx(maker=self) as name_ctx:
       self.forward()
       return name_ctx.make_net_dict()
+
+
+class Rec(ILayerMaker):
+  """
+  This represents a RecLayer subnetwork in RETURNN.
+  """
+
+  def step(self) -> LayerRef:
+    """
+    Constructs the output for one step.
+    You can write PyTorch-style code here.
+    """
+    raise NotImplementedError
+
+  def make_layer_dict(self) -> LayerDictRaw:
+    """
+    Make subnet layer dict.
+    """
+    res = self.step()
+    CopyLayer()(res, name="output")
+    name_ctx = _NameCtx.top()
+    assert name_ctx.maker is self
+    return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict()}
 
 
 def get_root_extern_data(data_key: str) -> LayerRef:
