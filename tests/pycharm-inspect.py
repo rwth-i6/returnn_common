@@ -487,7 +487,7 @@ def run_inspect(pycharm_dir, src_dir, skip_pycharm_inspect=False):
   # https://youtrack.jetbrains.com/issue/PY-43901
   # Do that now.
   root = ElementTree.Element("problems")
-  from lint_common import find_all_py_source_files
+  from returnn_common.tests.lint_common import find_all_py_source_files
   for py_src_file in find_all_py_source_files():
     ignore_codes = "E121,E123,E126,E226,E24,E704,W503,W504"  # PyCharm defaults
     ignore_codes += ",E111,E114"  # our defaults (4 space indents for code/comment)
@@ -605,7 +605,7 @@ def report_inspect_dir(inspect_xml_dir,
   inspect_class_not_counted = set(inspect_class_not_counted or ())
 
   # maybe update inspect_class_not_counted
-  from lint_common import find_all_py_source_files
+  from returnn_common.tests.lint_common import find_all_py_source_files
   returnn_py_source_files = set(find_all_py_source_files())
   all_files = set()
   relevant_inspections_for_file = set()
@@ -698,7 +698,7 @@ def main():
   arg_parser.add_argument("--files", nargs="*")
   args = arg_parser.parse_args()
 
-  from lint_common import ignore_count_for_files
+  from returnn_common.tests.lint_common import ignore_count_for_files
   inspect_kwargs = dict(
     inspect_class_blacklist={
     },

@@ -89,7 +89,7 @@ class Layer(LayerRef):
     self.layer_dict["loss"] = "as_is"
 
   def _sis_hash(self):
-    from sisyphus.hash import sis_hash_helper
+    from sisyphus.hash import sis_hash_helper  # noqa
     return sis_hash_helper(self.layer_dict)
 
 

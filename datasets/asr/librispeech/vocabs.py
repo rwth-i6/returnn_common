@@ -15,9 +15,15 @@ class _Bpe(VocabConfig):
     self.vocab = str(vocab)
 
   def get_num_classes(self) -> int:
+    """
+    Get num classes
+    """
     return self.dim
 
   def get_opts(self) -> Dict[str, Any]:
+    """
+    Get opts
+    """
     return {
       'bpe_file': self.codes,
       'vocab_file': self.vocab,

@@ -376,6 +376,7 @@ def tf_forward_shifted_rna(log_probs, labels, input_lengths=None, label_lengths=
 
   def ta_read_body(i, res_loop_ta):
     """Reads from the alpha-columns TensorArray. We need this because of the inconsistent shapes in the TA."""
+    assert isinstance(col_idxs, tf.Tensor)
     ta_item = alpha_out_ta.read(col_idxs[i])[i]
     elem = tf.cond(tf.equal(within_col_idx[i], -1), lambda: tf_neg_inf, lambda: ta_item[within_col_idx[i]])
     elem = py_print_iteration_info("FINAL", elem, i, "col_idxs", col_idxs, "within_col_idx:", within_col_idx,
@@ -635,6 +636,7 @@ def rna_loss_gather(log_probs, labels, input_lengths=None, label_lengths=None, b
 
   def ta_read_body(i, res_loop_ta):
     """Reads from the alpha-columns TensorArray. We need this because of the inconsistent shapes in the TA."""
+    assert isinstance(col_idxs, tf.Tensor)
     ta_item = alpha_out_ta.read(col_idxs[i])[i]
     elem = tf.cond(tf.equal(within_col_idx[i], -1), lambda: tf_neg_inf, lambda: ta_item[within_col_idx[i]])
     elem = py_print_iteration_info("FINAL", elem, i, "col_idxs", col_idxs, "within_col_idx:", within_col_idx,

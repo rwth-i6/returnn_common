@@ -5,7 +5,6 @@ LM fusion.
 
 import sys
 from returnn.config import get_global_config
-from ..lm import Lm
 
 config = get_global_config()
 
@@ -37,7 +36,10 @@ if config.has("am_scale"):
   print("** am_scale %f" % _am_scale, file=sys.stderr)
 
 
-def eval_linear_interp(source, **kwargs):
+def eval_linear_interp(source, **_kwargs):
+  """
+  Std space, linear interpolation
+  """
   from returnn.tf.compat import v1 as tf
   log1 = source(0)  # +log space, external_lm
   log2 = source(1)  # +log space, "internal" LM
@@ -47,62 +49,74 @@ def eval_linear_interp(source, **kwargs):
   return out
 
 
-def eval_log_linear_interp(source, **kwargs):
-  from returnn.tf.compat import v1 as tf
+def eval_log_linear_interp(source, **_kwargs):
+  """
+  Log-linear interpolation
+  """
   log_external = source(0)  # external_lm
   log_internal = source(1)  # "internal" LM
-  prev_u = source(2)
-  prev_out_str = source(3)
+  prev_u = source(2)  # noqa
+  prev_out_str = source(3)  # noqa
   out = _lm_scale*log_external + (1-_lm_scale)*log_internal
   return out
 
 
-def eval_local_fusion(source, **kwargs):
+def eval_local_fusion(source, **_kwargs):
+  """
+  Local fusion
+  """
   from returnn.tf.compat import v1 as tf
   log_external = source(0)  # external_lm
   log_internal = source(1)  # "internal" LM
-  prev_u = source(2)
-  prev_out_str = source(3)
+  prev_u = source(2)  # noqa
+  prev_out_str = source(3)  # noqa
   # We need 2 parameters here, because of the denominator (does not cancel)
   out = _lm_scale*log_external + _am_scale*log_internal
   return out - tf.math.reduce_logsumexp(out, axis=-1, keepdims=True)
 
 
-def eval_log_linear(source, **kwargs):
-  from returnn.tf.compat import v1 as tf
+def eval_log_linear(source, **_kwargs):
+  """
+  Log linear
+  """
   log_external = source(0)  # external_lm
   log_internal = source(1)  # "internal" LM
-  prev_u = source(2)
-  prev_out_str = source(3)
+  prev_u = source(2)  # noqa
+  prev_out_str = source(3)  # noqa
   out = _lm_scale*log_external + log_internal
   return out
 
 
-def eval_density_ratio(source, **kwargs):
-  from returnn.tf.compat import v1 as tf
-  from returnn.tf.util.basic import where_bc, safe_log, safe_exp
+def eval_density_ratio(source, **_kwargs):
+  """
+  Density ratio
+  """
   log_external = source(0)  # external_lm
   log_internal = source(1)  # "internal" LM, label log-probs
-  u = source(2)
-  prev_out_str = source(3)
+  u = source(2)  # noqa
+  prev_out_str = source(3)  # noqa
   log_zero_am = source(4)  # label log-probs with AM set to zero/mean.
   out = log_internal - _lm_scale_internal*log_zero_am + _lm_scale*log_external
   return out
 
 
-def eval_density_ratio_interp(source, **kwargs):
-  from returnn.tf.compat import v1 as tf
-  from returnn.tf.util.basic import where_bc, safe_log, safe_exp
+def eval_density_ratio_interp(source, **_kwargs):
+  """
+  Density ratio with interpolation
+  """
   log_external = source(0)  # external_lm
   log_internal = source(1)  # "internal" LM, label log-probs
-  u = source(2)
-  prev_out_str = source(3)
+  u = source(2)  # noqa
+  prev_out_str = source(3)  # noqa
   log_zero_am = source(4)  # label log-probs with AM set to zero/mean.
   out = (1-_lm_scale)*log_internal - _lm_scale_internal*log_zero_am + _lm_scale*log_external
   return out
 
 
 def eval_lm_fusion(source, **kwargs):
+  """
+  LM fusion, common function
+  """
   if _lm_fusion == "log-linear":
     print("Using log-linear LM combination, with LM-scale %.2f." % _lm_scale)
     return eval_log_linear(source, **kwargs)
@@ -116,21 +130,28 @@ def eval_lm_fusion(source, **kwargs):
     print("Using un-normalized log-linear LM interpolation, with LM-scale %.2f." % _lm_scale)
     return eval_log_linear_interp(source, **kwargs)
   elif _lm_fusion in ("divide-by-prior", "divide-by-prior-mean"):
-    print("Using density ratio approach, with LM-scale %.2f" % (_lm_scale))
+    print("Using density ratio approach, with LM-scale %.2f" % (_lm_scale,))
     return eval_density_ratio(source, **kwargs)
   elif _lm_fusion in ("divide-by-prior-interp", "divide-by-prior-mean-interp"):
-    print("Using density ratio (interp) approach, with LM-scale %.2f and internal scale %.2f" % (_lm_scale, _lm_scale_internal))
+    print(
+      "Using density ratio (interp) approach,"
+      " with LM-scale %.2f and internal scale %.2f" % (_lm_scale, _lm_scale_internal))
     return eval_density_ratio_interp(source, **kwargs)
   else:
     raise TypeError(f"not supported {_lm_fusion!r}")
 
 
 def make_internal_lm(*, am: str, lm: str):
+  """
+  Make internal LM layer.
+  """
+  lm  # noqa  # TODO...
   return {
     "class": "subnetwork", "from": am,
     "subnetwork": {
       "am_mean": {  # encoder mean
         "class": "reduce", "from": "data", "mode": "mean", "keep_dims": False, "axes": "t"},  # [B, enc-dim]
 
+      # TODO...
     }
   }

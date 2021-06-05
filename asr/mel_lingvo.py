@@ -21,7 +21,6 @@ Also see `create_asr_features <https://github.com/tensorflow/lingvo/blob/master/
 # ==============================================================================
 
 from __future__ import annotations
-import collections
 import math
 from typing import Dict, Optional
 from returnn.tf.util.basic import get_shape
@@ -39,6 +38,9 @@ class _ReturnnAudioFeatureExtractor:
     return f"{self.__class__.__name__}{self.opts.items() if self.opts else 'uninitialized'}"
 
   def setup(self, opts: Params):
+    """
+    Setup
+    """
     if self.opts:
       self.opts.assert_same(opts)
       return
@@ -53,6 +55,9 @@ class _ReturnnAudioFeatureExtractor:
       self.tf_session = tf.compat.v1.Session(graph=g)
 
   def extract(self, *, audio, num_feature_filters, sample_rate, **_other):
+    """
+    Extract
+    """
     assert sample_rate == self.opts.sample_rate
     assert num_feature_filters == self.opts.num_bins
     return self.tf_session.run(self.tf_log_mel, feed_dict={self.tf_audio_placeholder: audio})
@@ -79,6 +84,9 @@ def make_returnn_audio_features_func(cached=_global_returnn_audio_feature_extrac
 
 
 def default_asr_frontend_params(num_bins=80, sample_rate=16000):
+  """
+  Make params for default ASR frontent
+  """
   p = MelAsrFrontend.make_params()
   p.sample_rate = float(sample_rate)
   p.frame_size_ms = 25.
@@ -168,6 +176,9 @@ class MelAsrFrontend:
 
   @classmethod
   def make_params(cls):
+    """
+    Make params
+    """
     p = Params()
     p.name = 'frontend'
     p.define("random_seed", 0)
@@ -267,10 +278,16 @@ class MelAsrFrontend:
 
   @property
   def window_frame_size(self):
+    """
+    Window frame size
+    """
     return self._frame_size
 
   @property
   def window_frame_step(self):
+    """
+    Window frame step
+    """
     return self._frame_step
 
   @staticmethod
@@ -504,14 +521,23 @@ class Params:
     self._params = {"name": None}
 
   def define(self, key, default_value, _comment=None):
+    """
+    Define param
+    """
     self._params[key] = default_value
 
   def update(self, d: Dict[str]):
+    """
+    Update params
+    """
     for key, value in d.items():
       assert key in self._params
       self._params[key] = value
 
   def items(self):
+    """
+    Param items
+    """
     return self._params
 
   def __repr__(self):
@@ -532,6 +558,9 @@ class Params:
     return self._params[item]
 
   def assert_same(self, other: Params):
+    """
+    Assert same
+    """
     assert sorted(self._params.keys()) == sorted(other._params.keys()), f"{self} vs {other}"
     for key in self._params.keys():
       assert self._params[key] == other._params[key], f"param {key}: {self._params[key]} vs {other._params[key]}"

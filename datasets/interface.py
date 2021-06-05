@@ -1,4 +1,8 @@
 
+"""
+Datasets common interfaces
+"""
+
 from __future__ import annotations
 from typing import Dict, Optional, Any
 
@@ -14,9 +18,15 @@ class DatasetConfig:
   """
 
   def get_extern_data(self) -> Dict[str, Dict[str]]:
+    """
+    Get extern data
+    """
     raise NotImplementedError
 
   def get_train_dataset(self) -> Dict[str]:
+    """
+    Get train dataset
+    """
     raise NotImplementedError
 
   def get_eval_datasets(self) -> Dict[str, Dict[str]]:
@@ -61,6 +71,9 @@ class VocabConfig:
   """
 
   def get_num_classes(self) -> int:
+    """
+    Get num classes
+    """
     raise NotImplementedError
 
   def get_opts(self) -> Dict[str, Any]:
@@ -72,6 +85,10 @@ class VocabConfig:
 
 
 class VocabConfigStatic(VocabConfig):
+  """
+  Static vocab (predefined num classes, vocab opts).
+  """
+
   def __init__(self, *, num_classes: int, opts: Dict[str, Any]):
     super(VocabConfigStatic, self).__init__()
     self.num_classes = num_classes
@@ -79,6 +96,9 @@ class VocabConfigStatic(VocabConfig):
 
   @classmethod
   def from_global_config(cls, data_key: str) -> VocabConfigStatic:
+    """
+    Init from global config
+    """
     from returnn.config import get_global_config
     config = get_global_config()
     extern_data_opts = config.typed_dict["extern_data"]
@@ -86,9 +106,15 @@ class VocabConfigStatic(VocabConfig):
     return VocabConfigStatic(num_classes=data_opts["dim"], opts=data_opts.get("vocab", {}))
 
   def get_num_classes(self) -> int:
+    """
+    Get num classes
+    """
     return self.num_classes
 
   def get_opts(self) -> Dict[str, Any]:
+    """
+    Get opts
+    """
     return self.opts
 
 
@@ -113,8 +139,14 @@ class TargetConfig:
 
   @classmethod
   def global_from_config(cls) -> TargetConfig:
+    """
+    Construct global from config
+    """
     # The default constructor with empty args will just return that.
     return TargetConfig()
 
   def get_num_classes(self) -> int:
+    """
+    Get num classes
+    """
     return self.vocab.get_num_classes()

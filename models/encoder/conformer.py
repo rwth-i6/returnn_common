@@ -1,8 +1,16 @@
 
+"""
+Conformer code.
+"""
+
+from typing import List
 from ...asr.specaugment import specaugment_eval_func
 
 
 def make_encoder(source="data", **kwargs):
+  """
+  Make encoder layer.
+  """
   conformer_enc = ConformerEncoder(**kwargs)
   conformer_enc.create_network()
   return {"class": "subnetwork", "subnetwork": conformer_enc.network.get_net(), "from": source}
@@ -34,7 +42,6 @@ class ConformerEncoder:
     :param int conv_kernel_size: kernel size for conv layers in Convolution module
     :param str|None activation: activation used to sandwich modules
     :param bool block_final_norm: if True, apply layer norm at the end of each conformer block
-    :param bool final_norm: if True, apply layer norm to the output of the encoder
     :param int|None ff_dim: dimension of the first linear layer in FF module
     :param str|None ff_init: FF layers initialization
     :param bool|None ff_bias: If true, then bias is used for the FF layers
@@ -143,7 +150,7 @@ class ConformerEncoder:
     Add Multi-Headed Selft-Attention Module:
       LN + MHSA + Dropout
 
-    :param str prefix: some prefix name
+    :param str prefix_name: some prefix name
     :param str source: name of source layer
     :return: last layer name of this module
     :rtype: str
@@ -172,7 +179,6 @@ class ConformerEncoder:
       LN + point-wise-conv + GLU + depth-wise-conv + BN + Swish + point-wise-conv + Dropout
 
     :param str prefix_name: some prefix name
-    :param int i: conformer module index
     :param str source: name of source layer
     :return: last layer name of this module
     :rtype: str
@@ -290,6 +296,9 @@ class ConformerEncoder:
     return encoder
 
 
+LayerRef = str
+
+
 class _NetworkMakerHelper:
   """
   Represents a generic RETURNN network
@@ -300,25 +309,42 @@ class _NetworkMakerHelper:
     self._net = {}
 
   def get_net(self):
+    """
+    Get net
+    """
     return self._net
 
-  def add_copy_layer(self, name, source, **kwargs):
+  def add_copy_layer(self, name: LayerRef, source, **kwargs) -> LayerRef:
+    """
+    Add copy layer
+    """
     self._net[name] = {'class': 'copy', 'from': source}
     self._net[name].update(kwargs)
     return name
 
-  def add_eval_layer(self, name, source, eval, **kwargs):
+  # noinspection PyShadowingBuiltins
+  def add_eval_layer(self, name: LayerRef, source: LayerRef, eval, **kwargs) -> LayerRef:
+    """
+    Add eval layer
+    """
     self._net[name] = {'class': 'eval', 'eval': eval, 'from': source}
     self._net[name].update(kwargs)
     return name
 
-  def add_split_dim_layer(self, name, source, axis='F', dims=(-1, 1), **kwargs):
+  def add_split_dim_layer(self, name: LayerRef, source: LayerRef, axis='F', dims=(-1, 1), **kwargs) -> LayerRef:
+    """
+    Add split dim layer
+    """
     self._net[name] = {'class': 'split_dims', 'axis': axis, 'dims': dims, 'from': source}
     self._net[name].update(kwargs)
     return name
 
-  def add_conv_layer(self, name, source, filter_size, n_out, l2, padding='same', activation=None, with_bias=True,
-                     **kwargs):
+  def add_conv_layer(self, name: LayerRef, source: LayerRef,
+                     filter_size, n_out, l2, padding='same', activation=None, with_bias=True,
+                     **kwargs) -> LayerRef:
+    """
+    Add conv layer
+    """
     d = {
       'class': 'conv', 'from': source, 'padding': padding, 'filter_size': filter_size, 'n_out': n_out,
       'activation': activation, 'with_bias': with_bias
@@ -329,8 +355,12 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_linear_layer(self, name, source, n_out, activation=None, with_bias=True, dropout=0., l2=0.,
-                       forward_weights_init=None, **kwargs):
+  def add_linear_layer(self, name: LayerRef, source: LayerRef,
+                       n_out: int, activation=None, with_bias=True, dropout=0., l2=0.,
+                       forward_weights_init=None, **kwargs) -> LayerRef:
+    """
+    Add linear layer
+    """
     d = {
       'class': 'linear', 'activation': activation, 'with_bias': with_bias, 'from': source, 'n_out': n_out
     }
@@ -344,17 +374,27 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_pool_layer(self, name, source, pool_size, mode='max', **kwargs):
+  def add_pool_layer(self, name: LayerRef, source: LayerRef, pool_size, mode='max', **kwargs) -> LayerRef:
+    """
+    Add pool layer
+    """
     self._net[name] = {'class': 'pool', 'from': source, 'pool_size': pool_size, 'mode': mode, 'trainable': False}
     self._net[name].update(kwargs)
     return name
 
-  def add_merge_dims_layer(self, name, source, axes='static', **kwargs):
+  def add_merge_dims_layer(self, name: LayerRef, source: LayerRef, axes='static', **kwargs) -> LayerRef:
+    """
+    Add MergeDimsLayer
+    """
     self._net[name] = {'class': 'merge_dims', 'from': source, 'axes': axes}
     self._net[name].update(kwargs)
     return name
 
-  def add_rec_layer(self, name, source, n_out, l2, rec_weight_dropout, direction=1, unit='nativelstm2', **kwargs):
+  def add_rec_layer(self, name: LayerRef, source: LayerRef,
+                    n_out: int, l2, rec_weight_dropout, direction=1, unit='nativelstm2', **kwargs) -> LayerRef:
+    """
+    Add RecLayer
+    """
     d = {'class': 'rec', 'unit': unit, 'n_out': n_out, 'direction': direction, 'from': source}
     if l2:
       d['L2'] = l2
@@ -366,38 +406,61 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_choice_layer(self, name, source, target, beam_size=12, initial_output=0, **kwargs):
+  def add_choice_layer(self, name: LayerRef, source: LayerRef,
+                       target: str, beam_size=12, initial_output=0, **kwargs) -> LayerRef:
+    """
+    Add ChoiceLayer
+    """
     self._net[name] = {'class': 'choice', 'target': target, 'beam_size': beam_size, 'from': source,
-                      'initial_output': initial_output}
+                       'initial_output': initial_output}
     self._net[name].update(kwargs)
     return name
 
-  def add_compare_layer(self, name, source, value, kind='equal', **kwargs):
+  def add_compare_layer(self, name: LayerRef, source: LayerRef, value, kind='equal', **kwargs) -> LayerRef:
+    """
+    Add CompareLayer
+    """
     self._net[name] = {'class': 'compare', 'kind': kind, 'from': source, 'value': value}
     self._net[name].update(kwargs)
     return name
 
-  def add_combine_layer(self, name, source, kind, n_out, **kwargs):
+  def add_combine_layer(self, name: LayerRef, source: List[LayerRef], kind: str, n_out: int, **kwargs) -> LayerRef:
+    """
+    Add CombineLayer
+    """
     self._net[name] = {'class': 'combine', 'kind': kind, 'from': source, 'n_out': n_out}
     self._net[name].update(kwargs)
     return name
 
-  def add_activation_layer(self, name, source, activation, **kwargs):
+  def add_activation_layer(self, name: LayerRef, source: LayerRef, activation, **kwargs) -> LayerRef:
+    """
+    Add ActivationLayer
+    """
     self._net[name] = {'class': 'activation', 'activation': activation, 'from': source}
     self._net[name].update(kwargs)
     return name
 
-  def add_softmax_over_spatial_layer(self, name, source, **kwargs):
+  def add_softmax_over_spatial_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+    """
+    Add SoftmaxOverSpatialLayer
+    """
     self._net[name] = {'class': 'softmax_over_spatial', 'from': source}
     self._net[name].update(kwargs)
     return name
 
-  def add_generic_att_layer(self, name, weights, base, **kwargs):
+  def add_generic_att_layer(self, name: LayerRef, weights: LayerRef, base: LayerRef, **kwargs) -> LayerRef:
+    """
+    Add GenericAttentionLayer
+    """
     self._net[name] = {'class': 'generic_attention', 'weights': weights, 'base': base}
     self._net[name].update(kwargs)
     return name
 
-  def add_rnn_cell_layer(self, name, source, n_out, unit='LSTMBlock', l2=0., **kwargs):
+  def add_rnn_cell_layer(self, name: LayerRef, source: LayerRef,
+                         n_out: int, unit='LSTMBlock', l2=0., **kwargs) -> LayerRef:
+    """
+    Add RnnCellLayer
+    """
     d = {'class': 'rnn_cell', 'unit': unit, 'n_out': n_out, 'from': source}
     if l2:
       d['L2'] = l2
@@ -405,8 +468,12 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_softmax_layer(self, name, source, l2=None, loss=None, target=None, dropout=0., loss_opts=None,
-                        forward_weights_init=None, **kwargs):
+  def add_softmax_layer(self, name: LayerRef, source: LayerRef,
+                        l2=None, loss=None, target=None, dropout=0., loss_opts=None,
+                        forward_weights_init=None, **kwargs) -> LayerRef:
+    """
+    Add SoftmaxLayer
+    """
     d = {'class': 'softmax', 'from': source}
     if dropout:
       d['dropout'] = dropout
@@ -424,19 +491,29 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_dropout_layer(self, name, source, dropout, dropout_noise_shape=None, **kwargs):
+  def add_dropout_layer(self, name: LayerRef, source: LayerRef,
+                        dropout: float, dropout_noise_shape=None, **kwargs) -> LayerRef:
+    """
+    Add DropoutLayer
+    """
     self._net[name] = {'class': 'dropout', 'from': source, 'dropout': dropout}
     if dropout_noise_shape:
       self._net[name]['dropout_noise_shape'] = dropout_noise_shape
     self._net[name].update(kwargs)
     return name
 
-  def add_reduceout_layer(self, name, source, num_pieces=2, mode='max', **kwargs):
+  def add_reduceout_layer(self, name: LayerRef, source: LayerRef, num_pieces=2, mode='max', **kwargs) -> LayerRef:
+    """
+    Add ReduceOutLayer
+    """
     self._net[name] = {'class': 'reduce_out', 'from': source, 'num_pieces': num_pieces, 'mode': mode}
     self._net[name].update(kwargs)
     return name
 
-  def add_subnet_rec_layer(self, name, unit, target, source=None, **kwargs):
+  def add_subnet_rec_layer(self, name: LayerRef, unit, target, source=None, **kwargs) -> LayerRef:
+    """
+    Add RecLayer
+    """
     if source is None:
       source = []
     self._net[name] = {
@@ -444,29 +521,48 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_decide_layer(self, name, source, target, loss='edit_distance', **kwargs):
+  def add_decide_layer(self, name: LayerRef, source: LayerRef, target, loss='edit_distance', **kwargs) -> LayerRef:
+    """
+    Add DecideLayer
+    """
     self._net[name] = {'class': 'decide', 'from': source, 'loss': loss, 'target': target}
     self._net[name].update(kwargs)
     return name
 
-  def add_slice_layer(self, name, source, axis, **kwargs):
+  def add_slice_layer(self, name: LayerRef, source: LayerRef, axis, **kwargs) -> LayerRef:
+    """
+    Add SliceLayer
+    """
     self._net[name] = {'class': 'slice', 'from': source, 'axis': axis, **kwargs}
     return name
 
-  def add_subnetwork(self, name, source, subnetwork_net, **kwargs):
+  def add_subnetwork(self, name: LayerRef, source: LayerRef, subnetwork_net, **kwargs) -> LayerRef:
+    """
+    Add SubnetworkLayer
+    """
     self._net[name] = {'class': 'subnetwork', 'from': source, 'subnetwork': subnetwork_net, **kwargs}
     return name
 
-  def add_layer_norm_layer(self, name, source, **kwargs):
+  def add_layer_norm_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+    """
+    Add LayerNormLayer
+    """
     self._net[name] = {'class': 'layer_norm', 'from': source, **kwargs}
     return name
 
-  def add_batch_norm_layer(self, name, source, **kwargs):
+  def add_batch_norm_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+    """
+    Add BatchNormLayer
+    """
     self._net[name] = {'class': 'batch_norm', 'from': source, **kwargs}
     return name
 
-  def add_self_att_layer(self, name, source, n_out, num_heads, total_key_dim, att_dropout=0., key_shift=None,
-                         forward_weights_init=None, **kwargs):
+  def add_self_att_layer(self, name: LayerRef, source: LayerRef,
+                         n_out: int, num_heads: int, total_key_dim: int, att_dropout=0., key_shift=None,
+                         forward_weights_init=None, **kwargs) -> LayerRef:
+    """
+    Add SelfAttentionLayer
+    """
     d = {
       'class': 'self_attention', 'from': source, 'n_out': n_out, 'num_heads': num_heads, 'total_key_dim': total_key_dim
     }
@@ -480,24 +576,34 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_pos_encoding_layer(self, name, source, add_to_input=True, **kwargs):
+  def add_pos_encoding_layer(self, name: LayerRef, source: LayerRef, add_to_input=True, **kwargs) -> LayerRef:
+    """
+    Add PositionalEncodingLayer
+    """
     self._net[name] = {'class': 'positional_encoding', 'from': source, 'add_to_input': add_to_input}
     self._net[name].update(kwargs)
     return name
 
-  def add_relative_pos_encoding_layer(self, name, source, n_out, forward_weights_init=None, **kwargs):
+  def add_relative_pos_encoding_layer(self, name: LayerRef, source: LayerRef,
+                                      n_out: int, forward_weights_init=None, **kwargs) -> LayerRef:
+    """
+    Add RelativePositionalEncodingLayer
+    """
     self._net[name] = {'class': 'relative_positional_encoding', 'from': source, 'n_out': n_out}
     if forward_weights_init:
       self._net[name]['forward_weights_init'] = forward_weights_init
     self._net[name].update(kwargs)
     return name
 
-  def add_constant_layer(self, name, value, **kwargs):
+  def add_constant_layer(self, name: LayerRef, value, **kwargs) -> LayerRef:
+    """
+    Add ConstantLayer
+    """
     self._net[name] = {'class': 'constant', 'value': value}
     self._net[name].update(kwargs)
     return name
 
-  def add_gating_layer(self, name, source, activation='identity', **kwargs):
+  def add_gating_layer(self, name: LayerRef, source: LayerRef, activation='identity', **kwargs) -> LayerRef:
     """
     out = activation(a) * gate_activation(b)  (gate_activation is sigmoid by default)
     In case of one source input, it will split by 2 over the feature dimension
@@ -506,12 +612,18 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_pad_layer(self, name, source, axes, padding, **kwargs):
+  def add_pad_layer(self, name: LayerRef, source: LayerRef, axes, padding, **kwargs) -> LayerRef:
+    """
+    Add PadLayer
+    """
     self._net[name] = {'class': 'pad', 'from': source, 'axes': axes, 'padding': padding}
     self._net[name].update(**kwargs)
     return name
 
-  def add_conv_block(self, name, source, hwpc_sizes, l2, activation):
+  def add_conv_block(self, name: LayerRef, source: LayerRef, hwpc_sizes, l2, activation) -> LayerRef:
+    """
+    Add conv block
+    """
     src = self.add_split_dim_layer('source0', source)
     for idx, hwpc in enumerate(hwpc_sizes):
       filter_size, pool_size, n_out = hwpc
@@ -520,7 +632,13 @@ class _NetworkMakerHelper:
         src = self.add_pool_layer('conv%ip' % idx, src, pool_size=pool_size, padding='same')
     return self.add_merge_dims_layer(name, src)
 
-  def add_lstm_layers(self, input, num_layers, lstm_dim, dropout, l2, rec_weight_dropout, pool_sizes,  bidirectional):
+  # noinspection PyShadowingBuiltins
+  def add_lstm_layers(self, input: LayerRef, num_layers: int, lstm_dim: int,
+                      dropout: float, l2: float, rec_weight_dropout, pool_sizes,
+                      bidirectional: bool) -> LayerRef:
+    """
+    Add LSTM layers
+    """
     src = input
     pool_idx = 0
     for layer in range(num_layers):
@@ -541,7 +659,10 @@ class _NetworkMakerHelper:
         pool_idx += 1
     return src
 
-  def add_dot_layer(self, name, source, **kwargs):
+  def add_dot_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+    """
+    Add DotLayer
+    """
     self._net[name] = {'class': 'dot', 'from': source}
     self._net[name].update(kwargs)
     return name
@@ -553,6 +674,9 @@ class _NetworkMakerHelper:
     return self._net[item]
 
   def update(self, d: dict):
+    """
+    Update net dict
+    """
     self._net.update(d)
 
   def __str__(self):

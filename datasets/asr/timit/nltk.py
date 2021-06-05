@@ -21,6 +21,9 @@ _num_seqs = {'train': 144, 'dev': 16}
 
 
 class NltkTimit(DatasetConfig):
+  """
+  NLTK TIMIT Dataset
+  """
   def __init__(self, audio_dim=50, debug_mode=None):
     super(NltkTimit, self).__init__()
     if debug_mode is None:
@@ -29,21 +32,34 @@ class NltkTimit(DatasetConfig):
     self.debug_mode = debug_mode
 
   def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
+    """
+    Get extern data
+    """
     return {
       "data": {"dim": self.audio_dim},
       "classes": {"sparse": True, "dim": 61},
     }
 
   def get_train_dataset(self) -> Dict[str, Any]:
+    """
+    Get train dataset
+    """
     return self.get_dataset("train")
 
   def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
+    """
+    Get eval datasets
+    """
     return {
       "dev": self.get_dataset("dev"),
       "devtrain": self.get_dataset("train")}
 
   def get_dataset(self, key, subset=None):
+    """
+    Get datasets
+    """
     assert key in {"train", "dev"}
+    assert not subset
     return {
       "class": "NltkTimitDataset",
       "train": (key == "train"),
@@ -54,4 +70,3 @@ class NltkTimit(DatasetConfig):
       "estimated_num_seqs": _num_seqs[key],
       "num_feature_filters": self.audio_dim,
     }
-

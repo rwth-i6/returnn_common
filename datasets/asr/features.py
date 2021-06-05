@@ -1,4 +1,8 @@
 
+"""
+Common ASR feature extraction helpers
+"""
+
 from ...asr.gt import make_returnn_audio_features_func
 
 

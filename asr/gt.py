@@ -14,6 +14,9 @@ tf1 = tf.compat.v1
 
 
 class Extractor:
+  """
+  Extractor
+  """
   def __init__(self, **kwargs):
     net_dict = get_net_dict(**kwargs)
     with tf1.Graph().as_default() as self.graph:
@@ -62,6 +65,9 @@ def make_returnn_audio_features_func():
 
 
 def get_net_dict(num_channels=50):
+  """
+  Get net dict
+  """
   return {
     'shift_0': {'class': 'slice', 'axis': 'T', 'slice_end': -1},
     'shift_1_raw': {'class': 'slice', 'axis': 'T', 'slice_start': 1},
@@ -94,4 +100,3 @@ def get_net_dict(num_channels=50):
     'dct': {'class': 'dct', 'from': 'compression'},
     'output': {'class': 'batch_norm', 'from': 'dct'},
   }
-

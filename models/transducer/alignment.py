@@ -10,7 +10,7 @@ import tensorflow as tf
 from typing import List
 
 
-def rna_alignment(source, **kwargs) -> tf.Tensor:
+def rna_alignment(source, **_kwargs) -> tf.Tensor:
   """ Used only to create alignments according to RNA loss function.
   B: batch, T: time, U:target/labels, V: vocabulary
   Args:
@@ -44,7 +44,7 @@ def rna_alignment(source, **kwargs) -> tf.Tensor:
   return alignment  # [B, T]
 
 
-def rnnt_alignment(source, **kwargs) -> tf.Tensor:
+def rnnt_alignment(source, **_kwargs) -> tf.Tensor:
   """ Used only to create alignments according to RNNT loss function.
   B: batch, T: time, U:target/labels, V: vocabulary
   Args:
@@ -69,7 +69,9 @@ def rnnt_alignment(source, **kwargs) -> tf.Tensor:
   log_probs = check_input_dim(log_probs, 2, target_len + 1)
 
   # alignment_length = source(0, as_data=True, auto_convert=False)
-  # print_op = tf.print({"max(U+T)": tf.reduce_max(enc_lens+dec_lens), "alignment-length": alignment_length.get_sequence_lengths()}, summarize=-1)
+  # print_op = tf.print(
+  #   {"max(U+T)": tf.reduce_max(enc_lens+dec_lens),
+  #    "alignment-length": alignment_length.get_sequence_lengths()}, summarize=-1)
   # with tf.control_dependencies([print_op]):
   # log_probs = tf.identity(log_probs)
   blank_idx = targets.dim

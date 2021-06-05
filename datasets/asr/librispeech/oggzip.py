@@ -1,8 +1,11 @@
 
+"""
+OggZipDataset helpers
+"""
+
 from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any
-from ..features import make_gt_features_opts
 from .vocabs import bpe1k, bpe10k
 from ...interface import DatasetConfig, VocabConfig
 from ....data import get_common_data_path
@@ -17,6 +20,9 @@ _norm_stats_dir = Path(__file__).absolute().parent / "norm_stats"
 
 
 class Librispeech(DatasetConfig):
+  """
+  LibriSpeech dataset
+  """
   def __init__(self, *,
                audio_dim=50,
                audio_norm: str = "per_seq",
@@ -34,9 +40,15 @@ class Librispeech(DatasetConfig):
 
   @classmethod
   def old_defaults(cls, audio_dim=40, audio_norm="global", vocab: VocabConfig = bpe10k, **kwargs) -> Librispeech:
+    """
+    Return dataset with old defaults
+    """
     return Librispeech(audio_dim=audio_dim, audio_norm=audio_norm, vocab=vocab, **kwargs)
 
   def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
+    """
+    Get extern data
+    """
     return {
       "data": {"dim": self.audio_dim},
       "classes": {
@@ -46,14 +58,23 @@ class Librispeech(DatasetConfig):
     }
 
   def get_train_dataset(self) -> Dict[str, Any]:
+    """
+    Get train dataset
+    """
     return self.get_dataset("train", train=True, train_partition_epoch=self.train_epoch_split)
 
   def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
+    """
+    Get eval datasets
+    """
     return {
       "dev": self.get_dataset("dev", train=False, subset=3000),
       "devtrain": self.get_dataset("train", train=False, subset=2000)}
 
   def get_dataset(self, key: str, *, train: bool, subset=None, train_partition_epoch=None):
+    """
+    Get dataset
+    """
     files = []
     parts = [part for part in _Parts if part.startswith(key)]
     assert parts
@@ -101,4 +122,3 @@ class Librispeech(DatasetConfig):
     if subset:
       d["fixed_random_subset"] = subset  # faster
     return d
-
