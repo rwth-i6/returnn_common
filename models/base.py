@@ -40,26 +40,13 @@ class LayerRef:
     """
     Return layer name, valid in the current active name context.
     """
-    cur_scope = _NameCtx.top()
-    if self.name_ctx.parent is cur_scope:  # fast path
-      return self.name_ctx.name
-    cur_scope_abs = cur_scope.get_abs_name_ctx_list()
-    self_name_abs = self.name_ctx.get_abs_name_ctx_list()
-    assert cur_scope_abs[0] is self_name_abs[0]  # same root
-    assert len(cur_scope_abs) > len(self_name_abs)  # not implemented otherwise
-    common_len = 0
-    while cur_scope_abs[common_len] is self_name_abs[common_len]:
-      common_len += 1
-    assert common_len == len(self_name_abs) - 2  # not implemented otherwise
-    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name_ctx.name
+    return self.name_ctx.get_name_in_current_ctx()
 
   def get_abs_name(self) -> str:
     """
     Return absolute layer name starting from root context.
     """
-    ls = self.name_ctx.get_abs_name_ctx_list()
-    assert len(ls) >= 2 and not ls[0].name and ls[-1] is self.name_ctx and ls[-1].name
-    return "/".join(ctx.name for ctx in ls[1:])
+    return self.name_ctx.get_abs_name()
 
   def mark_as_loss(self):
     """
@@ -168,10 +155,11 @@ class Module(ILayerMaker):
     """
     Make subnet layer dict.
     """
-    res = self.forward(*args, **kwargs)
-    CopyLayer()(res, name="output")
     name_ctx = _NameCtx.top()
     assert name_ctx.maker is self
+    name_ctx.is_subnet_ctx = True
+    res = self.forward(*args, **kwargs)
+    CopyLayer()(res, name="output")
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
   def make_root_net_dict(self) -> NetDictRaw:
@@ -179,7 +167,8 @@ class Module(ILayerMaker):
     Make net dict, to be used as the main RETURNN network, not within a subnetwork.
     Extern data can be accessed via :func:`get_root_extern_data`.
     """
-    with _NameCtx(maker=self) as name_ctx:
+    with _NameCtx(maker=self, parent=None) as name_ctx:
+      name_ctx.is_subnet_ctx = True
       self.forward()
       return name_ctx.make_net_dict()
 
@@ -219,7 +208,7 @@ def get_root_extern_data(data_key: str) -> LayerRef:
     name_ = root_scope.childs[root_layer_name]
     assert name_.layer_ref
   else:
-    name_ = _NameCtx(name=root_layer_name, parent=root_scope, maker=None)
+    name_ = _NameCtx(name=root_layer_name, parent=root_scope)
     LayerRef(name_ctx=name_)
     assert name_.layer_ref
   return name_.layer_ref
@@ -236,12 +225,12 @@ def get_special_layer(name: str) -> LayerRef:
   """
   Special layer can be "data:..." or whatever.
   """
-  scope = _NameCtx.top()  # must exist
+  scope = _NameCtx.current_ctx()  # must exist
   if name in scope.childs:
     name_ = scope.childs[name]
     assert name_.layer_ref
   else:
-    name_ = _NameCtx(name=name, parent=scope, maker=None)
+    name_ = _NameCtx(name=name, parent=scope)
     LayerRef(name_ctx=name_)
     assert name_.layer_ref
   return name_.layer_ref
@@ -265,17 +254,32 @@ class _NameCtx:
     assert cls.stack
     return cls.stack[-1]
 
+  @classmethod
+  def current_ctx(cls) -> _NameCtx:
+    """
+    Return the current context.
+    This is the top from the stack with is_subnet_ctx.
+    """
+    top = cls.top()
+    if not top.is_subnet_ctx:
+      assert top.parent and top.parent.is_subnet_ctx
+      return top.parent
+    assert top.is_subnet_ctx
+    return top
+
   def __init__(self, *,
-               maker: Optional[ILayerMaker],
+               maker: Optional[ILayerMaker] = None,
                name: Optional[str] = None,
                parent: Optional[_NameCtx] = NotSpecified):
     self.maker = maker
     self.layer_ref = None  # type: Optional[LayerRef]
     self.layer = None  # type: Optional[Layer]
+    self.is_subnet_ctx = False
     self.childs = {}  # type: Dict[str, _NameCtx]
-    self.parent = parent if parent is not NotSpecified else (self.stack[-1] if self.stack else None)
+    self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name if name else (self._get_name() if self.parent else None)
     if self.parent:
+      assert self.parent.is_subnet_ctx
       assert self.name not in self.parent.childs
       self.parent.childs[self.name] = self
 
@@ -299,6 +303,31 @@ class _NameCtx:
       ls.append(cur)
       cur = cur.parent
     return list(reversed(ls))
+
+  def get_abs_name(self) -> str:
+    """
+    Return absolute layer name starting from root context.
+    """
+    ls = self.get_abs_name_ctx_list()
+    assert len(ls) >= 2 and not ls[0].name and ls[-1] is self and ls[-1].name
+    return "/".join(ctx.name for ctx in ls[1:])
+
+  def get_name_in_current_ctx(self) -> str:
+    """
+    Get layer name valid for current scope.
+    """
+    cur_scope = _NameCtx.current_ctx()
+    if self.parent is cur_scope:  # fast path
+      return self.name
+    cur_scope_abs = cur_scope.get_abs_name_ctx_list()
+    self_name_abs = self.get_abs_name_ctx_list()
+    assert cur_scope_abs[0] is self_name_abs[0]  # same root
+    assert len(cur_scope_abs) > len(self_name_abs)  # not implemented otherwise
+    common_len = 0
+    while cur_scope_abs[common_len] is self_name_abs[common_len]:
+      common_len += 1
+    assert common_len == len(self_name_abs) - 2  # not implemented otherwise
+    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name
 
   def __enter__(self):
     if self.parent:
