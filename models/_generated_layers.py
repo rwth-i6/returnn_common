@@ -3261,74 +3261,6 @@ class SearchSorted(_Base):
       **self.get_opts()}
 
 
-class Subnetwork(_Base):
-  """
-  You can define a whole subnetwork as a single layer by this class.
-
-  The subnetwork will be specified by a ``dict[str,dict[str]]``, just like
-  a normal network is specified in the config.
-
-  The ``"output"`` layer of the subnetwork will be the output of this
-  subnetwork-layer.
-
-  With ``concat_sources=True`` (default),
-    the input to this layer will be represented as the ``"data:data"`` or simply ``"data"``
-    in the subnetwork,
-  otherwise with ``concat_sources=False``,
-    the input to this layer will be represented as ``"data:input_layer_name"``
-    and also ``"data:0"`` to ``"data:<n-1>"`` for n inputs,
-    for each input, in the subnetwork.
-    The first input will also be simply available as ``"data:data"``/``"data"`.
-  """
-
-  def __init__(self, *,
-               subnetwork: Dict[str, Dict],
-               concat_sources: bool = NotSpecified,
-               load_on_init: Any = NotSpecified,
-               dropout: float = NotSpecified,
-               dropout_noise_shape: Optional[Union[Tuple, List, Dict]] = NotSpecified,
-               **kwargs):
-    """
-    :param dict[str,dict] subnetwork: subnetwork as dict (JSON content). must have an "output" layer-
-    :param bool concat_sources: if we concatenate all sources into one, like it is standard for most other layers
-    :param str|dict[str]|None load_on_init: if provided, for parameter initialization,
-      we will load the given model file. see :class:`CustomCheckpointLoader`.
-    :param float dropout: will be applied if train_flag is set
-    :param tuple|list|dict|None dropout_noise_shape:
-    """
-    super().__init__(**kwargs)
-    self.subnetwork = subnetwork
-    self.concat_sources = concat_sources
-    self.load_on_init = load_on_init
-    self.dropout = dropout
-    self.dropout_noise_shape = dropout_noise_shape
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'subnetwork': self.subnetwork,
-      'concat_sources': self.concat_sources,
-      'load_on_init': self.load_on_init,
-      'dropout': self.dropout,
-      'dropout_noise_shape': self.dropout_noise_shape,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
-
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'subnetwork',
-      'from': source.get_name(),
-      **self.get_opts()}
-
-
 class Variable(_Base):
   """
   Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
@@ -5065,56 +4997,6 @@ class OptimalCompletions(_Base):
     return {
       'class': 'optimal_completions',
       'from': source.get_name(),
-      **self.get_opts()}
-
-
-class MaskedComputation(_Base):
-  """
-  Given some input [B,T,D] and some mask [B,T] (True or False), we want to perform a computation
-  only on the masked frames.
-  I.e. let T' be the max seq len of the masked seq, then the masked input would be [B,T',D].
-  (This masked input sequence could be calculated via ``tf.boolean_mask`` or ``tf.gather_nd``.)
-  The output is [B,T',D'], i.e. we do not undo the masking.
-  You are supposed to use :class:`UnmaskLayer` to undo the masking.
-
-  The computation also works within a rec layer, i.e. the input is just [B,D] and the mask is just [B].
-  In that case, if the mask is True, it will perform the computation as normal,
-  and if it is False, it will just copy the prev output, and also hidden state.
-  """
-
-  def __init__(self, *,
-               unit: str,
-               **kwargs):
-    """
-    :param dict[str] unit:
-    """
-    super().__init__(**kwargs)
-    self.unit = unit
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'unit': self.unit,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
-
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      mask: Optional[LayerRef],
-                      masked_from: Optional[LayerRef],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'masked_computation',
-      'from': source.get_name(),
-      'mask': mask,
-      'masked_from': masked_from,
       **self.get_opts()}
 
 

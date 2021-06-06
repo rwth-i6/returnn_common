@@ -17,8 +17,8 @@ from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
 from returnn.tf.layers.basic import CombineLayer, CompareLayer
-from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer
-from returnn.tf.layers.rec import RecLayer
+from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
+from returnn.tf.layers.rec import RecLayer, MaskedComputationLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -435,7 +435,7 @@ def collect_layers():
   # noinspection PyProtectedMember
   blacklist = {
     rec.RecStepInfoLayer, rec._TemplateLayer,
-    CondLayer,  # we need to define this manually
+    CondLayer, MaskedComputationLayer, SubnetworkLayer,  # we need to define this manually
   }
   ls = []
   for mod in [base, basic, rec]:
