@@ -149,7 +149,7 @@ class Source(_Base):
       'data_key': self.data_key,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self) -> LayerDictRaw:
     """
@@ -198,7 +198,7 @@ class _ConcatInput(_Base):
       'mask': self.mask,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   make_layer_dict = super().make_layer_dict  # abstract
 
@@ -263,7 +263,7 @@ class ScaledGradient(Copy):
       'scale': self.scale,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -301,7 +301,7 @@ class Activation(Copy):
       'activation': self.activation,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -364,7 +364,7 @@ class LayerNorm(_ConcatInput):
       'epsilon': self.epsilon,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -440,7 +440,7 @@ class Norm(_ConcatInput):
       'epsilon': self.epsilon,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -484,7 +484,7 @@ class MathNorm(_ConcatInput):
       'keep_dims': self.keep_dims,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -547,7 +547,7 @@ class Slice(_ConcatInput):
       'slice_step': self.slice_step,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -592,7 +592,7 @@ class SliceNd(_ConcatInput):
       'min_size': self.min_size,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -649,7 +649,7 @@ class Gather(_ConcatInput):
       'axis': self.axis,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -756,7 +756,7 @@ class ScatterNd(_ConcatInput):
       'filter_invalid_indices': self.filter_invalid_indices,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -824,7 +824,7 @@ class Linear(_ConcatInput):
       'use_transposed_weights': self.use_transposed_weights,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -860,7 +860,7 @@ class Softmax(Linear):
       'activation': self.activation,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -904,7 +904,7 @@ class Length(_Base):
       'sparse': self.sparse,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -959,7 +959,7 @@ class SoftmaxOverSpatial(_ConcatInput):
       'log_space': self.log_space,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1012,7 +1012,7 @@ class SeqLenMask(_ConcatInput):
       'axis': self.axis,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1077,7 +1077,7 @@ class RandInt(_Base):
       'seed': self.seed,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -1130,7 +1130,7 @@ class Range(_Base):
       'sparse': self.sparse,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -1184,7 +1184,7 @@ class RangeInAxis(_Base):
       'sparse': self.sparse,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -1245,7 +1245,7 @@ class Constant(_Base):
       'with_batch_dim': self.with_batch_dim,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self) -> LayerDictRaw:
     """
@@ -1285,7 +1285,7 @@ class Gating(_ConcatInput):
       'gate_activation': self.gate_activation,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1352,7 +1352,7 @@ class Window(_ConcatInput):
       'stride': self.stride,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1396,7 +1396,7 @@ class Cumsum(_ConcatInput):
       'reverse': self.reverse,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1444,7 +1444,7 @@ class Pad(_ConcatInput):
       'mode': self.mode,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1497,7 +1497,7 @@ class MergeDims(_ConcatInput):
       'keep_order': self.keep_order,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1543,7 +1543,7 @@ class Split(_ConcatInput):
       'size_splits': self.size_splits,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1609,7 +1609,7 @@ class SplitDims(_ConcatInput):
       'pad_value': self.pad_value,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1680,7 +1680,7 @@ class FlattenBatch(_ConcatInput):
       'batch_major': self.batch_major,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1725,7 +1725,7 @@ class UnflattenNd(_ConcatInput):
       'num_axes': self.num_axes,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1776,7 +1776,7 @@ class ExpandDims(_ConcatInput):
       'dim': self.dim,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1815,7 +1815,7 @@ class Repeat(_ConcatInput):
       'axis': self.axis,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1858,7 +1858,7 @@ class Tile(_ConcatInput):
       'multiples': self.multiples,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1894,7 +1894,7 @@ class Cast(Copy):
       'dtype': self.dtype,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1947,7 +1947,7 @@ class SwapAxes(_ConcatInput):
       'axis2': self.axis2,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -1994,7 +1994,7 @@ class Transpose(_ConcatInput):
       'perm': self.perm,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2054,7 +2054,7 @@ class ReinterpretData(_ConcatInput):
       'increase_sparse_dim': self.increase_sparse_dim,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2156,7 +2156,7 @@ class Conv(_ConcatInput):
       'filter_perm': self.filter_perm,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins
   def make_layer_dict(self,
@@ -2223,7 +2223,7 @@ class Pool(_ConcatInput):
       'use_channel_first': self.use_channel_first,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2270,7 +2270,7 @@ class Dct(_ConcatInput):
       'norm': self.norm,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2344,7 +2344,7 @@ class TransposedConv(_ConcatInput):
       'filter_perm': self.filter_perm,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins
   def make_layer_dict(self,
@@ -2418,7 +2418,7 @@ class Reduce(_ConcatInput):
       'use_time_mask': self.use_time_mask,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2460,7 +2460,7 @@ class ReduceOut(_ConcatInput):
       'num_pieces': self.num_pieces,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2507,7 +2507,7 @@ class Squeeze(_ConcatInput):
       'allow_no_op': self.allow_no_op,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2545,7 +2545,7 @@ class Stack(_Base):
       'axis': self.axis,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -2600,7 +2600,7 @@ class WeightedSum(_ConcatInput):
       'keep_dims': self.keep_dims,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2643,7 +2643,7 @@ class ElemwiseProd(_ConcatInput):
       'size': self.size,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2680,7 +2680,7 @@ class PrefixInTime(_ConcatInput):
       'prefix': self.prefix,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2725,7 +2725,7 @@ class PostfixInTime(_ConcatInput):
       'repeat': self.repeat,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2772,7 +2772,7 @@ class TimeChunking(_ConcatInput):
       'chunk_step': self.chunk_step,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2858,7 +2858,7 @@ class Dot(_Base):
       'debug': self.debug,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -2910,7 +2910,7 @@ class ShiftAxis(_ConcatInput):
       'adjust_size_info': self.adjust_size_info,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -2963,7 +2963,7 @@ class Resize(_ConcatInput):
       'fill_dropout': self.fill_dropout,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3000,7 +3000,7 @@ class CombineDims(_ConcatInput):
       'axes': self.axes,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3039,7 +3039,7 @@ class Remove(_Base):
       'symbol': self.symbol,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3102,7 +3102,7 @@ class Combine(_Base):
       'eval_for_output_loss': self.eval_for_output_loss,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3145,7 +3145,7 @@ class Eval(Combine):
       'eval': self.eval,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3205,7 +3205,7 @@ class Compare(_Base):
       'value': self.value,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3288,7 +3288,7 @@ class SearchSorted(_Base):
       'side': self.side,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3354,7 +3354,7 @@ class Variable(_Base):
       'init': self.init,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self) -> LayerDictRaw:
     """
@@ -3400,7 +3400,7 @@ class AccumulateMean(Reduce):
       'is_prob_distribution': self.is_prob_distribution,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3466,7 +3466,7 @@ class Loss(_Base):
       'use_error': self.use_error,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3513,7 +3513,7 @@ class ForcedAlignment(_ConcatInput):
       'input_type': self.input_type,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3585,7 +3585,7 @@ class FastBaumWelch(_ConcatInput):
       'min_prob': self.min_prob,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3630,7 +3630,7 @@ class SyntheticGradient(_ConcatInput):
       'meta_loss_scale': self.meta_loss_scale,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3673,7 +3673,7 @@ class TikhonovRegularization(Copy):
       'meta_loss_scale': self.meta_loss_scale,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -3720,7 +3720,7 @@ class AllophoneStateIdxParser(_Base):
       'context_len': self.context_len,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3761,7 +3761,7 @@ class FramewiseStatistics(_Base):
       'histogram_num_bins': self.histogram_num_bins,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3801,7 +3801,7 @@ class Print(_Base):
       'extra_print_args': self.extra_print_args,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3863,7 +3863,7 @@ class HDFDump(_Base):
       'dump_per_run': self.dump_per_run,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -3907,7 +3907,7 @@ class ImageSummary(_Base):
       'max_outputs': self.max_outputs,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -4008,7 +4008,7 @@ class OfficialResNet(_ConcatInput):
       'data_format': self.data_format,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4159,7 +4159,7 @@ class Rec(_ConcatInput):
       'debug': self.debug,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]] = (),
@@ -4219,7 +4219,7 @@ class RnnCell(_ConcatInput):
       'weights_init': self.weights_init,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4266,7 +4266,7 @@ class GetLastHiddenState(_Base):
       'key': self.key,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -4314,7 +4314,7 @@ class GetRecAccumulatedOutput(_Base):
       'sub_layer': self.sub_layer,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -4356,7 +4356,7 @@ class BaseChoice(_Base):
       'search': self.search,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   make_layer_dict = super().make_layer_dict  # abstract
 
@@ -4456,7 +4456,7 @@ class Choice(BaseChoice):
       'cheating': self.cheating,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -4505,7 +4505,7 @@ class Decide(BaseChoice):
       'length_normalization': self.length_normalization,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -4643,7 +4643,7 @@ class GenericAttention(AttentionBase):
       'auto_squeeze': self.auto_squeeze,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4690,7 +4690,7 @@ class DotAttention(GlobalAttentionContextBase):
       'energy_factor': self.energy_factor,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4779,7 +4779,7 @@ class GaussWindowAttention(AttentionBase):
       'inner_size_step': self.inner_size_step,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4863,7 +4863,7 @@ class SelfAttention(_ConcatInput):
       'state_var_lengths': self.state_var_lengths,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4919,7 +4919,7 @@ class PositionalEncoding(_ConcatInput):
       'constant': self.constant,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -4991,7 +4991,7 @@ class KenLmState(_ConcatInput):
       'debug': self.debug,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -5039,7 +5039,7 @@ class EditDistanceTable(_Base):
       'blank_idx': self.blank_idx,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -5089,7 +5089,7 @@ class OptimalCompletions(_Base):
       'blank_idx': self.blank_idx,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -5177,7 +5177,7 @@ class TwoDLSTM(_Base):
       'bias_init': self.bias_init,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: LayerRef,
@@ -5238,7 +5238,7 @@ class RelativePositionalEncoding(_ConcatInput):
       'fixed': self.fixed,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**super().get_opts(), **opts}
+    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],

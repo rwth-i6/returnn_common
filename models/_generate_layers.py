@@ -83,7 +83,7 @@ def setup():
       print("    }", file=f)
       print("    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}", file=f)
       if issubclass(cls_base, LayerBase):
-        print("    return {**super().get_opts(), **opts}", file=f)
+        print("    return {**opts, **super().get_opts()}", file=f)
       else:
         print("    return opts", file=f)
 
