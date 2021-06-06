@@ -103,12 +103,18 @@ def setup():
       else:
         print("  def make_layer_dict(self) -> LayerDictRaw:", file=f)
       print(format_multi_line_str("Make layer dict", indent="    "), file=f)
+      if sig.has_module_call_args():
+        print("    args = {", file=f)
+        for param in sig.get_module_call_args():
+          print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
+        print("    }", file=f)
+        print("    args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
       print("    return {", file=f)
       print(f"      'class': {layer_class.layer_class!r},", file=f)
       if sig.has_source_param():
         print("      'from': source,", file=f)
-      for param in sig.get_module_call_args():
-        print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
+      if sig.has_module_call_args():
+        print("      **args,", file=f)
       print("      **self.get_opts()}", file=f)
     else:
       print("", file=f)
@@ -340,10 +346,7 @@ class LayerSignature:
       s = self.get_module_param_name()
       s += f": {self.get_module_param_type_code_str()}"
       if self.inspect_param.default is not self.inspect_param.empty:
-        if self.is_module_init_arg():
-          s += " = NotSpecified"
-        else:
-          s += f" = {self.inspect_param.default!r}"
+        s += " = NotSpecified"
       return s
 
     def get_module_param_type_code_str(self):

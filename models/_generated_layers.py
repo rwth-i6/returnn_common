@@ -212,15 +212,19 @@ class Copy(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'copy',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -232,15 +236,19 @@ class Dropout(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'dropout',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -274,15 +282,19 @@ class ScaledGradient(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'scaled_grad',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -315,15 +327,19 @@ class Activation(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'activation',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -337,15 +353,19 @@ class BatchNorm(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'batch_norm',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -617,10 +637,14 @@ class SliceNd(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'start': start,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'slice_nd',
       'from': source,
-      'start': start,
+      **args,
       **self.get_opts()}
 
 
@@ -670,10 +694,14 @@ class Gather(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'position': position,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'gather',
       'from': source,
-      'position': position,
+      **args,
       **self.get_opts()}
 
 
@@ -699,10 +727,14 @@ class GatherNd(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'position': position,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'gather_nd',
       'from': source,
-      'position': position,
+      **args,
       **self.get_opts()}
 
 
@@ -770,11 +802,15 @@ class ScatterNd(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'position': position,
+      'output_dim_via_time_from': output_dim_via_time_from,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'scatter_nd',
       'from': source,
-      'position': position,
-      'output_dim_via_time_from': output_dim_via_time_from,
+      **args,
       **self.get_opts()}
 
 
@@ -963,19 +999,23 @@ class SoftmaxOverSpatial(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      start: Optional[LayerRef] = None,
-                      window_start: Optional[Union[LayerRef, int]] = None,
-                      window_size: Optional[Union[LayerRef, int]] = None,
+                      start: Optional[LayerRef] = NotSpecified,
+                      window_start: Optional[Union[LayerRef, int]] = NotSpecified,
+                      window_size: Optional[Union[LayerRef, int]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    return {
-      'class': 'softmax_over_spatial',
-      'from': source,
+    args = {
       'start': start,
       'window_start': window_start,
       'window_size': window_size,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return {
+      'class': 'softmax_over_spatial',
+      'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -1012,21 +1052,25 @@ class SeqLenMask(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      seq_len_source: Optional[LayerRef] = None,
-                      start: Optional[LayerRef] = None,
-                      window_start: Optional[LayerRef] = None,
-                      window_size: Optional[Union[LayerRef, int]] = None,
+                      seq_len_source: Optional[LayerRef] = NotSpecified,
+                      start: Optional[LayerRef] = NotSpecified,
+                      window_start: Optional[LayerRef] = NotSpecified,
+                      window_size: Optional[Union[LayerRef, int]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    return {
-      'class': 'seq_len_mask',
-      'from': source,
+    args = {
       'seq_len_source': seq_len_source,
       'start': start,
       'window_start': window_start,
       'window_size': window_size,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return {
+      'class': 'seq_len_mask',
+      'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -1629,10 +1673,14 @@ class SplitBatchTime(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'base': base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'split_batch_time',
       'from': source,
-      'base': base,
+      **args,
       **self.get_opts()}
 
 
@@ -1718,16 +1766,20 @@ class UnflattenNd(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       sizes: LayerRef,
-                      declare_same_sizes_as: Optional[Dict[int, LayerRef]] = None,
+                      declare_same_sizes_as: Optional[Dict[int, LayerRef]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'sizes': sizes,
+      'declare_same_sizes_as': declare_same_sizes_as,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'unflatten_nd',
       'from': source,
-      'sizes': sizes,
-      'declare_same_sizes_as': declare_same_sizes_as,
+      **args,
       **self.get_opts()}
 
 
@@ -1808,10 +1860,14 @@ class Repeat(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'repetitions': repetitions,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'repeat',
       'from': source,
-      'repetitions': repetitions,
+      **args,
       **self.get_opts()}
 
 
@@ -1878,15 +1934,19 @@ class Cast(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'cast',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -2041,15 +2101,19 @@ class ReinterpretData(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      size_base: Optional[LayerRef] = None,
+                      size_base: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'size_base': size_base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'reinterpret_data',
       'from': source,
-      'size_base': size_base,
+      **args,
       **self.get_opts()}
 
 
@@ -2140,17 +2204,21 @@ class Conv(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      filter: Optional[LayerRef] = None,
-                      bias: Optional[LayerRef] = None,
+                      filter: Optional[LayerRef] = NotSpecified,
+                      bias: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'filter': filter,
+      'bias': bias,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'conv',
       'from': source,
-      'filter': filter,
-      'bias': bias,
+      **args,
       **self.get_opts()}
 
 
@@ -2324,17 +2392,21 @@ class TransposedConv(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      filter: Optional[LayerRef] = None,
-                      bias: Optional[LayerRef] = None,
+                      filter: Optional[LayerRef] = NotSpecified,
+                      bias: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'filter': filter,
+      'bias': bias,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'transposed_conv',
       'from': source,
-      'filter': filter,
-      'bias': bias,
+      **args,
       **self.get_opts()}
 
 
@@ -2655,17 +2727,21 @@ class PrefixInTime(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      repeat: Union[int, LayerRef] = 1,
-                      size_base: Optional[LayerRef] = None,
+                      repeat: Union[int, LayerRef] = NotSpecified,
+                      size_base: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'repeat': repeat,
+      'size_base': size_base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'prefix_in_time',
       'from': source,
-      'repeat': repeat,
-      'size_base': size_base,
+      **args,
       **self.get_opts()}
 
 
@@ -2696,15 +2772,19 @@ class PostfixInTime(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      postfix: Union[float, int, LayerRef] = 0.0,
+                      postfix: Union[float, int, LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'postfix': postfix,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'postfix_in_time',
       'from': source,
-      'postfix': postfix,
+      **args,
       **self.get_opts()}
 
 
@@ -2761,10 +2841,14 @@ class TimeUnChunking(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'chunking_layer': chunking_layer,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'time_unchunking',
       'from': source,
-      'chunking_layer': chunking_layer,
+      **args,
       **self.get_opts()}
 
 
@@ -3201,11 +3285,15 @@ class Switch(_Base):
     """
     Make layer dict
     """
-    return {
-      'class': 'switch',
+    args = {
       'condition': condition,
       'true_from': true_from,
       'false_from': false_from,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return {
+      'class': 'switch',
+      **args,
       **self.get_opts()}
 
 
@@ -3253,11 +3341,15 @@ class SearchSorted(_Base):
     """
     Make layer dict
     """
+    args = {
+      'sorted_sequence': sorted_sequence,
+      'values': values,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'search_sorted',
       'from': source,
-      'sorted_sequence': sorted_sequence,
-      'values': values,
+      **args,
       **self.get_opts()}
 
 
@@ -3421,15 +3513,19 @@ class Loss(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      target_: Optional[LayerRef] = None,
+                      target_: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'target_': target_,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'loss',
       'from': source,
-      'target_': target_,
+      **args,
       **self.get_opts()}
 
 
@@ -3469,10 +3565,14 @@ class ForcedAlignment(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'align_target': align_target,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'forced_align',
       'from': source,
-      'align_target': align_target,
+      **args,
       **self.get_opts()}
 
 
@@ -3532,15 +3632,19 @@ class FastBaumWelch(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      staircase_seq_len_source: Optional[LayerRef] = None,
+                      staircase_seq_len_source: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'staircase_seq_len_source': staircase_seq_len_source,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'fast_bw',
       'from': source,
-      'staircase_seq_len_source': staircase_seq_len_source,
+      **args,
       **self.get_opts()}
 
 
@@ -3578,10 +3682,14 @@ class SyntheticGradient(_ConcatInput):
     """
     Make layer dict
     """
+    args = {
+      'gradient': gradient,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'synthetic_gradient',
       'from': source,
-      'gradient': gradient,
+      **args,
       **self.get_opts()}
 
 
@@ -3612,15 +3720,19 @@ class TikhonovRegularization(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = (),
+                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra_deps': extra_deps,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'tikhonov_regularization',
       'from': source,
-      'extra_deps': extra_deps,
+      **args,
       **self.get_opts()}
 
 
@@ -3805,15 +3917,19 @@ class HDFDump(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      extra: Optional[Dict[str, LayerRef]] = None,
+                      extra: Optional[Dict[str, LayerRef]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'extra': extra,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'hdf_dump',
       'from': source,
-      'extra': extra,
+      **args,
       **self.get_opts()}
 
 
@@ -4097,15 +4213,19 @@ class Rec(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]] = (),
                       *,
-                      initial_state: Optional[Union[LayerRef, str, float, int, Tuple]] = None,
+                      initial_state: Optional[Union[LayerRef, str, float, int, Tuple]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'initial_state': initial_state,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'rec',
       'from': source,
-      'initial_state': initial_state,
+      **args,
       **self.get_opts()}
 
 
@@ -4153,15 +4273,19 @@ class RnnCell(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      initial_state: Any = None,
+                      initial_state: Any = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'initial_state': initial_state,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'rnn_cell',
       'from': source,
-      'initial_state': initial_state,
+      **args,
       **self.get_opts()}
 
 
@@ -4386,15 +4510,19 @@ class Choice(BaseChoice):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      explicit_search_sources: Optional[List[LayerRef]] = None,
+                      explicit_search_sources: Optional[List[LayerRef]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'explicit_search_sources': explicit_search_sources,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'choice',
       'from': source,
-      'explicit_search_sources': explicit_search_sources,
+      **args,
       **self.get_opts()}
 
 
@@ -4575,11 +4703,15 @@ class GenericAttention(AttentionBase):
     """
     Make layer dict
     """
+    args = {
+      'weights': weights,
+      'base': base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'generic_attention',
       'from': source,
-      'weights': weights,
-      'base': base,
+      **args,
       **self.get_opts()}
 
 
@@ -4618,11 +4750,15 @@ class DotAttention(GlobalAttentionContextBase):
     """
     Make layer dict
     """
+    args = {
+      'base_ctx': base_ctx,
+      'base': base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'dot_attention',
       'from': source,
-      'base_ctx': base_ctx,
-      'base': base,
+      **args,
       **self.get_opts()}
 
 
@@ -4642,11 +4778,15 @@ class ConcatAttention(GlobalAttentionContextBase):
     """
     Make layer dict
     """
+    args = {
+      'base_ctx': base_ctx,
+      'base': base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'concat_attention',
       'from': source,
-      'base_ctx': base_ctx,
-      'base': base,
+      **args,
       **self.get_opts()}
 
 
@@ -4698,10 +4838,14 @@ class GaussWindowAttention(AttentionBase):
     """
     Make layer dict
     """
+    args = {
+      'base': base,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'gauss_window_attention',
       'from': source,
-      'base': base,
+      **args,
       **self.get_opts()}
 
 
@@ -4773,15 +4917,19 @@ class SelfAttention(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      key_shift: Optional[LayerRef] = None,
+                      key_shift: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'key_shift': key_shift,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'self_attention',
       'from': source,
-      'key_shift': key_shift,
+      **args,
       **self.get_opts()}
 
 
@@ -4825,15 +4973,19 @@ class PositionalEncoding(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      offset: Optional[LayerRef] = None,
+                      offset: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'offset': offset,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'positional_encoding',
       'from': source,
-      'offset': offset,
+      **args,
       **self.get_opts()}
 
 
@@ -5022,10 +5174,14 @@ class Unmask(_Base):
     """
     Make layer dict
     """
+    args = {
+      'mask': mask,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'unmask',
       'from': source,
-      'mask': mask,
+      **args,
       **self.get_opts()}
 
 
