@@ -33,7 +33,7 @@ def setup():
     else:
       cls_base_str = "ILayerMaker"
     print(f"\n\nclass {cls_str}({cls_base_str}):", file=f)
-    print(format_multi_line_str("Hello", indent="  "), file=f)
+    print('  """' + layer_class.__doc__ + '"""', file=f)
     print("", file=f)
     print("  def __init__(self):", file=f)
     print("    super().__init__()", file=f)
