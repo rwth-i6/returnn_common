@@ -16,6 +16,7 @@ Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
 from __future__ import annotations
 from typing import Dict, Any, Optional, List
 from returnn.util.basic import NotSpecified
+from tensorflow.python.util import nest
 
 
 LayerDictRaw = Dict[str, Any]
@@ -91,7 +92,9 @@ class ILayerMaker:
     """
     Return layer dict.
 
-    The :class:`LayerDictRaw` can references other layers by using ``layer.get_name()``.
+    The :class:`LayerDictRaw` can references other layers by using ``layer.get_name()``,
+    or also by using :class:`LayerRef` instances directly,
+    which will automatically be translated to ``layer.get_name()``.
     """
     raise NotImplementedError
 
@@ -107,21 +110,13 @@ class ILayerMaker:
       if self.calls:
         layer_dict = layer_dict.copy()
         assert "reuse_params" not in layer_dict
-        layer_dict["reuse_params"] = self.calls[0].get_name()
+        layer_dict["reuse_params"] = self.calls[0]
+      layer_dict = nest.map_structure(
+        lambda x: x.get_name() if isinstance(x, LayerRef) else x,
+        layer_dict)
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
       return layer
-
-
-class CopyLayer(ILayerMaker):
-  """
-  Copy the (single) input.
-  """
-  def make_layer_dict(self, source: LayerRef) -> LayerDictRaw:
-    """
-    Create CopyLayer.
-    """
-    return {"class": "copy", "from": source.get_name()}
 
 
 class Module(ILayerMaker):
@@ -155,11 +150,12 @@ class Module(ILayerMaker):
     """
     Make subnet layer dict.
     """
+    from .layers import Copy
     name_ctx = _NameCtx.top()
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self.forward(*args, **kwargs)
-    CopyLayer()(res, name="output")
+    Copy()(res, name="output")
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
   def make_root_net_dict(self) -> NetDictRaw:
@@ -189,8 +185,9 @@ class Rec(ILayerMaker):
     """
     Make subnet layer dict.
     """
+    from .layers import Copy
     res = self.step()
-    CopyLayer()(res, name="output")
+    Copy()(res, name="output")
     name_ctx = _NameCtx.top()
     assert name_ctx.maker is self
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict()}

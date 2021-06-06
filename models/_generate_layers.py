@@ -106,13 +106,7 @@ def setup():
       print("    return {", file=f)
       print(f"      'class': {layer_class.layer_class!r},", file=f)
       if sig.has_source_param():
-        if sig.support_multiple_sources():
-          print(
-            "      'from': "
-            "[src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) "
-            "else source.get_name(),", file=f)
-        else:
-          print("      'from': source.get_name(),", file=f)
+        print("      'from': source,", file=f)
       for param in sig.get_module_call_args():
         print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
       print("      **self.get_opts()}", file=f)
@@ -158,7 +152,7 @@ class LayerSignature:
     """
     If there is a reasonable default "from", return repr.
     """
-    if issubclass(self.layer_class, RecLayer):
+    if issubclass(self.layer_class, (RecLayer, SubnetworkLayer)):
       return "()"
     return None
 
@@ -346,7 +340,10 @@ class LayerSignature:
       s = self.get_module_param_name()
       s += f": {self.get_module_param_type_code_str()}"
       if self.inspect_param.default is not self.inspect_param.empty:
-        s += " = NotSpecified"
+        if self.is_module_init_arg():
+          s += " = NotSpecified"
+        else:
+          s += f" = {self.inspect_param.default!r}"
       return s
 
     def get_module_param_type_code_str(self):

@@ -212,14 +212,14 @@ class Copy(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'copy',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -232,14 +232,14 @@ class Dropout(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'dropout',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -274,14 +274,14 @@ class ScaledGradient(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'scaled_grad',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -315,14 +315,14 @@ class Activation(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'activation',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -337,14 +337,14 @@ class BatchNorm(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'batch_norm',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -389,7 +389,7 @@ class LayerNorm(_ConcatInput):
     """
     return {
       'class': 'layer_norm',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -465,7 +465,7 @@ class Norm(_ConcatInput):
     """
     return {
       'class': 'norm',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -509,7 +509,7 @@ class MathNorm(_ConcatInput):
     """
     return {
       'class': 'math_norm',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -572,7 +572,7 @@ class Slice(_ConcatInput):
     """
     return {
       'class': 'slice',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -619,7 +619,7 @@ class SliceNd(_ConcatInput):
     """
     return {
       'class': 'slice_nd',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'start': start,
       **self.get_opts()}
 
@@ -672,7 +672,7 @@ class Gather(_ConcatInput):
     """
     return {
       'class': 'gather',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'position': position,
       **self.get_opts()}
 
@@ -701,7 +701,7 @@ class GatherNd(_ConcatInput):
     """
     return {
       'class': 'gather_nd',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'position': position,
       **self.get_opts()}
 
@@ -772,7 +772,7 @@ class ScatterNd(_ConcatInput):
     """
     return {
       'class': 'scatter_nd',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'position': position,
       'output_dim_via_time_from': output_dim_via_time_from,
       **self.get_opts()}
@@ -833,7 +833,7 @@ class Linear(_ConcatInput):
     """
     return {
       'class': 'linear',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -869,7 +869,7 @@ class Softmax(Linear):
     """
     return {
       'class': 'softmax',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -913,7 +913,7 @@ class Length(_Base):
     """
     return {
       'class': 'length',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -963,16 +963,16 @@ class SoftmaxOverSpatial(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      start: Optional[LayerRef] = NotSpecified,
-                      window_start: Optional[Union[LayerRef, int]] = NotSpecified,
-                      window_size: Optional[Union[LayerRef, int]] = NotSpecified,
+                      start: Optional[LayerRef] = None,
+                      window_start: Optional[Union[LayerRef, int]] = None,
+                      window_size: Optional[Union[LayerRef, int]] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'softmax_over_spatial',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'start': start,
       'window_start': window_start,
       'window_size': window_size,
@@ -1012,17 +1012,17 @@ class SeqLenMask(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      seq_len_source: Optional[LayerRef] = NotSpecified,
-                      start: Optional[LayerRef] = NotSpecified,
-                      window_start: Optional[LayerRef] = NotSpecified,
-                      window_size: Optional[Union[LayerRef, int]] = NotSpecified,
+                      seq_len_source: Optional[LayerRef] = None,
+                      start: Optional[LayerRef] = None,
+                      window_start: Optional[LayerRef] = None,
+                      window_size: Optional[Union[LayerRef, int]] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'seq_len_mask',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'seq_len_source': seq_len_source,
       'start': start,
       'window_start': window_start,
@@ -1078,7 +1078,7 @@ class RandInt(_Base):
     """
     return {
       'class': 'rand_int',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1131,7 +1131,7 @@ class Range(_Base):
     """
     return {
       'class': 'range',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1185,7 +1185,7 @@ class RangeInAxis(_Base):
     """
     return {
       'class': 'range_in_axis',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1202,7 +1202,7 @@ class BatchSoftmax(_ConcatInput):
     """
     return {
       'class': 'batch_softmax',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1286,7 +1286,7 @@ class Gating(_ConcatInput):
     """
     return {
       'class': 'gating',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1353,7 +1353,7 @@ class Window(_ConcatInput):
     """
     return {
       'class': 'window',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1397,7 +1397,7 @@ class Cumsum(_ConcatInput):
     """
     return {
       'class': 'cumsum',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1445,7 +1445,7 @@ class Pad(_ConcatInput):
     """
     return {
       'class': 'pad',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1498,7 +1498,7 @@ class MergeDims(_ConcatInput):
     """
     return {
       'class': 'merge_dims',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1544,7 +1544,7 @@ class Split(_ConcatInput):
     """
     return {
       'class': 'split',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1610,7 +1610,7 @@ class SplitDims(_ConcatInput):
     """
     return {
       'class': 'split_dims',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1631,7 +1631,7 @@ class SplitBatchTime(_ConcatInput):
     """
     return {
       'class': 'split_batch_time',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'base': base,
       **self.get_opts()}
 
@@ -1677,7 +1677,7 @@ class FlattenBatch(_ConcatInput):
     """
     return {
       'class': 'flatten_batch',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1718,14 +1718,14 @@ class UnflattenNd(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       sizes: LayerRef,
-                      declare_same_sizes_as: Optional[Dict[int, LayerRef]] = NotSpecified,
+                      declare_same_sizes_as: Optional[Dict[int, LayerRef]] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'unflatten_nd',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'sizes': sizes,
       'declare_same_sizes_as': declare_same_sizes_as,
       **self.get_opts()}
@@ -1769,7 +1769,7 @@ class ExpandDims(_ConcatInput):
     """
     return {
       'class': 'expand_dims',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1810,7 +1810,7 @@ class Repeat(_ConcatInput):
     """
     return {
       'class': 'repeat',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'repetitions': repetitions,
       **self.get_opts()}
 
@@ -1847,7 +1847,7 @@ class Tile(_ConcatInput):
     """
     return {
       'class': 'tile',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1878,14 +1878,14 @@ class Cast(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'cast',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -1939,7 +1939,7 @@ class SwapAxes(_ConcatInput):
     """
     return {
       'class': 'swap_axes',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -1986,7 +1986,7 @@ class Transpose(_ConcatInput):
     """
     return {
       'class': 'transpose',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2041,14 +2041,14 @@ class ReinterpretData(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      size_base: Optional[LayerRef] = NotSpecified,
+                      size_base: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'reinterpret_data',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'size_base': size_base,
       **self.get_opts()}
 
@@ -2140,15 +2140,15 @@ class Conv(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      filter: Optional[LayerRef] = NotSpecified,
-                      bias: Optional[LayerRef] = NotSpecified,
+                      filter: Optional[LayerRef] = None,
+                      bias: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'conv',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'filter': filter,
       'bias': bias,
       **self.get_opts()}
@@ -2207,7 +2207,7 @@ class Pool(_ConcatInput):
     """
     return {
       'class': 'pool',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2254,7 +2254,7 @@ class Dct(_ConcatInput):
     """
     return {
       'class': 'dct',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2324,15 +2324,15 @@ class TransposedConv(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      filter: Optional[LayerRef] = NotSpecified,
-                      bias: Optional[LayerRef] = NotSpecified,
+                      filter: Optional[LayerRef] = None,
+                      bias: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'transposed_conv',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'filter': filter,
       'bias': bias,
       **self.get_opts()}
@@ -2398,7 +2398,7 @@ class Reduce(_ConcatInput):
     """
     return {
       'class': 'reduce',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2440,7 +2440,7 @@ class ReduceOut(_ConcatInput):
     """
     return {
       'class': 'reduce_out',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2487,7 +2487,7 @@ class Squeeze(_ConcatInput):
     """
     return {
       'class': 'squeeze',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2525,7 +2525,7 @@ class Stack(_Base):
     """
     return {
       'class': 'stack',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2580,7 +2580,7 @@ class WeightedSum(_ConcatInput):
     """
     return {
       'class': 'weighted_sum',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2623,7 +2623,7 @@ class ElemwiseProd(_ConcatInput):
     """
     return {
       'class': 'elemwise_prod',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2655,15 +2655,15 @@ class PrefixInTime(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      repeat: Union[int, LayerRef] = NotSpecified,
-                      size_base: Optional[LayerRef] = NotSpecified,
+                      repeat: Union[int, LayerRef] = 1,
+                      size_base: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'prefix_in_time',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'repeat': repeat,
       'size_base': size_base,
       **self.get_opts()}
@@ -2696,14 +2696,14 @@ class PostfixInTime(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      postfix: Union[float, int, LayerRef] = NotSpecified,
+                      postfix: Union[float, int, LayerRef] = 0.0,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'postfix_in_time',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'postfix': postfix,
       **self.get_opts()}
 
@@ -2744,7 +2744,7 @@ class TimeChunking(_ConcatInput):
     """
     return {
       'class': 'time_chunking',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2763,7 +2763,7 @@ class TimeUnChunking(_ConcatInput):
     """
     return {
       'class': 'time_unchunking',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'chunking_layer': chunking_layer,
       **self.get_opts()}
 
@@ -2826,7 +2826,7 @@ class Dot(_Base):
     """
     return {
       'class': 'dot',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2878,7 +2878,7 @@ class ShiftAxis(_ConcatInput):
     """
     return {
       'class': 'shift_axis',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2931,7 +2931,7 @@ class Resize(_ConcatInput):
     """
     return {
       'class': 'resize',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -2968,7 +2968,7 @@ class CombineDims(_ConcatInput):
     """
     return {
       'class': 'combine_dims',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3007,7 +3007,7 @@ class Remove(_Base):
     """
     return {
       'class': 'remove',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3070,7 +3070,7 @@ class Combine(_Base):
     """
     return {
       'class': 'combine',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3113,7 +3113,7 @@ class Eval(Combine):
     """
     return {
       'class': 'eval',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3173,7 +3173,7 @@ class Compare(_Base):
     """
     return {
       'class': 'compare',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3255,7 +3255,7 @@ class SearchSorted(_Base):
     """
     return {
       'class': 'search_sorted',
-      'from': source.get_name(),
+      'from': source,
       'sorted_sequence': sorted_sequence,
       'values': values,
       **self.get_opts()}
@@ -3360,7 +3360,7 @@ class AccumulateMean(Reduce):
     """
     return {
       'class': 'accumulate_mean',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3421,14 +3421,14 @@ class Loss(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      target_: Optional[LayerRef] = NotSpecified,
+                      target_: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'loss',
-      'from': source.get_name(),
+      'from': source,
       'target_': target_,
       **self.get_opts()}
 
@@ -3471,7 +3471,7 @@ class ForcedAlignment(_ConcatInput):
     """
     return {
       'class': 'forced_align',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'align_target': align_target,
       **self.get_opts()}
 
@@ -3532,14 +3532,14 @@ class FastBaumWelch(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      staircase_seq_len_source: Optional[LayerRef] = NotSpecified,
+                      staircase_seq_len_source: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'fast_bw',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'staircase_seq_len_source': staircase_seq_len_source,
       **self.get_opts()}
 
@@ -3580,7 +3580,7 @@ class SyntheticGradient(_ConcatInput):
     """
     return {
       'class': 'synthetic_gradient',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'gradient': gradient,
       **self.get_opts()}
 
@@ -3612,14 +3612,14 @@ class TikhonovRegularization(Copy):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      extra_deps: List[LayerRef] = NotSpecified,
+                      extra_deps: List[LayerRef] = (),
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'tikhonov_regularization',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'extra_deps': extra_deps,
       **self.get_opts()}
 
@@ -3667,7 +3667,7 @@ class AllophoneStateIdxParser(_Base):
     """
     return {
       'class': 'allophone_state_idx_parser',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3708,7 +3708,7 @@ class FramewiseStatistics(_Base):
     """
     return {
       'class': 'framewise_statistics',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3748,7 +3748,7 @@ class Print(_Base):
     """
     return {
       'class': 'print',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3805,14 +3805,14 @@ class HDFDump(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      extra: Optional[Dict[str, LayerRef]] = NotSpecified,
+                      extra: Optional[Dict[str, LayerRef]] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'hdf_dump',
-      'from': source.get_name(),
+      'from': source,
       'extra': extra,
       **self.get_opts()}
 
@@ -3850,7 +3850,7 @@ class ImageSummary(_Base):
     """
     return {
       'class': 'image_summary',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -3951,7 +3951,7 @@ class OfficialResNet(_ConcatInput):
     """
     return {
       'class': 'official_resnet',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4097,14 +4097,14 @@ class Rec(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]] = (),
                       *,
-                      initial_state: Optional[Union[LayerRef, str, float, int, Tuple]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, str, float, int, Tuple]] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'rec',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'initial_state': initial_state,
       **self.get_opts()}
 
@@ -4153,14 +4153,14 @@ class RnnCell(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      initial_state: Any = NotSpecified,
+                      initial_state: Any = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'rnn_cell',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'initial_state': initial_state,
       **self.get_opts()}
 
@@ -4201,7 +4201,7 @@ class GetLastHiddenState(_Base):
     """
     return {
       'class': 'get_last_hidden_state',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4249,7 +4249,7 @@ class GetRecAccumulatedOutput(_Base):
     """
     return {
       'class': 'get_rec_accumulated',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4386,14 +4386,14 @@ class Choice(BaseChoice):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      explicit_search_sources: Optional[List[LayerRef]] = NotSpecified,
+                      explicit_search_sources: Optional[List[LayerRef]] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'choice',
-      'from': source.get_name(),
+      'from': source,
       'explicit_search_sources': explicit_search_sources,
       **self.get_opts()}
 
@@ -4436,7 +4436,7 @@ class Decide(BaseChoice):
     """
     return {
       'class': 'decide',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4456,7 +4456,7 @@ class DecideKeepBeam(BaseChoice):
     """
     return {
       'class': 'decide_keep_beam',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4479,7 +4479,7 @@ class ChoiceGetBeamScores(_Base):
     """
     return {
       'class': 'choice_get_beam_scores',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4497,7 +4497,7 @@ class ChoiceGetSrcBeams(_Base):
     """
     return {
       'class': 'choice_get_src_beams',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4577,7 +4577,7 @@ class GenericAttention(AttentionBase):
     """
     return {
       'class': 'generic_attention',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'weights': weights,
       'base': base,
       **self.get_opts()}
@@ -4620,7 +4620,7 @@ class DotAttention(GlobalAttentionContextBase):
     """
     return {
       'class': 'dot_attention',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'base_ctx': base_ctx,
       'base': base,
       **self.get_opts()}
@@ -4644,7 +4644,7 @@ class ConcatAttention(GlobalAttentionContextBase):
     """
     return {
       'class': 'concat_attention',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'base_ctx': base_ctx,
       'base': base,
       **self.get_opts()}
@@ -4700,7 +4700,7 @@ class GaussWindowAttention(AttentionBase):
     """
     return {
       'class': 'gauss_window_attention',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'base': base,
       **self.get_opts()}
 
@@ -4773,14 +4773,14 @@ class SelfAttention(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      key_shift: Optional[LayerRef] = NotSpecified,
+                      key_shift: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'self_attention',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'key_shift': key_shift,
       **self.get_opts()}
 
@@ -4825,14 +4825,14 @@ class PositionalEncoding(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
-                      offset: Optional[LayerRef] = NotSpecified,
+                      offset: Optional[LayerRef] = None,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     return {
       'class': 'positional_encoding',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       'offset': offset,
       **self.get_opts()}
 
@@ -4898,7 +4898,7 @@ class KenLmState(_ConcatInput):
     """
     return {
       'class': 'kenlm',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4946,7 +4946,7 @@ class EditDistanceTable(_Base):
     """
     return {
       'class': 'edit_distance_table',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -4996,7 +4996,7 @@ class OptimalCompletions(_Base):
     """
     return {
       'class': 'optimal_completions',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -5024,7 +5024,7 @@ class Unmask(_Base):
     """
     return {
       'class': 'unmask',
-      'from': source.get_name(),
+      'from': source,
       'mask': mask,
       **self.get_opts()}
 
@@ -5080,7 +5080,7 @@ class TwoDLSTM(_Base):
     """
     return {
       'class': 'twod_lstm',
-      'from': source.get_name(),
+      'from': source,
       **self.get_opts()}
 
 
@@ -5141,5 +5141,5 @@ class RelativePositionalEncoding(_ConcatInput):
     """
     return {
       'class': 'relative_positional_encoding',
-      'from': [src_.get_name() for src_ in source] if isinstance(source, (list, tuple)) else source.get_name(),
+      'from': source,
       **self.get_opts()}
