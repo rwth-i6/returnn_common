@@ -124,7 +124,7 @@ class _Base(ILayerMaker):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return opts
 
-  make_layer_dict = super().make_layer_dict
+  make_layer_dict = super().make_layer_dict  # abstract
 
 
 class Source(_Base):
@@ -200,7 +200,7 @@ class _ConcatInput(_Base):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**super().get_opts(), **opts}
 
-  make_layer_dict = super().make_layer_dict
+  make_layer_dict = super().make_layer_dict  # abstract
 
 
 class Copy(_ConcatInput):
@@ -211,20 +211,13 @@ class Copy(_ConcatInput):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'copy',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -235,20 +228,13 @@ class Dropout(Copy):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'dropout',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -281,20 +267,13 @@ class ScaledGradient(Copy):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'scaled_grad',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -326,20 +305,13 @@ class Activation(Copy):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'activation',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -352,20 +324,13 @@ class BatchNorm(Copy):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'batch_norm',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -1933,20 +1898,13 @@ class Cast(Copy):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'cast',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -3719,20 +3677,13 @@ class TikhonovRegularization(Copy):
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      extra_deps: List[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'extra_deps': extra_deps,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'tikhonov_regularization',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -4407,7 +4358,7 @@ class BaseChoice(_Base):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**super().get_opts(), **opts}
 
-  make_layer_dict = super().make_layer_dict
+  make_layer_dict = super().make_layer_dict  # abstract
 
 
 class Choice(BaseChoice):
@@ -4650,7 +4601,7 @@ class AttentionBase(_ConcatInput):
   * https://github.com/deepmind/sonnet/blob/master/sonnet/python/modules/attention.py
   """
 
-  make_layer_dict = super().make_layer_dict
+  make_layer_dict = super().make_layer_dict  # abstract
 
 
 class GlobalAttentionContextBase(AttentionBase):
@@ -4658,7 +4609,7 @@ class GlobalAttentionContextBase(AttentionBase):
   Base class for other attention types, which use a global context.
   """
 
-  make_layer_dict = super().make_layer_dict
+  make_layer_dict = super().make_layer_dict  # abstract
 
 
 class GenericAttention(AttentionBase):

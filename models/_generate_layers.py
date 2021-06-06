@@ -118,7 +118,7 @@ def setup():
       print("      **self.get_opts()}", file=f)
     else:
       print("", file=f)
-      print("  make_layer_dict = super().make_layer_dict", file=f)
+      print("  make_layer_dict = super().make_layer_dict  # abstract", file=f)
     print(layer_class, get_module_class_name_for_layer_class(layer_class), sig)
 
 
@@ -234,7 +234,8 @@ class LayerSignature:
   _IgnoreParamNames = {
     "self", "name", "network", "output",
     "n_out", "out_type", "sources", "target", "loss", "size_target",
-    "reuse_params", "rec_previous_layer", "control_dependencies_on_output"}
+    "reuse_params", "rec_previous_layer", "control_dependencies_on_output",
+    "extra_deps"}
 
   def _init_args(self):
     for name, param in self.inspect_init_sig.parameters.items():
