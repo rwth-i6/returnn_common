@@ -13,7 +13,7 @@ which can be thought of as analogue to :class:`torch.Tensor` or :class:`tf.Tenso
 Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
 
 The root network should be a :class:`Module`.
-Alternatively, use ``with _NameCtx.new_root() as name_ctx``
+Alternatively, use ``with NameCtx.new_root() as name_ctx``
 and then ``name_ctx.make_net_dict``.
 """
 
@@ -36,7 +36,7 @@ class LayerRef:
     extend this by functions __add__, __sub__, etc.
   """
 
-  def __init__(self, *, name_ctx: _NameCtx):
+  def __init__(self, *, name_ctx: NameCtx):
     self.name_ctx = name_ctx
     assert name_ctx.layer_ref is None
     name_ctx.layer_ref = self
@@ -69,7 +69,7 @@ class Layer(LayerRef):
   """
 
   def __init__(self, maker: ILayerMaker, layer_dict: LayerDictRaw):
-    super(Layer, self).__init__(name_ctx=_NameCtx.top())
+    super(Layer, self).__init__(name_ctx=NameCtx.top())
     assert self.name_ctx.maker is maker
     assert self.name_ctx.layer is None
     self.name_ctx.layer = self
@@ -115,7 +115,7 @@ class ILayerMaker:
     return self.__class__.__name__
 
   def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
-    with _NameCtx(maker=self, name=name):
+    with NameCtx(maker=self, name=name):
       layer_dict = self.make_layer_dict(*args, **kwargs)
       if self.calls:
         layer_dict = layer_dict.copy()
@@ -161,7 +161,7 @@ class Module(ILayerMaker):
     Make subnet layer dict.
     """
     from .layers import Copy
-    name_ctx = _NameCtx.top()
+    name_ctx = NameCtx.top()
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self.forward(*args, **kwargs)
@@ -174,7 +174,7 @@ class Module(ILayerMaker):
     Extern data can be accessed via :func:`get_root_extern_data`.
     """
     from .layers import Copy
-    with _NameCtx(maker=self, parent=None) as name_ctx:
+    with NameCtx(maker=self, parent=None) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = self.forward()
       if "output" not in name_ctx.childs:
@@ -201,7 +201,7 @@ class Rec(ILayerMaker):
     from .layers import Copy
     res = self.step()
     Copy()(res, name="output")
-    name_ctx = _NameCtx.top()
+    name_ctx = NameCtx.top()
     assert name_ctx.maker is self
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict()}
 
@@ -210,7 +210,7 @@ def get_root_extern_data(data_key: str) -> LayerRef:
   """
   Get extern data from root.
   """
-  scope = _NameCtx.top()  # must exist
+  scope = NameCtx.top()  # must exist
   scope_abs = scope.get_abs_name_ctx_list()
   root_scope = scope_abs[0]
   root_layer_name = f"data:{data_key}"
@@ -218,7 +218,7 @@ def get_root_extern_data(data_key: str) -> LayerRef:
     name_ = root_scope.childs[root_layer_name]
     assert name_.layer_ref
   else:
-    name_ = _NameCtx(name=root_layer_name, parent=root_scope)
+    name_ = NameCtx(name=root_layer_name, parent=root_scope)
     LayerRef(name_ctx=name_)
     assert name_.layer_ref
   return name_.layer_ref
@@ -235,28 +235,28 @@ def get_special_layer(name: str) -> LayerRef:
   """
   Special layer can be "data:..." or whatever.
   """
-  scope = _NameCtx.current_ctx()  # must exist
+  scope = NameCtx.current_ctx()  # must exist
   if name in scope.childs:
     name_ = scope.childs[name]
     assert name_.layer_ref
   else:
-    name_ = _NameCtx(name=name, parent=scope)
+    name_ = NameCtx(name=name, parent=scope)
     LayerRef(name_ctx=name_)
     assert name_.layer_ref
   return name_.layer_ref
 
 
-class _NameCtx:
+class NameCtx:
   """
   This is a helper class to keep track of the current name context when creating layers.
   Usually you do not need to access this directly.
   """
 
-  stack = []  # type: List[_NameCtx]
+  stack = []  # type: List[NameCtx]
   _ReservedNames = {"data", "output"}
 
   @classmethod
-  def top(cls) -> _NameCtx:
+  def top(cls) -> NameCtx:
     """
     Return the top of the stack.
     Assumes that it exists.
@@ -265,7 +265,7 @@ class _NameCtx:
     return cls.stack[-1]
 
   @classmethod
-  def current_ctx(cls) -> _NameCtx:
+  def current_ctx(cls) -> NameCtx:
     """
     Return the current context.
     This is the top from the stack with is_subnet_ctx.
@@ -278,23 +278,23 @@ class _NameCtx:
     return top
 
   @classmethod
-  def new_root(cls) -> _NameCtx:
+  def new_root(cls) -> NameCtx:
     """
     Create new root name context
     """
-    ctx = _NameCtx(parent=None)
+    ctx = NameCtx(parent=None)
     ctx.is_subnet_ctx = True
     return ctx
 
   def __init__(self, *,
                maker: Optional[ILayerMaker] = None,
                name: Optional[str] = None,
-               parent: Optional[_NameCtx] = NotSpecified):
+               parent: Optional[NameCtx] = NotSpecified):
     self.maker = maker
     self.layer_ref = None  # type: Optional[LayerRef]
     self.layer = None  # type: Optional[Layer]
     self.is_subnet_ctx = False
-    self.childs = {}  # type: Dict[str, _NameCtx]
+    self.childs = {}  # type: Dict[str, NameCtx]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name if name else (self._get_name() if self.parent else None)
     if self.parent:
@@ -317,7 +317,7 @@ class _NameCtx:
         net_dict[key] = value.layer.layer_dict
     return net_dict
 
-  def get_abs_name_ctx_list(self) -> List[_NameCtx]:
+  def get_abs_name_ctx_list(self) -> List[NameCtx]:
     """
     Return list [root name ctx, ..., self].
     """
@@ -340,7 +340,7 @@ class _NameCtx:
     """
     Get layer name valid for current scope.
     """
-    cur_scope = _NameCtx.current_ctx()
+    cur_scope = NameCtx.current_ctx()
     if self.parent is cur_scope:  # fast path
       return self.name
     cur_scope_abs = cur_scope.get_abs_name_ctx_list()
