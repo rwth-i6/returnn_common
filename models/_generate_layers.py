@@ -424,6 +424,8 @@ def get_module_class_name_for_layer_class(layer_class: Type[LayerBase]) -> str:
   """
   if layer_class is LayerBase:
     return "_Base"
+  if layer_class is RecLayer:
+    return "RecUnit"  # we also implement a separate `Rec` module
   assert layer_class.__name__.endswith("Layer")
   return layer_class.__name__[:-len("Layer")]
 

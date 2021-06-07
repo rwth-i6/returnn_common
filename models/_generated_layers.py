@@ -4022,7 +4022,7 @@ class OfficialResNet(_ConcatInput):
       **self.get_opts()}
 
 
-class Rec(_ConcatInput):
+class RecUnit(_ConcatInput):
   """
   Recurrent layer, has support for several implementations of LSTMs (via ``unit`` argument),
   see :ref:`tf_lstm_benchmark` (http://returnn.readthedocs.io/en/latest/tf_lstm_benchmark.html),
