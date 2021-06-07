@@ -115,15 +115,21 @@ class ILayerMaker:
     return self.__class__.__name__
 
   def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
-    with NameCtx(maker=self, name=name):
-      layer_dict = self.make_layer_dict(*args, **kwargs)
+    with NameCtx(maker=self, name=name) as name_ctx:
       if self.calls:
-        layer_dict = layer_dict.copy()
-        assert "reuse_params" not in layer_dict
-        layer_dict["reuse_params"] = self.calls[0]
+        name_ctx.is_repeated_call = True
+      layer_dict = self.make_layer_dict(*args, **kwargs)
       layer_dict = nest.map_structure(
         lambda x: x.get_name() if isinstance(x, LayerRef) else x,
         layer_dict)
+      name_ctx.is_subnet_ctx = False
+      if self.calls:
+        if name_ctx.parent and name_ctx.parent.is_repeated_call:
+          pass  # do nothing, parent will already set reuse_params
+        else:
+          layer_dict = layer_dict.copy()
+          assert "reuse_params" not in layer_dict
+          layer_dict["reuse_params"] = self.calls[0].get_name()
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
       return layer
@@ -294,6 +300,7 @@ class NameCtx:
     self.layer_ref = None  # type: Optional[LayerRef]
     self.layer = None  # type: Optional[Layer]
     self.is_subnet_ctx = False
+    self.is_repeated_call = False
     self.childs = {}  # type: Dict[str, NameCtx]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name if name else (self._get_name() if self.parent else None)
@@ -305,7 +312,7 @@ class NameCtx:
   def __repr__(self):
     ls = self.get_abs_name_ctx_list()
     debug_name = "/".join(repr(ctx.name) for ctx in ls)
-    return f"<{self.__class__.__name__} {self.maker} {debug_name} root:{id(ls[0]):x}>"
+    return f"<{self.__class__.__name__} maker:{self.maker} name:{debug_name} root:{id(ls[0]):x}>"
 
   def make_net_dict(self) -> NetDictRaw:
     """
@@ -346,9 +353,9 @@ class NameCtx:
     cur_scope_abs = cur_scope.get_abs_name_ctx_list()
     self_name_abs = self.get_abs_name_ctx_list()
     assert cur_scope_abs[0] is self_name_abs[0]  # same root
-    assert len(cur_scope_abs) > len(self_name_abs)  # not implemented otherwise
+    assert len(cur_scope_abs) >= len(self_name_abs)  # not implemented otherwise
     common_len = 0
-    while cur_scope_abs[common_len] is self_name_abs[common_len]:
+    while cur_scope_abs[common_len + 1] is self_name_abs[common_len + 1]:
       common_len += 1
     assert common_len == len(self_name_abs) - 2  # not implemented otherwise
     return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name
@@ -366,20 +373,25 @@ class NameCtx:
     self.stack.pop(-1)
 
   def _get_name(self) -> str:
-    assert self.parent and self.parent.maker
-    reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
-    for key, value in vars(self.parent.maker).items():
-      if key in reserved_names:
-        continue
-      if value is self.maker:
-        return key
+    assert self.parent
+    if self.parent.maker:
+      reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
+      for key, value in vars(self.parent.maker).items():
+        if key in reserved_names:
+          continue
+        if value is self.maker:
+          return key
+    else:
+      # Assume this is a root without maker.
+      assert self.parent.parent is None
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
-    assert self.parent and self.parent.maker
-    for key, value in vars(self.parent.maker).items():
-      if value is self.maker:
-        return key
+    assert self.parent
+    if self.parent.maker:
+      for key, value in vars(self.parent.maker).items():
+        if value is self.maker:
+          return key
     for call in self.maker.calls:
       if call is self:
         continue  # ignore this
@@ -389,7 +401,9 @@ class NameCtx:
 
   def _get_unique_name(self) -> str:
     name = self._get_suggested_name()
-    reserved_names = set(vars(self.parent.maker).keys()) | set(self.parent.childs.keys()) | self._ReservedNames
+    reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
+    if self.parent.maker:
+      reserved_names |= set(vars(self.parent.maker).keys())
     if name not in reserved_names:
       return name
     i = 0
