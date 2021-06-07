@@ -36,7 +36,7 @@ def setup():
   print("from returnn.util.basic import NotSpecified", file=f)
   print("from .base import ILayerMaker, LayerRef, LayerDictRaw", file=f)
   layer_classes = collect_layers()
-  signatures = {}  # type: dict[Type[LayerBase], LayerSignature]
+  signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
   for layer_class in layer_classes:
     sig = LayerSignature(layer_class, signatures)
     signatures[layer_class] = sig
@@ -132,7 +132,7 @@ class LayerSignature:
     self.layer_class = layer_class
     self.others = others
     self.inspect_init_sig = inspect.signature(layer_class.__init__)
-    self.params = {}  # type: dict[str, LayerSignature.Param]
+    self.params = {}  # type: Dict[str, LayerSignature.Param]
     self.docstring = None  # type: Optional[str]
     self._init_args()
     self._parse_init_docstring()
