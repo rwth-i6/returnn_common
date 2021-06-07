@@ -40,7 +40,8 @@ class _Base(ILayerMaker):
 
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                param_device: Optional[str] = NotSpecified,
                is_output_layer: Optional[bool] = NotSpecified,
                only_on_eval: bool = NotSpecified,
@@ -124,7 +125,7 @@ class _Base(ILayerMaker):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return opts
 
-  make_layer_dict = super().make_layer_dict  # abstract
+  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
 class Source(_Base):
@@ -132,7 +133,8 @@ class Source(_Base):
   This gives access to some entry from network.extern_data (:class:`ExternData`).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                data_key: Optional[str] = NotSpecified,
                **kwargs):
     """
@@ -169,7 +171,8 @@ class _ConcatInput(_Base):
   This layer also optionally can do dropout on the input.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                dropout: float = NotSpecified,
                dropout_noise_shape: Any = NotSpecified,
                dropout_on_forward: bool = NotSpecified,
@@ -200,7 +203,7 @@ class _ConcatInput(_Base):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**opts, **super().get_opts()}
 
-  make_layer_dict = super().make_layer_dict  # abstract
+  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
 class Copy(_ConcatInput):
@@ -246,7 +249,8 @@ class ScaledGradient(Copy):
   Uses :func:`TFUtil.scaled_gradient`, or :func:`tf.stop_gradient`
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                scale: float,
                **kwargs):
     """
@@ -284,7 +288,8 @@ class Activation(Copy):
   Also see :class:`EvalLayer` and :class:`CombineLayer` for similar layers.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                activation: str,
                **kwargs):
     """
@@ -347,7 +352,8 @@ class LayerNorm(_ConcatInput):
   For a more generic variant, see :class:`NormLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                epsilon: Any = NotSpecified,
                **kwargs):
     """
@@ -405,7 +411,8 @@ class Norm(_ConcatInput):
   and `here <https://github.com/tensorflow/addons/issues/2143>`__.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axes: Any,
                param_shape: Any = NotSpecified,
                scale: bool = NotSpecified,
@@ -459,7 +466,8 @@ class MathNorm(_ConcatInput):
   Calculates sum(abs(x) ** p) ** (1./p).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                p: Union[int, float],
                axes: Any,
                keep_dims: bool = NotSpecified,
@@ -518,7 +526,8 @@ class Slice(_ConcatInput):
   We just support slicing in a single axis here, with optional striding (slice_step).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Union[int, str],
                slice_start: Optional[int] = NotSpecified,
                slice_end: Optional[int] = NotSpecified,
@@ -571,7 +580,8 @@ class SliceNd(_ConcatInput):
   :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                size: Optional[int],
                min_size: Optional[int] = NotSpecified,
                **kwargs):
@@ -632,7 +642,8 @@ class Gather(_ConcatInput):
   See also :class:`GatherNdLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str,
                **kwargs):
     """
@@ -735,7 +746,8 @@ class ScatterNd(_ConcatInput):
   In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                position_axis: Union[str, int],
                filter_invalid_indices: bool = NotSpecified,
                **kwargs):
@@ -787,7 +799,9 @@ class Linear(_ConcatInput):
   See also :class:`DotLayer`, :class:`ElemwiseProdLayer`, :class:`WeightedSumLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               n_out: int,
+               *,
                activation: Optional[str],
                with_bias: bool = NotSpecified,
                grad_filter: Optional[float] = NotSpecified,
@@ -796,6 +810,7 @@ class Linear(_ConcatInput):
                use_transposed_weights: bool = NotSpecified,
                **kwargs):
     """
+    :param int n_out: output dimension
     :param str|None activation: e.g. "relu", or None
     :param bool with_bias:
     :param float|None grad_filter: if grad norm is higher than this threshold (before activation), the grad is removed
@@ -804,6 +819,7 @@ class Linear(_ConcatInput):
     :param bool use_transposed_weights: If True, define the weight matrix with transposed dimensions (n_out, n_in).
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.activation = activation
     self.with_bias = with_bias
     self.grad_filter = grad_filter
@@ -816,6 +832,7 @@ class Linear(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'activation': self.activation,
       'with_bias': self.with_bias,
       'grad_filter': self.grad_filter,
@@ -843,7 +860,8 @@ class Softmax(Linear):
   Just a LinearLayer with activation="softmax" by default.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                activation: Any = NotSpecified,
                **kwargs):
     """
@@ -879,7 +897,8 @@ class Length(_Base):
   Returns the length of sources as (B,), via input size_placeholder.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                add_time_axis: bool = NotSpecified,
                dtype: str = NotSpecified,
                sparse: bool = NotSpecified,
@@ -927,7 +946,8 @@ class SoftmaxOverSpatial(_ConcatInput):
   See :class:`SeqLenMaskLayer` if you just want to apply a masking.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Optional[str] = NotSpecified,
                energy_factor: Optional[float] = NotSpecified,
                use_time_mask: bool = NotSpecified,
@@ -991,7 +1011,8 @@ class SeqLenMask(_ConcatInput):
   Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                mask_value: float,
                axis: Union[str, int] = NotSpecified,
                **kwargs):
@@ -1044,7 +1065,8 @@ class RandInt(_Base):
   Generates random numbers using ``tf.random.uniform``
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                shape: Any,
                maxval: int,
                minval: int = NotSpecified,
@@ -1097,7 +1119,8 @@ class Range(_Base):
   See also :class:`RangeInAxisLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                limit: Union[int, float],
                start: Union[int, float] = NotSpecified,
                delta: Union[int, float] = NotSpecified,
@@ -1151,7 +1174,8 @@ class RangeInAxis(_Base):
   See also :class:`RangeLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str,
                dtype: str = NotSpecified,
                unbroadcast: bool = NotSpecified,
@@ -1220,7 +1244,8 @@ class Constant(_Base):
   Output is a constant value.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                value: Union[int, float, bool] = NotSpecified,
                dtype: Optional[str] = NotSpecified,
                with_batch_dim: bool = NotSpecified,
@@ -1264,7 +1289,8 @@ class Gating(_ConcatInput):
   Thus, the output dimension is input-dimension / 2.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                activation: Any,
                gate_activation: Any = NotSpecified,
                **kwargs):
@@ -1315,7 +1341,8 @@ class Window(_ConcatInput):
   See :class:`SliceLayer` or :class:`SliceNdLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                window_size: int,
                window_left: Optional[int] = NotSpecified,
                window_right: Optional[int] = NotSpecified,
@@ -1371,7 +1398,8 @@ class Cumsum(_ConcatInput):
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str = NotSpecified,
                additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
                reverse: bool = NotSpecified,
@@ -1415,7 +1443,8 @@ class Pad(_ConcatInput):
   Adds (e.g. zero) padding in some axis or axes.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axes: Any,
                padding: Any,
                value: Union[int, float] = NotSpecified,
@@ -1469,7 +1498,8 @@ class MergeDims(_ConcatInput):
   see :class:`FlattenBatchLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axes: Any,
                keep_order: bool = NotSpecified,
                **kwargs):
@@ -1518,7 +1548,8 @@ class Split(_ConcatInput):
   Each part can be accessed via the sublayers "/%i".
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Optional[str] = NotSpecified,
                num_splits: Optional[int] = NotSpecified,
                size_splits: Optional[List[int]] = NotSpecified,
@@ -1578,7 +1609,8 @@ class SplitDims(_ConcatInput):
   Also see :class:`MergeDimsLayer` which can undo this operation.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str,
                dims: Any,
                pad_to_multiples: Optional[bool] = NotSpecified,
@@ -1659,7 +1691,8 @@ class FlattenBatch(_ConcatInput):
   i.e. the size stays the same.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str = NotSpecified,
                batch_major: bool = NotSpecified,
                **kwargs):
@@ -1708,7 +1741,8 @@ class UnflattenNd(_ConcatInput):
   This basically wraps :func:`TFUtil.unflatten_nd`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                num_axes: int,
                **kwargs):
     """
@@ -1753,7 +1787,8 @@ class ExpandDims(_ConcatInput):
   Adds some axis.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Union[str, int],
                dim: int = NotSpecified,
                **kwargs):
@@ -1798,7 +1833,8 @@ class Repeat(_ConcatInput):
   This layer can only be used with Tensorflow 1.15.0 or newer.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str = NotSpecified,
                **kwargs):
     """
@@ -1841,7 +1877,8 @@ class Tile(_ConcatInput):
   A wrapper around tf.tile
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                multiples: Dict[str, int],
                **kwargs):
     """
@@ -1877,7 +1914,8 @@ class Cast(Copy):
   Cast to some other dtype.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                dtype: str,
                **kwargs):
     """
@@ -1926,7 +1964,8 @@ class SwapAxes(_ConcatInput):
   but allows to reinterpret their meaning / dim tags.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis1: Union[int, str],
                axis2: Union[int, str],
                **kwargs):
@@ -1977,7 +2016,8 @@ class Transpose(_ConcatInput):
   but allows to reinterpret their meaning / dim tags.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                perm: Dict[str, str],
                **kwargs):
     """
@@ -2013,7 +2053,8 @@ class ReinterpretData(_ConcatInput):
   Acts like the :class:`CopyLayer` but reinterprets the role of some axes or data.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                switch_axes: Any = NotSpecified,
                set_axes: Any = NotSpecified,
                enforce_batch_major: bool = NotSpecified,
@@ -2081,7 +2122,9 @@ class Conv(_ConcatInput):
   Pooling can be done in the separate "pool" layer.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               n_out: int,
+               *,
                filter_size: Tuple[int],
                padding: str,
                strides: Any = NotSpecified,
@@ -2098,6 +2141,7 @@ class Conv(_ConcatInput):
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
+    :param int n_out: output dimension
     :param tuple[int] filter_size: (width,), (height,width) or (depth,height,width) for 1D/2D/3D conv.
       the input data ndim must match, or you can add dimensions via input_expand_dims or input_add_feature_dim.
       it will automatically swap the batch-dim to the first axis of the input data.
@@ -2120,6 +2164,7 @@ class Conv(_ConcatInput):
     :param dict[str,str]|None filter_perm: transposes the filter (input filter as layer)
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.filter_size = filter_size
     self.padding = padding
     self.strides = strides
@@ -2140,6 +2185,7 @@ class Conv(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'filter_size': self.filter_size,
       'padding': self.padding,
       'strides': self.strides,
@@ -2186,7 +2232,8 @@ class Pool(_ConcatInput):
   This would usually be done after a convolution for down-sampling.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                mode: str,
                pool_size: Tuple[int],
                padding: str = NotSpecified,
@@ -2245,7 +2292,8 @@ class Dct(_ConcatInput):
   """
 
   # noinspection PyShadowingBuiltins
-  def __init__(self, *,
+  def __init__(self,
+               *,
                type: int = NotSpecified,
                n: Optional[int] = NotSpecified,
                norm: Optional[str] = NotSpecified,
@@ -2290,7 +2338,9 @@ class TransposedConv(_ConcatInput):
   See :func:`tf.nn.conv2d_transpose` (currently we support 1D/2D).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               n_out: int,
+               *,
                filter_size: List[int],
                activation: Optional[str],
                strides: Optional[List[int]] = NotSpecified,
@@ -2303,6 +2353,7 @@ class TransposedConv(_ConcatInput):
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
+    :param int n_out: output dimension
     :param list[int] filter_size:
     :param str|None activation:
     :param list[int]|None strides: specifies the upscaling. by default, same as filter_size
@@ -2316,6 +2367,7 @@ class TransposedConv(_ConcatInput):
     :param dict[str,str]|None filter_perm: transposes the filter (input filter as layer)
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.filter_size = filter_size
     self.activation = activation
     self.strides = strides
@@ -2332,6 +2384,7 @@ class TransposedConv(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'filter_size': self.filter_size,
       'activation': self.activation,
       'strides': self.strides,
@@ -2374,7 +2427,8 @@ class Reduce(_ConcatInput):
   It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                mode: str,
                axes: Any = NotSpecified,
                axis: Any = NotSpecified,
@@ -2439,7 +2493,8 @@ class ReduceOut(_ConcatInput):
   This can e.g. be used to do maxout.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                mode: str,
                num_pieces: int,
                **kwargs):
@@ -2480,7 +2535,8 @@ class Squeeze(_ConcatInput):
   This is basically a wrapper around tf.squeeze.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Any,
                enforce_batch_dim_axis: Optional[int] = NotSpecified,
                allow_no_op: bool = NotSpecified,
@@ -2526,7 +2582,8 @@ class Stack(_Base):
   Stacks multiple inputs together using :func:`tf.stack`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Optional[int] = NotSpecified,
                **kwargs):
     """
@@ -2569,7 +2626,8 @@ class WeightedSum(_ConcatInput):
   See also :class:`LinearLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axes: Any,
                padding: str = NotSpecified,
                size: Optional[Tuple[int]] = NotSpecified,
@@ -2622,7 +2680,8 @@ class ElemwiseProd(_ConcatInput):
   See also :class:`LinearLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axes: Any,
                size: Tuple[int] = NotSpecified,
                **kwargs):
@@ -2663,7 +2722,8 @@ class PrefixInTime(_ConcatInput):
   This is kind of the reverse of :class:`SliceNdLayer` does.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                prefix: Union[float, str] = NotSpecified,
                **kwargs):
     """
@@ -2708,7 +2768,8 @@ class PostfixInTime(_ConcatInput):
   Adds some postfix in time dimension.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                repeat: int = NotSpecified,
                **kwargs):
     """
@@ -2751,7 +2812,8 @@ class TimeChunking(_ConcatInput):
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                chunk_size: int,
                chunk_step: int,
                **kwargs):
@@ -2821,7 +2883,8 @@ class Dot(_Base):
   All other axes (shared...) are expected to match.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                red1: Any = NotSpecified,
                red2: Any = NotSpecified,
                var1: Any = NotSpecified,
@@ -2880,7 +2943,8 @@ class ShiftAxis(_ConcatInput):
   This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: Union[str, int],
                amount: int,
                pad: bool = NotSpecified,
@@ -2930,7 +2994,8 @@ class Resize(_ConcatInput):
   Supports different kinds, such as linear interpolation or nearest-neighbor.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                factor: int,
                axis: Union[str, int],
                kind: str = NotSpecified,
@@ -2983,7 +3048,8 @@ class CombineDims(_ConcatInput):
   See also :class:`MergeDimsLayer`. This is deprecated in favor of :class:`MergeDimsLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axes: Any,
                **kwargs):
     """
@@ -3022,7 +3088,8 @@ class Remove(_Base):
   a :class:CompareLayer` instead, as this provides more flexibility.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                symbol: int,
                **kwargs):
     """
@@ -3064,7 +3131,8 @@ class Combine(_Base):
   """
 
   # noinspection PyShadowingBuiltins
-  def __init__(self, *,
+  def __init__(self,
+               *,
                kind: str,
                activation: Optional[str] = NotSpecified,
                with_bias: bool = NotSpecified,
@@ -3128,7 +3196,8 @@ class Eval(Combine):
   """
 
   # noinspection PyShadowingBuiltins
-  def __init__(self, *,
+  def __init__(self,
+               *,
                eval: str,
                **kwargs):
     """
@@ -3183,7 +3252,8 @@ class Compare(_Base):
 
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                kind: str = NotSpecified,
                value: Optional[Union[float, int]] = NotSpecified,
                **kwargs):
@@ -3265,7 +3335,8 @@ class SearchSorted(_Base):
   All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                axis: str = NotSpecified,
                side: str = NotSpecified,
                **kwargs):
@@ -3317,7 +3388,8 @@ class Variable(_Base):
   See defaults.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                shape: Any,
                dtype: str = NotSpecified,
                add_batch_axis: bool = NotSpecified,
@@ -3371,7 +3443,8 @@ class AccumulateMean(Reduce):
   It's similar to :class:`ReduceLayer`
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                exp_average: float,
                axes: Any = NotSpecified,
                initial_value: float = NotSpecified,
@@ -3441,7 +3514,8 @@ class Loss(_Base):
 
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                loss_: Loss,
                use_error: bool = NotSpecified,
                **kwargs):
@@ -3492,7 +3566,8 @@ class ForcedAlignment(_ConcatInput):
   Calculates a forced alignment, via Viterbi algorithm.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                topology: str,
                input_type: str,
                **kwargs):
@@ -3540,7 +3615,8 @@ class FastBaumWelch(_ConcatInput):
   We expect that our input are +log scores, e.g. use log-softmax.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                align_target: str,
                align_target_key: Optional[str] = NotSpecified,
                ctc_opts: Dict[str] = NotSpecified,
@@ -3613,7 +3689,8 @@ class SyntheticGradient(_ConcatInput):
     Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                meta_loss_scale: float = NotSpecified,
                **kwargs):
     """
@@ -3656,7 +3733,8 @@ class TikhonovRegularization(Copy):
   Adds the Tikhonov regularization as a meta-loss (see :class:`TFUtil.MetaLosses`).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                meta_loss_scale: float = NotSpecified,
                **kwargs):
     """
@@ -3695,7 +3773,8 @@ class AllophoneStateIdxParser(_Base):
   In the Sprint config, this is via option --*.state-tying.type=no-tying-dense.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                num_phone_classes: int,
                num_states: int = NotSpecified,
                context_len: int = NotSpecified,
@@ -3740,7 +3819,8 @@ class FramewiseStatistics(_Base):
   The tensors will get stored in self.stats which will be collected by TFEngine.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                sil_label_idx: Any,
                histogram_num_bins: Any = NotSpecified,
                **kwargs):
@@ -3780,7 +3860,8 @@ class Print(_Base):
   Prints the sources to console/log, via :func:`TFUtil.py_print`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                summarize: Optional[int] = NotSpecified,
                extra_print_args: Union[List, Tuple] = NotSpecified,
                **kwargs):
@@ -3830,7 +3911,8 @@ class HDFDump(_Base):
   It currently uses :class:`SimpleHDFWriter` internally.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                filename: Any,
                dump_whole_batches: bool = NotSpecified,
                labels: Optional[List[str]] = NotSpecified,
@@ -3890,7 +3972,8 @@ class ImageSummary(_Base):
   This layer expects the source to be in (T-decoder, T-encoder, B, 1).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                max_outputs: Any = NotSpecified,
                **kwargs):
     """
@@ -3935,7 +4018,8 @@ class OfficialResNet(_ConcatInput):
   As you get logits, you can then use :class:`ActivationLayer` with softmax.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                num_classes: int,
                final_size: Any,
                num_filters: Any,
@@ -4083,7 +4167,9 @@ class RecUnit(_ConcatInput):
   Also see :ref:`recurrency`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               n_out: int,
+               *,
                unit: str = NotSpecified,
                unit_opts: Optional[Dict[str]] = NotSpecified,
                direction: Optional[int] = NotSpecified,
@@ -4101,6 +4187,7 @@ class RecUnit(_ConcatInput):
                debug: Optional[bool] = NotSpecified,
                **kwargs):
     """
+    :param int n_out: output dimension
     :param str|_SubnetworkRecCell unit: the RNNCell/etc name, e.g. "nativelstm". see comment below.
       alternatively a whole subnetwork, which will be executed step by step,
       and which can include "prev" in addition to "from" to refer to previous steps.
@@ -4121,6 +4208,7 @@ class RecUnit(_ConcatInput):
     :param bool|None debug:
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.unit = unit
     self.unit_opts = unit_opts
     self.direction = direction
@@ -4142,6 +4230,7 @@ class RecUnit(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'unit': self.unit,
       'unit_opts': self.unit_opts,
       'direction': self.direction,
@@ -4190,19 +4279,23 @@ class RnnCell(_ConcatInput):
    i.e. outside a RecLayer, with a time dimension.)
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               n_out: int,
+               *,
                unit: str,
                unit_opts: Optional[Dict[str]] = NotSpecified,
                initial_output: None = NotSpecified,
                weights_init: Any = NotSpecified,
                **kwargs):
     """
+    :param int n_out: output dimension
     :param str|tf.contrib.rnn.RNNCell unit: e.g. "BasicLSTM" or "LSTMBlock"
     :param dict[str]|None unit_opts: passed to the cell.__init__
     :param None initial_output: the initial output is defined implicitly via initial state, thus don't set this
     :param weights_init:
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.unit = unit
     self.unit_opts = unit_opts
     self.initial_output = initial_output
@@ -4213,6 +4306,7 @@ class RnnCell(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'unit': self.unit,
       'unit_opts': self.unit_opts,
       'initial_output': self.initial_output,
@@ -4245,7 +4339,8 @@ class GetLastHiddenState(_Base):
   Will combine (concat or add or so) all the last hidden states from all sources.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                combine: str = NotSpecified,
                key: Optional[Union[str, int]] = NotSpecified,
                **kwargs):
@@ -4297,7 +4392,8 @@ class GetRecAccumulatedOutput(_Base):
     "sub_layer": {"class": "copy", "from": "rec_layer/hidden"}
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                sub_layer: str,
                **kwargs):
     """
@@ -4334,7 +4430,8 @@ class BaseChoice(_Base):
   i.e. which defines ``self.search_choices``.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                beam_size: Optional[int],
                search: Union[NotSpecified, bool] = NotSpecified,
                **kwargs):
@@ -4358,7 +4455,7 @@ class BaseChoice(_Base):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**opts, **super().get_opts()}
 
-  make_layer_dict = super().make_layer_dict  # abstract
+  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
 class Choice(BaseChoice):
@@ -4385,7 +4482,8 @@ class Choice(BaseChoice):
   use separate ChoiceLayers and let the input of one depend on the output of the other.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                beam_size: int,
                keep_beams: bool = NotSpecified,
                search: Union[NotSpecified, bool] = NotSpecified,
@@ -4488,7 +4586,8 @@ class Decide(BaseChoice):
   In will convert the data to batch-major mode.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                length_normalization: bool = NotSpecified,
                **kwargs):
     """
@@ -4601,7 +4700,7 @@ class AttentionBase(_ConcatInput):
   * https://github.com/deepmind/sonnet/blob/master/sonnet/python/modules/attention.py
   """
 
-  make_layer_dict = super().make_layer_dict  # abstract
+  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
 class GlobalAttentionContextBase(AttentionBase):
@@ -4609,7 +4708,7 @@ class GlobalAttentionContextBase(AttentionBase):
   Base class for other attention types, which use a global context.
   """
 
-  make_layer_dict = super().make_layer_dict  # abstract
+  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
 class GenericAttention(AttentionBase):
@@ -4626,7 +4725,8 @@ class GenericAttention(AttentionBase):
   Keep axes: base: feature axis; weights: all remaining, e.g. extra time.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                auto_squeeze: bool = NotSpecified,
                **kwargs):
     """
@@ -4671,7 +4771,8 @@ class DotAttention(GlobalAttentionContextBase):
   Classic global attention: Dot-product as similarity measure between base_ctx and source.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                energy_factor: Optional[float] = NotSpecified,
                **kwargs):
     """
@@ -4748,7 +4849,8 @@ class GaussWindowAttention(AttentionBase):
   The window size is fixed (TODO: but the variance can optionally be dynamic).
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                window_size: int,
                std: float = NotSpecified,
                inner_size: Optional[int] = NotSpecified,
@@ -4816,7 +4918,8 @@ class SelfAttention(_ConcatInput):
     https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/layers/common_attention.py
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                num_heads: int,
                total_key_dim: int,
                forward_weights_init: str = NotSpecified,
@@ -4898,7 +5001,8 @@ class PositionalEncoding(_ConcatInput):
   See :func:`TFUtil.get_positional_encoding`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                add_to_input: bool = NotSpecified,
                constant: int = NotSpecified,
                **kwargs):
@@ -4950,7 +5054,8 @@ class KenLmState(_ConcatInput):
   EOS (</s>) token must be used explicitly.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                lm_file: Any,
                vocab_file: Optional[str] = NotSpecified,
                vocab_unknown_label: str = NotSpecified,
@@ -5018,7 +5123,8 @@ class EditDistanceTable(_Base):
   See also :class:`OptimalCompletionsLayer`.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                debug: bool = NotSpecified,
                blank_idx: Optional[int] = NotSpecified,
                **kwargs):
@@ -5068,7 +5174,8 @@ class OptimalCompletions(_Base):
   Note that you probably want to have this all before the last choice, where you still have more beams open.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                debug: bool = NotSpecified,
                blank_idx: Optional[int] = NotSpecified,
                **kwargs):
@@ -5144,7 +5251,8 @@ class TwoDLSTM(_Base):
   Can be inside a recurrent loop, or outside.
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                pooling: str = NotSpecified,
                unit_opts: Optional[Dict[str]] = NotSpecified,
                forward_weights_init: str = NotSpecified,
@@ -5213,7 +5321,8 @@ class RelativePositionalEncoding(_ConcatInput):
 
   """
 
-  def __init__(self, *,
+  def __init__(self,
+               *,
                forward_weights_init: str = NotSpecified,
                clipping: int = NotSpecified,
                fixed: bool = NotSpecified,

@@ -17,8 +17,9 @@ from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
 from returnn.tf.layers.basic import CombineLayer, CompareLayer
+from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
-from returnn.tf.layers.rec import RecLayer, MaskedComputationLayer
+from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -54,7 +55,10 @@ def setup():
       print("", file=f)
       if sig.module_init_needs_suppress_shadow_builtin_warning():
         print("  # noinspection PyShadowingBuiltins", file=f)
-      print("  def __init__(self, *,", file=f)
+      print("  def __init__(self,", file=f)
+      if sig.need_n_out_init_arg():
+        print("               n_out: int,", file=f)
+      print("               *,", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"               {param.get_module_param_code_str()},", file=f)
@@ -64,11 +68,15 @@ def setup():
         for line in sig.docstring.splitlines():
           print("    " + line, file=f)
         print("", file=f)
+      if sig.need_n_out_init_arg():
+        print("    :param int n_out: output dimension", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
       print(f"    super().__init__({'**kwargs' if issubclass(cls_base, LayerBase) else ''})", file=f)
+      if sig.need_n_out_init_arg():
+        print(f"    self.n_out = n_out", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
@@ -77,6 +85,8 @@ def setup():
       print("  def get_opts(self):", file=f)
       print(format_multi_line_str("Return all options", indent="    "), file=f)
       print("    opts = {", file=f)
+      if sig.need_n_out_init_arg():
+        print("      'n_out': self.n_out,", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"      '{param.returnn_name}': self.{param.get_module_param_name()},", file=f)
@@ -118,7 +128,7 @@ def setup():
       print("      **self.get_opts()}", file=f)
     else:
       print("", file=f)
-      print("  make_layer_dict = super().make_layer_dict  # abstract", file=f)
+      print("  make_layer_dict = ILayerMaker.make_layer_dict  # abstract", file=f)
     print(layer_class, get_module_class_name_for_layer_class(layer_class), sig)
 
 
@@ -136,6 +146,14 @@ class LayerSignature:
     self.docstring = None  # type: Optional[str]
     self._init_args()
     self._parse_init_docstring()
+
+  def need_n_out_init_arg(self) -> bool:
+    """
+    Whether ``n_out`` must be specified
+    """
+    if self.layer_class in (LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer):
+      return True
+    return False
 
   def has_source_param(self) -> bool:
     """
@@ -181,6 +199,8 @@ class LayerSignature:
     """
     Whether there are other call args (despite source)
     """
+    if self.need_n_out_init_arg():
+      return True
     for _, param in self.params.items():
       if param.is_module_init_arg():
         return True
