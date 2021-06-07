@@ -4,13 +4,17 @@ Base interfaces.
 The core interfaces for the user are:
 
 * :class:`ILayerMaker`, to directly create a layer dict
-* :class:`Module`, to write PyTorch-style code
+* :class:`Module`, to write PyTorch-style code, which acts like a subnetwork
 
 Instances of both objects can be called directly,
 and return instances of type :class:`LayerRef`,
 which can be thought of as analogue to :class:`torch.Tensor` or :class:`tf.Tensor`.
 
 Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
+
+The root network should be a :class:`Module`.
+Alternatively, use ``with _NameCtx.new_root() as name_ctx``
+and then ``name_ctx.make_net_dict``.
 """
 
 from __future__ import annotations
@@ -263,6 +267,15 @@ class _NameCtx:
       return top.parent
     assert top.is_subnet_ctx
     return top
+
+  @classmethod
+  def new_root(cls) -> _NameCtx:
+    """
+    Create new root name context
+    """
+    ctx = _NameCtx(parent=None)
+    ctx.is_subnet_ctx = True
+    return ctx
 
   def __init__(self, *,
                maker: Optional[ILayerMaker] = None,
