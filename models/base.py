@@ -12,9 +12,14 @@ which can be thought of as analogue to :class:`torch.Tensor` or :class:`tf.Tenso
 
 Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
 
-The root network should be a :class:`Module`.
+The root network should be a :class:`Module`,
+and then you can use ``mod.make_root_net_dict()``
+to get the network dict.
+
 Alternatively, use ``with NameCtx.new_root() as name_ctx``
-and then ``name_ctx.make_net_dict``.
+to setup an unnamed root name context
+and then ``name_ctx.make_net_dict()``
+to get the network dict.
 """
 
 from __future__ import annotations
