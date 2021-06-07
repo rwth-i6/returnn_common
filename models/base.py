@@ -41,6 +41,9 @@ class LayerRef:
     assert name_ctx.layer_ref is None
     name_ctx.layer_ref = self
 
+  def __repr__(self):
+    return f"<{self.__class__.__name__} {self.name_ctx}>"
+
   def get_name(self) -> str:
     """
     Return layer name, valid in the current active name context.
@@ -91,6 +94,9 @@ class ILayerMaker:
   """
   def __init__(self):
     self.calls = []  # type: List[Layer]
+
+  def __repr__(self):
+    return f"<{self.__class__.__name__}>"
 
   def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
     """
@@ -295,6 +301,11 @@ class _NameCtx:
       assert self.parent.is_subnet_ctx
       assert self.name not in self.parent.childs
       self.parent.childs[self.name] = self
+
+  def __repr__(self):
+    ls = self.get_abs_name_ctx_list()
+    debug_name = "/".join(repr(ctx.name) for ctx in ls)
+    return f"<{self.__class__.__name__} {self.maker} {debug_name} root:{id(ls[0]):x}>"
 
   def make_net_dict(self) -> NetDictRaw:
     """
