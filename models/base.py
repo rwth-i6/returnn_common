@@ -167,9 +167,12 @@ class Module(ILayerMaker):
     Make net dict, to be used as the main RETURNN network, not within a subnetwork.
     Extern data can be accessed via :func:`get_root_extern_data`.
     """
+    from .layers import Copy
     with _NameCtx(maker=self, parent=None) as name_ctx:
       name_ctx.is_subnet_ctx = True
-      self.forward()
+      res = self.forward()
+      if "output" not in name_ctx.childs:
+        Copy()(res, name="output")
       return name_ctx.make_net_dict()
 
 
@@ -354,7 +357,7 @@ class _NameCtx:
   def _get_name(self) -> str:
     assert self.parent and self.parent.maker
     reserved_names = set(self.childs.keys()) | self._ReservedNames
-    for key, value in vars(self.parent.maker):
+    for key, value in vars(self.parent.maker).items():
       if key in reserved_names:
         continue
       if value is self.maker:
@@ -362,6 +365,10 @@ class _NameCtx:
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
+    assert self.parent and self.parent.maker
+    for key, value in vars(self.parent.maker).items():
+      if value is self.maker:
+        return key
     for call in self.maker.calls:
       if call is self:
         continue  # ignore this
