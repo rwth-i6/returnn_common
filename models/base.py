@@ -356,7 +356,7 @@ class _NameCtx:
 
   def _get_name(self) -> str:
     assert self.parent and self.parent.maker
-    reserved_names = set(self.childs.keys()) | self._ReservedNames
+    reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
     for key, value in vars(self.parent.maker).items():
       if key in reserved_names:
         continue
@@ -378,7 +378,7 @@ class _NameCtx:
 
   def _get_unique_name(self) -> str:
     name = self._get_suggested_name()
-    reserved_names = set(vars(self.parent.maker).keys()) | set(self.childs.keys()) | self._ReservedNames
+    reserved_names = set(vars(self.parent.maker).keys()) | set(self.parent.childs.keys()) | self._ReservedNames
     if name not in reserved_names:
       return name
     i = 0
