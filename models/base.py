@@ -179,7 +179,44 @@ class ILayerMaker:
       return layer
 
 
-class Module(ILayerMaker):
+class ISubnet(ILayerMaker):
+  """
+  This is a base class to build subnetworks.
+  """
+
+  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
+    """
+    Make subnet layer dict.
+    """
+    from .layers import Copy
+    name_ctx = NameCtx.top()
+    assert name_ctx.maker is self
+    name_ctx.is_subnet_ctx = True
+    res = self._subnet_func(*args, **kwargs)
+    Copy()(res, name="output")
+    return self._make_layer_dict_from_subnet_ctx(name_ctx)
+
+  def _subnet_func(self, *args, **kwargs) -> LayerRef:
+    raise NotImplementedError
+
+  def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
+    raise NotImplementedError
+
+  def make_root_net_dict(self) -> NetDictRaw:
+    """
+    Make net dict, to be used as the main RETURNN network, not within a subnetwork.
+    Extern data can be accessed via :func:`get_root_extern_data`.
+    """
+    from .layers import Copy
+    with NameCtx(maker=self, parent=None) as name_ctx:
+      name_ctx.is_subnet_ctx = True
+      res = self._subnet_func()
+      if "output" not in name_ctx.childs:
+        Copy()(res, name="output")
+      return name_ctx.make_net_dict()
+
+
+class Module(ISubnet):
   """
   This represents a subnetwork in RETURNN, or the root network.
 
@@ -206,53 +243,34 @@ class Module(ILayerMaker):
     """
     raise NotImplementedError
 
-  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
-    """
-    Make subnet layer dict.
-    """
-    from .layers import Copy
-    name_ctx = NameCtx.top()
-    assert name_ctx.maker is self
-    name_ctx.is_subnet_ctx = True
-    res = self.forward(*args, **kwargs)
-    Copy()(res, name="output")
+  _subnet_func = forward
+
+  # noinspection PyMethodMayBeStatic
+  def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
-  def make_root_net_dict(self) -> NetDictRaw:
-    """
-    Make net dict, to be used as the main RETURNN network, not within a subnetwork.
-    Extern data can be accessed via :func:`get_root_extern_data`.
-    """
-    from .layers import Copy
-    with NameCtx(maker=self, parent=None) as name_ctx:
-      name_ctx.is_subnet_ctx = True
-      res = self.forward()
-      if "output" not in name_ctx.childs:
-        Copy()(res, name="output")
-      return name_ctx.make_net_dict()
 
-
-class Rec(ILayerMaker):
+class Rec(ISubnet):
   """
   This represents a RecLayer subnetwork in RETURNN.
   """
 
-  def step(self) -> LayerRef:
+  def step(self, *args, **kwargs) -> LayerRef:
     """
     Constructs the output for one step.
     You can write PyTorch-style code here.
+
+    The arguments (args, kwargs) are references to the base network.
+    We do **not** explicitly unroll this, so use UnrollLayer (or so)
+    (which would unroll it step-by-step via TensorArray,
+     if inside the loop, and just Copy if outside;
+     also checks that the time axis matches).
     """
     raise NotImplementedError
 
-  def make_layer_dict(self) -> LayerDictRaw:
-    """
-    Make subnet layer dict.
-    """
-    from .layers import Copy
-    res = self.step()
-    Copy()(res, name="output")
-    name_ctx = NameCtx.top()
-    assert name_ctx.maker is self
+  _subnet_func = step
+
+  def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict()}
 
 
