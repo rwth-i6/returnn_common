@@ -3,8 +3,15 @@ Base interfaces.
 
 The core interfaces for the user are:
 
-* :class:`ILayerMaker`, to directly create a layer dict
-* :class:`Module`, to write PyTorch-style code, which acts like a subnetwork
+* :class:`ILayerMaker`, to directly create a layer dict.
+  We recommend to use this only for directly wrapping RETURNN layers
+  and not for any higher-level logic,
+  which should be done as a :class:`Module`.
+
+* :class:`Module`, to write PyTorch-style code, which acts like a subnetwork.
+  We recommend to use this as the base interface
+  for any higher-level interfaces
+  (such as a generic decoder interface).
 
 Instances of both objects can be called directly,
 and return instances of type :class:`LayerRef`,
@@ -15,11 +22,43 @@ Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
 The root network should be a :class:`Module`,
 and then you can use ``mod.make_root_net_dict()``
 to get the network dict.
+Code example::
+
+    class Network(Module):
+      def __init__(self):
+        super().__init__()
+        self.lstm = Lstm(n_out=1024)
+
+      def forward(self):
+        x = get_extern_data("data")
+        y = self.lstm(x)
+        return y
+
+    net = Network()
+    net_dict = net.make_root_net_dict()
+
 
 Alternatively, use ``with NameCtx.new_root() as name_ctx``
 to setup an unnamed root name context
 and then ``name_ctx.make_net_dict()``
 to get the network dict.
+Code example::
+
+    with NameCtx.new_root() as root_name_ctx:
+      lstm = Lstm(n_out=1024)
+      x = get_extern_data("data")
+      y = lstm(x)
+
+    net_dict = root_name_ctx.make_net_dict()
+
+---
+
+Code conventions:
+
+- Usual, as in RETURNN, PEP8, 2-space indents, 120 char line limit.
+- Pure interface classes are prefixed with `I`.
+  (`Module` is an exception because this is made analogue to PyTorch).
+
 """
 
 from __future__ import annotations
