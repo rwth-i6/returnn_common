@@ -243,7 +243,8 @@ class Module(ISubnet):
     """
     raise NotImplementedError
 
-  _subnet_func = forward
+  def _subnet_func(self, *args, **kwargs) -> LayerRef:
+    return self.forward(*args, **kwargs)
 
   # noinspection PyMethodMayBeStatic
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
@@ -268,7 +269,8 @@ class Rec(ISubnet):
     """
     raise NotImplementedError
 
-  _subnet_func = step
+  def _subnet_func(self, *args, **kwargs) -> LayerRef:
+    return self.step(*args, **kwargs)
 
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict()}
