@@ -84,6 +84,10 @@ class Decoder(Rec):
     # TODO ...
 
 
+# TODO enc ctx module
+# TODO make generic type for args (Generic, TypeVar) to support not just single layer?
+
+
 class IDecoderLabelSyncRnn(Module):
   """
   Represents SlowRNN in Transducer.
@@ -93,7 +97,7 @@ class IDecoderLabelSyncRnn(Module):
               prev_emit: LayerRef,
               unmasked_sparse_label_nb_seq: Optional[LayerRef] = None,
               prev_step_sync_rnn: LayerRef,
-              encoder: LayerRef
+              encoder: LayerRef  # TODO enc ctx?
               ) -> LayerRef:
     """
     Make layer dict.
@@ -110,7 +114,7 @@ class IDecoderStepSyncRnn(Module):
   """
   def forward(self, *,
               prev_label_wb: LayerRef,
-              encoder: LayerRef,
+              encoder: LayerRef,  # TODO enc ctx. or not? need full encoder for full-sum case...
               label_sync_rnn: LayerRef) -> LayerRef:
     """
     prev_label_wb and encoder use the same time dim (T) (or none).
