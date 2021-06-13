@@ -49,7 +49,13 @@ def setup():
       cls_base_str = "ILayerMaker"
 
     print(f"\n\nclass {cls_str}({cls_base_str}):", file=f)
-    print('  """' + layer_class.__doc__ + '"""', file=f)
+    if layer_class.__doc__:
+      print('  """', end="", file=f)
+      for line in layer_class.__doc__.splitlines(keepends=True):
+        print(line if line.strip() else line.strip(" "), end="", file=f)
+      print('  """', file=f)
+    else:
+      print(format_multi_line_str("(undocumented...)", indent="  "), file=f)
 
     if sig.has_module_init_args():
       print("", file=f)
@@ -66,7 +72,7 @@ def setup():
       print('    """', file=f)
       if sig.docstring:
         for line in sig.docstring.splitlines():
-          print("    " + line, file=f)
+          print(("    " + line) if line else "", file=f)
         print("", file=f)
       if sig.need_n_out_init_arg():
         print("    :param int n_out: output dimension", file=f)
@@ -433,7 +439,7 @@ def format_multi_line_str(s: str, *, indent: str = "") -> str:
   ss = StringIO()
   print(indent + '"""', file=ss)
   for line in s.splitlines():
-    print(indent + line, file=ss)
+    print((indent + line) if line.strip() else "", file=ss)
   print(indent + '"""', file=ss, end="")
   return ss.getvalue()
 
