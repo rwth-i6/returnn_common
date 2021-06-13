@@ -281,7 +281,7 @@ class ScaledGradient(Copy):
       **self.get_opts()}
 
 
-class Activation(Copy):
+class Activation(_ConcatInput):
   """
   This layer just applies an activation function.
   See :func:`TFUtil.get_activation_function` about supported functions.
@@ -327,6 +327,79 @@ class BatchNorm(Copy):
   Also see :class:`NormLayer`.
   """
 
+  def __init__(self,
+               *,
+               use_shift: bool = NotSpecified,
+               use_std: bool = NotSpecified,
+               use_sample: float = NotSpecified,
+               force_sample: bool = NotSpecified,
+               momentum: float = NotSpecified,
+               epsilon: float = NotSpecified,
+               update_sample_only_in_training: bool = NotSpecified,
+               delay_sample_update: bool = NotSpecified,
+               param_version: int = NotSpecified,
+               gamma_init: Union[str, float] = NotSpecified,
+               beta_init: Union[str, float] = NotSpecified,
+               masked_time: bool = NotSpecified,
+               **kwargs):
+    """
+    The default settings for these variables are set in the function "batch_norm" of the LayerBase. If you do not want
+    to change them you can leave them undefined here.
+    With our default settings:
+    
+    - In training: use_sample=0, i.e. not using running average, using current batch mean/var.
+    - Not in training (e.g. eval): use_sample=1, i.e. using running average, not using current batch mean/var.
+    - The running average includes the statistics of the current batch.
+    - The running average is also updated when not training.
+
+    :param bool use_shift:
+    :param bool use_std:
+    :param float use_sample: defaults to 0.0 which is used in training
+    :param bool force_sample: even in eval, use the use_sample factor
+    :param float momentum: for the running average of sample_mean and sample_std
+    :param float epsilon:
+    :param bool update_sample_only_in_training:
+    :param bool delay_sample_update:
+    :param int param_version: 0 or 1
+    :param str|float gamma_init: see :func:`TFUtil.get_initializer`, for the scale
+    :param str|float beta_init: see :func:`TFUtil.get_initializer`, for the mean
+    :param bool masked_time: flatten and mask input tensor
+    """
+    super().__init__(**kwargs)
+    self.use_shift = use_shift
+    self.use_std = use_std
+    self.use_sample = use_sample
+    self.force_sample = force_sample
+    self.momentum = momentum
+    self.epsilon = epsilon
+    self.update_sample_only_in_training = update_sample_only_in_training
+    self.delay_sample_update = delay_sample_update
+    self.param_version = param_version
+    self.gamma_init = gamma_init
+    self.beta_init = beta_init
+    self.masked_time = masked_time
+
+  def get_opts(self):
+    """
+    Return all options
+    """
+    opts = {
+      'use_shift': self.use_shift,
+      'use_std': self.use_std,
+      'use_sample': self.use_sample,
+      'force_sample': self.force_sample,
+      'momentum': self.momentum,
+      'epsilon': self.epsilon,
+      'update_sample_only_in_training': self.update_sample_only_in_training,
+      'delay_sample_update': self.delay_sample_update,
+      'param_version': self.param_version,
+      'gamma_init': self.gamma_init,
+      'beta_init': self.beta_init,
+      'masked_time': self.masked_time,
+    }
+    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
+    return {**opts, **super().get_opts()}
+
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       ) -> LayerDictRaw:
@@ -354,10 +427,10 @@ class LayerNorm(_ConcatInput):
 
   def __init__(self,
                *,
-               epsilon: Any = NotSpecified,
+               epsilon: float = NotSpecified,
                **kwargs):
     """
-    :param epsilon:
+    :param float epsilon:
     """
     super().__init__(**kwargs)
     self.epsilon = epsilon
@@ -4000,108 +4073,6 @@ class ImageSummary(_Base):
     """
     return {
       'class': 'image_summary',
-      'from': source,
-      **self.get_opts()}
-
-
-class OfficialResNet(_ConcatInput):
-  """
-  Wrapper around extern/official_tf_resnet.
-
-  This operates on NHWC (batch, height, width, channel) data, and returns ND, where D = num_classes.
-  If you have (batch, time, width, channel) as input,
-  you probably want to use :class:`WindowLayer` to get (batch,time,window,width,channel),
-  and then :class:`MergeDimsLayer` to get (batch*time,window,width,channel),
-  such that we would interpret window = height here.
-  Then the output is (batch*time,D),
-  and you can use :class:`SplitBatchTimeLayer` to get (batch,time,D).
-  As you get logits, you can then use :class:`ActivationLayer` with softmax.
-  """
-
-  def __init__(self,
-               *,
-               num_classes: int,
-               final_size: Any,
-               num_filters: Any,
-               kernel_size: Any,
-               conv_stride: Any,
-               first_pool_size: Any,
-               first_pool_stride: Any,
-               first_kernel_size: Any = NotSpecified,
-               block_sizes: Any = NotSpecified,
-               block_strides: Any = NotSpecified,
-               conv_time_dim: Any = NotSpecified,
-               bottleneck: Any = NotSpecified,
-               resnet_size: Any = NotSpecified,
-               resnet_version: Any = NotSpecified,
-               data_format: Any = NotSpecified,
-               **kwargs):
-    """
-    :param int num_classes:
-    :param final_size:
-    :param num_filters:
-    :param kernel_size:
-    :param conv_stride:
-    :param first_pool_size:
-    :param first_pool_stride:
-    :param first_kernel_size:
-    :param block_sizes:
-    :param block_strides:
-    :param conv_time_dim:
-    :param bottleneck:
-    :param resnet_size:
-    :param resnet_version:
-    :param data_format:
-    """
-    super().__init__(**kwargs)
-    self.num_classes = num_classes
-    self.final_size = final_size
-    self.num_filters = num_filters
-    self.kernel_size = kernel_size
-    self.conv_stride = conv_stride
-    self.first_pool_size = first_pool_size
-    self.first_pool_stride = first_pool_stride
-    self.first_kernel_size = first_kernel_size
-    self.block_sizes = block_sizes
-    self.block_strides = block_strides
-    self.conv_time_dim = conv_time_dim
-    self.bottleneck = bottleneck
-    self.resnet_size = resnet_size
-    self.resnet_version = resnet_version
-    self.data_format = data_format
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'num_classes': self.num_classes,
-      'final_size': self.final_size,
-      'num_filters': self.num_filters,
-      'kernel_size': self.kernel_size,
-      'conv_stride': self.conv_stride,
-      'first_pool_size': self.first_pool_size,
-      'first_pool_stride': self.first_pool_stride,
-      'first_kernel_size': self.first_kernel_size,
-      'block_sizes': self.block_sizes,
-      'block_strides': self.block_strides,
-      'conv_time_dim': self.conv_time_dim,
-      'bottleneck': self.bottleneck,
-      'resnet_size': self.resnet_size,
-      'resnet_version': self.resnet_version,
-      'data_format': self.data_format,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'official_resnet',
       'from': source,
       **self.get_opts()}
 
