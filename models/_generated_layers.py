@@ -346,7 +346,7 @@ class BatchNorm(Copy):
     The default settings for these variables are set in the function "batch_norm" of the LayerBase. If you do not want
     to change them you can leave them undefined here.
     With our default settings:
-    
+
     - In training: use_sample=0, i.e. not using running average, using current batch mean/var.
     - Not in training (e.g. eval): use_sample=1, i.e. using running average, not using current batch mean/var.
     - The running average includes the statistics of the current batch.
