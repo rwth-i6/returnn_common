@@ -2214,7 +2214,7 @@ class Conv(_ConcatInput):
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
-    :param int n_out: output dimension
+    :param int n_out: number of outgoing features
     :param tuple[int] filter_size: (width,), (height,width) or (depth,height,width) for 1D/2D/3D conv.
       the input data ndim must match, or you can add dimensions via input_expand_dims or input_add_feature_dim.
       it will automatically swap the batch-dim to the first axis of the input data.
@@ -4259,7 +4259,7 @@ class RnnCell(_ConcatInput):
                weights_init: Any = NotSpecified,
                **kwargs):
     """
-    :param int n_out: output dimension
+    :param int n_out: so far, only output shape (batch,n_out) supported
     :param str|tf.contrib.rnn.RNNCell unit: e.g. "BasicLSTM" or "LSTMBlock"
     :param dict[str]|None unit_opts: passed to the cell.__init__
     :param None initial_output: the initial output is defined implicitly via initial state, thus don't set this
@@ -4973,15 +4973,18 @@ class PositionalEncoding(_ConcatInput):
   """
 
   def __init__(self,
+               n_out: int,
                *,
                add_to_input: bool = NotSpecified,
                constant: int = NotSpecified,
                **kwargs):
     """
+    :param int n_out: output dimension
     :param bool add_to_input: will add the signal to the input
     :param int constant: if positive, always output the corresponding positional encoding.
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.add_to_input = add_to_input
     self.constant = constant
 
@@ -4990,6 +4993,7 @@ class PositionalEncoding(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'add_to_input': self.add_to_input,
       'constant': self.constant,
     }
@@ -5293,17 +5297,20 @@ class RelativePositionalEncoding(_ConcatInput):
   """
 
   def __init__(self,
+               n_out: int,
                *,
                forward_weights_init: str = NotSpecified,
                clipping: int = NotSpecified,
                fixed: bool = NotSpecified,
                **kwargs):
     """
+    :param int n_out: Feature dimension of encoding.
     :param str forward_weights_init: see :func:`TFUtil.get_initializer`
     :param int clipping: After which distance to fallback to the last encoding
     :param bool fixed: Uses sinusoid positional encoding instead of learned parameters
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.forward_weights_init = forward_weights_init
     self.clipping = clipping
     self.fixed = fixed
@@ -5313,6 +5320,7 @@ class RelativePositionalEncoding(_ConcatInput):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'forward_weights_init': self.forward_weights_init,
       'clipping': self.clipping,
       'fixed': self.fixed,
