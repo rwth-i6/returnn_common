@@ -62,11 +62,12 @@ def setup():
       if sig.module_init_needs_suppress_shadow_builtin_warning():
         print("  # noinspection PyShadowingBuiltins", file=f)
       print("  def __init__(self,", file=f)
-      if sig.need_n_out_init_arg():
-        print("               n_out: int,", file=f)
-      print("               *,", file=f)
+      printed_keyword_only_symbol = False
       for _, param in sig.params.items():
         if param.is_module_init_arg():
+          if not printed_keyword_only_symbol and param.inspect_param.kind == param.inspect_param.KEYWORD_ONLY:
+            print("               *,", file=f)
+            printed_keyword_only_symbol = True
           print(f"               {param.get_module_param_code_str()},", file=f)
       print(f"               {'**kwargs' if issubclass(cls_base, LayerBase) else ''}):", file=f)
       print('    """', file=f)
@@ -74,15 +75,11 @@ def setup():
         for line in sig.docstring.splitlines():
           print(("    " + line) if line else "", file=f)
         print("", file=f)
-      if sig.need_n_out_init_arg():
-        print("    :param int n_out: output dimension", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
       print(f"    super().__init__({'**kwargs' if issubclass(cls_base, LayerBase) else ''})", file=f)
-      if sig.need_n_out_init_arg():
-        print(f"    self.n_out = n_out", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
@@ -91,8 +88,6 @@ def setup():
       print("  def get_opts(self):", file=f)
       print(format_multi_line_str("Return all options", indent="    "), file=f)
       print("    opts = {", file=f)
-      if sig.need_n_out_init_arg():
-        print("      'n_out': self.n_out,", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"      '{param.returnn_name}': self.{param.get_module_param_name()},", file=f)
@@ -153,14 +148,6 @@ class LayerSignature:
     self._init_args()
     self._parse_init_docstring()
 
-  def need_n_out_init_arg(self) -> bool:
-    """
-    Whether ``n_out`` must be specified
-    """
-    if self.layer_class in (LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer):
-      return True
-    return False
-
   def has_source_param(self) -> bool:
     """
     Whether this param has a "from" arg.
@@ -205,8 +192,6 @@ class LayerSignature:
     """
     Whether there are other call args (despite source)
     """
-    if self.need_n_out_init_arg():
-      return True
     for _, param in self.params.items():
       if param.is_module_init_arg():
         return True
@@ -264,6 +249,15 @@ class LayerSignature:
     "extra_deps"}
 
   def _init_args(self):
+    # n_out is handled specially
+    if self.layer_class in (LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer):
+      self.params["n_out"] = LayerSignature.Param(
+        self,
+        inspect.Parameter(
+          name="n_out",
+          kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
+        param_type_s="int",
+        docstring="output dimension")
     for name, param in self.inspect_init_sig.parameters.items():
       # Ignore a number of params which are handled explicitly.
       if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
@@ -272,6 +266,7 @@ class LayerSignature:
         continue
       if name in self._IgnoreParamNames:
         continue
+      param = inspect.Parameter(name=param.name, kind=param.KEYWORD_ONLY, default=param.default)
       self.params[name] = LayerSignature.Param(self, param)
 
   def _parse_init_docstring(self):
@@ -334,12 +329,15 @@ class LayerSignature:
     """
     One param
     """
-    def __init__(self, parent: LayerSignature, param: inspect.Parameter):
+    def __init__(self, parent: LayerSignature, param: inspect.Parameter,
+                 *,
+                 docstring: Optional[str] = None,
+                 param_type_s: Optional[str] = None):
       self.parent = parent
       self.inspect_param = param
       self.returnn_name = param.name
-      self.docstring = None  # type: Optional[str]
-      self.param_type_s = None  # type: Optional[str]
+      self.docstring = docstring
+      self.param_type_s = param_type_s
 
     def __repr__(self):
       return f"<Param {self.parent.layer_class.__name__} {self.returnn_name}>"
