@@ -20,6 +20,7 @@ from returnn.tf.layers.basic import CombineLayer, CompareLayer
 from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
 from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
+from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -248,9 +249,13 @@ class LayerSignature:
     "reuse_params", "rec_previous_layer", "control_dependencies_on_output",
     "extra_deps"}
 
+  _LayerClassesWithExplicitDim = {
+    LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer,
+    PositionalEncodingLayer, RelativePositionalEncodingLayer}
+
   def _init_args(self):
     # n_out is handled specially
-    if self.layer_class in (LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer):
+    if self.layer_class in self._LayerClassesWithExplicitDim:
       self.params["n_out"] = LayerSignature.Param(
         self,
         inspect.Parameter(
@@ -305,7 +310,7 @@ class LayerSignature:
           assert isinstance(param_type_s, str) and isinstance(param_name, str)
         if param_name.startswith("_"):
           continue
-        if param_name in self._IgnoreParamNames:
+        if param_name in self._IgnoreParamNames and param_name not in self.params:
           continue
         if param_name not in self.params:  # some typo or bugs we might have in some RETURNN version
           continue
