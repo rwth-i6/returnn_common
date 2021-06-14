@@ -256,6 +256,21 @@ class Rec(ISubnet):
   This represents a RecLayer subnetwork in RETURNN.
   """
 
+  def __init__(self, *,
+               max_seq_len: Optional[Union[str, int]] = NotSpecified,
+               optimize_move_layers_out: Optional[bool] = NotSpecified,
+               cheating: bool = NotSpecified,
+               unroll: bool = NotSpecified,
+               back_prop: Optional[bool] = NotSpecified,
+               use_global_rec_step_offset: bool = NotSpecified,
+               include_eos: bool = NotSpecified,
+               debug: Optional[bool] = NotSpecified,
+               ):
+    super(Rec, self).__init__()
+    self.extra_opts = {
+      key: value for (key, value) in locals().items()
+      if value is not NotSpecified and key != "self"}
+
   def step(self, *args, **kwargs) -> LayerRef:
     """
     Constructs the output for one step.
@@ -273,7 +288,7 @@ class Rec(ISubnet):
     return self.step(*args, **kwargs)
 
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
-    return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict()}
+    return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.extra_opts}
 
 
 def get_root_extern_data(data_key: str) -> LayerRef:
