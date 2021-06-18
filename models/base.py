@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from returnn.util.basic import NotSpecified
 from tensorflow.python.util import nest
 
