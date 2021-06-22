@@ -271,7 +271,7 @@ class LayerSignature:
         self,
         inspect.Parameter(
           name="target",
-          kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
+          kind=inspect.Parameter.KEYWORD_ONLY),
         param_type_s="LayerRef",
         docstring="explicit target")
     for name, param in self.inspect_init_sig.parameters.items():
