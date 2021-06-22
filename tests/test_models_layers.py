@@ -18,7 +18,7 @@ def _test_net_returnn(net_dict: Dict[str, Dict[str, Any]], *, train: bool = Fals
   Runs a couple of training iterations using some dummy dataset on the net dict.
   Use this to validate that the net dict is sane.
   Note that this is somewhat slow. The whole TF session setup and net construction can take 5-30 secs or so.
-  It is not recommeded to use this for every single test case.
+  It is not recommended to use this for every single test case.
 
   The dummy dataset might change at some point...
 
