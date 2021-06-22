@@ -299,14 +299,7 @@ def get_root_extern_data(data_key: str) -> LayerRef:
   scope_abs = scope.get_abs_name_ctx_list()
   root_scope = scope_abs[0]
   root_layer_name = f"data:{data_key}"
-  if root_layer_name in root_scope.childs:
-    name_ = root_scope.childs[root_layer_name]
-    assert name_.layer_ref
-  else:
-    name_ = NameCtx(name=root_layer_name, parent=root_scope)
-    LayerRef(name_ctx=name_)
-    assert name_.layer_ref
-  return name_.layer_ref
+  return get_special_layer(root_layer_name, scope=root_scope)
 
 
 def get_extern_data(data_key: str) -> LayerRef:
@@ -316,19 +309,21 @@ def get_extern_data(data_key: str) -> LayerRef:
   return get_special_layer(f"data:{data_key}")
 
 
-def get_special_layer(name: str) -> LayerRef:
+def get_special_layer(name: str, *, scope: Optional[NameCtx] = None) -> LayerRef:
   """
   Special layer can be "data:..." or whatever.
   """
-  scope = NameCtx.current_ctx()  # must exist
+  if not scope:
+    scope = NameCtx.current_ctx()  # must exist
   if name in scope.childs:
     name_ = scope.childs[name]
     assert name_.layer_ref
+    return name_.layer_ref
   else:
     name_ = NameCtx(name=name, parent=scope)
-    LayerRef(name_ctx=name_)
-    assert name_.layer_ref
-  return name_.layer_ref
+    layer_ref = LayerRef(name_ctx=name_)
+    assert name_.layer_ref is layer_ref
+    return layer_ref
 
 
 class NameCtx:
