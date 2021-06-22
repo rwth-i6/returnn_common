@@ -253,7 +253,7 @@ class LayerSignature:
     LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer,
     PositionalEncodingLayer, RelativePositionalEncodingLayer}
 
-  _LayerClassesWithExplicitTarget={
+  _LayerClassesWithExplicitTarget = {
     BaseChoiceLayer}
 
   def _init_args(self):
