@@ -33,6 +33,7 @@ def test_simple_net_share_params():
   class _Net(Module):
     def __init__(self):
       super().__init__()
+      self.linear = Linear(n_out=13, activation=None)
       self.lstm = Lstm(n_out=13)
 
     def forward(self) -> LayerRef:
@@ -40,6 +41,7 @@ def test_simple_net_share_params():
       Forward
       """
       x = get_extern_data("data")
+      x = self.linear(x)
       x = self.lstm(x)
       x = self.lstm(x)
       return x
