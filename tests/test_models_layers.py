@@ -24,7 +24,7 @@ def _test_net_returnn(net_dict: Dict[str, Dict[str, Any]], *, train: bool = Fals
 
   Maybe this gets extended...
   """
-  from returnn.tf.engine import Engine, Runner
+  from returnn.tf.engine import Engine
   from returnn.datasets import init_dataset
   from returnn.config import Config
   n_data_dim, n_classes_dim = 5, 7
