@@ -21,6 +21,7 @@ from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
 from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
 from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
+from returnn.tf.layers.rec import ChoiceLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -253,6 +254,9 @@ class LayerSignature:
     LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer,
     PositionalEncodingLayer, RelativePositionalEncodingLayer}
 
+  _LayerClassesWithExplicitTarget = {
+    ChoiceLayer}
+
   def _init_args(self):
     # n_out is handled specially
     if self.layer_class in self._LayerClassesWithExplicitDim:
@@ -263,6 +267,14 @@ class LayerSignature:
           kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
         param_type_s="int",
         docstring="output dimension")
+    if self.layer_class in self._LayerClassesWithExplicitTarget:
+      self.params["target"] = LayerSignature.Param(
+        self,
+        inspect.Parameter(
+          name="target",
+          kind=inspect.Parameter.KEYWORD_ONLY),
+        param_type_s="LayerBase",
+        docstring="target")
     for name, param in self.inspect_init_sig.parameters.items():
       # Ignore a number of params which are handled explicitly.
       if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
