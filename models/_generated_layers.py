@@ -1527,7 +1527,7 @@ class Pad(_ConcatInput):
     :param str|list[str] axes: e.g. "F" etc. see :func:`Dataset.get_axes_from_description`.
     :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
     :param int|float value: what constant value to pad, with mode=="constant"
-    :param str mode: "constant", "reflect" or "symmetric"
+    :param str mode: "constant", "reflect", "symmetric" and "replication"
     """
     super().__init__(**kwargs)
     self.axes = axes
