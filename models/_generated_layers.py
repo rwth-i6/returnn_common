@@ -4530,12 +4530,14 @@ class Choice(BaseChoice):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
+                      target: LayerRef,
                       explicit_search_sources: Optional[List[LayerRef]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
+      'target': target,
       'explicit_search_sources': explicit_search_sources,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
