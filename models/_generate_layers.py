@@ -22,7 +22,6 @@ from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, Swi
 from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
 from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
 from returnn.tf.layers.rec import BaseChoiceLayer
-from returnn_common.models.base import LayerRef
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
 
