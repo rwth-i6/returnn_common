@@ -76,6 +76,7 @@ def test_explicit_root_ctx():
     assert isinstance(out, Layer)
     assert_equal(out.get_name(), "Net")
 
+    Copy()(out, name="output")  # make some dummy output layer
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
