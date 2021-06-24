@@ -126,8 +126,9 @@ class Layer(LayerRef):
     """
     assert "loss" not in self.layer_dict
     self.layer_dict["loss"] = "as_is"
-    assert "loss_scale" not in self.layer_dict
-    self.layer_dict["loss_scale"] = loss_scale
+    if loss_scale is not None:
+      assert "loss_scale" not in self.layer_dict
+      self.layer_dict["loss_scale"] = loss_scale
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
