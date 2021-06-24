@@ -123,7 +123,6 @@ class Layer(LayerRef):
   def mark_as_loss(self, loss_scale: Optional[float] = 1.0):
     """
     Mark this as a loss.
-    :param loss_scale: scale factor for loss (1.0 by default)
     """
     assert "loss" not in self.layer_dict
     self.layer_dict["loss"] = "as_is"
