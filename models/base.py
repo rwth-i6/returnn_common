@@ -120,12 +120,15 @@ class Layer(LayerRef):
     self.maker = maker
     self.layer_dict = layer_dict
 
-  def mark_as_loss(self):
+  def mark_as_loss(self, loss_scale=1.0):
     """
     Mark this as a loss.
+    :param loss_scale: scale factor for loss (1.0 by default)
     """
     assert "loss" not in self.layer_dict
     self.layer_dict["loss"] = "as_is"
+    assert "loss_scale" not in self.layer_dict
+    self.layer_dict["loss_scale"] = loss_scale
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
