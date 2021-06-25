@@ -209,11 +209,9 @@ class ISubnet(ILayerMaker):
     else:
       # we return more than one layer (thus also working on other layers of the subnet, that are not output
       # by convention: first layer is the output layer
-      #assert isinstance(res, Tuple)  # return of multiple layer needs to be iterable
+      assert isinstance(res, Tuple)
       Copy()(res[0], name="output")
       return (self._make_layer_dict_from_subnet_ctx(name_ctx), *res[1:])
-
-
 
   def _subnet_func(self, *args, **kwargs) -> LayerRef:
     raise NotImplementedError
