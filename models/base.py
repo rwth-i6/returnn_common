@@ -211,7 +211,7 @@ class ISubnet(ILayerMaker):
       # by convention: first layer is the output layer
       res_flat = nest.flatten(res)
       Copy()(res[0], name="output")
-      return (self._make_layer_dict_from_subnet_ctx(name_ctx), *res[1:])
+      return self._make_layer_dict_from_subnet_ctx(name_ctx), nest.pack_sequence_as(res, res_flat)
 
   def _subnet_func(self, *args, **kwargs) -> LayerRef:
     raise NotImplementedError
