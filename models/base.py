@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Tuple
 from returnn.util.basic import NotSpecified
 from tensorflow.python.util import nest
 
@@ -166,6 +166,10 @@ class ILayerMaker:
       if self.calls:
         name_ctx.is_repeated_call = True
       layer_dict = self.make_layer_dict(*args, **kwargs)
+      ret = None
+      if isinstance(layer_dict, Tuple):
+        ret = layer_dict[1:]
+        layer_dict = layer_dict[0]
       layer_dict = nest.map_structure(
         lambda x: x.get_name() if isinstance(x, LayerRef) else x,
         layer_dict)
@@ -179,6 +183,8 @@ class ILayerMaker:
           layer_dict["reuse_params"] = self.calls[0].get_name()
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
+      if ret:
+        return layer, *ret
       return layer
 
 
@@ -196,8 +202,18 @@ class ISubnet(ILayerMaker):
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self._subnet_func(*args, **kwargs)
-    Copy()(res, name="output")
-    return self._make_layer_dict_from_subnet_ctx(name_ctx)
+    # check if we receive more than one layer as return of a subnet
+    if isinstance(res, (Layer, type(List[Layer]))):
+      Copy()(res, name="output")
+      return self._make_layer_dict_from_subnet_ctx(name_ctx)
+    else:
+      # we return more than one layer (thus also working on other layers of the subnet, that are not output
+      # by convention: first layer is the output layer
+      #assert isinstance(res, Tuple)  # return of multiple layer needs to be iterable
+      Copy()(res[0], name="output")
+      return self._make_layer_dict_from_subnet_ctx(name_ctx), *res[1:]
+
+
 
   def _subnet_func(self, *args, **kwargs) -> LayerRef:
     raise NotImplementedError
