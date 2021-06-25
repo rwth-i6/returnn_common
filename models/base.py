@@ -184,7 +184,7 @@ class ILayerMaker:
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
       if ret:
-        return layer, *ret
+        return (layer, *ret)
       return layer
 
 
@@ -211,7 +211,7 @@ class ISubnet(ILayerMaker):
       # by convention: first layer is the output layer
       #assert isinstance(res, Tuple)  # return of multiple layer needs to be iterable
       Copy()(res[0], name="output")
-      return self._make_layer_dict_from_subnet_ctx(name_ctx), *res[1:]
+      return (self._make_layer_dict_from_subnet_ctx(name_ctx), *res[1:])
 
 
 
