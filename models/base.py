@@ -446,7 +446,7 @@ class NameCtx:
     if len(cur_scope_abs) < len(self_name_abs): # grabbing a sublayer
       full_name = self_name_abs[-1].get_abs_name()
       subs = full_name.split("/")
-      relative_name = subs[:len(cur_scope_abs)]
+      relative_name = subs[len(cur_scope_abs)-1:-1]
       prefix = "/".join(relative_name)
       return prefix + "/" + self.name
     common_len = 0
