@@ -195,7 +195,7 @@ def test_mult_returns():
       super().__init__()
       self.linear = Linear(n_out=42, activation=None)
 
-    def forward(self) -> Union[LayerRef, Tuple[LayerRef, Any]]:
+    def forward(self) -> Tuple[LayerRef, LayerRef]:
       """
       Forward
       """
