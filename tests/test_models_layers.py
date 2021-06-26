@@ -190,7 +190,7 @@ def test_root_mod_call_twice():
 
 
 def test_multiple_returns():
-  class _SubNet(Module):
+  class _SubSubNet(Module):
     def __init__(self):
       super().__init__()
       self.linear = Linear(n_out=13, activation=None)
@@ -201,6 +201,18 @@ def test_multiple_returns():
       """
       x = self.linear(x)
       return x, x
+
+  class _SubNet(Module):
+    def __init__(self):
+      super().__init__()
+      self.sub = _SubSubNet()
+
+    def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
+      """
+      Forward
+      """
+      x, x_ = self.sub(x)
+      return x, x_
 
   class _Net(Module):
     def __init__(self):
@@ -213,7 +225,6 @@ def test_multiple_returns():
       """
       x = get_extern_data("data")
       out, add_out = self.sub(x)
-      assert out == add_out
       return out
 
   net = _Net()
