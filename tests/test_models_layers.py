@@ -217,4 +217,6 @@ def test_multiple_returns():
       return out
 
   net = _Net()
-  net.make_root_net_dict()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+  ... assert ...
