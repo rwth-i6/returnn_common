@@ -443,7 +443,12 @@ class NameCtx:
     cur_scope_abs = cur_scope.get_abs_name_ctx_list()
     self_name_abs = self.get_abs_name_ctx_list()
     assert cur_scope_abs[0] is self_name_abs[0]  # same root
-    assert len(cur_scope_abs) >= len(self_name_abs)  # not implemented otherwise
+    if len(cur_scope_abs) < len(self_name_abs): # grabbing a sublayer
+      full_name = self_name_abs[-1].get_abs_name()
+      subs = full_name.split("/")
+      relative_name = subs[:len(cur_scope_abs)]
+      prefix = "/".join(relative_name)
+      return prefix + "/" + self.name
     common_len = 0
     while cur_scope_abs[common_len + 1] is self_name_abs[common_len + 1]:
       common_len += 1
