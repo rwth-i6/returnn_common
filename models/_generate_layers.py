@@ -21,7 +21,7 @@ from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
 from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
 from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
-from returnn.tf.layers.rec import ChoiceLayer
+from returnn.tf.layers.rec import ChoiceLayer, GenericAttentionLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -154,7 +154,9 @@ class LayerSignature:
     """
     Whether this param has a "from" arg.
     """
-    if issubclass(self.layer_class, (SourceLayer, ConstantLayer, VariableLayer, CondLayer, SwitchLayer)):
+    if issubclass(
+          self.layer_class,
+          (SourceLayer, ConstantLayer, VariableLayer, CondLayer, SwitchLayer, GenericAttentionLayer)):
       return False
     return True
 
