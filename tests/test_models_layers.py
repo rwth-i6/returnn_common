@@ -204,5 +204,5 @@ def test_mult_returns():
       return x, x
 
   net = _Net()
-  x, x_ = net()
-  assert x == x_
+  out, add_out = net()
+  assert out == add_out
