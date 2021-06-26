@@ -202,8 +202,7 @@ class ISubnet(ILayerMaker):
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self._subnet_func(*args, **kwargs)
-    # check if we receive more than one layer as return of a subnet
-    if isinstance(res, (Layer, type(List[Layer]))):
+    if isinstance(res, LayerRef):
       Copy()(res, name="output")
       return self._make_layer_dict_from_subnet_ctx(name_ctx)
     else:
