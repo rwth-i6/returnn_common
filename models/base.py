@@ -161,7 +161,7 @@ class ILayerMaker:
     """
     return self.__class__.__name__
 
-  def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
+  def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Union[Layer, Tuple[LayerRef], Any]:
     with NameCtx(maker=self, name=name) as name_ctx:
       if self.calls:
         name_ctx.is_repeated_call = True
@@ -193,7 +193,7 @@ class ISubnet(ILayerMaker):
   This is a base class to build subnetworks.
   """
 
-  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
+  def make_layer_dict(self, *args, **kwargs) -> Union[LayerDictRaw, Tuple[LayerDictRaw, Any]]:
     """
     Make subnet layer dict.
     """
