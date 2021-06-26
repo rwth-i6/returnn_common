@@ -187,3 +187,22 @@ def test_root_mod_call_twice():
 
   assert "TestBlock" in net_dict and "TestBlock_0" in net_dict
   assert_equal(net_dict["TestBlock_0"]["reuse_params"], "TestBlock")
+
+
+def test_mult_returns():
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(n_out=42, activation=None)
+
+    def forward(self) -> Union[LayerRef, Tuple[LayerRef, Any]]:
+      """
+      Forward
+      """
+      x = get_extern_data("data")
+      x = self.linear(x)
+      return x, x
+
+  net = _Net()
+  x, x_ = net()
+  assert x == x_
