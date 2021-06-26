@@ -55,7 +55,7 @@ class _Base(ILayerMaker):
                updater_opts: Optional[Dict[str]] = NotSpecified,
                initial_output: Union[str, float] = NotSpecified,
                collocate_with: Optional[List[str]] = NotSpecified,
-               trainable: bool = NotSpecified,
+               trainable: Optional[bool] = NotSpecified,
                custom_param_importer: Optional[Union[str, callable]] = NotSpecified,
                register_as_extern_data: Optional[str] = NotSpecified,
                ):
@@ -78,7 +78,8 @@ class _Base(ILayerMaker):
     :param dict[str]|None updater_opts: accepts similar opts as TFUpdater, e.g. "optimizer", "learning_rate", ...
     :param str|float initial_output: used for recurrent layer, see self.get_rec_initial_output()
     :param list[str]|None collocate_with: in the rec layer, collocate with the specified other layers
-    :param bool trainable: whether the parameters of this layer will be trained
+    :param bool|None trainable: whether the parameters of this layer will be trained.
+      default (None) inherits from the parent layer if there is one, or otherwise True.
     :param str|callable|None custom_param_importer: used by :func:`set_param_values_by_dict`
     :param str|None register_as_extern_data: registers output in network.extern_data
     """
@@ -875,7 +876,7 @@ class Linear(_ConcatInput):
   def __init__(self,
                n_out: int,
                *,
-               activation: Optional[str],
+               activation: Optional[str] = NotSpecified,
                with_bias: bool = NotSpecified,
                grad_filter: Optional[float] = NotSpecified,
                forward_weights_init: str = NotSpecified,
