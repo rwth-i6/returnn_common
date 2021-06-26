@@ -189,20 +189,32 @@ def test_root_mod_call_twice():
   assert_equal(net_dict["TestBlock_0"]["reuse_params"], "TestBlock")
 
 
-def test_mult_returns():
-  class _Net(Module):
+def test_multiple_returns():
+  class _SubNet(Module):
     def __init__(self):
       super().__init__()
       self.linear = Linear(n_out=42, activation=None)
 
-    def forward(self) -> Tuple[LayerRef, LayerRef]:
+    def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
+      """
+      Forward
+      """
+      x = self.linear(x)
+      return x, x
+
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.sub = _SubNet()
+
+    def forward(self) -> LayerRef:
       """
       Forward
       """
       x = get_extern_data("data")
-      x = self.linear(x)
-      return x, x
+      out, add_out = self.sub(x)
+      assert out == add_out[0]
+      return out
 
   net = _Net()
-  out, add_out = net()
-  assert out == add_out
+  net.make_root_net_dict()
