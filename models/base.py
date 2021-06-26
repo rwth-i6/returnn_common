@@ -184,7 +184,7 @@ class ILayerMaker:
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
       if ret:
-        return (layer, *ret)
+        return ret
       return layer
 
 
