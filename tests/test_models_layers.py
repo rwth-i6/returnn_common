@@ -213,7 +213,7 @@ def test_multiple_returns():
       """
       x = get_extern_data("data")
       out, add_out = self.sub(x)
-      assert out == add_out[0]
+      assert out == add_out
       return out
 
   net = _Net()
