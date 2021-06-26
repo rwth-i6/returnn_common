@@ -4720,7 +4720,6 @@ class GenericAttention(AttentionBase):
     return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       weights: LayerRef,
                       base: LayerRef,
@@ -4735,7 +4734,6 @@ class GenericAttention(AttentionBase):
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'generic_attention',
-      'from': source,
       **args,
       **self.get_opts()}
 
