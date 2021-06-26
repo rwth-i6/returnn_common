@@ -167,9 +167,9 @@ class ILayerMaker:
         name_ctx.is_repeated_call = True
       layer_dict = self.make_layer_dict(*args, **kwargs)
       ret = None
-      if isinstance(layer_dict, Tuple):
-        ret = layer_dict[1:]
-        layer_dict = layer_dict[0]
+      if not isinstance(layer_dict, dict):
+        layer_dict, ret = layer_dict
+        assert isinstance(layer_dict, dict)
       layer_dict = nest.map_structure(
         lambda x: x.get_name() if isinstance(x, LayerRef) else x,
         layer_dict)
