@@ -193,7 +193,7 @@ def test_multiple_returns():
   class _SubNet(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=42, activation=None)
+      self.linear = Linear(n_out=13, activation=None)
 
     def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
       """
