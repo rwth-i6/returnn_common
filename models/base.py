@@ -447,13 +447,11 @@ class NameCtx:
     max_common_len = max(len(cur_scope_abs), len(cur_scope_abs))
     while common_len+1 < max_common_len and cur_scope_abs[common_len+1] is self_name_abs[common_len+1]:
       common_len += 1
-    if common_len < len(self_name_abs):  # grabbing a sublayer
+    if common_len < len(self_name_abs) and len(cur_scope_abs) < len(self_name_abs):  # grabbing a sublayer
       full_name = self_name_abs[-1].get_abs_name()
       subs = full_name.split("/")
       relative_name = subs[len(cur_scope_abs)-1:-1]
       prefix = "/".join(relative_name)
-      if len(prefix) == 0:  # this case occurs when grabbing data for example, make sure it does not have / infront
-        return self.name
       return prefix + "/" + self.name
     assert common_len == len(self_name_abs) - 2  # not implemented otherwise
     return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name
