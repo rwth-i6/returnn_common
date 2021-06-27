@@ -219,7 +219,7 @@ def test_multiple_returns_depth_1():
   net_dict = net.make_root_net_dict()
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/linear"
-  assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "base:data:data"
+  assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "data:data"
 
 
 def test_multiple_returns_depth_2():
@@ -265,4 +265,4 @@ def test_multiple_returns_depth_2():
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/sub/linear"
   assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub/linear"
-  assert net_dict["sub"]["subnetwork"]["sub"]["subnetwork"]["linear"]["from"] == "base:base:data:data"
+  assert net_dict["sub"]["subnetwork"]["sub"]["subnetwork"]["linear"]["from"] == "data:data"
