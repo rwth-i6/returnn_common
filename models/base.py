@@ -401,6 +401,15 @@ class NameCtx:
         net_dict[key] = value.layer.layer_dict
     return net_dict
 
+  def make_default_output(self, ref: LayerRef) -> LayerRef:
+    """
+    Assume this is a subnet, and make a default output.
+    """
+    from .layers import Copy
+    assert self.is_subnet_ctx
+    assert "output" not in self.childs
+    return Copy()(ref, name="output")
+
   def get_abs_name_ctx_list(self) -> List[NameCtx]:
     """
     Return list [root name ctx, ..., self].

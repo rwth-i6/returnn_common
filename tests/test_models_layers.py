@@ -33,6 +33,26 @@ def test_simple_net():
   dummy_run_net(net_dict)
 
 
+def test_simple_net_explicit_root_ctx():
+  lstm = Lstm(n_out=13)
+
+  with NameCtx.new_root() as name_ctx:
+    out = lstm(get_extern_data("data"))
+    assert isinstance(out, Layer)
+    assert_equal(out.get_name(), "Lstm")
+
+    name_ctx.make_default_output(out)
+    net_dict = name_ctx.make_net_dict()
+    pprint(net_dict)
+
+  assert "Lstm" in net_dict
+  lstm_layer_dict = net_dict["Lstm"]
+  assert_equal(lstm_layer_dict["class"], "rec")
+  assert_equal(lstm_layer_dict["unit"], "nativelstm2")
+  assert_equal(lstm_layer_dict["from"], "data:data")
+  dummy_run_net(net_dict)
+
+
 def test_simple_net_share_params():
   class _Net(Module):
     def __init__(self):
@@ -59,7 +79,7 @@ def test_simple_net_share_params():
   dummy_run_net(net_dict)
 
 
-def test_explicit_root_ctx():
+def test_explicit_root_ctx_sub():
   class Net(Module):
     """
     Net
@@ -81,7 +101,7 @@ def test_explicit_root_ctx():
     assert isinstance(out, Layer)
     assert_equal(out.get_name(), "Net")
 
-    Copy()(out, name="output")  # make some dummy output layer
+    name_ctx.make_default_output(out)
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
