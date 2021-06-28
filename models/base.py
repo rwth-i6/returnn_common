@@ -437,6 +437,9 @@ class NameCtx:
     """
     Get layer name valid for current scope.
     """
+    """
+    Get layer name valid for current scope.
+  """
     cur_scope = NameCtx.current_ctx()
     if self.parent is cur_scope:  # fast path
       return self.name
@@ -444,17 +447,17 @@ class NameCtx:
     self_name_abs = self.get_abs_name_ctx_list()
     assert cur_scope_abs[0] is self_name_abs[0]  # same root
     common_len = 0
-    max_common_len = max(len(cur_scope_abs), len(cur_scope_abs))
-    while common_len+1 < max_common_len and cur_scope_abs[common_len+1] is self_name_abs[common_len+1]:
+    max_common_len = min(len(cur_scope_abs), len(self_name_abs))
+    while common_len + 1 < max_common_len and cur_scope_abs[common_len + 1] is self_name_abs[common_len + 1]:
       common_len += 1
-    if common_len < len(self_name_abs) and len(cur_scope_abs) < len(self_name_abs):  # grabbing a sublayer
-      full_name = self_name_abs[-1].get_abs_name()
-      subs = full_name.split("/")
-      relative_name = subs[len(cur_scope_abs)-1:-1]
-      prefix = "/".join(relative_name)
-      return prefix + "/" + self.name
-    assert common_len == len(self_name_abs) - 2  # not implemented otherwise
-    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name
+    # assert common_len == len(self_name_abs) - 2  # not implemented otherwise
+    full_name = self_name_abs[-1].get_abs_name()
+    subs = full_name.split("/")
+    relative_name = subs[len(cur_scope_abs)-1:-1]
+    prefix = "/".join(relative_name)
+    if not prefix == "":
+      prefix += "/"
+    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + prefix + self.name
 
   def __enter__(self):
     if self.parent:
