@@ -437,9 +437,6 @@ class NameCtx:
     """
     Get layer name valid for current scope.
     """
-    """
-    Get layer name valid for current scope.
-  """
     cur_scope = NameCtx.current_ctx()
     if self.parent is cur_scope:  # fast path
       return self.name
