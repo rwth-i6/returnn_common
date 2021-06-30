@@ -447,7 +447,6 @@ class NameCtx:
     max_common_len = min(len(cur_scope_abs), len(self_name_abs))
     while common_len + 1 < max_common_len and cur_scope_abs[common_len + 1] is self_name_abs[common_len + 1]:
       common_len += 1
-    # assert common_len == len(self_name_abs) - 2  # not implemented otherwise
     full_name = self_name_abs[-1].get_abs_name()
     subs = full_name.split("/")
     relative_name = subs[len(cur_scope_abs)-1:-1]
