@@ -449,7 +449,7 @@ class NameCtx:
       common_len += 1
     full_name = self_name_abs[-1].get_abs_name()
     subs = full_name.split("/")
-    relative_name = subs[len(cur_scope_abs)-1:-1]
+    relative_name = subs[common_len:-1]
     prefix = "/".join(relative_name)
     if prefix:
       prefix += "/"
