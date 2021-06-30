@@ -451,7 +451,7 @@ class NameCtx:
     subs = full_name.split("/")
     relative_name = subs[len(cur_scope_abs)-1:-1]
     prefix = "/".join(relative_name)
-    if not prefix == "":
+    if prefix:
       prefix += "/"
     return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + prefix + self.name
 
