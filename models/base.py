@@ -445,15 +445,11 @@ class NameCtx:
     assert cur_scope_abs[0] is self_name_abs[0]  # same root
     common_len = 0
     max_common_len = min(len(cur_scope_abs), len(self_name_abs))
-    while common_len + 1 < max_common_len and cur_scope_abs[common_len + 1] is self_name_abs[common_len + 1]:
+    while common_len < max_common_len and cur_scope_abs[common_len] is self_name_abs[common_len]:
       common_len += 1
-    full_name = self_name_abs[-1].get_abs_name()
-    subs = full_name.split("/")
-    relative_name = subs[common_len:-1]
-    prefix = "/".join(relative_name)
-    if prefix:
-      prefix += "/"
-    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + prefix + self.name
+    prefix = "base:" * (len(cur_scope_abs) - common_len)
+    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
+    return prefix + postfix
 
   def __enter__(self):
     if self.parent:
