@@ -266,3 +266,43 @@ def test_multiple_returns_depth_2():
   assert net_dict["output"]["from"] == "sub/sub/linear"
   assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub/linear"
   assert net_dict["sub"]["subnetwork"]["sub"]["subnetwork"]["linear"]["from"] == "base:base:data:data"
+
+
+def test_get_name_in_current_ctx():
+  class _SubNet(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(n_out=13, activation=None)
+      self.linear2 = Linear(n_out=13, activation=None)
+
+    def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
+      """
+      Forward
+      """
+      x = self.linear(x)
+      x = self.linear2(x)
+      return x, x
+
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.sub = _SubNet()
+      self.sub2 = _SubNet()
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      x = get_extern_data("data")
+      out, add_out = self.sub(x)
+      out2, add_out2 = self.sub2(add_out)
+      return out2
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+  assert net_dict["output"]["from"] == "sub2/linear2"
+  assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "base:data:data"
+  assert net_dict["sub"]["subnetwork"]["linear2"]["from"] == "linear"
+  assert net_dict["sub2"]["subnetwork"]["linear"]["from"] == "base:sub/linear2"
+  assert net_dict["sub2"]["subnetwork"]["linear2"]["from"] == "linear"
