@@ -268,7 +268,7 @@ def test_multiple_returns_depth_2():
   assert net_dict["sub"]["subnetwork"]["sub"]["subnetwork"]["linear"]["from"] == "base:base:data:data"
 
 
-def test_get_name_in_current_ctx():
+def test_from_call_variations():
   class _SubNet(Module):
     def __init__(self):
       super().__init__()
@@ -306,3 +306,61 @@ def test_get_name_in_current_ctx():
   assert net_dict["sub"]["subnetwork"]["linear2"]["from"] == "linear"
   assert net_dict["sub2"]["subnetwork"]["linear"]["from"] == "base:sub/linear2"
   assert net_dict["sub2"]["subnetwork"]["linear2"]["from"] == "linear"
+
+
+def test_get_name_in_current_ctx():
+  class _SubNet(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(n_out=13, activation=None)
+      self.linear2 = Linear(n_out=13, activation=None)
+
+    def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
+      """
+      Forward
+      """
+      x_ = self.linear(x)
+      x = self.linear2(x_)
+      return x, x_
+
+  class _SubNet2(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(n_out=13, activation=None)
+      self.linear2 = Linear(n_out=13, activation=None)
+
+    def forward(self, x: LayerRef, y: LayerRef) -> Tuple[LayerRef, LayerRef]:
+      """
+      Forward
+      """
+      assert_equal(x.get_name(), "base:sub/linear")
+      assert_equal(y.get_name(), "base:linear")
+      x_ = self.linear(x)
+      x = self.linear2(x_)
+      return x, x_
+
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.sub = _SubNet()
+      self.sub2 = _SubNet2()
+      self.linear = Linear(n_out=13, activation=None)
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      x = get_extern_data("data")
+      out, add_out = self.sub(x)
+      assert_equal(out.get_name(), "sub/linear2")
+      assert_equal(add_out.get_name(), "sub/linear")
+      lin = self.linear(out)
+      assert_equal(lin.get_name(), "linear")
+      out2, add_out2 = self.sub2(add_out, lin)
+      assert_equal(out2.get_name(), "sub2/linear2")
+      assert_equal(add_out2.get_name(), "sub2/linear")
+      return out2
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
