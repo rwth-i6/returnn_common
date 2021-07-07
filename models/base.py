@@ -206,7 +206,7 @@ class ISubnet(ILayerMaker):
       Copy()(res, name="output")
       return self._make_layer_dict_from_subnet_ctx(name_ctx)
     else:
-      # we return more than one layer (thus also working on other layers of the subnet, that are not output
+      # we return more than one layer (thus also working on other layers of the subnet, that are not output)
       # by convention: first layer is the output layer
       res_flat = nest.flatten(res)
       Copy()(res_flat[0], name="output")
