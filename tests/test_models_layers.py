@@ -308,7 +308,7 @@ def test_from_call_variations():
   assert net_dict["sub2"]["subnetwork"]["linear2"]["from"] == "linear"
 
 
-def test_get_name_in_current_ctx():
+def test_from_call_variations2():
   class _SubNet(Module):
     def __init__(self):
       super().__init__()
@@ -364,3 +364,31 @@ def test_get_name_in_current_ctx():
   net = _Net()
   net_dict = net.make_root_net_dict()
   pprint(net_dict)
+
+
+def test_get_name_in_current_ctx():
+
+  def make_ctx(parent: NameCtx = None, name: str = "", subnet=False):
+    """
+    helper that builds the different NameCtxs with correct attributes
+    """
+    if not parent:
+      return NameCtx.new_root()
+    ctx = NameCtx(parent=parent, name=name)
+    if subnet:
+      ctx.is_subnet_ctx = True
+    return ctx
+
+  root = make_ctx(name="root")
+  sub_1 = make_ctx(parent=root, name="sub_1", subnet=True)
+  same = make_ctx(parent=sub_1, name="same", subnet=True)
+  child_1 = make_ctx(parent=same, name="child_1")
+  sub_2 = make_ctx(parent=root, name="sub_2", subnet=True)
+  child_2 = make_ctx(parent=sub_2, name="child_2")
+
+  with root as root_ctx:
+    with sub_1 as sub_ctx:
+      assert_equal(same.get_name_in_current_ctx(), "same")
+      assert_equal(child_1.get_name_in_current_ctx(), "same/child_1")
+      assert_equal(sub_2.get_name_in_current_ctx(), "base:sub_2")
+      assert_equal(child_2.get_name_in_current_ctx(), "base:sub_2/child_2")
