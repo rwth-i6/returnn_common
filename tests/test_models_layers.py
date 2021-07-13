@@ -386,8 +386,8 @@ def test_get_name_in_current_ctx():
   sub_2 = make_ctx(parent=root, name="sub_2", subnet=True)
   child_2 = make_ctx(parent=sub_2, name="child_2")
 
-  with root as root_ctx:
-    with sub_1 as sub_ctx:
+  with root:
+    with sub_1:
       assert_equal(same.get_name_in_current_ctx(), "same")
       assert_equal(child_1.get_name_in_current_ctx(), "same/child_1")
       assert_equal(sub_2.get_name_in_current_ctx(), "base:sub_2")
