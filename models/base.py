@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Tuple
 from returnn.util.basic import NotSpecified
 from tensorflow.python.util import nest
 
@@ -161,11 +161,15 @@ class ILayerMaker:
     """
     return self.__class__.__name__
 
-  def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Layer:
+  def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Union[Layer, Tuple[LayerRef], Any]:
     with NameCtx(maker=self, name=name) as name_ctx:
       if self.calls:
         name_ctx.is_repeated_call = True
       layer_dict = self.make_layer_dict(*args, **kwargs)
+      ret = None
+      if not isinstance(layer_dict, dict):
+        layer_dict, ret = layer_dict
+        assert isinstance(layer_dict, dict)
       layer_dict = nest.map_structure(
         lambda x: x.get_name() if isinstance(x, LayerRef) else x,
         layer_dict)
@@ -179,6 +183,8 @@ class ILayerMaker:
           layer_dict["reuse_params"] = self.calls[0].get_name()
       layer = Layer(self, layer_dict)
       self.calls.append(layer)
+      if ret:
+        return ret
       return layer
 
 
@@ -187,7 +193,7 @@ class ISubnet(ILayerMaker):
   This is a base class to build subnetworks.
   """
 
-  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
+  def make_layer_dict(self, *args, **kwargs) -> Union[LayerDictRaw, Tuple[LayerDictRaw, Any]]:
     """
     Make subnet layer dict.
     """
@@ -196,8 +202,15 @@ class ISubnet(ILayerMaker):
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self._subnet_func(*args, **kwargs)
-    Copy()(res, name="output")
-    return self._make_layer_dict_from_subnet_ctx(name_ctx)
+    if isinstance(res, LayerRef):
+      Copy()(res, name="output")
+      return self._make_layer_dict_from_subnet_ctx(name_ctx)
+    else:
+      # we return more than one layer (thus also working on other layers of the subnet, that are not output)
+      # by convention: first layer is the output layer
+      res_flat = nest.flatten(res)
+      Copy()(res_flat[0], name="output")
+      return self._make_layer_dict_from_subnet_ctx(name_ctx), nest.pack_sequence_as(res, res_flat)
 
   def _subnet_func(self, *args, **kwargs) -> LayerRef:
     raise NotImplementedError
@@ -439,12 +452,13 @@ class NameCtx:
     cur_scope_abs = cur_scope.get_abs_name_ctx_list()
     self_name_abs = self.get_abs_name_ctx_list()
     assert cur_scope_abs[0] is self_name_abs[0]  # same root
-    assert len(cur_scope_abs) >= len(self_name_abs)  # not implemented otherwise
     common_len = 0
-    while cur_scope_abs[common_len + 1] is self_name_abs[common_len + 1]:
+    max_common_len = min(len(cur_scope_abs), len(self_name_abs))
+    while common_len < max_common_len and cur_scope_abs[common_len] is self_name_abs[common_len]:
       common_len += 1
-    assert common_len == len(self_name_abs) - 2  # not implemented otherwise
-    return "base:" * (len(cur_scope_abs) - len(self_name_abs) + 1) + self.name
+    prefix = "base:" * (len(cur_scope_abs) - common_len)
+    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
+    return prefix + postfix
 
   def __enter__(self):
     if self.parent:
