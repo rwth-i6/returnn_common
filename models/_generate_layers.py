@@ -524,6 +524,7 @@ def get_super_call_params(layer):
     if param[0].strip() in LayerSignature._IgnoreParamNames or param[0].strip() == "batch_norm":
       tup_ls.pop(idx)
   tup_ls = list(map(lambda x: "=".join(x), tup_ls))
+  tup_ls = list(map(lambda x: x.strip(), tup_ls))
   params = ", ".join(tup_ls)
   return params
 
