@@ -515,7 +515,6 @@ def get_super_call_params(layer):
   return call_pruned
 
 
-
 if __name__ == "__main__":
   better_exchook.install()
   setup()
