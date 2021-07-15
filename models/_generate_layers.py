@@ -81,11 +81,8 @@ def setup():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
-      if layer_class in [ChoiceLayer, EvalLayer]:
-        params = get_super_call_params(layer_class)
-        print(f"    super().__init__({params})", file=f)
-      else:
-        print(f"    super().__init__({'**kwargs' if issubclass(cls_base, LayerBase) else ''})", file=f)
+      params = get_super_call_params(layer_class)
+      print(f"    super().__init__({params})", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
@@ -507,12 +504,23 @@ def get_super_call_params(layer):
 
   # get list of lines starting with super and take the first one
   lines = [line.strip() for line in code if line.strip().startswith("super")]
+  if not lines:
+    return ''
 
   # reformat the super call to extract what we need
   super_call = lines[0]
   call = super_call.split(".")[1]
   call_pruned = call[9:-1]
-  return call_pruned
+
+  # remove excluded params
+  split = call_pruned.split(",")
+  tup_ls = list(map(lambda x: x.split("="), split))
+  for idx, param in enumerate(tup_ls):
+    if param[0].strip() in LayerSignature._IgnoreParamNames or param[0].strip() == "batch_norm":
+      tup_ls.pop(idx)
+  tup_ls = list(map(lambda x: "=".join(x), tup_ls))
+  params = ", ".join(tup_ls)
+  return params
 
 
 if __name__ == "__main__":
