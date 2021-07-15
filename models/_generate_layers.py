@@ -15,7 +15,7 @@ from typing import Type, Optional, Dict, List
 from returnn.util import better_exchook
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
-from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer, EvalLayer
+from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
 from returnn.tf.layers.basic import CombineLayer, CompareLayer
 from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
@@ -498,7 +498,12 @@ def collect_layers():
 
 
 def get_super_call_params(layer):
-
+  """
+  Inspects the given layer, extracts unwanted parameters and then returns a string that is ready to be used in the super
+  call.
+  :param layer: Layer to be inspected
+  :return: string with super call parameters
+  """
   # get code as string list
   code = inspect.getsource(layer.__init__).splitlines()
 
