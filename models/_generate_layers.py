@@ -15,7 +15,7 @@ from typing import Type, Optional, Dict, List
 from returnn.util import better_exchook
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
-from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
+from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer, EvalLayer
 from returnn.tf.layers.basic import CombineLayer, CompareLayer
 from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
@@ -81,7 +81,11 @@ def setup():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
-      print(f"    super().__init__({'**kwargs' if issubclass(cls_base, LayerBase) else ''})", file=f)
+      if layer_class in [ChoiceLayer, EvalLayer]:
+        params = get_super_call_params(layer_class)
+        print(f"    super().__init__({params})", file=f)
+      else:
+        print(f"    super().__init__({'**kwargs' if issubclass(cls_base, LayerBase) else ''})", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
@@ -494,6 +498,22 @@ def collect_layers():
         ls.append(value)
         blacklist.add(value)
   return ls
+
+
+def get_super_call_params(layer):
+
+  # get code as string list
+  code = inspect.getsource(layer.__init__).splitlines()
+
+  # get list of lines starting with super and take the first one
+  lines = [line.strip() for line in code if line.strip().startswith("super")]
+
+  # reformat the super call to extract what we need
+  super_call = lines[0]
+  call = super_call.split(".")[1]
+  call_pruned = call[9:-1]
+  return call_pruned
+
 
 
 if __name__ == "__main__":
