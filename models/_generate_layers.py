@@ -247,7 +247,7 @@ class LayerSignature:
         return True
     return False
 
-  _IgnoreParamNames = {
+  IgnoreParamNames = {
     "self", "name", "network", "output",
     "n_out", "out_type", "sources", "target", "loss", "size_target",
     "reuse_params", "rec_previous_layer", "control_dependencies_on_output",
@@ -284,7 +284,7 @@ class LayerSignature:
         continue
       if name.startswith("_"):
         continue
-      if name in self._IgnoreParamNames:
+      if name in self.IgnoreParamNames:
         continue
       param = inspect.Parameter(name=param.name, kind=param.KEYWORD_ONLY, default=param.default)
       self.params[name] = LayerSignature.Param(self, param)
@@ -325,7 +325,7 @@ class LayerSignature:
           assert isinstance(param_type_s, str) and isinstance(param_name, str)
         if param_name.startswith("_"):
           continue
-        if param_name in self._IgnoreParamNames and param_name not in self.params:
+        if param_name in self.IgnoreParamNames and param_name not in self.params:
           continue
         if param_name not in self.params:  # some typo or bugs we might have in some RETURNN version
           continue
@@ -521,7 +521,7 @@ def get_super_call_params(layer):
   split = call_pruned.split(",")
   tup_ls = list(map(lambda x: x.split("="), split))
   for idx, param in enumerate(tup_ls):
-    if param[0].strip() in LayerSignature._IgnoreParamNames or param[0].strip() == "batch_norm":
+    if param[0].strip() in LayerSignature.IgnoreParamNames or param[0].strip() == "batch_norm":
       tup_ls.pop(idx)
   tup_ls = list(map(lambda x: "=".join(x), tup_ls))
   tup_ls = list(map(lambda x: x.strip(), tup_ls))
