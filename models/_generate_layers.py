@@ -522,13 +522,18 @@ def get_super_call_params(layer: LayerBase) -> str:
   # remove "__init__(" and ") from the call string
   call_pruned = call[len("__init__("):-len(")")]  # call pruned = "beam_size=beam_size, search=search, **kwargs"
 
+  # get list of tuples for parameter with (param_name, value)
+  tup_ls = [x.split("=") for x in call_pruned.split(",")]
+
+  # ignore **kwargs when excluding
+  kwa = tup_ls[-1][0]
+  tup_ls = tup_ls[:-1]
   # remove excluded params
-  split = call_pruned.split(",")
-  tup_ls = list(map(lambda x: x.split("="), split))
-  for idx, param in enumerate(tup_ls):
-    if param[0].strip() in LayerSignature.IgnoreParamNames or param[0].strip() == "batch_norm":
-      tup_ls.pop(idx)
-  tup_ls = ["=".join(x).strip() for x in tup_ls]
+  tup_ls = ["=".join((key, value)).strip() for (key, value) in tup_ls
+            if (key not in LayerSignature.IgnoreParamNames or not key == "batch_norm")]
+  # reattach kwa
+  tup_ls.append(kwa)
+  # join parameters to one string
   params = ", ".join(tup_ls)
   return params
 
