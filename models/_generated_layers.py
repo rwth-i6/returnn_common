@@ -141,7 +141,7 @@ class Source(_Base):
     """
     :param str|None data_key:
     """
-    super().__init__( **kwargs)
+    super().__init__(**kwargs)
     self.data_key = data_key
 
   def get_opts(self):
@@ -366,7 +366,7 @@ class BatchNorm(Copy):
     :param str|float beta_init: see :func:`TFUtil.get_initializer`, for the mean
     :param bool masked_time: flatten and mask input tensor
     """
-    super().__init__( **kwargs)
+    super().__init__(**kwargs)
     self.use_shift = use_shift
     self.use_std = use_std
     self.use_sample = use_sample
@@ -941,7 +941,7 @@ class Softmax(Linear):
     """
     :param activation:
     """
-    super().__init__(activation=activation,  **kwargs)
+    super().__init__(activation=activation, **kwargs)
     self.activation = activation
 
   def get_opts(self):
@@ -1995,7 +1995,7 @@ class Cast(Copy):
     """
     :param str dtype:
     """
-    super().__init__( **kwargs)
+    super().__init__(**kwargs)
     self.dtype = dtype
 
   def get_opts(self):
@@ -3223,7 +3223,7 @@ class Combine(_Base):
     :param dict[str]|None eval_locals: locals for eval
     :param bool eval_for_output_loss: will do the same eval on layer.output_loss
     """
-    super().__init__( **kwargs)
+    super().__init__(**kwargs)
     self.kind = kind
     self.activation = activation
     self.with_bias = with_bias
@@ -3277,7 +3277,7 @@ class Eval(Combine):
     """
     :param str eval: will eval this string. see :func:`_op_kind_eval`
     """
-    super().__init__(kind="eval", eval=eval,  **kwargs)
+    super().__init__(kind="eval", eval=eval, **kwargs)
     self.eval = eval
 
   def get_opts(self):
@@ -3479,7 +3479,7 @@ class Variable(_Base):
     :param bool trainable:
     :param str|float|int init: see :func:`TFUtil.get_initializer`
     """
-    super().__init__(trainable=trainable,  **kwargs)
+    super().__init__(trainable=trainable, **kwargs)
     self.shape = shape
     self.dtype = dtype
     self.add_batch_axis = add_batch_axis
@@ -3530,7 +3530,7 @@ class AccumulateMean(Reduce):
     :param float initial_value: how to initialize the variable which accumulates the mean
     :param bool is_prob_distribution: if provided, better default for initial_value
     """
-    super().__init__(mode="mean", keep_dims=False, axes=axes,  **kwargs)
+    super().__init__(mode="mean", keep_dims=False, axes=axes, **kwargs)
     self.exp_average = exp_average
     self.axes = axes
     self.initial_value = initial_value
@@ -4266,7 +4266,7 @@ class RnnCell(_ConcatInput):
     :param None initial_output: the initial output is defined implicitly via initial state, thus don't set this
     :param weights_init:
     """
-    super().__init__( **kwargs)
+    super().__init__(**kwargs)
     self.n_out = n_out
     self.unit = unit
     self.unit_opts = unit_opts
@@ -4491,7 +4491,7 @@ class Choice(BaseChoice):
     :param bool|str cheating: if True, will always add the true target in the beam.
       if "exclusive", enables cheating_exclusive. see :func:`TFUtil.beam_search`.
     """
-    super().__init__(beam_size=beam_size, search=search,  **kwargs)
+    super().__init__(beam_size=beam_size, search=search, **kwargs)
     self.beam_size = beam_size
     self.keep_beams = keep_beams
     self.search = search
@@ -4567,7 +4567,7 @@ class Decide(BaseChoice):
     """
     :param bool length_normalization: performed on the beam scores
     """
-    super().__init__(beam_size=1,  **kwargs)
+    super().__init__(beam_size=1, **kwargs)
     self.length_normalization = length_normalization
 
   def get_opts(self):

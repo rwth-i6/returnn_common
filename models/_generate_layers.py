@@ -535,7 +535,7 @@ def get_super_call_params(layer: LayerBase) -> str:
   tup_ls = ["=".join((key, value)).strip() for (key, value) in tup_ls
             if (key.strip() not in LayerSignature.IgnoreParamNames and key not in excl_params)]
   # reattach kwa
-  tup_ls.append(kwa)
+  tup_ls.append(kwa.strip())
   # join parameters to one string
   params = ", ".join(tup_ls)
   return params
