@@ -285,7 +285,7 @@ class Rec(ISubnet):
     super(Rec, self).__init__()
     self.extra_opts = {
       key: value for (key, value) in locals().items()
-      if value is not NotSpecified and key != "self"}
+      if value is not NotSpecified and key != "self" and key != "__class__"}
 
   def step(self, *args, **kwargs) -> LayerRef:
     """
