@@ -513,9 +513,14 @@ def get_super_call_params(layer: LayerBase) -> str:
     return ''
 
   # reformat the super call to extract what we need
-  super_call = lines[0]
-  call = super_call.split(".")[1]
-  call_pruned = call[9:-1]
+  # get the first line which contains super to get the super call
+  super_call = lines[0]  # super_call="super(ChoiceLayer, self).__init__(beam_size=beam_size, search=search, **kwargs)"
+  # only keep the part after init of super_call
+  call = super_call.split(".")[1]  # call = "__init__(beam_size=beam_size, search=search, **kwargs)"
+  assert call.startswith("__init__")
+  assert call.endswith(")")
+  # remove "__init__(" and ") from the call string
+  call_pruned = call[len("__init__("):-len(")")]  # call pruned = "beam_size=beam_size, search=search, **kwargs"
 
   # remove excluded params
   split = call_pruned.split(",")
