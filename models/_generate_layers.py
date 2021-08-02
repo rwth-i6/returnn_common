@@ -497,7 +497,7 @@ def collect_layers():
   return ls
 
 
-def get_super_call_params(layer):
+def get_super_call_params(layer: LayerBase) -> str:
   """
   Inspects the given layer, extracts unwanted parameters and then returns a string that is ready to be used in the super
   call.
