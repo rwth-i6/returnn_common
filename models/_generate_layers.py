@@ -533,7 +533,7 @@ def get_super_call_params(layer: LayerBase) -> str:
   excl_params = ["batch_norm"]
   # remove excluded params
   tup_ls = ["=".join((key, value)).strip() for (key, value) in tup_ls
-            if (key.strip() not in LayerSignature.IgnoreParamNames and not key in excl_params)]
+            if (key.strip() not in LayerSignature.IgnoreParamNames and key not in excl_params)]
   # reattach kwa
   tup_ls.append(kwa)
   # join parameters to one string
