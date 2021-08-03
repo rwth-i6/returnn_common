@@ -81,7 +81,7 @@ def setup():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
-      params = get_super_call_params(layer_class)
+      params = get_super_call_kwargs_repr(layer_class)
       print(f"    super().__init__({params})", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
@@ -497,9 +497,10 @@ def collect_layers():
   return ls
 
 
-def get_super_call_params(layer: LayerBase) -> str:
+def get_super_call_kwargs_repr(layer: LayerBase) -> str:
   """
   Inspects the given layer in RETURNN, extracts the super call from there, removes unwanted parameters.
+
   :param layer: Layer to be inspected
   :return: A string containing all arguments of the super() call of the layer which are not excluded.
            This then can directly be used when writing the super call for the layer for the _generated_layers file
@@ -523,22 +524,17 @@ def get_super_call_params(layer: LayerBase) -> str:
   call_pruned = call[len("__init__("):-len(")")]  # call pruned = "beam_size=beam_size, search=search, **kwargs"
 
   # get list of tuples for parameter with (param_name, value)
-  tup_ls = [x.split("=") for x in call_pruned.split(",")]
-
-  # ignore **kwargs when excluding
-  kwa = tup_ls[-1][0]
-  tup_ls = tup_ls[:-1]
+  tup_ls = [x.split("=") for x in call_pruned.split(",") if x.strip() != "**kwargs"]
 
   # additionally excluded parameters
   excl_params = ["batch_norm"]
   # remove excluded params
-  tup_ls = ["=".join((key, value)).strip() for (key, value) in tup_ls
-            if (key.strip() not in LayerSignature.IgnoreParamNames and key not in excl_params)]
-  # reattach kwa
-  tup_ls.append(kwa.strip())
-  # join parameters to one string
-  params = ", ".join(tup_ls)
-  return params
+  tup_ls = [
+    f"{key.strip()}={value.strip()}"
+    for (key, value) in tup_ls
+    if (key.strip() not in LayerSignature.IgnoreParamNames and key.strip() not in excl_params)]
+  tup_ls += ["**kwargs"]
+  return ", ".join(tup_ls)
 
 
 if __name__ == "__main__":
