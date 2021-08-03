@@ -499,10 +499,10 @@ def collect_layers():
 
 def get_super_call_params(layer: LayerBase) -> str:
   """
-  Inspects the given layer in RETURNN, extracts the super call from there, removes unwanted parameters
-  and then returns a string that is ready to be used in the super call for the _generated_layers file.
+  Inspects the given layer in RETURNN, extracts the super call from there, removes unwanted parameters.
   :param layer: Layer to be inspected
-  :return: string with super call parameters
+  :return: A string containing all arguments of the super() call of the layer which are not excluded.
+           This then can directly be used when writing the super call for the layer for the _generated_layers file
   """
   # get code as string list
   code = inspect.getsource(layer.__init__).splitlines()
