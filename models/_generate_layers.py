@@ -81,7 +81,7 @@ def setup():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
-      print(f"    super().__init__({sig.get_super_call_code_str()})", file=f)
+      print(f"    {sig.get_super_call_code_str()}", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
