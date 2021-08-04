@@ -219,7 +219,7 @@ class LayerSignature:
     """
     return bool(self.get_module_call_args())
 
-  def get_module_call_args(self) -> List[LayerSignature.Param]:
+  def get_module_call_args(self) -> List[Param]:
     """
     Get all module call args, including bases.
     """
