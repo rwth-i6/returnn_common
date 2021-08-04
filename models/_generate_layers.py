@@ -378,7 +378,7 @@ class LayerSignature:
     # remove excluded params
     tup_ls = [f"{key}={value}" for (key, value) in tup_ls if key not in self._IgnoreParamNames]
     tup_ls += ["**kwargs"]
-    return ", ".join(tup_ls)
+    return "super().__init__(%s)" % ", ".join(tup_ls)
 
   class Param:
     """
