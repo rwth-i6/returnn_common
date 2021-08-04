@@ -350,7 +350,7 @@ class LayerSignature:
     removes unwanted parameters and builds a super call which can be written as super call into _generated_layers.py
     for that class.
 
-    :return: filtered parameters as kwargs_repr in a super call e.g `f"super().__init__({kwargs_repr})"`
+    :return: Code string for the super call e.g `"super().__init__(...)"`
     """
     # get code as string list
     code = inspect.getsource(self.layer_class.__init__).splitlines()
