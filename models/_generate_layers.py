@@ -358,7 +358,7 @@ class LayerSignature:
     # get list of lines starting with super and take the first one
     lines = [line.strip() for line in code if line.strip().startswith("super")]
     if not lines:
-      return ''
+      return 'super().__init__()'
 
     # reformat the super call to extract what we need
     # get the first line which contains super to get the super call
