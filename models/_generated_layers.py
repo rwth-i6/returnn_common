@@ -47,7 +47,6 @@ class _Base(ILayerMaker):
                only_on_eval: bool = NotSpecified,
                only_on_search: bool = NotSpecified,
                copy_output_loss_from_source_idx: Optional[int] = NotSpecified,
-               batch_norm: Union[bool, Dict] = NotSpecified,
                l2: Optional[float] = NotSpecified,
                darc1: Optional[float] = NotSpecified,
                spatial_smoothing: Optional[float] = NotSpecified,
@@ -70,7 +69,6 @@ class _Base(ILayerMaker):
     :param bool only_on_eval: if True, this layer will only be calculated in eval
     :param bool only_on_search: if True, this layer will only be calculated when search is done
     :param int|None copy_output_loss_from_source_idx: if set, will copy output_loss from this source
-    :param bool|dict batch_norm: see self.batch_norm()
     :param float|None l2: for constraints
     :param float|None darc1: for constraints. see Generalization in Deep Learning, https://arxiv.org/abs/1710.05468
     :param float|None spatial_smoothing: see :func:`TFUtil.spatial_smoothing_energy`
@@ -89,7 +87,6 @@ class _Base(ILayerMaker):
     self.only_on_eval = only_on_eval
     self.only_on_search = only_on_search
     self.copy_output_loss_from_source_idx = copy_output_loss_from_source_idx
-    self.batch_norm = batch_norm
     self.l2 = l2
     self.darc1 = darc1
     self.spatial_smoothing = spatial_smoothing
@@ -111,7 +108,6 @@ class _Base(ILayerMaker):
       'only_on_eval': self.only_on_eval,
       'only_on_search': self.only_on_search,
       'copy_output_loss_from_source_idx': self.copy_output_loss_from_source_idx,
-      'batch_norm': self.batch_norm,
       'L2': self.l2,
       'darc1': self.darc1,
       'spatial_smoothing': self.spatial_smoothing,
@@ -941,7 +937,7 @@ class Softmax(Linear):
     """
     :param activation:
     """
-    super().__init__(**kwargs)
+    super().__init__(activation=activation, **kwargs)
     self.activation = activation
 
   def get_opts(self):
@@ -3277,7 +3273,7 @@ class Eval(Combine):
     """
     :param str eval: will eval this string. see :func:`_op_kind_eval`
     """
-    super().__init__(**kwargs)
+    super().__init__(kind="eval", eval=eval, **kwargs)
     self.eval = eval
 
   def get_opts(self):
@@ -3479,7 +3475,7 @@ class Variable(_Base):
     :param bool trainable:
     :param str|float|int init: see :func:`TFUtil.get_initializer`
     """
-    super().__init__(**kwargs)
+    super().__init__(trainable=trainable, **kwargs)
     self.shape = shape
     self.dtype = dtype
     self.add_batch_axis = add_batch_axis
@@ -3530,7 +3526,7 @@ class AccumulateMean(Reduce):
     :param float initial_value: how to initialize the variable which accumulates the mean
     :param bool is_prob_distribution: if provided, better default for initial_value
     """
-    super().__init__(**kwargs)
+    super().__init__(mode="mean", keep_dims=False, axes=axes, **kwargs)
     self.exp_average = exp_average
     self.axes = axes
     self.initial_value = initial_value
@@ -4491,7 +4487,7 @@ class Choice(BaseChoice):
     :param bool|str cheating: if True, will always add the true target in the beam.
       if "exclusive", enables cheating_exclusive. see :func:`TFUtil.beam_search`.
     """
-    super().__init__(**kwargs)
+    super().__init__(beam_size=beam_size, search=search, **kwargs)
     self.beam_size = beam_size
     self.keep_beams = keep_beams
     self.search = search
@@ -4567,7 +4563,7 @@ class Decide(BaseChoice):
     """
     :param bool length_normalization: performed on the beam scores
     """
-    super().__init__(**kwargs)
+    super().__init__(beam_size=1, **kwargs)
     self.length_normalization = length_normalization
 
   def get_opts(self):
