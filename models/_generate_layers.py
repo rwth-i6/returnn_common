@@ -346,11 +346,11 @@ class LayerSignature:
 
   def get_super_call_code_str(self) -> str:
     """
-    Inspects the given layer in RETURNN, extracts the super call from there, removes unwanted parameters.
+    Inspects the super call of the layer class in RETURNN, extracts the super call parameters from there,
+    removes unwanted parameters and builds a super call which can be written as super call into _generated_layers.py
+    for that class.
 
-    :return: kwargs_repr
-      Python source code of kwargs for the super() call of the layer which are not excluded.
-      Such that `f"super().__init__({kwargs_repr})"` is valid code.
+    :return: filtered parameters as kwargs_repr in a super call e.g `f"super().__init__({kwargs_repr})"`
     """
     # get code as string list
     code = inspect.getsource(self.layer_class.__init__).splitlines()
@@ -373,9 +373,6 @@ class LayerSignature:
     # get list of tuples for parameter with (param_name, value)
     tup_ls = [x.split("=") for x in call_pruned.split(",") if x.strip() != "**kwargs"]
     tup_ls = [(key.strip(), value.strip()) for (key, value) in tup_ls]
-    # additionally excluded parameters
-
-    # remove excluded params
     tup_ls = [f"{key}={value}" for (key, value) in tup_ls if key not in self._IgnoreParamNames]
     tup_ls += ["**kwargs"]
     return "super().__init__(%s)" % ", ".join(tup_ls)
