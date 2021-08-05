@@ -269,7 +269,34 @@ class Module(ISubnet):
 
 class Rec(ISubnet):
   """
-  This represents a RecLayer subnetwork in RETURNN.
+  This represents a RecLayer subnetwork in RETURNN,
+  i.e. where the calculation per step is defined explicitly.
+
+  (For RecLayer with a predefined unit, see :class:`RecUnit`.
+   Or for example :class:`Lstm`.)
+
+  To define a loop like this pseudo Python code::
+
+    x  # given, shape (batch, time, dim)
+    h = Zeros([batch,dim])()  # initial state, shape (batch,dim)
+    out = []
+    for t in range(x.max_seq_len):
+      x_lin = Linear(dim)(x[t])
+      h_prev = h
+      h = Linear(dim)(x_lin + h_prev)
+      out.append(h)
+
+    h  # final state
+    out  # shape (time, batch, h_dim)
+
+  You would derive from this class and overwrite :func:`step` like so::
+
+    class MyRec(Rec):
+      def step(self, x):
+        ...
+
+  This API is currently in development, and subject to change.
+  See: https://github.com/rwth-i6/returnn_common/issues/16
   """
 
   def __init__(self, *,
