@@ -6,7 +6,7 @@ from ._generated_layers import *  # noqa
 from .base import Module, Rec  # noqa
 
 
-class Lstm(RecUnit):
+class Lstm(Rec):
   """
   LSTM
   """
