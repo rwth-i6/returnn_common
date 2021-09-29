@@ -3,7 +3,7 @@ Wrap RETURNN layers
 """
 
 from ._generated_layers import *  # noqa
-from .base import Module, Rec  # noqa
+from .base import Module  # noqa
 
 
 class Lstm(Rec):
