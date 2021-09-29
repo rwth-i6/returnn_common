@@ -18,7 +18,7 @@ TODO this is all work-in-progress. the transducer-fullsum was the base for this 
 from __future__ import annotations
 from typing import Optional
 from enum import Enum
-from ..base import Module, Rec, LayerRef
+from ..base import Module, LayerRef
 
 
 class LabelTopology(Enum):
@@ -31,7 +31,7 @@ class LabelTopology(Enum):
   WITH_VERTICAL = 4
 
 
-class Decoder(Rec):
+class Decoder(Module):
   """
   Generic decoder, for attention-based encoder-decoder or transducer.
   Can use label-sync label topology, or time-sync (RNA/CTC), or with vertical transitions (RNN-T).
