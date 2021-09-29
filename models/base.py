@@ -267,7 +267,7 @@ class Module(ISubnet):
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
 
-class Rec(ISubnet):
+class Loop:
   """
   This represents a RecLayer subnetwork in RETURNN,
   i.e. where the calculation per step is defined explicitly.
@@ -309,7 +309,7 @@ class Rec(ISubnet):
                include_eos: bool = NotSpecified,
                debug: Optional[bool] = NotSpecified,
                ):
-    super(Rec, self).__init__()
+    super(Loop, self).__init__()
     self.extra_opts = {
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__"}}
