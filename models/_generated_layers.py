@@ -2135,7 +2135,9 @@ class ReinterpretData(_ConcatInput):
                **kwargs):
     """
     :param str|list[str] switch_axes: e.g. "bt" to switch batch and time axes
-    :param dict[str,int|str] set_axes: the key is "B","T","F", value is via :func:`Data.get_axis_from_description`
+    :param dict[str,int|str] set_axes:
+      This can be used to overwrite the special axes like time_dim_axis or feature_dim_axis.
+      For that, use keys "B","T" or "F", and a value via :func:`Data.get_axis_from_description`.
     :param bool enforce_batch_major:
     :param bool enforce_time_major:
     :param bool|None set_sparse: if bool, set sparse value to this
@@ -3112,31 +3114,11 @@ class Resize(_ConcatInput):
       **self.get_opts()}
 
 
-class CombineDims(_ConcatInput):
+class CombineDims(MergeDims):
   """
   Combines multiple dimensions.
   See also :class:`MergeDimsLayer`. This is deprecated in favor of :class:`MergeDimsLayer`.
   """
-
-  def __init__(self,
-               *,
-               axes: Any,
-               **kwargs):
-    """
-    :param axes:
-    """
-    super().__init__(**kwargs)
-    self.axes = axes
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'axes': self.axes,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
 
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
@@ -5289,7 +5271,8 @@ class RelativePositionalEncoding(_ConcatInput):
                                      "total_key_dim": self.EncKeyTotalDim,
                                      "n_out": self.EncValueTotalDim, "from": [output + '_self_att_laynorm'],
                                      "attention_left_only": False, "attention_dropout": self.attention_dropout,
-                                     "forward_weights_init": self.ff_init, "key_shift": output + '_rel_pos'}
+                                     "forward_weights_init": self.ff_init,
+                                     "key_shift": output + '_rel_pos'}
 
   """
 
