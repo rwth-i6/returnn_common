@@ -77,7 +77,7 @@ class Decoder(Module):
     self.log_prob_separate_nb = log_prob_separate_nb
     self.log_prob_separate_wb = log_prob_separate_wb
 
-  def step(self, encoder: LayerRef) -> LayerRef:
+  def forward(self, encoder: LayerRef) -> LayerRef:
     """
     Make one decoder step (train and/or recognition).
     """
