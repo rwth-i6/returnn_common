@@ -4198,7 +4198,7 @@ class _Stack(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: LayerRef,
+                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       axis: Optional[int] = NotSpecified,
                       ) -> LayerDictRaw:
@@ -4218,14 +4218,14 @@ class _Stack(_Base):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def stack(
-          source: LayerRef,
+          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
           *,
           axis: Optional[int] = NotSpecified,
           name: Optional[str] = None) -> LayerRef:
   """
   Stacks multiple inputs together using :func:`tf.stack`.
 
-  :param LayerRef source:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
   :param int|None axis: new axis.
     If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
     i.e. some reasonable default for a new spatial axis.

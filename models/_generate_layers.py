@@ -17,7 +17,7 @@ from returnn.util.basic import camel_case_to_snake_case
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
-from returnn.tf.layers.basic import CombineLayer, CompareLayer
+from returnn.tf.layers.basic import CombineLayer, CompareLayer, StackLayer, DropoutLayer
 from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
 from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
@@ -228,7 +228,7 @@ class LayerSignature:
     """
     Whether "from" supports multiple sources (list of layers).
     """
-    if issubclass(self.layer_class, (_ConcatInputLayer, CombineLayer, CompareLayer)):
+    if issubclass(self.layer_class, (_ConcatInputLayer, CombineLayer, CompareLayer, StackLayer)):
       return True
     return False
 
@@ -290,7 +290,7 @@ class LayerSignature:
     if stop_bases is None:
       # Derive some reasonable default.
       if self.is_functional():
-        if self.layer_class.__name__ == "DropoutLayer":
+        if self.layer_class is DropoutLayer:
           stop_bases = (LayerBase,)  # special case
         else:
           stop_bases = (LayerBase, _ConcatInputLayer)
