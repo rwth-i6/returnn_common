@@ -460,7 +460,10 @@ class LayerSignature:
     # get list of tuples for parameter with (param_name, value)
     tup_ls = [x.split("=") for x in call_pruned.split(",") if x.strip() != "**kwargs"]
     tup_ls = [(key.strip(), value.strip()) for (key, value) in tup_ls]
-    tup_ls = [f"{key}={value}" for (key, value) in tup_ls if key not in self._IgnoreParamNames]
+    tup_ls = [(key, value) for (key, value) in tup_ls if key not in self._IgnoreParamNames]
+    tup_ls = [
+      (key, value) for (key, value) in tup_ls if value not in self.params or self.params[value].is_module_init_arg()]
+    tup_ls = [f"{key}={value}" for (key, value) in tup_ls]
     tup_ls += ["**kwargs"]
     return "super().__init__(%s)" % ", ".join(tup_ls)
 

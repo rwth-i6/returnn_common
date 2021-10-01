@@ -5615,7 +5615,7 @@ class _AccumulateMean(_Reduce):
     :param float initial_value: how to initialize the variable which accumulates the mean
     :param bool is_prob_distribution: if provided, better default for initial_value
     """
-    super().__init__(mode="mean", keep_dims=False, axes=axes, **kwargs)
+    super().__init__(mode="mean", keep_dims=False, **kwargs)
     self.exp_average = exp_average
     self.initial_value = initial_value
     self.is_prob_distribution = is_prob_distribution
