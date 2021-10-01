@@ -13,6 +13,7 @@ import inspect
 import re
 from typing import Type, Optional, Dict, List
 from returnn.util import better_exchook
+from returnn.util.basic import camel_case_to_snake_case
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
@@ -43,10 +44,11 @@ def setup():
   for layer_class in layer_classes:
     sig = LayerSignature(layer_class, signatures)
     signatures[layer_class] = sig
-    cls_str = get_module_class_name_for_layer_class(layer_class)
+    cls_str = get_module_class_name_for_layer_class(sig)
     cls_base = layer_class.__base__
     if issubclass(cls_base, LayerBase):
-      cls_base_str = get_module_class_name_for_layer_class(cls_base)
+      assert cls_base in signatures
+      cls_base_str = get_module_class_name_for_layer_class(signatures[cls_base])
     else:
       cls_base_str = "ILayerMaker"
 
@@ -61,8 +63,7 @@ def setup():
 
     if sig.has_module_init_args():
       print("", file=f)
-      if sig.module_init_needs_suppress_shadow_builtin_warning():
-        print("  # noinspection PyShadowingBuiltins", file=f)
+      print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
       print("  def __init__(self,", file=f)
       printed_keyword_only_symbol = False
       for _, param in sig.params.items():
@@ -103,8 +104,7 @@ def setup():
     if layer_class.layer_class:
       print("", file=f)
       if sig.has_source_param() or sig.has_module_call_args():
-        if sig.module_call_needs_suppress_shadow_builtin_warning():
-          print("  # noinspection PyShadowingBuiltins", file=f)
+        print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
         print("  def make_layer_dict(self,", file=f)
         if sig.has_source_param():
           print(f"                      {sig.get_module_call_source_param_code_str()},", file=f)
@@ -132,7 +132,70 @@ def setup():
     else:
       print("", file=f)
       print("  make_layer_dict = ILayerMaker.make_layer_dict  # abstract", file=f)
-    print(layer_class, get_module_class_name_for_layer_class(layer_class), sig)
+
+    # Make function if this is functional
+    name = get_module_class_name_for_layer_class(sig)
+    if sig.is_functional() and not sig.layer_class.__name__.startswith("_"):
+      assert name.startswith("_")
+      module_name = name
+      name = camel_case_to_snake_case(name[1:])
+      if name == "source":
+        name = "external_data"
+      print("\n", file=f)
+      print("# noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
+      prefix = f"def {name}("
+      print(f"{prefix}", file=f)
+      prefix = " " * len(prefix)
+      args = []
+      if sig.has_source_param():
+        print(f"{prefix}{sig.get_module_call_source_param_code_str()},", file=f)
+        args.append("source")
+      mod_args = sig.get_all_derived_args()
+      if mod_args:
+        print(f"{prefix}*,", file=f)
+        for param in mod_args:
+          print(f"{prefix}{param.get_module_param_code_str()},", file=f)
+          args.append(param.get_module_param_name())
+      print(f"{prefix}) -> LayerRef:", file=f)
+      print('  """', file=f)
+      if layer_class.__doc__:
+        for i, line in enumerate(layer_class.__doc__.splitlines(keepends=True)):
+          if i == 0 and not line.strip():
+            continue
+          print(line if line.strip() else line.strip(" "), end="", file=f)
+        print("", file=f)
+      if sig.docstring:
+        for line in sig.docstring.splitlines():
+          print(("  " + line) if line else "", file=f)
+        print("", file=f)
+      if sig.has_source_param():
+        print(f"  {sig.get_module_call_source_docstring()}", file=f)
+      for param in mod_args:
+        print(param.get_module_param_docstring(indent="  "), file=f)
+      print('  """', file=f)
+      if any(p.is_module_init_arg() for p in mod_args):
+        print(f"  mod = {module_name}(", file=f)
+        for param in mod_args:
+          if param.is_module_init_arg():
+            print(f"    {param.get_module_param_name()}={param.get_module_param_name()},", file=f)
+        print("    )", file=f)
+      else:
+        print(f"  mod = {module_name}()", file=f)
+      module_call_args = []
+      for param in mod_args:
+        if not param.is_module_init_arg():
+          module_call_args.append(param)
+      if sig.has_source_param() and not module_call_args:
+        print(f"  return mod(source)", file=f)
+      else:
+        print(f"  return mod(", file=f)
+        if sig.has_source_param():
+          print("    source,", file=f)
+        for param in module_call_args:
+          print(f"    {param.get_module_param_name()}={param.get_module_param_name()},", file=f)
+        print("    )", file=f)
+
+    print(layer_class, name, sig)
 
 
 class LayerSignature:
@@ -192,6 +255,18 @@ class LayerSignature:
       s += " = " + default
     return s
 
+  def get_module_call_source_docstring(self):
+    """
+    Code for docstring of `source` param
+    """
+    s = ":param "
+    if self.support_multiple_sources():
+      s += "LayerRef|list[LayerRef]|tuple[LayerRef]"
+    else:
+      s += "LayerRef"
+    s += " source:"
+    return s
+
   def has_module_init_args(self) -> bool:
     """
     Whether there are other call args (despite source)
@@ -201,56 +276,58 @@ class LayerSignature:
         return True
     return False
 
-  _BuiltinsNames = {"eval", "filter", "type"}
-
-  def module_init_needs_suppress_shadow_builtin_warning(self):
-    """
-    Whether to add: # noinspection PyShadowingBuiltins
-    """
-    for _, param in self.params.items():
-      if param.is_module_init_arg():
-        if param.get_module_param_name() in self._BuiltinsNames:
-          return True
-    return False
-
   def has_module_call_args(self) -> bool:
     """
     Whether there are other call args (despite source)
     """
     return bool(self.get_module_call_args())
 
-  def get_module_call_args(self) -> List[Param]:
+  def get_all_derived_args(self, stop_bases=(LayerBase, _ConcatInputLayer)) -> List[Param]:
     """
-    Get all module call args, including bases.
+    Get all module args, including bases.
     """
     blacklist = set()
     ls = []
-    for _, param in self.params.items():
-      if param.is_module_call_arg():
-        ls.append(param)
-        blacklist.add(param.returnn_name)
-    if issubclass(self.layer_class.__base__, LayerBase):
-      for param in self.others[self.layer_class.__base__].get_module_call_args():
+    sig = self
+    while sig:
+      for _, param in sig.params.items():
         if param.returnn_name in blacklist:
           continue
         ls.append(param)
         blacklist.add(param.returnn_name)
+      if not issubclass(sig.layer_class.__base__, LayerBase):
+        break
+      if sig.layer_class.__base__ in stop_bases:
+        break
+      assert sig.layer_class.__base__ in self.others
+      sig = self.others[sig.layer_class.__base__]
     return ls
 
-  def module_call_needs_suppress_shadow_builtin_warning(self):
+  def get_module_call_args(self) -> List[Param]:
     """
-    Whether to add: # noinspection PyShadowingBuiltins
+    Get all module call args, including bases.
     """
-    for param in self.get_module_call_args():
-      if param.get_module_param_name() in self._BuiltinsNames:
-        return True
-    return False
+    ls = []
+    for param in self.get_all_derived_args():
+      if param.is_module_call_arg():
+        ls.append(param)
+    return ls
+
+  def is_functional(self):
+    """
+    :return: Whether this is purely functional, i.e. it has no params/variables.
+      Also see: https://github.com/rwth-i6/returnn_common/issues/30
+    :rtype: bool
+    """
+    return not self._has_variables()
 
   _IgnoreParamNames = {
     "self", "name", "network", "output",
-    "n_out", "out_type", "sources", "target", "loss", "size_target",
+    "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
     "reuse_params", "rec_previous_layer", "control_dependencies_on_output",
-    "extra_deps", "batch_norm"}
+    "extra_deps", "batch_norm",
+    "is_output_layer",
+  }
 
   _LayerClassesWithExplicitDim = {
     LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer,
@@ -377,6 +454,19 @@ class LayerSignature:
     tup_ls += ["**kwargs"]
     return "super().__init__(%s)" % ", ".join(tup_ls)
 
+  def _has_variables(self):
+    """
+    :return: whether this layers has variables. this is somewhat heuristically
+    :rtype: bool
+    """
+    # somewhat heuristically
+    for param in self.params.values():
+      if "weights_init" in param.returnn_name:
+        return True
+    if self.layer_class is VariableLayer:
+      return True
+    return False
+
   class Param:
     """
     One param
@@ -494,14 +584,21 @@ def format_multi_line_str(s: str, *, indent: str = "") -> str:
   return ss.getvalue()
 
 
-def get_module_class_name_for_layer_class(layer_class: Type[LayerBase]) -> str:
+def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
   """
   For some layer class, return the Module class name
   """
+  layer_class = sig.layer_class
   if layer_class is LayerBase:
     return "_Base"
-  assert layer_class.__name__.endswith("Layer")
-  return layer_class.__name__[:-len("Layer")]
+  name = layer_class.__name__
+  assert name.endswith("Layer")
+  name = name[:-len("Layer")]
+  if name.startswith("_"):
+    return name
+  if sig.is_functional():
+    return "_" + name  # we make a public function for it, but the module is hidden
+  return name
 
 
 def collect_layers():
