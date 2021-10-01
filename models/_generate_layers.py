@@ -150,13 +150,13 @@ def setup():
       if sig.has_source_param():
         print(f"{prefix}{sig.get_module_call_source_param_code_str()},", file=f)
         args.append("source")
+      print(f"{prefix}*,", file=f)
       mod_args = sig.get_all_derived_args()
       if mod_args:
-        print(f"{prefix}*,", file=f)
         for param in mod_args:
           print(f"{prefix}{param.get_module_param_code_str()},", file=f)
           args.append(param.get_module_param_name())
-      print(f"{prefix}) -> LayerRef:", file=f)
+      print(f"{prefix}name: Optional[str] = None) -> LayerRef:", file=f)
       print('  """', file=f)
       if layer_class.__doc__:
         for i, line in enumerate(layer_class.__doc__.splitlines(keepends=True)):
@@ -172,6 +172,7 @@ def setup():
         print(f"  {sig.get_module_call_source_docstring()}", file=f)
       for param in mod_args:
         print(param.get_module_param_docstring(indent="  "), file=f)
+      print("  :param str|None name:", file=f)
       print('  """', file=f)
       if any(p.is_module_init_arg() for p in mod_args):
         print(f"  mod = {module_name}(", file=f)
@@ -186,14 +187,14 @@ def setup():
         if not param.is_module_init_arg():
           module_call_args.append(param)
       if sig.has_source_param() and not module_call_args:
-        print(f"  return mod(source)", file=f)
+        print(f"  return mod(source, name=name)", file=f)
       else:
         print(f"  return mod(", file=f)
         if sig.has_source_param():
           print("    source,", file=f)
         for param in module_call_args:
           print(f"    {param.get_module_param_name()}={param.get_module_param_name()},", file=f)
-        print("    )", file=f)
+        print("    name=name)", file=f)
 
     print(layer_class, name, sig)
 
