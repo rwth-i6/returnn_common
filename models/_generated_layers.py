@@ -273,13 +273,27 @@ class _Dropout(_Copy):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dropout(
             source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+            *,
+            dropout: float = NotSpecified,
+            dropout_noise_shape: Any = NotSpecified,
+            dropout_on_forward: bool = NotSpecified,
+            mask: Optional[str] = NotSpecified,
             ) -> LayerRef:
   """
   Just the same as :class:`CopyLayer`, because that one already supports dropout.
 
   :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param float dropout: 0.0 means to apply no dropout. dropout will only be applied during training
+  :param dict[str|tuple,int|None] dropout_noise_shape: see :func:`TFUtil.get_bc_shape`
+  :param bool dropout_on_forward: apply dropout during inference
+  :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
   """
-  mod = _Dropout()
+  mod = _Dropout(
+    dropout=dropout,
+    dropout_noise_shape=dropout_noise_shape,
+    dropout_on_forward=dropout_on_forward,
+    mask=mask,
+    )
   return mod(source)
 
 

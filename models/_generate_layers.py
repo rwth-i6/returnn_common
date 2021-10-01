@@ -282,10 +282,19 @@ class LayerSignature:
     """
     return bool(self.get_module_call_args())
 
-  def get_all_derived_args(self, stop_bases=(LayerBase, _ConcatInputLayer)) -> List[Param]:
+  def get_all_derived_args(self, stop_bases=None) -> List[Param]:
     """
     Get all module args, including bases.
     """
+    if stop_bases is None:
+      # Derive some reasonable default.
+      if self.is_functional():
+        if self.layer_class.__name__ == "DropoutLayer":
+          stop_bases = (LayerBase,)  # special case
+        else:
+          stop_bases = (LayerBase, _ConcatInputLayer)
+      else:  # not functional
+        stop_bases = ()  # just all
     blacklist = set()
     ls = []
     sig = self
