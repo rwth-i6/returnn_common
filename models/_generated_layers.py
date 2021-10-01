@@ -184,39 +184,6 @@ class _ConcatInput(_Base):
   This layer also optionally can do dropout on the input.
   """
 
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dropout: float = NotSpecified,
-               dropout_noise_shape: Any = NotSpecified,
-               dropout_on_forward: bool = NotSpecified,
-               mask: Optional[str] = NotSpecified,
-               **kwargs):
-    """
-    :param float dropout: 0.0 means to apply no dropout. dropout will only be applied during training
-    :param dict[str|tuple,int|None] dropout_noise_shape: see :func:`TFUtil.get_bc_shape`
-    :param bool dropout_on_forward: apply dropout during inference
-    :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
-    """
-    super().__init__(**kwargs)
-    self.dropout = dropout
-    self.dropout_noise_shape = dropout_noise_shape
-    self.dropout_on_forward = dropout_on_forward
-    self.mask = mask
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dropout': self.dropout,
-      'dropout_noise_shape': self.dropout_noise_shape,
-      'dropout_on_forward': self.dropout_on_forward,
-      'mask': self.mask,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
   make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
@@ -263,13 +230,26 @@ class _Dropout(_Copy):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'dropout',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -292,13 +272,14 @@ def dropout(
   :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
   :param str|None name:
   """
-  mod = _Dropout(
+  mod = _Dropout()
+  return mod(
+    source,
     dropout=dropout,
     dropout_noise_shape=dropout_noise_shape,
     dropout_on_forward=dropout_on_forward,
     mask=mask,
-    )
-  return mod(source, name=name)
+    name=name)
 
 
 class _ScaledGradient(_Copy):
@@ -688,14 +669,12 @@ class _Norm(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axes: Any,
                param_shape: Any = NotSpecified,
                scale: bool = NotSpecified,
                bias: bool = NotSpecified,
                epsilon: float = NotSpecified,
                **kwargs):
     """
-    :param str|list[str] axes: axes over which the mean and variance are computed, e.g. "F" or "TF"
     :param str|list[str]|tuple[str]|int|list[int]|tuple[int] param_shape: shape of the scale and bias parameters.
       You can also refer to (static) axes of the input, such as the feature-dim.
       This is also the default, i.e. a param-shape of [F], independent of the axes to normalize over.
@@ -704,7 +683,6 @@ class _Norm(_ConcatInput):
     :param float epsilon: epsilon for numerical stability
     """
     super().__init__(**kwargs)
-    self.axes = axes
     self.param_shape = param_shape
     self.scale = scale
     self.bias = bias
@@ -715,7 +693,6 @@ class _Norm(_ConcatInput):
     Return all options
     """
     opts = {
-      'axes': self.axes,
       'param_shape': self.param_shape,
       'scale': self.scale,
       'bias': self.bias,
@@ -727,13 +704,20 @@ class _Norm(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'norm',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -783,13 +767,15 @@ def norm(
   :param str|None name:
   """
   mod = _Norm(
-    axes=axes,
     param_shape=param_shape,
     scale=scale,
     bias=bias,
     epsilon=epsilon,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _MathNorm(_ConcatInput):
@@ -801,17 +787,14 @@ class _MathNorm(_ConcatInput):
   def __init__(self,
                *,
                p: Union[int, float],
-               axes: Any,
                keep_dims: bool = NotSpecified,
                **kwargs):
     """
     :param int|float p:
-    :param str|list[str] axes:
     :param bool keep_dims:
     """
     super().__init__(**kwargs)
     self.p = p
-    self.axes = axes
     self.keep_dims = keep_dims
 
   def get_opts(self):
@@ -820,7 +803,6 @@ class _MathNorm(_ConcatInput):
     """
     opts = {
       'p': self.p,
-      'axes': self.axes,
       'keep_dims': self.keep_dims,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -829,13 +811,20 @@ class _MathNorm(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'math_norm',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -858,10 +847,12 @@ def math_norm(
   """
   mod = _MathNorm(
     p=p,
-    axes=axes,
     keep_dims=keep_dims,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _Slice(_ConcatInput):
@@ -887,19 +878,16 @@ class _Slice(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: Union[int, str],
                slice_start: Optional[int] = NotSpecified,
                slice_end: Optional[int] = NotSpecified,
                slice_step: Optional[int] = NotSpecified,
                **kwargs):
     """
-    :param int|str axis:
     :param int|None slice_start:
     :param int|None slice_end:
     :param int|None slice_step:
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.slice_start = slice_start
     self.slice_end = slice_end
     self.slice_step = slice_step
@@ -909,7 +897,6 @@ class _Slice(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'slice_start': self.slice_start,
       'slice_end': self.slice_end,
       'slice_step': self.slice_step,
@@ -920,13 +907,20 @@ class _Slice(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: Union[int, str],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'slice',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -965,12 +959,14 @@ def slice(
   :param str|None name:
   """
   mod = _Slice(
-    axis=axis,
     slice_start=slice_start,
     slice_end=slice_end,
     slice_step=slice_step,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _SliceNd(_ConcatInput):
@@ -1080,37 +1076,18 @@ class _Gather(_ConcatInput):
   """
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               axis: str,
-               **kwargs):
-    """
-    :param str axis: The axis into which we gather the indices into
-    """
-    super().__init__(**kwargs)
-    self.axis = axis
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'axis': self.axis,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       position: Union[LayerRef, int],
+                      axis: str,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'position': position,
+      'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -1151,12 +1128,11 @@ def gather(
   :param str axis: The axis into which we gather the indices into
   :param str|None name:
   """
-  mod = _Gather(
-    axis=axis,
-    )
+  mod = _Gather()
   return mod(
     source,
     position=position,
+    axis=axis,
     name=name)
 
 
@@ -1415,13 +1391,26 @@ class Linear(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'linear',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -1585,13 +1574,11 @@ class _SoftmaxOverSpatial(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: Optional[str] = NotSpecified,
                energy_factor: Optional[float] = NotSpecified,
                use_time_mask: bool = NotSpecified,
                log_space: bool = NotSpecified,
                **kwargs):
     """
-    :param str|None axis: which axis to do the softmax over
     :param float|None energy_factor: the energy will be scaled by this factor.
       This is like a temperature for the softmax.
       In Attention-is-all-you-need, this is set to 1/sqrt(base_ctx.dim).
@@ -1600,7 +1587,6 @@ class _SoftmaxOverSpatial(_ConcatInput):
     :param bool log_space: if True, returns in log space (i.e. uses log_softmax)
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.energy_factor = energy_factor
     self.use_time_mask = use_time_mask
     self.log_space = log_space
@@ -1610,7 +1596,6 @@ class _SoftmaxOverSpatial(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'energy_factor': self.energy_factor,
       'use_time_mask': self.use_time_mask,
       'log_space': self.log_space,
@@ -1622,6 +1607,7 @@ class _SoftmaxOverSpatial(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
+                      axis: Optional[str] = NotSpecified,
                       start: Optional[LayerRef] = NotSpecified,
                       window_start: Optional[Union[LayerRef, int]] = NotSpecified,
                       window_size: Optional[Union[LayerRef, int]] = NotSpecified,
@@ -1630,6 +1616,7 @@ class _SoftmaxOverSpatial(_ConcatInput):
     Make layer dict
     """
     args = {
+      'axis': axis,
       'start': start,
       'window_start': window_start,
       'window_size': window_size,
@@ -1677,13 +1664,13 @@ def softmax_over_spatial(
   :param str|None name:
   """
   mod = _SoftmaxOverSpatial(
-    axis=axis,
     energy_factor=energy_factor,
     use_time_mask=use_time_mask,
     log_space=log_space,
     )
   return mod(
     source,
+    axis=axis,
     start=start,
     window_start=window_start,
     window_size=window_size,
@@ -1701,15 +1688,12 @@ class _SeqLenMask(_ConcatInput):
   def __init__(self,
                *,
                mask_value: float,
-               axis: Union[str, int] = NotSpecified,
                **kwargs):
     """
     :param float mask_value:
-    :param str|int axis:
     """
     super().__init__(**kwargs)
     self.mask_value = mask_value
-    self.axis = axis
 
   def get_opts(self):
     """
@@ -1717,7 +1701,6 @@ class _SeqLenMask(_ConcatInput):
     """
     opts = {
       'mask_value': self.mask_value,
-      'axis': self.axis,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**opts, **super().get_opts()}
@@ -1726,6 +1709,7 @@ class _SeqLenMask(_ConcatInput):
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
+                      axis: Union[str, int] = NotSpecified,
                       seq_len_source: Optional[LayerRef] = NotSpecified,
                       start: Optional[LayerRef] = NotSpecified,
                       window_start: Optional[LayerRef] = NotSpecified,
@@ -1735,6 +1719,7 @@ class _SeqLenMask(_ConcatInput):
     Make layer dict
     """
     args = {
+      'axis': axis,
       'seq_len_source': seq_len_source,
       'start': start,
       'window_start': window_start,
@@ -1775,10 +1760,10 @@ def seq_len_mask(
   """
   mod = _SeqLenMask(
     mask_value=mask_value,
-    axis=axis,
     )
   return mod(
     source,
+    axis=axis,
     seq_len_source=seq_len_source,
     start=start,
     window_start=window_start,
@@ -1970,21 +1955,18 @@ class _RangeInAxis(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: str,
                dtype: str = NotSpecified,
                unbroadcast: bool = NotSpecified,
                keepdims: bool = NotSpecified,
                sparse: bool = NotSpecified,
                **kwargs):
     """
-    :param str axis:
     :param str dtype:
     :param bool unbroadcast:
     :param bool keepdims:
     :param bool sparse:
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.dtype = dtype
     self.unbroadcast = unbroadcast
     self.keepdims = keepdims
@@ -1995,7 +1977,6 @@ class _RangeInAxis(_Base):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'dtype': self.dtype,
       'unbroadcast': self.unbroadcast,
       'keepdims': self.keepdims,
@@ -2007,13 +1988,20 @@ class _RangeInAxis(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
+                      *,
+                      axis: str,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'range_in_axis',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2041,13 +2029,15 @@ def range_in_axis(
   :param str|None name:
   """
   mod = _RangeInAxis(
-    axis=axis,
     dtype=dtype,
     unbroadcast=unbroadcast,
     keepdims=keepdims,
     sparse=sparse,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _BatchSoftmax(_ConcatInput):
@@ -2243,7 +2233,6 @@ class _Window(_ConcatInput):
                window_size: int,
                window_left: Optional[int] = NotSpecified,
                window_right: Optional[int] = NotSpecified,
-               axis: str = NotSpecified,
                padding: str = NotSpecified,
                stride: int = NotSpecified,
                **kwargs):
@@ -2251,7 +2240,6 @@ class _Window(_ConcatInput):
     :param int window_size:
     :param int|None window_left:
     :param int|None window_right:
-    :param str axis: see Data.get_axis_from_description()
     :param str padding: "same" or "valid"
     :param int stride: return only each Nth window
     """
@@ -2259,7 +2247,6 @@ class _Window(_ConcatInput):
     self.window_size = window_size
     self.window_left = window_left
     self.window_right = window_right
-    self.axis = axis
     self.padding = padding
     self.stride = stride
 
@@ -2271,7 +2258,6 @@ class _Window(_ConcatInput):
       'window_size': self.window_size,
       'window_left': self.window_left,
       'window_right': self.window_right,
-      'axis': self.axis,
       'padding': self.padding,
       'stride': self.stride,
     }
@@ -2281,13 +2267,20 @@ class _Window(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'window',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2329,11 +2322,13 @@ def window(
     window_size=window_size,
     window_left=window_left,
     window_right=window_right,
-    axis=axis,
     padding=padding,
     stride=stride,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _Cumsum(_ConcatInput):
@@ -2344,17 +2339,14 @@ class _Cumsum(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: str = NotSpecified,
                additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
                reverse: bool = NotSpecified,
                **kwargs):
     """
-    :param str axis: see :func:`Data.get_axis_from_description`
     :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
     :param bool reverse:
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.additional_left_summand_per_element = additional_left_summand_per_element
     self.reverse = reverse
 
@@ -2363,7 +2355,6 @@ class _Cumsum(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'additional_left_summand_per_element': self.additional_left_summand_per_element,
       'reverse': self.reverse,
     }
@@ -2373,13 +2364,20 @@ class _Cumsum(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'cumsum',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2401,11 +2399,13 @@ def cumsum(
   :param str|None name:
   """
   mod = _Cumsum(
-    axis=axis,
     additional_left_summand_per_element=additional_left_summand_per_element,
     reverse=reverse,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _Pad(_ConcatInput):
@@ -2416,19 +2416,16 @@ class _Pad(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axes: Any,
                padding: Any,
                value: Union[int, float] = NotSpecified,
                mode: str = NotSpecified,
                **kwargs):
     """
-    :param str|list[str] axes: e.g. "F" etc. see :func:`Dataset.get_axes_from_description`.
     :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
     :param int|float value: what constant value to pad, with mode=="constant"
     :param str mode: "constant", "reflect", "symmetric" and "replication"
     """
     super().__init__(**kwargs)
-    self.axes = axes
     self.padding = padding
     self.value = value
     self.mode = mode
@@ -2438,7 +2435,6 @@ class _Pad(_ConcatInput):
     Return all options
     """
     opts = {
-      'axes': self.axes,
       'padding': self.padding,
       'value': self.value,
       'mode': self.mode,
@@ -2449,13 +2445,20 @@ class _Pad(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'pad',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2479,12 +2482,14 @@ def pad(
   :param str|None name:
   """
   mod = _Pad(
-    axes=axes,
     padding=padding,
     value=value,
     mode=mode,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _MergeDims(_ConcatInput):
@@ -2501,11 +2506,9 @@ class _MergeDims(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axes: Any,
                keep_order: bool = NotSpecified,
                **kwargs):
     """
-    :param str|list[str]|list[int] axes: see Data.get_axes_from_description(), e.g. "except_time"
     :param bool keep_order: By default (for historical reasons), the axes are sorted, and then merged.
       Thus, the order of incoming axes will influence the result.
       E.g. inputs [B,S,F] and [B,F,S], with ``axes=["S","F"]``, will get different results,
@@ -2516,7 +2519,6 @@ class _MergeDims(_ConcatInput):
       and not the incoming axis order.
     """
     super().__init__(**kwargs)
-    self.axes = axes
     self.keep_order = keep_order
 
   def get_opts(self):
@@ -2524,7 +2526,6 @@ class _MergeDims(_ConcatInput):
     Return all options
     """
     opts = {
-      'axes': self.axes,
       'keep_order': self.keep_order,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -2533,13 +2534,20 @@ class _MergeDims(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'merge_dims',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2572,10 +2580,12 @@ def merge_dims(
   :param str|None name:
   """
   mod = _MergeDims(
-    axes=axes,
     keep_order=keep_order,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _Split(_ConcatInput):
@@ -2588,17 +2598,14 @@ class _Split(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: Optional[str] = NotSpecified,
                num_splits: Optional[int] = NotSpecified,
                size_splits: Optional[List[int]] = NotSpecified,
                **kwargs):
     """
-    :param str|None axis: feature axis by default
     :param int|None num_splits:
     :param list[int]|None size_splits:
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.num_splits = num_splits
     self.size_splits = size_splits
 
@@ -2607,7 +2614,6 @@ class _Split(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'num_splits': self.num_splits,
       'size_splits': self.size_splits,
     }
@@ -2617,13 +2623,20 @@ class _Split(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'split',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2647,11 +2660,13 @@ def split(
   :param str|None name:
   """
   mod = _Split(
-    axis=axis,
     num_splits=num_splits,
     size_splits=size_splits,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _SplitDims(_ConcatInput):
@@ -2678,13 +2693,11 @@ class _SplitDims(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: str,
                dims: Any,
                pad_to_multiples: Optional[bool] = NotSpecified,
                pad_value: Union[int, float] = NotSpecified,
                **kwargs):
     """
-    :param str axis: e.g. "F"
     :param tuple[int]|list[int] dims: what the axis should be split into. e.g. (window, -1)
     :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
       static dims, such that splitting is actually possible.
@@ -2692,7 +2705,6 @@ class _SplitDims(_ConcatInput):
     :param int|float pad_value: What pad value to use for pad_to_multiples
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.dims = dims
     self.pad_to_multiples = pad_to_multiples
     self.pad_value = pad_value
@@ -2702,7 +2714,6 @@ class _SplitDims(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'dims': self.dims,
       'pad_to_multiples': self.pad_to_multiples,
       'pad_value': self.pad_value,
@@ -2713,13 +2724,20 @@ class _SplitDims(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: str,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'split_dims',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2761,12 +2779,14 @@ def split_dims(
   :param str|None name:
   """
   mod = _SplitDims(
-    axis=axis,
     dims=dims,
     pad_to_multiples=pad_to_multiples,
     pad_value=pad_value,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _SplitBatchTime(_ConcatInput):
@@ -2831,15 +2851,12 @@ class _FlattenBatch(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: str = NotSpecified,
                batch_major: bool = NotSpecified,
                **kwargs):
     """
-    :param str axis:
     :param bool batch_major: if False, will flatten in time-major manner
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.batch_major = batch_major
 
   def get_opts(self):
@@ -2847,7 +2864,6 @@ class _FlattenBatch(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'batch_major': self.batch_major,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -2856,13 +2872,20 @@ class _FlattenBatch(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'flatten_batch',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -2887,10 +2910,12 @@ def flatten_batch(
   :param str|None name:
   """
   mod = _FlattenBatch(
-    axis=axis,
     batch_major=batch_major,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _UnflattenNd(_ConcatInput):
@@ -2994,17 +3019,12 @@ class _ExpandDims(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: Union[str, int],
                dim: int = NotSpecified,
                **kwargs):
     """
-    :param str|int axis: axis to add, e.g. "F"|"feature" or "spatial"|"time"|"T".
-      if this is an integer, the input data is first converted into batch-major mode,
-      and then this is counted with batch-dim.
     :param int dim: dimension of new axis (1 by default)
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.dim = dim
 
   def get_opts(self):
@@ -3012,7 +3032,6 @@ class _ExpandDims(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'dim': self.dim,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -3021,13 +3040,20 @@ class _ExpandDims(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: Union[str, int],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'expand_dims',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -3049,10 +3075,12 @@ def expand_dims(
   :param str|None name:
   """
   mod = _ExpandDims(
-    axis=axis,
     dim=dim,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _Repeat(_ConcatInput):
@@ -3064,37 +3092,18 @@ class _Repeat(_ConcatInput):
   """
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               axis: str = NotSpecified,
-               **kwargs):
-    """
-    :param str axis: (dynamic) axis for repetition (currently only time axis is supported)
-    """
-    super().__init__(**kwargs)
-    self.axis = axis
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'axis': self.axis,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       repetitions: Union[LayerRef, int],
+                      axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'repetitions': repetitions,
+      'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -3124,12 +3133,11 @@ def repeat(
   :param str axis: (dynamic) axis for repetition (currently only time axis is supported)
   :param str|None name:
   """
-  mod = _Repeat(
-    axis=axis,
-    )
+  mod = _Repeat()
   return mod(
     source,
     repetitions=repetitions,
+    axis=axis,
     name=name)
 
 
@@ -3631,6 +3639,10 @@ class Conv(_ConcatInput):
                       *,
                       filter: Optional[LayerRef] = NotSpecified,
                       bias: Optional[LayerRef] = NotSpecified,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3638,6 +3650,10 @@ class Conv(_ConcatInput):
     args = {
       'filter': filter,
       'bias': bias,
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -3892,6 +3908,10 @@ class TransposedConv(_ConcatInput):
                       *,
                       filter: Optional[LayerRef] = NotSpecified,
                       bias: Optional[LayerRef] = NotSpecified,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3899,6 +3919,10 @@ class TransposedConv(_ConcatInput):
     args = {
       'filter': filter,
       'bias': bias,
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -3918,19 +3942,12 @@ class _Reduce(_ConcatInput):
   def __init__(self,
                *,
                mode: str,
-               axes: Any = NotSpecified,
-               axis: Any = NotSpecified,
                keep_dims: bool = NotSpecified,
                enforce_batch_dim_axis: int = NotSpecified,
                use_time_mask: bool = NotSpecified,
                **kwargs):
     """
     :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
-    :param int|list[int]|str axes: One axis or multiple axis to reduce.
-      It accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature",
-      and it is strongly recommended to use some of these symbolic names.
-      See :func:`Data.get_axes_from_description`.
-    :param int|list[int]|str axis: for compatibility, can be used instead of ``axes``
     :param bool keep_dims: if dimensions should be kept (will be 1)
     :param int enforce_batch_dim_axis: will swap the batch-dim-axis of the input with the given axis.
       e.g. 0: will convert the input into batch-major format if not already like that.
@@ -3941,8 +3958,6 @@ class _Reduce(_ConcatInput):
     """
     super().__init__(**kwargs)
     self.mode = mode
-    self.axes = axes
-    self.axis = axis
     self.keep_dims = keep_dims
     self.enforce_batch_dim_axis = enforce_batch_dim_axis
     self.use_time_mask = use_time_mask
@@ -3953,8 +3968,6 @@ class _Reduce(_ConcatInput):
     """
     opts = {
       'mode': self.mode,
-      'axes': self.axes,
-      'axis': self.axis,
       'keep_dims': self.keep_dims,
       'enforce_batch_dim_axis': self.enforce_batch_dim_axis,
       'use_time_mask': self.use_time_mask,
@@ -3965,13 +3978,22 @@ class _Reduce(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any = NotSpecified,
+                      axis: Any = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'reduce',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4008,13 +4030,15 @@ def reduce(
   """
   mod = _Reduce(
     mode=mode,
-    axes=axes,
-    axis=axis,
     keep_dims=keep_dims,
     enforce_batch_dim_axis=enforce_batch_dim_axis,
     use_time_mask=use_time_mask,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    axis=axis,
+    name=name)
 
 
 class _ReduceOut(_ConcatInput):
@@ -4095,19 +4119,14 @@ class _Squeeze(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: Any,
                enforce_batch_dim_axis: Optional[int] = NotSpecified,
                allow_no_op: bool = NotSpecified,
                **kwargs):
     """
-    :param int|list[int]|str axis: one axis or multiple axis to squeeze.
-      this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
-      it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
     :param int|None enforce_batch_dim_axis:
     :param bool allow_no_op:
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.enforce_batch_dim_axis = enforce_batch_dim_axis
     self.allow_no_op = allow_no_op
 
@@ -4116,7 +4135,6 @@ class _Squeeze(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'enforce_batch_dim_axis': self.enforce_batch_dim_axis,
       'allow_no_op': self.allow_no_op,
     }
@@ -4126,13 +4144,20 @@ class _Squeeze(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'squeeze',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4157,11 +4182,13 @@ def squeeze(
   :param str|None name:
   """
   mod = _Squeeze(
-    axis=axis,
     enforce_batch_dim_axis=enforce_batch_dim_axis,
     allow_no_op=allow_no_op,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _Stack(_Base):
@@ -4170,38 +4197,22 @@ class _Stack(_Base):
   """
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               axis: Optional[int] = NotSpecified,
-               **kwargs):
-    """
-    :param int|None axis: new axis.
-      If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
-      i.e. some reasonable default for a new spatial axis.
-    """
-    super().__init__(**kwargs)
-    self.axis = axis
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'axis': self.axis,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
+                      *,
+                      axis: Optional[int] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'stack',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4220,10 +4231,11 @@ def stack(
     i.e. some reasonable default for a new spatial axis.
   :param str|None name:
   """
-  mod = _Stack(
+  mod = _Stack()
+  return mod(
+    source,
     axis=axis,
-    )
-  return mod(source, name=name)
+    name=name)
 
 
 class _WeightedSum(_ConcatInput):
@@ -4239,13 +4251,11 @@ class _WeightedSum(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axes: Any,
                padding: str = NotSpecified,
                size: Optional[Tuple[int]] = NotSpecified,
                keep_dims: bool = NotSpecified,
                **kwargs):
     """
-    :param str|list[str] axes: the axes to do the weighted-sum over
     :param str padding: "valid" or "same", in case of keep_dims=True
     :param None|tuple[int] size: the kernel-size. if left away, the axes must be of fixed dimension,
       and we will use keep_dims=False, padding="valid" by default.
@@ -4253,7 +4263,6 @@ class _WeightedSum(_ConcatInput):
     :param bool keep_dims: if False, the axes will be squeezed away. see also `size`.
     """
     super().__init__(**kwargs)
-    self.axes = axes
     self.padding = padding
     self.size = size
     self.keep_dims = keep_dims
@@ -4263,7 +4272,6 @@ class _WeightedSum(_ConcatInput):
     Return all options
     """
     opts = {
-      'axes': self.axes,
       'padding': self.padding,
       'size': self.size,
       'keep_dims': self.keep_dims,
@@ -4274,13 +4282,20 @@ class _WeightedSum(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'weighted_sum',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4311,12 +4326,14 @@ def weighted_sum(
   :param str|None name:
   """
   mod = _WeightedSum(
-    axes=axes,
     padding=padding,
     size=size,
     keep_dims=keep_dims,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _ElemwiseProd(_ConcatInput):
@@ -4330,15 +4347,12 @@ class _ElemwiseProd(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axes: Any,
                size: Tuple[int] = NotSpecified,
                **kwargs):
     """
-    :param str|list[str] axes: e.g. "spatial", but all those axes must be of fixed dimension
     :param tuple[int] size: for double-checking, you can explicitly provide the size
     """
     super().__init__(**kwargs)
-    self.axes = axes
     self.size = size
 
   def get_opts(self):
@@ -4346,7 +4360,6 @@ class _ElemwiseProd(_ConcatInput):
     Return all options
     """
     opts = {
-      'axes': self.axes,
       'size': self.size,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -4355,13 +4368,20 @@ class _ElemwiseProd(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'elemwise_prod',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4384,10 +4404,12 @@ def elemwise_prod(
   :param str|None name:
   """
   mod = _ElemwiseProd(
-    axes=axes,
     size=size,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _PrefixInTime(_ConcatInput):
@@ -4763,20 +4785,17 @@ class _ShiftAxis(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: Union[str, int],
                amount: int,
                pad: bool = NotSpecified,
                adjust_size_info: bool = NotSpecified,
                **kwargs):
     """
-    :param str|int axis: single axis to shift
     :param int amount: number of elements to shift
                    (<0 for left-shift, >0 for right-shift)
     :param bool pad: preserve shape by padding
     :param bool adjust_size_info: whether to adjust the size_placeholder
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.amount = amount
     self.pad = pad
     self.adjust_size_info = adjust_size_info
@@ -4786,7 +4805,6 @@ class _ShiftAxis(_ConcatInput):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'amount': self.amount,
       'pad': self.pad,
       'adjust_size_info': self.adjust_size_info,
@@ -4797,13 +4815,20 @@ class _ShiftAxis(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: Union[str, int],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'shift_axis',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4831,12 +4856,14 @@ def shift_axis(
   :param str|None name:
   """
   mod = _ShiftAxis(
-    axis=axis,
     amount=amount,
     pad=pad,
     adjust_size_info=adjust_size_info,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _Resize(_ConcatInput):
@@ -4849,21 +4876,18 @@ class _Resize(_ConcatInput):
   def __init__(self,
                *,
                factor: int,
-               axis: Union[str, int],
                kind: str = NotSpecified,
                fill_value: Optional[Union[int, float]] = NotSpecified,
                fill_dropout: float = NotSpecified,
                **kwargs):
     """
     :param int factor:
-    :param str|int axis: the axis to resize, counted with batch-dim. can also be "T" for time
     :param str kind: "linear", "nn"/"nearest_neighbor", "cubic", "fill"
     :param None|int|float fill_value: if kind=="fill"
     :param float fill_dropout: if set, will dropout in the same axis
     """
     super().__init__(**kwargs)
     self.factor = factor
-    self.axis = axis
     self.kind = kind
     self.fill_value = fill_value
     self.fill_dropout = fill_dropout
@@ -4874,7 +4898,6 @@ class _Resize(_ConcatInput):
     """
     opts = {
       'factor': self.factor,
-      'axis': self.axis,
       'kind': self.kind,
       'fill_value': self.fill_value,
       'fill_dropout': self.fill_dropout,
@@ -4885,13 +4908,20 @@ class _Resize(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axis: Union[str, int],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'resize',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4919,12 +4949,14 @@ def resize(
   """
   mod = _Resize(
     factor=factor,
-    axis=axis,
     kind=kind,
     fill_value=fill_value,
     fill_dropout=fill_dropout,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axis=axis,
+    name=name)
 
 
 class _CombineDims(_MergeDims):
@@ -4936,13 +4968,20 @@ class _CombineDims(_MergeDims):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'combine_dims',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -4970,10 +5009,12 @@ def combine_dims(
   :param str|None name:
   """
   mod = _CombineDims(
-    axes=axes,
     keep_order=keep_order,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    name=name)
 
 
 class _Remove(_Base):
@@ -5419,17 +5460,14 @@ class _SearchSorted(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               axis: str = NotSpecified,
                side: str = NotSpecified,
                **kwargs):
     """
-    :param str axis: the axis along which `sorted_sequence` is sorted
     :param str side: "left" or "right".
       When one of the `values` exactly matches an element of the `sorted_sequence`,
       whether to choose the lower or higher index.
     """
     super().__init__(**kwargs)
-    self.axis = axis
     self.side = side
 
   def get_opts(self):
@@ -5437,7 +5475,6 @@ class _SearchSorted(_Base):
     Return all options
     """
     opts = {
-      'axis': self.axis,
       'side': self.side,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -5449,6 +5486,7 @@ class _SearchSorted(_Base):
                       *,
                       sorted_sequence: LayerRef,
                       values: LayerRef,
+                      axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -5456,6 +5494,7 @@ class _SearchSorted(_Base):
     args = {
       'sorted_sequence': sorted_sequence,
       'values': values,
+      'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -5492,13 +5531,13 @@ def search_sorted(
   :param str|None name:
   """
   mod = _SearchSorted(
-    axis=axis,
     side=side,
     )
   return mod(
     source,
     sorted_sequence=sorted_sequence,
     values=values,
+    axis=axis,
     name=name)
 
 
@@ -5568,19 +5607,16 @@ class _AccumulateMean(_Reduce):
   def __init__(self,
                *,
                exp_average: float,
-               axes: Any = NotSpecified,
                initial_value: float = NotSpecified,
                is_prob_distribution: bool = NotSpecified,
                **kwargs):
     """
     :param float exp_average: momentum in exponential average calculation
-    :param int|list[str]|str axes: the axes to reduce. must contain batch and time.
     :param float initial_value: how to initialize the variable which accumulates the mean
     :param bool is_prob_distribution: if provided, better default for initial_value
     """
     super().__init__(mode="mean", keep_dims=False, axes=axes, **kwargs)
     self.exp_average = exp_average
-    self.axes = axes
     self.initial_value = initial_value
     self.is_prob_distribution = is_prob_distribution
 
@@ -5590,7 +5626,6 @@ class _AccumulateMean(_Reduce):
     """
     opts = {
       'exp_average': self.exp_average,
-      'axes': self.axes,
       'initial_value': self.initial_value,
       'is_prob_distribution': self.is_prob_distribution,
     }
@@ -5600,13 +5635,22 @@ class _AccumulateMean(_Reduce):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      axes: Any = NotSpecified,
+                      axis: Any = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'axes': axes,
+      'axis': axis,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'accumulate_mean',
       'from': source,
+      **args,
       **self.get_opts()}
 
 
@@ -5646,16 +5690,18 @@ def accumulate_mean(
   """
   mod = _AccumulateMean(
     exp_average=exp_average,
-    axes=axes,
     initial_value=initial_value,
     is_prob_distribution=is_prob_distribution,
     mode=mode,
-    axis=axis,
     keep_dims=keep_dims,
     enforce_batch_dim_axis=enforce_batch_dim_axis,
     use_time_mask=use_time_mask,
     )
-  return mod(source, name=name)
+  return mod(
+    source,
+    axes=axes,
+    axis=axis,
+    name=name)
 
 
 class _Loss(_Base):
@@ -6648,12 +6694,20 @@ class Rec(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]] = (),
                       *,
                       initial_state: Optional[Union[LayerRef, str, float, int, Tuple]] = NotSpecified,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'initial_state': initial_state,
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -6715,12 +6769,20 @@ class RnnCell(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       initial_state: Any = NotSpecified,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'initial_state': initial_state,
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -7750,12 +7812,20 @@ class SelfAttention(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       key_shift: Optional[LayerRef] = NotSpecified,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'key_shift': key_shift,
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -8324,11 +8394,24 @@ class RelativePositionalEncoding(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'relative_positional_encoding',
       'from': source,
+      **args,
       **self.get_opts()}
