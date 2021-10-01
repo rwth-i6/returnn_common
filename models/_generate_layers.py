@@ -152,7 +152,7 @@ class LayerSignature:
 
   def has_source_param(self) -> bool:
     """
-    Whether this param has a "from" arg.
+    Whether this layer has a "from" arg.
     """
     if issubclass(
           self.layer_class,
