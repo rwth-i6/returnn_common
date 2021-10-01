@@ -197,19 +197,19 @@ class ISubnet(ILayerMaker):
     """
     Make subnet layer dict.
     """
-    from .layers import Copy
+    from .layers import copy
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self._subnet_func(*args, **kwargs)
     if isinstance(res, LayerRef):
-      Copy()(res, name="output")
+      copy(res, name="output")
       return self._make_layer_dict_from_subnet_ctx(name_ctx)
     else:
       # we return more than one layer (thus also working on other layers of the subnet, that are not output)
       # by convention: first layer is the output layer
       res_flat = nest.flatten(res)
-      Copy()(res_flat[0], name="output")
+      copy(res_flat[0], name="output")
       return self._make_layer_dict_from_subnet_ctx(name_ctx), nest.pack_sequence_as(res, res_flat)
 
   def _subnet_func(self, *args, **kwargs) -> LayerRef:
@@ -223,12 +223,12 @@ class ISubnet(ILayerMaker):
     Make net dict, to be used as the main RETURNN network, not within a subnetwork.
     Extern data can be accessed via :func:`get_root_extern_data`.
     """
-    from .layers import Copy
+    from .layers import copy
     with NameCtx(maker=self, parent=None) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = self._subnet_func()
       if "output" not in name_ctx.childs:
-        Copy()(res, name="output")
+        copy(res, name="output")
       return name_ctx.make_net_dict()
 
 
@@ -445,10 +445,10 @@ class NameCtx:
     """
     Assume this is a subnet, and make a default output.
     """
-    from .layers import Copy
+    from .layers import copy
     assert self.is_subnet_ctx
     assert "output" not in self.childs
-    return Copy()(ref, name="output")
+    return copy(ref, name="output")
 
   def get_abs_name_ctx_list(self) -> List[NameCtx]:
     """
