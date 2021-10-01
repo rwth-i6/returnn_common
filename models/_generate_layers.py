@@ -135,7 +135,7 @@ def setup():
 
     # Make function if this is functional
     name = get_module_class_name_for_layer_class(sig)
-    if sig.is_functional() and not sig.layer_class.__name__.startswith("_") and sig.layer_class is not LayerBase:
+    if sig.is_functional() and not layer_class.__name__.startswith("_") and layer_class.layer_class:
       assert name.startswith("_")
       module_name = name
       name = camel_case_to_snake_case(name[1:])

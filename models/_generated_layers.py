@@ -6835,29 +6835,6 @@ class _BaseChoice(_Base):
   make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def base_choice(
-                source: LayerRef,
-                *,
-                beam_size: Optional[int],
-                search: Union[NotSpecified, bool] = NotSpecified,
-                ) -> LayerRef:
-  """
-  This is a base-class for any layer which defines a new search choice,
-  i.e. which defines ``self.search_choices``.
-
-  :param LayerRef source:
-  :param int|None beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
-  :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
-    If not specified, it will depend on `network.search_flag`.
-  """
-  mod = _BaseChoice(
-    beam_size=beam_size,
-    search=search,
-    )
-  return mod(source)
-
-
 class _Choice(_BaseChoice):
   """
   This layer represents a choice to be made in search during inference,
@@ -7289,69 +7266,12 @@ class _AttentionBase(_ConcatInput):
   make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def attention_base(
-                   source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                   *,
-                   base: LayerRef,
-                   ) -> LayerRef:
-  """
-  This is the base class for attention.
-  This layer would get constructed in the context of one single decoder step.
-  We get the whole encoder output over all encoder frames (the base), e.g. (batch,enc_time,enc_dim),
-  and some current decoder context, e.g. (batch,dec_att_dim),
-  and we are supposed to return the attention output, e.g. (batch,att_dim).
-
-  Some sources:
-  * Bahdanau, Bengio, Montreal, Neural Machine Translation by Jointly Learning to Align and Translate, 2015,
-    https://arxiv.org/abs/1409.0473
-  * Luong, Stanford, Effective Approaches to Attention-based Neural Machine Translation, 2015,
-    https://arxiv.org/abs/1508.04025
-    -> dot, general, concat, location attention; comparison to Bahdanau
-  * https://github.com/ufal/neuralmonkey/blob/master/neuralmonkey/decoders/decoder.py
-  * https://google.github.io/seq2seq/
-    https://github.com/google/seq2seq/blob/master/seq2seq/contrib/seq2seq/decoder.py
-    https://github.com/google/seq2seq/blob/master/seq2seq/decoders/attention_decoder.py
-  * https://github.com/deepmind/sonnet/blob/master/sonnet/python/modules/attention.py
-
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
-  :param LayerBase base: encoder output to attend on
-  """
-  mod = _AttentionBase()
-  return mod(
-    source,
-    base=base,
-    )
-
-
 class _GlobalAttentionContextBase(_AttentionBase):
   """
   Base class for other attention types, which use a global context.
   """
 
   make_layer_dict = ILayerMaker.make_layer_dict  # abstract
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def global_attention_context_base(
-                                  source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                                  *,
-                                  base_ctx: LayerRef,
-                                  base: LayerRef,
-                                  ) -> LayerRef:
-  """
-  Base class for other attention types, which use a global context.
-
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
-  :param LayerBase base_ctx: encoder output used to calculate the attention weights
-  :param LayerBase base: encoder output to attend on
-  """
-  mod = _GlobalAttentionContextBase()
-  return mod(
-    source,
-    base_ctx=base_ctx,
-    base=base,
-    )
 
 
 class _GenericAttention(_AttentionBase):
