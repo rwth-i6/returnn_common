@@ -5236,7 +5236,6 @@ def eval(
          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
          *,
          eval: str,
-         kind: str,
          activation: Optional[str] = NotSpecified,
          with_bias: bool = NotSpecified,
          eval_locals: Optional[Dict[str]] = NotSpecified,
@@ -5253,8 +5252,6 @@ def eval(
 
   :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
   :param str eval: will eval this string. see :func:`_op_kind_eval`
-  :param str kind:
-    currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `logical_and`, `logical_or`, or `eval`
   :param str|None activation: if provided, activation function to apply, e.g. "tanh" or "relu"
   :param bool with_bias: if given, will add a trainable bias tensor
   :param dict[str]|None eval_locals: locals for eval
@@ -5263,7 +5260,6 @@ def eval(
   """
   mod = _Eval(
     eval=eval,
-    kind=kind,
     activation=activation,
     with_bias=with_bias,
     eval_locals=eval_locals,
@@ -5662,9 +5658,7 @@ def accumulate_mean(
                     axes: Any = NotSpecified,
                     initial_value: float = NotSpecified,
                     is_prob_distribution: bool = NotSpecified,
-                    mode: str,
                     axis: Any = NotSpecified,
-                    keep_dims: bool = NotSpecified,
                     enforce_batch_dim_axis: int = NotSpecified,
                     use_time_mask: bool = NotSpecified,
                     name: Optional[str] = None) -> LayerRef:
@@ -5677,9 +5671,7 @@ def accumulate_mean(
   :param int|list[str]|str axes: the axes to reduce. must contain batch and time.
   :param float initial_value: how to initialize the variable which accumulates the mean
   :param bool is_prob_distribution: if provided, better default for initial_value
-  :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
   :param int|list[int]|str axis: for compatibility, can be used instead of ``axes``
-  :param bool keep_dims: if dimensions should be kept (will be 1)
   :param int enforce_batch_dim_axis: will swap the batch-dim-axis of the input with the given axis.
     e.g. 0: will convert the input into batch-major format if not already like that.
     Note that this is still not enough in some cases, e.g. when the other axes are also not as expected.
@@ -5692,8 +5684,6 @@ def accumulate_mean(
     exp_average=exp_average,
     initial_value=initial_value,
     is_prob_distribution=is_prob_distribution,
-    mode=mode,
-    keep_dims=keep_dims,
     enforce_batch_dim_axis=enforce_batch_dim_axis,
     use_time_mask=use_time_mask,
     )
@@ -7234,7 +7224,6 @@ def decide(
            source: LayerRef,
            *,
            length_normalization: bool = NotSpecified,
-           beam_size: Optional[int],
            search: Union[NotSpecified, bool] = NotSpecified,
            name: Optional[str] = None) -> LayerRef:
   """
@@ -7248,14 +7237,12 @@ def decide(
 
   :param LayerRef source:
   :param bool length_normalization: performed on the beam scores
-  :param int|None beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
   :param str|None name:
   """
   mod = _Decide(
     length_normalization=length_normalization,
-    beam_size=beam_size,
     search=search,
     )
   return mod(source, name=name)

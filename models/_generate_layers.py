@@ -82,7 +82,7 @@ def setup():
         if param.is_module_init_arg():
           print(param.get_module_param_docstring(indent="    "), file=f)
       print('    """', file=f)
-      print(f"    {sig.get_super_call_code_str()}", file=f)
+      print(f"    {sig.get_init_super_call_code_str()}", file=f)
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
@@ -211,6 +211,7 @@ class LayerSignature:
     self.inspect_init_sig = inspect.signature(layer_class.__init__)
     self.params = {}  # type: Dict[str, LayerSignature.Param]
     self.docstring = None  # type: Optional[str]
+    self._defined_base_params = set()
     self._init_args()
     self._parse_init_docstring()
 
@@ -300,6 +301,7 @@ class LayerSignature:
     ls = []
     sig = self
     while sig:
+      blacklist.update(sig._defined_base_params)
       for _, param in sig.params.items():
         if param.returnn_name in blacklist:
           continue
@@ -431,13 +433,9 @@ class LayerSignature:
   def __repr__(self):
     return f"<{self.__class__.__name__} {self.layer_class.__name__} {self.inspect_init_sig}>"
 
-  def get_super_call_code_str(self) -> str:
+  def _find_super_call_assignments(self):
     """
-    Inspects the super call of the layer class in RETURNN, extracts the super call parameters from there,
-    removes unwanted parameters and builds a super call which can be written as super call into _generated_layers.py
-    for that class.
-
-    :return: Code string for the super call e.g `"super().__init__(...)"`
+    Inspects the super call of the layer class in RETURNN, extracts the super call parameters from there.
     """
     # get code as string list
     code = inspect.getsource(self.layer_class.__init__).splitlines()
@@ -445,7 +443,7 @@ class LayerSignature:
     # get list of lines starting with super and take the first one
     lines = [line.strip() for line in code if line.strip().startswith("super")]
     if not lines:
-      return 'super().__init__()'
+      return None
 
     # reformat the super call to extract what we need
     # get the first line which contains super to get the super call
@@ -461,6 +459,26 @@ class LayerSignature:
     tup_ls = [x.split("=") for x in call_pruned.split(",") if x.strip() != "**kwargs"]
     tup_ls = [(key.strip(), value.strip()) for (key, value) in tup_ls]
     tup_ls = [(key, value) for (key, value) in tup_ls if key not in self._IgnoreParamNames]
+    for key, value in tup_ls:
+      if key == value:
+        continue
+      assert key not in self.params
+      self._defined_base_params.add(key)
+    return tup_ls
+
+  def get_init_super_call_code_str(self) -> str:
+    """
+    Inspects the super call of the layer class in RETURNN, extracts the super call parameters from there,
+    removes unwanted parameters and builds a super call which can be written as super call into _generated_layers.py
+    for that class.
+
+    :return: Code string for the super call e.g `"super().__init__(...)"`
+    """
+    tup_ls = self._find_super_call_assignments()
+    if tup_ls is None:
+      return 'super().__init__()'
+    if not tup_ls:
+      return 'super().__init__(**kwargs)'
     tup_ls = [
       (key, value) for (key, value) in tup_ls if value not in self.params or self.params[value].is_module_init_arg()]
     tup_ls = [f"{key}={value}" for (key, value) in tup_ls]
