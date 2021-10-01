@@ -84,6 +84,7 @@ def test_explicit_root_ctx_sub():
     """
     Net
     """
+    # noinspection PyShadowingNames
     def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
       super().__init__()
       self.linear = Linear(n_out=n_out, l2=l2, dropout=dropout, with_bias=False, activation=None)
@@ -119,6 +120,7 @@ def test_root_mod_call_twice():
     """
     Test block
     """
+    # noinspection PyShadowingNames
     def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
       super().__init__()
       self.linear = Linear(n_out=n_out, l2=l2, dropout=dropout, with_bias=False, activation=None)
