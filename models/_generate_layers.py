@@ -29,6 +29,52 @@ _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
 
 
+# We use blacklists instead of whitelists such that we can more easily run this script in the future.
+
+# These layers are deprecated or not needed for various reasons, and thus exclude them.
+# Some of them are also very easily reproduced by other layers and thus not needed.
+# If you think some of these are needed, or you are unsure how to get the corresponding functionality,
+# please open an issue.
+BlacklistLayerClassNames = {
+  "RecStepInfoLayer",
+  "_TemplateLayer",
+  "cond", "masked_computation", "subnetwork",
+
+  "swap_axes",
+  "gather_nd",  # -> gather
+  "softmax",  # misleading (because not just activation), also we will have a separate softmax activation
+  "gating",
+  "expand_dims",  # not sure if this is ever needed
+  "weighted_sum",
+  "elemwise_prod",
+  "combine_dims",  # -> merge_dims
+  "loss",
+  "transpose",
+  "accumulate_mean",
+  "framewise_statistics",
+  "image_summary",
+  "get_last_hidden_state",  # we handle all state explicitly, there is no hidden state
+  "get_rec_accumulated",  # covered by our Loop logic
+  "decide_keep_beam",  # internal
+  "rnn_cell",  # -> rec
+  "_AttentionBase",
+  "_GlobalAttentionContextBase",
+  "generic_attention",  # -> dot
+  "dot_attention",  # -> dot
+  "concat_attention",
+  "gauss_window_attention",
+  "self_attention",
+}
+
+LayersHidden = {
+  "combine",
+}
+
+BlacklistLayerArgs = {
+  "range_in_axis": {"unbroadcast", "keepdims"},
+}
+
+
 def setup():
   """
   Setup
@@ -376,6 +422,10 @@ class LayerSignature:
           kind=inspect.Parameter.KEYWORD_ONLY),
         param_type_s="LayerBase",
         docstring="target")
+    if self.layer_class.layer_class in BlacklistLayerArgs:
+      blacklist = BlacklistLayerArgs[self.layer_class.layer_class]
+    else:
+      blacklist = set()
     for name, param in self.inspect_init_sig.parameters.items():
       # Ignore a number of params which are handled explicitly.
       if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
@@ -383,6 +433,8 @@ class LayerSignature:
       if name.startswith("_"):
         continue
       if name in self._IgnoreParamNames:
+        continue
+      if name in blacklist:
         continue
       param = inspect.Parameter(name=param.name, kind=param.KEYWORD_ONLY, default=param.default)
       self.params[name] = LayerSignature.Param(self, param)
@@ -679,7 +731,7 @@ def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
   name = name[:-len("Layer")]
   if name.startswith("_"):
     return name
-  if sig.is_functional():
+  if sig.is_functional() or layer_class.layer_class in LayersHidden:
     return "_" + name  # we make a public function for it, but the module is hidden
   return name
 
@@ -689,21 +741,21 @@ def collect_layers():
   Collect list of layers.
   """
   from returnn.tf.layers import base, basic, rec
-  # noinspection PyProtectedMember
-  blacklist = {
-    rec.RecStepInfoLayer, rec._TemplateLayer,
-    CondLayer, MaskedComputationLayer, SubnetworkLayer,  # we need to define this manually
-  }
   ls = []
+  added = set()
   for mod in [base, basic, rec]:
     for key, value in vars(mod).items():
       if isinstance(value, type) and issubclass(value, LayerBase):
-        if value in blacklist:
+        if value in added:
+          continue
+        if value.layer_class and value.layer_class in BlacklistLayerClassNames:
+          continue
+        if value.__name__ in BlacklistLayerClassNames:
           continue
         if issubclass(value, InternalLayer):
           continue
         ls.append(value)
-        blacklist.add(value)
+        added.add(value)
   return ls
 
 
