@@ -7268,7 +7268,7 @@ class _DecideKeepBeam(_BaseChoice):
                **kwargs):
     """
     """
-    super().__init__(beam_size=NotSpecified, **kwargs)
+    super().__init__(beam_size=None, **kwargs)
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,

@@ -456,6 +456,9 @@ class LayerSignature:
       self._super_call_assignments = None
       return
 
+    base_sig = self.derived_layer()
+    assert base_sig
+
     # reformat the super call to extract what we need
     # get the first line which contains super to get the super call
     super_call = lines[0]  # super_call=super(ChoiceLayer, self).__init__(beam_size=beam_size, search=search, **kwargs)
@@ -476,9 +479,15 @@ class LayerSignature:
       key, value = key.strip(), value.strip()
       if key in self._IgnoreParamNames:
         continue
+      assert key in base_sig.params
+      param = base_sig.params[key]
       self._defined_base_params.add(key)
       if key == value and value not in self.params:
-        value = "NotSpecified"
+        if param.param_type_s and "NotSpecified" not in param.param_type_s:
+          assert "Optional" in param.param_type_s or "None" in param.param_type_s
+          value = "None"
+        else:
+          value = "NotSpecified"
       self._super_call_assignments.append((key, value))
 
   def has_init_super_call_assignments(self) -> bool:
