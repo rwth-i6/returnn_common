@@ -1425,7 +1425,7 @@ class Linear(_ConcatInput):
       **self.get_opts()}
 
 
-class _Softmax(Linear):
+class Softmax(Linear):
   """
   Just a LinearLayer with activation="softmax" by default.
   """
@@ -1433,51 +1433,27 @@ class _Softmax(Linear):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      *,
+                      dropout: float = NotSpecified,
+                      dropout_noise_shape: Any = NotSpecified,
+                      dropout_on_forward: bool = NotSpecified,
+                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    args = {
+      'dropout': dropout,
+      'dropout_noise_shape': dropout_noise_shape,
+      'dropout_on_forward': dropout_on_forward,
+      'mask': mask,
+    }
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'softmax',
       'from': source,
+      **args,
       **self.get_opts()}
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def softmax(
-            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-            *,
-            n_out: int,
-            activation: Optional[str] = NotSpecified,
-            with_bias: bool = NotSpecified,
-            grad_filter: Optional[float] = NotSpecified,
-            forward_weights_init: str = NotSpecified,
-            bias_init: Union[str, float] = NotSpecified,
-            use_transposed_weights: bool = NotSpecified,
-            name: Optional[str] = None) -> LayerRef:
-  """
-  Just a LinearLayer with activation="softmax" by default.
-
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
-  :param int n_out: output dimension
-  :param str|None activation: e.g. "relu", or None
-  :param bool with_bias:
-  :param float|None grad_filter: if grad norm is higher than this threshold (before activation), the grad is removed
-  :param str forward_weights_init: see :func:`returnn.tf.util.basic.get_initializer`
-  :param str|float bias_init: see :func:`returnn.tf.util.basic.get_initializer`
-  :param bool use_transposed_weights: If True, define the weight matrix with transposed dimensions (n_out, n_in).
-  :param str|None name:
-  """
-  mod = _Softmax(
-    n_out=n_out,
-    activation=activation,
-    with_bias=with_bias,
-    grad_filter=grad_filter,
-    forward_weights_init=forward_weights_init,
-    bias_init=bias_init,
-    use_transposed_weights=use_transposed_weights,
-    )
-  return mod(source, name=name)
 
 
 class _Length(_Base):

@@ -504,6 +504,10 @@ class LayerSignature:
         return True
     if self.layer_class is VariableLayer:
       return True
+    cls_base = self.layer_class.__base__
+    if issubclass(cls_base, LayerBase):
+      base_sig = self.others[cls_base]
+      return base_sig._has_variables()
     return False
 
   class Param:
