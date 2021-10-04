@@ -491,9 +491,15 @@ class LayerSignature:
       self._super_call_assignments.append((key, value))
 
   def has_init_super_call_assignments(self) -> bool:
+    """
+    :return: whether we have a specific super call for __init__
+    """
     return bool(self._super_call_assignments)
 
   def need_module_init(self) -> bool:
+    """
+    :return: whether we need to implement __init__ for this module
+    """
     if self.has_module_init_args():
       return True
     if self.derived_layer() and self.has_init_super_call_assignments():
@@ -520,6 +526,9 @@ class LayerSignature:
     return "super().__init__(%s)" % ", ".join(tup_ls)
 
   def derived_layer(self) -> Optional[LayerSignature]:
+    """
+    :return: the layer signature of the base layer class if this is derived from another layer
+    """
     cls_base = self.layer_class.__base__
     if issubclass(cls_base, LayerBase):
       return self.others[cls_base]
