@@ -188,6 +188,39 @@ class _ConcatInput(_Base):
   This layer also optionally can do dropout on the input.
   """
 
+  # noinspection PyShadowingBuiltins,PyShadowingNames
+  def __init__(self,
+               *,
+               dropout: float = NotSpecified,
+               dropout_noise_shape: Any = NotSpecified,
+               dropout_on_forward: bool = NotSpecified,
+               mask: Optional[str] = NotSpecified,
+               **kwargs):
+    """
+    :param float dropout: 0.0 means to apply no dropout. dropout will only be applied during training
+    :param dict[str|tuple,int|None] dropout_noise_shape: see :func:`TFUtil.get_bc_shape`
+    :param bool dropout_on_forward: apply dropout during inference
+    :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
+    """
+    super().__init__(**kwargs)
+    self.dropout = dropout
+    self.dropout_noise_shape = dropout_noise_shape
+    self.dropout_on_forward = dropout_on_forward
+    self.mask = mask
+
+  def get_opts(self):
+    """
+    Return all options
+    """
+    opts = {
+      'dropout': self.dropout,
+      'dropout_noise_shape': self.dropout_noise_shape,
+      'dropout_on_forward': self.dropout_on_forward,
+      'mask': self.mask,
+    }
+    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
+    return {**opts, **super().get_opts()}
+
   make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
@@ -234,26 +267,13 @@ class _Dropout(_Copy):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'dropout',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -276,14 +296,13 @@ def dropout(
   :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
   :param str|None name:
   """
-  mod = _Dropout()
-  return mod(
-    source,
+  mod = _Dropout(
     dropout=dropout,
     dropout_noise_shape=dropout_noise_shape,
     dropout_on_forward=dropout_on_forward,
     mask=mask,
-    name=name)
+    )
+  return mod(source, name=name)
 
 
 class _ScaledGradient(_Copy):
@@ -1402,26 +1421,13 @@ class Linear(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'linear',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -1440,26 +1446,13 @@ class Softmax(Linear):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'softmax',
       'from': source,
-      **args,
       **self.get_opts()}
 
 
@@ -3728,10 +3721,6 @@ class Conv(_ConcatInput):
                       *,
                       filter: Optional[LayerRef] = NotSpecified,
                       bias: Optional[LayerRef] = NotSpecified,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3739,10 +3728,6 @@ class Conv(_ConcatInput):
     args = {
       'filter': filter,
       'bias': bias,
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -3997,10 +3982,6 @@ class TransposedConv(_ConcatInput):
                       *,
                       filter: Optional[LayerRef] = NotSpecified,
                       bias: Optional[LayerRef] = NotSpecified,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -4008,10 +3989,6 @@ class TransposedConv(_ConcatInput):
     args = {
       'filter': filter,
       'bias': bias,
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -6691,20 +6668,12 @@ class Rec(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]] = (),
                       *,
                       initial_state: Optional[Union[LayerRef, str, float, int, Tuple]] = NotSpecified,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'initial_state': initial_state,
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -6766,20 +6735,12 @@ class RnnCell(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       initial_state: Any = NotSpecified,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'initial_state': initial_state,
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -7810,20 +7771,12 @@ class SelfAttention(_ConcatInput):
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
                       key_shift: Optional[LayerRef] = NotSpecified,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     args = {
       'key_shift': key_shift,
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -8392,26 +8345,13 @@ class RelativePositionalEncoding(_ConcatInput):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      dropout: float = NotSpecified,
-                      dropout_noise_shape: Any = NotSpecified,
-                      dropout_on_forward: bool = NotSpecified,
-                      mask: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
-    args = {
-      'dropout': dropout,
-      'dropout_noise_shape': dropout_noise_shape,
-      'dropout_on_forward': dropout_on_forward,
-      'mask': mask,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
       'class': 'relative_positional_encoding',
       'from': source,
-      **args,
       **self.get_opts()}
 
 

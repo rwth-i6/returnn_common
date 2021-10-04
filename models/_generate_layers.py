@@ -570,8 +570,6 @@ class LayerSignature:
       """
       if self.returnn_name in {"reuse_params", "chunking_layer", "axes", "axis"}:
         return True
-      if self.parent.layer_class is _ConcatInputLayer:
-        return True
       if not self.param_type_s:
         return False
       return "LayerBase" in self.param_type_s
