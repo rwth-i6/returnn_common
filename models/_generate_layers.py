@@ -69,7 +69,7 @@ def setup():
     else:
       print(format_multi_line_str("(undocumented...)", indent="  "), file=f)
 
-    if sig.has_module_init_args():
+    if sig.need_module_init():
       print("", file=f)
       print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
       print("  def __init__(self,", file=f)
@@ -94,8 +94,9 @@ def setup():
       for _, param in sig.params.items():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
-      print("", file=f)
 
+    if sig.has_module_init_args():
+      print("", file=f)
       print("  def get_opts(self):", file=f)
       print(format_multi_line_str("Return all options", indent="    "), file=f)
       print("    opts = {", file=f)
@@ -222,6 +223,7 @@ class LayerSignature:
     self._defined_base_params = set()
     self._init_args()
     self._parse_init_docstring()
+    self._find_super_call_assignments()
 
   def has_source_param(self) -> bool:
     """
@@ -309,7 +311,6 @@ class LayerSignature:
     ls = []
     sig = self
     while sig:
-      blacklist.update(sig._defined_base_params)
       for _, param in sig.params.items():
         if param.returnn_name in blacklist:
           continue
@@ -320,6 +321,7 @@ class LayerSignature:
       if sig.layer_class.__base__ in stop_bases:
         break
       assert sig.layer_class.__base__ in self.others
+      blacklist.update(sig._defined_base_params)
       sig = self.others[sig.layer_class.__base__]
     return ls
 
@@ -451,7 +453,8 @@ class LayerSignature:
     # get list of lines starting with super and take the first one
     lines = [line.strip() for line in code if line.strip().startswith("super")]
     if not lines:
-      return None
+      self._super_call_assignments = None
+      return
 
     # reformat the super call to extract what we need
     # get the first line which contains super to get the super call
@@ -464,15 +467,29 @@ class LayerSignature:
     call_pruned = call[len("__init__("):-len(")")]  # call pruned = "beam_size=beam_size, search=search, **kwargs"
 
     # get list of tuples for parameter with (param_name, value)
-    tup_ls = [x.split("=") for x in call_pruned.split(",") if x.strip() != "**kwargs"]
-    tup_ls = [(key.strip(), value.strip()) for (key, value) in tup_ls]
-    tup_ls = [(key, value) for (key, value) in tup_ls if key not in self._IgnoreParamNames]
-    for key, value in tup_ls:
-      if key == value:
+    self._super_call_assignments = []
+    for arg in call_pruned.split(","):
+      arg = arg.strip()
+      if arg.strip() == "**kwargs":
         continue
-      assert key not in self.params
+      key, value = arg.split("=")
+      key, value = key.strip(), value.strip()
+      if key in self._IgnoreParamNames:
+        continue
       self._defined_base_params.add(key)
-    return tup_ls
+      if key == value and value not in self.params:
+        value = "NotSpecified"
+      self._super_call_assignments.append((key, value))
+
+  def has_init_super_call_assignments(self) -> bool:
+    return bool(self._super_call_assignments)
+
+  def need_module_init(self) -> bool:
+    if self.has_module_init_args():
+      return True
+    if self.derived_layer() and self.has_init_super_call_assignments():
+      return True
+    return False
 
   def get_init_super_call_code_str(self) -> str:
     """
@@ -482,7 +499,7 @@ class LayerSignature:
 
     :return: Code string for the super call e.g `"super().__init__(...)"`
     """
-    tup_ls = self._find_super_call_assignments()
+    tup_ls = self._super_call_assignments
     if tup_ls is None:
       return 'super().__init__()'
     if not tup_ls:
@@ -492,6 +509,12 @@ class LayerSignature:
     tup_ls = [f"{key}={value}" for (key, value) in tup_ls]
     tup_ls += ["**kwargs"]
     return "super().__init__(%s)" % ", ".join(tup_ls)
+
+  def derived_layer(self) -> Optional[LayerSignature]:
+    cls_base = self.layer_class.__base__
+    if issubclass(cls_base, LayerBase):
+      return self.others[cls_base]
+    return None
 
   def _has_variables(self):
     """
@@ -504,10 +527,9 @@ class LayerSignature:
         return True
     if self.layer_class is VariableLayer:
       return True
-    cls_base = self.layer_class.__base__
-    if issubclass(cls_base, LayerBase):
-      base_sig = self.others[cls_base]
-      return base_sig._has_variables()
+    derived = self.derived_layer()
+    if derived:
+      return derived._has_variables()
     return False
 
   class Param:

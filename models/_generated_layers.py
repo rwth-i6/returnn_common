@@ -1431,6 +1431,13 @@ class Softmax(Linear):
   """
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
+  def __init__(self,
+               **kwargs):
+    """
+    """
+    super().__init__(activation="softmax", **kwargs)
+
+  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
@@ -5048,6 +5055,13 @@ class _CombineDims(_MergeDims):
   """
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
+  def __init__(self,
+               **kwargs):
+    """
+    """
+    super().__init__(keep_order=True, **kwargs)
+
+  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                       *,
@@ -5072,7 +5086,6 @@ def combine_dims(
                  source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                  *,
                  axes: Any,
-                 keep_order: bool = NotSpecified,
                  name: Optional[str] = None) -> LayerRef:
   """
   Combines multiple dimensions.
@@ -5080,19 +5093,9 @@ def combine_dims(
 
   :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
   :param str|list[str]|list[int] axes: see Data.get_axes_from_description(), e.g. "except_time"
-  :param bool keep_order: By default (for historical reasons), the axes are sorted, and then merged.
-    Thus, the order of incoming axes will influence the result.
-    E.g. inputs [B,S,F] and [B,F,S], with ``axes=["S","F"]``, will get different results,
-    although the output shape is [B,S*F] in both cases.
-    This is bad: In general, other layers in RETURNN might reorder the axes for various reasons,
-    and all layers should behave in the same way, no matter the order.
-    It is recommended to set ``keep_order=True``, such that the order defined in ``axes`` defines the behavior,
-    and not the incoming axis order.
   :param str|None name:
   """
-  mod = _CombineDims(
-    keep_order=keep_order,
-    )
+  mod = _CombineDims()
   return mod(
     source,
     axes=axes,
@@ -7261,6 +7264,13 @@ class _DecideKeepBeam(_BaseChoice):
   """
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
+  def __init__(self,
+               **kwargs):
+    """
+    """
+    super().__init__(beam_size=NotSpecified, **kwargs)
+
+  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
                       ) -> LayerDictRaw:
@@ -7277,7 +7287,6 @@ class _DecideKeepBeam(_BaseChoice):
 def decide_keep_beam(
                      source: LayerRef,
                      *,
-                     beam_size: Optional[int],
                      search: Union[NotSpecified, bool] = NotSpecified,
                      name: Optional[str] = None) -> LayerRef:
   """
@@ -7287,13 +7296,11 @@ def decide_keep_beam(
   For internal usage only.
 
   :param LayerRef source:
-  :param int|None beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
   :param str|None name:
   """
   mod = _DecideKeepBeam(
-    beam_size=beam_size,
     search=search,
     )
   return mod(source, name=name)
