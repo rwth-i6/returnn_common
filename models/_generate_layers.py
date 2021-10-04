@@ -41,9 +41,12 @@ def setup():
   print('"""', file=f)
   print("", file=f)
   print("from __future__ import annotations", file=f)
-  print("from typing import Union, Optional, Tuple, List, Dict, Any", file=f)
+  print("from typing import TYPE_CHECKING, Union, Optional, Tuple, List, Dict, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("from .base import ILayerMaker, LayerRef, LayerDictRaw", file=f)
+  print("", file=f)
+  print("if TYPE_CHECKING:", file=f)
+  print("  from returnn.tf.util.basic import DimensionTag", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
   for layer_class in layer_classes:

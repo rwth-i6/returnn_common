@@ -4,9 +4,12 @@ RETURNN: 1.20211001.122256
 """
 
 from __future__ import annotations
-from typing import Union, Optional, Tuple, List, Dict, Any
+from typing import TYPE_CHECKING, Union, Optional, Tuple, List, Dict, Any
 from returnn.util.basic import NotSpecified
 from .base import ILayerMaker, LayerRef, LayerDictRaw
+
+if TYPE_CHECKING:
+  from returnn.tf.util.basic import DimensionTag
 
 
 class _Base(ILayerMaker):
