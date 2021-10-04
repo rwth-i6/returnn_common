@@ -4955,7 +4955,7 @@ def search_sorted(
     name=name)
 
 
-class Variable(_Base):
+class _Variable(_Base):
   """
   Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
   See defaults.
@@ -5009,6 +5009,40 @@ class Variable(_Base):
     return {
       'class': 'variable',
       **self.get_opts()}
+
+
+# noinspection PyShadowingBuiltins,PyShadowingNames
+def variable(
+             *,
+             shape: Any,
+             dtype: str = NotSpecified,
+             add_batch_axis: bool = NotSpecified,
+             add_time_axis: bool = NotSpecified,
+             trainable: bool = NotSpecified,
+             init: Union[str, float, int] = NotSpecified,
+             name: Optional[str] = None) -> LayerRef:
+  """
+  Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
+  See defaults.
+
+  :param tuple[int]|list[int] shape:
+  :param str dtype:
+  :param bool add_batch_axis:
+  :param bool add_time_axis:
+  :param bool trainable:
+  :param str|float|int init: see :func:`TFUtil.get_initializer`
+  :param str|None name:
+  """
+  mod = _Variable(
+    shape=shape,
+    dtype=dtype,
+    add_batch_axis=add_batch_axis,
+    add_time_axis=add_time_axis,
+    trainable=trainable,
+    init=init,
+    )
+  return mod(
+    name=name)
 
 
 class _ForcedAlignment(_ConcatInput):

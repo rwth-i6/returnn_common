@@ -387,6 +387,9 @@ class LayerSignature:
       Also see: https://github.com/rwth-i6/returnn_common/issues/30
     :rtype: bool
     """
+    if self.layer_class is VariableLayer:
+      # Even though this obviously has a variable, I think the functional API is nicer for this.
+      return True
     return not self._has_variables()
 
   _IgnoreParamNames = {
