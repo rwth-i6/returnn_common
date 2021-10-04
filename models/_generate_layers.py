@@ -57,8 +57,8 @@ BlacklistLayerClassNames = {
   "get_rec_accumulated",  # covered by our Loop logic
   "decide_keep_beam",  # internal
   "rnn_cell",  # -> rec
-  "_AttentionBase",
-  "_GlobalAttentionContextBase",
+  "AttentionBaseLayer",
+  "GlobalAttentionContextBaseLayer",
   "generic_attention",  # -> dot
   "dot_attention",  # -> dot
   "concat_attention",
