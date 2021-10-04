@@ -74,6 +74,11 @@ BlacklistLayerArgs = {
   "range_in_axis": {"unbroadcast", "keepdims"},
 }
 
+FunctionNameMap = {
+  "source": "external_data",
+  "softmax_over_spatial": "softmax",  # generic also for normal softmax on feature
+}
+
 
 def setup():
   """
@@ -194,8 +199,8 @@ def setup():
       assert name.startswith("_")
       module_name = name
       name = camel_case_to_snake_case(name[1:])
-      if name == "source":
-        name = "external_data"
+      if name in FunctionNameMap:
+        name = FunctionNameMap[name]
       print("\n", file=f)
       print("# noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
       prefix = f"def {name}("

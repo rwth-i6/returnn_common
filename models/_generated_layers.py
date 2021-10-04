@@ -1520,17 +1520,17 @@ class _SoftmaxOverSpatial(_ConcatInput):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def softmax_over_spatial(
-                         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                         *,
-                         axis: Optional[str] = NotSpecified,
-                         energy_factor: Optional[float] = NotSpecified,
-                         start: Optional[LayerRef] = NotSpecified,
-                         window_start: Optional[Union[LayerRef, int]] = NotSpecified,
-                         window_size: Optional[Union[LayerRef, int]] = NotSpecified,
-                         use_time_mask: bool = NotSpecified,
-                         log_space: bool = NotSpecified,
-                         name: Optional[str] = None) -> LayerRef:
+def softmax(
+            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+            *,
+            axis: Optional[str] = NotSpecified,
+            energy_factor: Optional[float] = NotSpecified,
+            start: Optional[LayerRef] = NotSpecified,
+            window_start: Optional[Union[LayerRef, int]] = NotSpecified,
+            window_size: Optional[Union[LayerRef, int]] = NotSpecified,
+            use_time_mask: bool = NotSpecified,
+            log_space: bool = NotSpecified,
+            name: Optional[str] = None) -> LayerRef:
   """
   This applies a softmax over spatial axis/axes (currently only time axis supported).
   E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
