@@ -314,22 +314,6 @@ class Loop:
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__"}}
 
-  def step(self, *args, **kwargs) -> LayerRef:
-    """
-    Constructs the output for one step.
-    You can write PyTorch-style code here.
-
-    The arguments (args, kwargs) are references to the base network.
-    We do **not** explicitly unroll this, so use UnrollLayer (or so)
-    (which would unroll it step-by-step via TensorArray,
-     if inside the loop, and just Copy if outside;
-     also checks that the time axis matches).
-    """
-    raise NotImplementedError
-
-  def _subnet_func(self, *args, **kwargs) -> LayerRef:
-    return self.step(*args, **kwargs)
-
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.extra_opts}
 
