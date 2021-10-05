@@ -21,7 +21,7 @@ from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
 from returnn.tf.layers.basic import CombineLayer, CompareLayer, StackLayer, DropoutLayer
 from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
-from returnn.tf.layers.rec import RecLayer, RnnCellLayer, MaskedComputationLayer
+from returnn.tf.layers.rec import RecLayer, RnnCellLayer
 from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
 from returnn.tf.layers.rec import ChoiceLayer, GenericAttentionLayer
 
