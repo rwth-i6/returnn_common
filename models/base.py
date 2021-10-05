@@ -224,16 +224,17 @@ class Module(ILayerMaker):
     assert name_ctx.maker is self
     name_ctx.is_subnet_ctx = True
     res = self.forward(*args, **kwargs)
-    layer_dict = {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
     if isinstance(res, LayerRef):
       copy(res, name="output")
-      return layer_dict
+      return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
     else:
       # we return more than one layer (thus also working on other layers of the subnet, that are not output)
       # by convention: first layer is the output layer
       res_flat = nest.flatten(res)
       copy(res_flat[0], name="output")
-      return layer_dict, nest.pack_sequence_as(res, res_flat)
+      return (
+        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()},
+        nest.pack_sequence_as(res, res_flat))
 
   def make_root_net_dict(self) -> NetDictRaw:
     """
