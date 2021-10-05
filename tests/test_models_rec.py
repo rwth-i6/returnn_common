@@ -7,33 +7,27 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net
 
 from returnn_common.models.layers import *
-from returnn_common.models.base import get_extern_data, LayerRef
+from returnn_common.models.base import *
 from pprint import pprint
 
 
 def test_rec_ff():
-  class _MyRec(Rec):
-    def __init__(self):
-      super(_MyRec, self).__init__()
-      self.lin = Linear(n_out=13, activation=None)
-
-    def step(self, x: LayerRef) -> LayerRef:
-      """step"""
-      x = unroll(x)  # TODO ...
-      return self.lin(x)
-
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.rec = _MyRec()
+      self.rec_linear = Linear(n_out=13)
 
     def forward(self) -> LayerRef:
       """
       Forward
       """
       x = get_extern_data("data")
-      x = self.rec(x)
-      return x
+      # https://github.com/rwth-i6/returnn_common/issues/16
+      with Loop() as loop:
+        x_ = loop.unstack(x)
+        loop.state.h = y_ = self.rec_linear([x_, loop.state.h])
+        y = loop.stack(y_)
+      return y
 
   net = _Net()
   net_dict = net.make_root_net_dict()
