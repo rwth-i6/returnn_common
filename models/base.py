@@ -64,6 +64,7 @@ Code conventions:
 from __future__ import annotations
 from typing import Dict, Any, Optional, List, Union, Tuple
 from returnn.util.basic import NotSpecified
+from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
 
 
@@ -312,6 +313,24 @@ class Loop:
 
   def __exit__(self, exc_type, exc_val, exc_tb):
     self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
+
+  def unstack(self, source: LayerRef, axis: Union[str, DimensionTag]) -> LayerRef:
+    """
+    Unrolls over the specified axis, and provides each frame in each loop iteration.
+    """
+    # TODO ... https://github.com/rwth-i6/returnn/pull/552
+    self  # noqa
+    from .layers import copy
+    return copy(source)
+
+  def stack(self, source: LayerRef):
+    """
+    Accumulates the frames of source within the loop.
+    """
+    # TODO ...
+    self  # noqa
+    from .layers import copy
+    return copy(source)
 
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.extra_opts}
