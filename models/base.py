@@ -188,51 +188,7 @@ class ILayerMaker:
       return layer
 
 
-class ISubnet(ILayerMaker):
-  """
-  This is a base class to build subnetworks.
-  """
-
-  def make_layer_dict(self, *args, **kwargs) -> Union[LayerDictRaw, Tuple[LayerDictRaw, Any]]:
-    """
-    Make subnet layer dict.
-    """
-    from .layers import copy
-    name_ctx = NameCtx.top()
-    assert name_ctx.maker is self
-    name_ctx.is_subnet_ctx = True
-    res = self._subnet_func(*args, **kwargs)
-    if isinstance(res, LayerRef):
-      copy(res, name="output")
-      return self._make_layer_dict_from_subnet_ctx(name_ctx)
-    else:
-      # we return more than one layer (thus also working on other layers of the subnet, that are not output)
-      # by convention: first layer is the output layer
-      res_flat = nest.flatten(res)
-      copy(res_flat[0], name="output")
-      return self._make_layer_dict_from_subnet_ctx(name_ctx), nest.pack_sequence_as(res, res_flat)
-
-  def _subnet_func(self, *args, **kwargs) -> LayerRef:
-    raise NotImplementedError
-
-  def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
-    raise NotImplementedError
-
-  def make_root_net_dict(self) -> NetDictRaw:
-    """
-    Make net dict, to be used as the main RETURNN network, not within a subnetwork.
-    Extern data can be accessed via :func:`get_root_extern_data`.
-    """
-    from .layers import copy
-    with NameCtx(maker=self, parent=None) as name_ctx:
-      name_ctx.is_subnet_ctx = True
-      res = self._subnet_func()
-      if "output" not in name_ctx.childs:
-        copy(res, name="output")
-      return name_ctx.make_net_dict()
-
-
-class Module(ISubnet):
+class Module(ILayerMaker):
   """
   This represents a subnetwork in RETURNN, or the root network.
 
@@ -259,12 +215,38 @@ class Module(ISubnet):
     """
     raise NotImplementedError
 
-  def _subnet_func(self, *args, **kwargs) -> LayerRef:
-    return self.forward(*args, **kwargs)
+  def make_layer_dict(self, *args, **kwargs) -> Union[LayerDictRaw, Tuple[LayerDictRaw, Any]]:
+    """
+    Make subnet layer dict.
+    """
+    from .layers import copy
+    name_ctx = NameCtx.top()
+    assert name_ctx.maker is self
+    name_ctx.is_subnet_ctx = True
+    res = self.forward(*args, **kwargs)
+    layer_dict = {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
+    if isinstance(res, LayerRef):
+      copy(res, name="output")
+      return layer_dict
+    else:
+      # we return more than one layer (thus also working on other layers of the subnet, that are not output)
+      # by convention: first layer is the output layer
+      res_flat = nest.flatten(res)
+      copy(res_flat[0], name="output")
+      return layer_dict, nest.pack_sequence_as(res, res_flat)
 
-  # noinspection PyMethodMayBeStatic
-  def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
-    return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
+  def make_root_net_dict(self) -> NetDictRaw:
+    """
+    Make net dict, to be used as the main RETURNN network, not within a subnetwork.
+    Extern data can be accessed via :func:`get_root_extern_data`.
+    """
+    from .layers import copy
+    with NameCtx(maker=self, parent=None) as name_ctx:
+      name_ctx.is_subnet_ctx = True
+      res = self.forward()
+      if "output" not in name_ctx.childs:
+        copy(res, name="output")
+      return name_ctx.make_net_dict()
 
 
 class Loop:
