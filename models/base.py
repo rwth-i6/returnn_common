@@ -254,7 +254,7 @@ class Loop:
   This represents a RecLayer subnetwork in RETURNN,
   i.e. where the calculation per step is defined explicitly.
 
-  (For RecLayer with a predefined unit, see :class:`RecUnit`.
+  (For RecLayer with a predefined unit, see :class:`Rec`.
    Or for example :class:`Lstm`.)
 
   To define a loop like this pseudo Python code::
@@ -271,13 +271,16 @@ class Loop:
     h  # final state
     out  # shape (time, batch, h_dim)
 
-  You would derive from this class and overwrite :func:`step` like so::
+  You would write::
 
-    class MyRec(Rec):
-      def step(self, x):
-        ...
+    with Loop() as loop:
+      x_t = loop.unstack(x)
+      x_lin = Linear(dim)(x_t)
+      loop.state.h = State(shape=[batch,dim], initial=0)  # optional
+      loop.state.h = Linear(dim)(x_lin + loop.state.h)
+      out = loop.stack(loop.state.h)
 
-  This API is currently in development, and subject to change.
+  This API is currently in development, and might change.
   See: https://github.com/rwth-i6/returnn_common/issues/16
   """
 
