@@ -67,7 +67,8 @@ BlacklistLayerClassNames = {
 }
 
 LayersHidden = {
-  "combine",
+  "combine",  # only needed as base
+  "split",
 }
 
 BlacklistLayerArgs = {
@@ -77,6 +78,7 @@ BlacklistLayerArgs = {
 FunctionNameMap = {
   "source": "external_data",
   "softmax_over_spatial": "softmax",  # generic also for normal softmax on feature
+  "range": "range_",  # do not overwrite builtin function
 }
 
 
@@ -205,6 +207,8 @@ def setup():
       name = camel_case_to_snake_case(name[1:])
       if name in FunctionNameMap:
         name = FunctionNameMap[name]
+      if sig.layer_class.layer_class in LayersHidden:
+        name = "_" + name
       print("\n", file=f)
       print("# noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
       prefix = f"def {name}("

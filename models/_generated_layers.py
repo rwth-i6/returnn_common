@@ -1808,15 +1808,15 @@ class _Range(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def range(
-          source: LayerRef,
-          *,
-          limit: Union[int, float],
-          start: Union[int, float] = NotSpecified,
-          delta: Union[int, float] = NotSpecified,
-          dtype: Optional[str] = NotSpecified,
-          sparse: bool = NotSpecified,
-          name: Optional[str] = None) -> LayerRef:
+def range_(
+           source: LayerRef,
+           *,
+           limit: Union[int, float],
+           start: Union[int, float] = NotSpecified,
+           delta: Union[int, float] = NotSpecified,
+           dtype: Optional[str] = NotSpecified,
+           sparse: bool = NotSpecified,
+           name: Optional[str] = None) -> LayerRef:
   """
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
@@ -2541,13 +2541,13 @@ class _Split(_ConcatInput):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def split(
-          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-          *,
-          axis: Optional[str] = NotSpecified,
-          num_splits: Optional[int] = NotSpecified,
-          size_splits: Optional[List[int]] = NotSpecified,
-          name: Optional[str] = None) -> LayerRef:
+def _split(
+           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           *,
+           axis: Optional[str] = NotSpecified,
+           num_splits: Optional[int] = NotSpecified,
+           size_splits: Optional[List[int]] = NotSpecified,
+           name: Optional[str] = None) -> LayerRef:
   """
   Splits one axis into multiple parts, via tf.split.
   self.output is simply the input copied.
@@ -4569,16 +4569,16 @@ class _Combine(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def combine(
-            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-            *,
-            kind: str,
-            activation: Optional[str] = NotSpecified,
-            with_bias: bool = NotSpecified,
-            eval: Union[str, callable] = NotSpecified,
-            eval_locals: Optional[Dict[str]] = NotSpecified,
-            eval_for_output_loss: bool = NotSpecified,
-            name: Optional[str] = None) -> LayerRef:
+def _combine(
+             source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+             *,
+             kind: str,
+             activation: Optional[str] = NotSpecified,
+             with_bias: bool = NotSpecified,
+             eval: Union[str, callable] = NotSpecified,
+             eval_locals: Optional[Dict[str]] = NotSpecified,
+             eval_for_output_loss: bool = NotSpecified,
+             name: Optional[str] = None) -> LayerRef:
   """
   Applies a binary operation, such as addition, to all sources while accumulating the partial results.
   In the first step, the binary operation is performed on the first two sources.
