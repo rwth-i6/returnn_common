@@ -369,6 +369,15 @@ def get_special_layer(name: str, *, scope: Optional[NameCtx] = None) -> LayerRef
     return layer_ref
 
 
+def get_sub_layer(layer: LayerRef, name: str) -> LayerRef:
+  """
+  Like the "{layer}/{name}" syntax in RETURNN.
+  Normally this should only be needed for internal usage.
+  """
+  ctx = NameCtx(maker=None, name=name, parent=layer.name_ctx)
+  return LayerRef(name_ctx=ctx)
+
+
 class NameCtx:
   """
   This is a helper class to keep track of the current name context when creating layers.
