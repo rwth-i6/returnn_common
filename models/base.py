@@ -280,6 +280,8 @@ class Loop:
       loop.state.h = Linear(dim)(x_lin + loop.state.h)
       out = loop.stack(loop.state.h)
 
+  ``state`` is :class:`Loop._StateHolder` and manages the recurrent state.
+
   This API is currently in development, and might change.
   See: https://github.com/rwth-i6/returnn_common/issues/16
   """
@@ -293,14 +295,95 @@ class Loop:
                use_global_rec_step_offset: bool = NotSpecified,
                include_eos: bool = NotSpecified,
                debug: Optional[bool] = NotSpecified,
+               name: str = "loop"
                ):
     super(Loop, self).__init__()
     self.extra_opts = {
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__"}}
+    self.name_ctx = NameCtx(maker=None, name=name)
+    self.name_ctx.is_subnet_ctx = True
+    self.state = Loop._StateHolder(loop=self)
+
+  def __enter__(self) -> Loop:
+    self.name_ctx.__enter__()
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
 
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.extra_opts}
+
+  class _StateHolder:
+    def __init__(self, loop: Loop):
+      self._loop = loop
+      self._state = {}  # type: Dict[str, State]
+
+    def _get_state(self, name: str) -> State:
+      if name in self._state:
+        return self._state[name]
+      state = State()
+      state.set_name_and_loop(name=name, loop=self._loop)
+      self._state[name] = state
+      return state
+
+    def __getattr__(self, item):
+      return self._get_state(item).get()
+
+    def __setattr__(self, key, value):
+      if key in {"_state", "_loop"}:
+        return super().__setattr__(key, value)
+      if isinstance(value, State):
+        value.set_name_and_loop(name=key, loop=self._loop)
+        self._state[key] = value
+        return
+      self._get_state(key).assign(value)
+
+
+class State:
+  """
+  Represents some recurrent state, to be used with :class:`Loop`.
+  It can also represent some nested hierarchy of states.
+  """
+  def __init__(self, *, shape=None, initial=None):
+    self.shape = shape
+    self.initial = initial
+    self.loop = None  # type: Optional[Loop]
+    self.name = None  # type: Optional[str]
+    self.name_ctx = None  # type: Optional[NameCtx]
+    self.assigned_value = None
+
+  def set_name_and_loop(self, *, name: str, loop: Loop):
+    """
+    Assigns the name (internally on first assignment).
+    """
+    if self.name == name and self.loop is loop:
+      return
+    assert not self.loop and not self.name and not self.name_ctx  # not yet assigned
+    self.loop = loop
+    self.name = name
+    self.name_ctx = NameCtx(name=name)
+
+  def assign(self, value):
+    """
+    Assign the new value for the current iteration.
+    """
+    assert value is not None
+    assert self.assigned_value is None, (
+      f"Cannot assign the rec state {self.loop}/{self.name} multiple times, "
+      f"assigned previously to {self.assigned_value}, now to {value}")
+    self.assigned_value = value
+
+  def get(self):
+    """
+    Return prev or current value
+    """
+    if self.assigned_value is None:  # not yet assigned
+      # Return prev value
+      ctx = NameCtx(name=f"prev:{self.name_ctx.name}")
+      return LayerRef(name_ctx=ctx)
+    return self.assigned_value
 
 
 def get_root_extern_data(data_key: str) -> LayerRef:
@@ -400,6 +483,7 @@ class NameCtx:
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name if name else (self._get_name() if self.parent else None)
     if self.parent:
+      assert self.name
       assert self.parent.is_subnet_ctx
       assert self.name not in self.parent.childs
       self.parent.childs[self.name] = self
