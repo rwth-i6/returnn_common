@@ -314,13 +314,13 @@ class Loop:
   def __exit__(self, exc_type, exc_val, exc_tb):
     self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
 
-  def unstack(self, source: LayerRef, axis: Union[str, DimensionTag]) -> LayerRef:
+  def unstack(self, source: LayerRef, *, axis: Union[str, DimensionTag], name: Optional[str] = None) -> LayerRef:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     """
     self  # noqa  # not needed currently...
     from .layers import rec_unstack
-    return rec_unstack(source, axis=axis)
+    return rec_unstack(source, axis=axis, name=name)
 
   def stack(self, source: LayerRef):
     """
