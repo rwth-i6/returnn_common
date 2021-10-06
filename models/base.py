@@ -669,8 +669,8 @@ class NameCtx:
     self.stack.pop(-1)
 
   def _get_name(self) -> str:
-    assert self.parent
-    if self.parent.maker and self.maker:
+    assert self.parent and self.maker
+    if self.parent.maker:
       reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
       for key, value in vars(self.parent.maker).items():
         if key in reserved_names:
@@ -680,7 +680,7 @@ class NameCtx:
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
-    assert self.parent
+    assert self.parent and self.maker
     if self.parent.maker:
       for key, value in vars(self.parent.maker).items():
         if value is self.maker:
