@@ -24,7 +24,7 @@ def test_rec_ff():
       x = get_extern_data("data")
       # https://github.com/rwth-i6/returnn_common/issues/16
       with Loop() as loop:
-        x_ = loop.unstack(x)
+        x_ = loop.unstack(x, axis="T")
         loop.state.h = y_ = self.rec_linear([x_, loop.state.h])
         y = loop.stack(y_)
       return y
