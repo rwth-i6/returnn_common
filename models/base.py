@@ -321,12 +321,18 @@ class Loop:
     self.name_ctx = NameCtx(maker=self.layer_maker, name=name, parent=NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
     self.state = _StateHolder(loop=self)
+    self.outputs = []  # type: List[LayerRef]
 
   def __enter__(self) -> Loop:
     self.name_ctx.__enter__()
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
+    assert self.outputs  # stack or last was called at least once, so we have some output
+    # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
+    if "output" not in self.name_ctx.childs:
+      from .layers import copy
+      copy(self.outputs[0], name="output")
     self.layer_maker.make_layer()
     self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
 
@@ -343,11 +349,11 @@ class Loop:
     Accumulates the frames of source within the loop,
     to make it accessible outside the loop.
     """
-    self  # noqa  # not needed currently
     from .layers import copy
     res = copy(source, name=name)
     assert isinstance(res, Layer)
     res.layer_dict["is_output_layer"] = True
+    self.outputs.append(res)
     return res
 
   def last(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
