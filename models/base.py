@@ -328,13 +328,16 @@ class Loop:
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    assert self.outputs  # stack or last was called at least once, so we have some output
-    # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
-    if "output" not in self.name_ctx.childs:
-      from .layers import copy
-      copy(self.outputs[0], name="output")
-    self.layer_maker.make_layer()
-    self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
+    try:
+      if not self.outputs:  # stack or last was called at least once, so we have some output
+        raise Exception(f"{self}: call `stack` or `last` at least once to define some output")
+      # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
+      if "output" not in self.name_ctx.childs:
+        from .layers import copy
+        copy(self.outputs[0], name="output")
+      self.layer_maker.make_layer()
+    finally:
+      self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
 
   def unstack(self, source: LayerRef, *, axis: Union[str, DimensionTag], name: Optional[str] = None) -> LayerRef:
     """
