@@ -6,3 +6,6 @@ __pycache__
 
 .idea
 .vscode
+
+# via test cases run directly in this directory, or maybe in the tests dir
+dataset_id*
