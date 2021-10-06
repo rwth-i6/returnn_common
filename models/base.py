@@ -162,6 +162,29 @@ class ILayerMaker:
     """
     return self.__class__.__name__
 
+  def _make_layer(self, layer_dict: LayerDictRaw) -> Layer:
+    """
+    Creates the layer. This also registers the layer instance in the top name ctx.
+    This assumes that the top name ctx corresponds to this layer maker.
+    """
+    name_ctx = NameCtx.top()
+    assert name_ctx.maker is self
+    layer_dict = nest.map_structure(
+      lambda x: x.get_name() if isinstance(x, LayerRef) else x,
+      layer_dict)
+    name_ctx.is_subnet_ctx = False
+    if self.calls:
+      name_ctx.is_repeated_call = True
+      if name_ctx.parent and name_ctx.parent.is_repeated_call:
+        pass  # do nothing, parent will already set reuse_params
+      else:
+        layer_dict = layer_dict.copy()
+        assert "reuse_params" not in layer_dict
+        layer_dict["reuse_params"] = self.calls[0].get_name()
+    layer = Layer(self, layer_dict)
+    self.calls.append(layer)
+    return layer
+
   def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Union[Layer, Tuple[LayerRef], Any]:
     with NameCtx(maker=self, name=name) as name_ctx:
       if self.calls:
@@ -171,19 +194,7 @@ class ILayerMaker:
       if not isinstance(layer_dict, dict):
         layer_dict, ret = layer_dict
         assert isinstance(layer_dict, dict)
-      layer_dict = nest.map_structure(
-        lambda x: x.get_name() if isinstance(x, LayerRef) else x,
-        layer_dict)
-      name_ctx.is_subnet_ctx = False
-      if self.calls:
-        if name_ctx.parent and name_ctx.parent.is_repeated_call:
-          pass  # do nothing, parent will already set reuse_params
-        else:
-          layer_dict = layer_dict.copy()
-          assert "reuse_params" not in layer_dict
-          layer_dict["reuse_params"] = self.calls[0].get_name()
-      layer = Layer(self, layer_dict)
-      self.calls.append(layer)
+      layer = self._make_layer(layer_dict=layer_dict)
       if ret:
         return ret
       return layer
@@ -284,6 +295,9 @@ class Loop:
 
   ``state`` is :class:`Loop._StateHolder` and manages the recurrent state.
 
+  This code must be run within a :func:`Module.forward`
+  or with some active global name context (:class:`NameCtx`).
+
   This API is currently in development, and might change.
   See: https://github.com/rwth-i6/returnn_common/issues/16
   """
@@ -303,15 +317,17 @@ class Loop:
     self.extra_opts = {
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__"}}
-    self.name_ctx = NameCtx(maker=None, name=name)
+    self.layer_maker = _LoopLayerMaker(loop=self)
+    self.name_ctx = NameCtx(maker=self.layer_maker, name=name, parent=NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
-    self.state = Loop._StateHolder(loop=self)
+    self.state = _StateHolder(loop=self)
 
   def __enter__(self) -> Loop:
     self.name_ctx.__enter__()
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
+    self.layer_maker.make_layer()
     self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
 
   def unstack(self, source: LayerRef, *, axis: Union[str, DimensionTag], name: Optional[str] = None) -> LayerRef:
@@ -324,7 +340,8 @@ class Loop:
 
   def stack(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
     """
-    Accumulates the frames of source within the loop.
+    Accumulates the frames of source within the loop,
+    to make it accessible outside the loop.
     """
     self  # noqa  # not needed currently
     from .layers import copy
@@ -333,33 +350,61 @@ class Loop:
     res.layer_dict["is_output_layer"] = True
     return res
 
-  def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
-    return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.extra_opts}
+  def last(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
+    """
+    Gets the last value from source.
+    """
+    # TODO ...
+    raise NotImplementedError("Loop.last not implemented yet...")
 
-  class _StateHolder:
-    def __init__(self, loop: Loop):
-      self._loop = loop
-      self._state = {}  # type: Dict[str, State]
 
-    def _get_state(self, name: str) -> State:
-      if name in self._state:
-        return self._state[name]
-      state = State()
-      state.set_name_and_loop(name=name, loop=self._loop)
-      self._state[name] = state
-      return state
+class _LoopLayerMaker(ILayerMaker):
+  def __init__(self, loop: Loop):
+    super(_LoopLayerMaker, self).__init__()
+    self.loop = loop
 
-    def __getattr__(self, item):
-      return self._get_state(item).get()
+  def make_layer(self) -> Layer:
+    """
+    Creates the layer. This also registers the layer instance in the top name ctx.
+    This assumes that the top name ctx corresponds to this layer maker.
+    """
+    assert not self.calls  # do not call this multiple times
+    layer_dict = self.make_layer_dict()
+    return self._make_layer(layer_dict)
 
-    def __setattr__(self, key, value):
-      if key in {"_state", "_loop"}:
-        return super().__setattr__(key, value)
-      if isinstance(value, State):
-        value.set_name_and_loop(name=key, loop=self._loop)
-        self._state[key] = value
-        return
-      self._get_state(key).assign(value)
+  def make_layer_dict(self) -> LayerDictRaw:
+    """
+    Makes layer dict for this loop, i.e. a RecLayer.
+    """
+    name_ctx = NameCtx.top()
+    assert name_ctx.maker is self
+    return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.loop.extra_opts}
+
+
+class _StateHolder:
+  def __init__(self, loop: Loop):
+    self._loop = loop
+    self._state = {}  # type: Dict[str, State]
+
+  def _get_state(self, name: str) -> State:
+    if name in self._state:
+      return self._state[name]
+    state = State()
+    state.set_name_and_loop(name=name, loop=self._loop)
+    self._state[name] = state
+    return state
+
+  def __getattr__(self, item):
+    return self._get_state(item).get()
+
+  def __setattr__(self, key, value):
+    if key in {"_state", "_loop"}:
+      return super().__setattr__(key, value)
+    if isinstance(value, State):
+      value.set_name_and_loop(name=key, loop=self._loop)
+      self._state[key] = value
+      return
+    self._get_state(key).assign(value)
 
 
 class State:
@@ -584,16 +629,13 @@ class NameCtx:
 
   def _get_name(self) -> str:
     assert self.parent
-    if self.parent.maker:
+    if self.parent.maker and self.maker:
       reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
       for key, value in vars(self.parent.maker).items():
         if key in reserved_names:
           continue
         if value is self.maker:
           return key
-    else:
-      # Assume this is a root without maker.
-      assert self.parent.parent is None
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
