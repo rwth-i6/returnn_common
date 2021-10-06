@@ -322,14 +322,16 @@ class Loop:
     from .layers import rec_unstack
     return rec_unstack(source, axis=axis, name=name)
 
-  def stack(self, source: LayerRef):
+  def stack(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
     """
     Accumulates the frames of source within the loop.
     """
-    # TODO ...
-    self  # noqa
+    self  # noqa  # not needed currently
     from .layers import copy
-    return copy(source)
+    res = copy(source, name=name)
+    assert isinstance(res, Layer)
+    res.layer_dict["is_output_layer"] = True
+    return res
 
   def _make_layer_dict_from_subnet_ctx(self, name_ctx: NameCtx) -> LayerDictRaw:
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.extra_opts}
