@@ -160,7 +160,13 @@ class ILayerMaker:
     """
     Get a canonical layer name if we do not have a Module attribute.
     """
-    return self.__class__.__name__
+    name = self.__class__.__name__
+    if name.startswith("_"):
+      name = name[1:]
+    if name[:1].isupper():
+      from returnn.util.basic import camel_case_to_snake_case
+      name = camel_case_to_snake_case(name)
+    return name
 
   def _make_layer(self, layer_dict: LayerDictRaw) -> Layer:
     """
