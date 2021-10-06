@@ -318,10 +318,9 @@ class Loop:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     """
-    # TODO ... https://github.com/rwth-i6/returnn/pull/552
-    self  # noqa
-    from .layers import copy
-    return copy(source)
+    self  # noqa  # not needed currently...
+    from .layers import rec_unstack
+    return rec_unstack(source, axis=axis)
 
   def stack(self, source: LayerRef):
     """
