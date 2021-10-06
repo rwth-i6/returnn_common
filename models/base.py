@@ -359,9 +359,12 @@ class Loop:
     to make it accessible outside the loop.
     """
     from .layers import copy
+    if not name and "output" not in self.name_ctx.childs:
+      name = "output"
     res = copy(source, name=name)
     assert isinstance(res, Layer)
-    res.layer_dict["is_output_layer"] = True
+    if res.name_ctx.name != "output":
+      res.layer_dict["is_output_layer"] = True
     self.outputs.append(res)
     return res
 
