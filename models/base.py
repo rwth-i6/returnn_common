@@ -316,7 +316,7 @@ class Loop:
     super(Loop, self).__init__()
     self.extra_opts = {
       key: value for (key, value) in locals().items()
-      if value is not NotSpecified and key not in {"self", "__class__"}}
+      if value is not NotSpecified and key not in {"self", "__class__", "name"}}
     self.layer_maker = _LoopLayerMaker(loop=self)
     self.name_ctx = NameCtx(maker=self.layer_maker, name=name, parent=NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
@@ -413,12 +413,14 @@ class _StateHolder:
     self._get_state(key).assign(value)
 
 
-class State:
+class State(ILayerMaker):
   """
   Represents some recurrent state, to be used with :class:`Loop`.
   It can also represent some nested hierarchy of states.
   """
+
   def __init__(self, *, shape=None, initial=None):
+    super(State, self).__init__()
     self.shape = shape
     self.initial = initial
     self.loop = None  # type: Optional[Loop]
@@ -435,7 +437,7 @@ class State:
     assert not self.loop and not self.name and not self.name_ctx  # not yet assigned
     self.loop = loop
     self.name = name
-    self.name_ctx = NameCtx(name=name)
+    self.name_ctx = NameCtx(name=name, maker=self)
 
   def assign(self, value):
     """
@@ -446,6 +448,7 @@ class State:
       f"Cannot assign the rec state {self.loop}/{self.name} multiple times, "
       f"assigned previously to {self.assigned_value}, now to {value}")
     self.assigned_value = value
+    self.make_layer()
 
   def get(self):
     """
@@ -456,6 +459,26 @@ class State:
       ctx = NameCtx(name=f"prev:{self.name_ctx.name}")
       return LayerRef(name_ctx=ctx)
     return self.assigned_value
+
+  def make_layer(self):
+    """
+    Make layer for the state, after some value was assigned.
+    """
+    with self.name_ctx:
+      self._make_layer(self.make_layer_dict())
+    assert self.name_ctx.layer
+
+  def make_layer_dict(self) -> LayerDictRaw:
+    """
+    Make layer dict for the state, after some value was assigned.
+    So this is just a copy layer.
+    """
+    assert not self.calls  # do not call this multiple times
+    assert self.assigned_value is not None
+    v = self.assigned_value
+    if isinstance(v, LayerRef):
+      return {"class": "copy", "from": v}
+    raise NotImplementedError()
 
 
 def get_root_extern_data(data_key: str) -> LayerRef:
