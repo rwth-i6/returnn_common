@@ -39,14 +39,14 @@ def test_simple_net_explicit_root_ctx():
   with NameCtx.new_root() as name_ctx:
     out = lstm(get_extern_data("data"))
     assert isinstance(out, Layer)
-    assert_equal(out.get_name(), "Lstm")
+    assert_equal(out.get_name(), "lstm")
 
     name_ctx.make_default_output(out)
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
-  assert "Lstm" in net_dict
-  lstm_layer_dict = net_dict["Lstm"]
+  assert "lstm" in net_dict
+  lstm_layer_dict = net_dict["lstm"]
   assert_equal(lstm_layer_dict["class"], "rec")
   assert_equal(lstm_layer_dict["unit"], "nativelstm2")
   assert_equal(lstm_layer_dict["from"], "data:data")
@@ -100,14 +100,14 @@ def test_explicit_root_ctx_sub():
     net = Net()
     out = net(get_extern_data("data"))
     assert isinstance(out, Layer)
-    assert_equal(out.get_name(), "Net")
+    assert_equal(out.get_name(), "net")
 
     name_ctx.make_default_output(out)
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
-  assert "Net" in net_dict
-  sub_net_dict = net_dict["Net"]["subnetwork"]
+  assert "net" in net_dict
+  sub_net_dict = net_dict["net"]["subnetwork"]
   assert "linear" in sub_net_dict
   lin_layer_dict = sub_net_dict["linear"]
   assert_equal(lin_layer_dict["class"], "linear")
@@ -139,16 +139,16 @@ def test_root_mod_call_twice():
 
     print(y)
     assert isinstance(y, LayerRef)
-    assert_equal(y.get_name(), "TestBlock")
+    assert_equal(y.get_name(), "test_block")
     print(z)
     assert isinstance(z, LayerRef)
-    assert_equal(z.get_name(), "TestBlock_0")
+    assert_equal(z.get_name(), "test_block_0")
 
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
-  assert "TestBlock" in net_dict and "TestBlock_0" in net_dict
-  assert_equal(net_dict["TestBlock_0"]["reuse_params"], "TestBlock")
+  assert "test_block" in net_dict and "test_block_0" in net_dict
+  assert_equal(net_dict["test_block_0"]["reuse_params"], "test_block")
 
 
 def test_multiple_returns_depth_1():
