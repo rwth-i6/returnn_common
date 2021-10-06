@@ -681,15 +681,23 @@ class NameCtx:
 
   def _get_suggested_name(self) -> str:
     assert self.parent and self.maker
-    if self.parent.maker:
-      for key, value in vars(self.parent.maker).items():
-        if value is self.maker:
-          return key
+    # Check parent maker (or module) whether it has our maker (or module) as attrib,
+    # and use this attrib name.
+    # Check all parents for cases like Loop.
+    parent = self.parent
+    while parent:
+      if parent.maker:
+        for key, value in vars(parent.maker).items():
+          if value is self.maker:
+            return key
+      parent = parent.parent
+    # Check potential previous calls, and reuse their name.
     for call in self.maker.calls:
       if call is self:
         continue  # ignore this
       if call.name_ctx.parent is self.parent:
         return call.name_ctx.name
+    # Fallback to the canonical name.
     return self.maker.get_canonical_name()
 
   def _get_unique_name(self) -> str:
