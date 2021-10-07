@@ -232,26 +232,30 @@ class Module(ILayerMaker):
     """
     raise NotImplementedError
 
-  def make_layer_dict(self, *args, **kwargs) -> Union[LayerDictRaw, Tuple[LayerDictRaw, Any]]:
+  def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Union[Layer, Any]:
+    from .layers import copy
+    with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
+      name_ctx.is_subnet_ctx = True
+      res = self.forward(*args, **kwargs)
+      if isinstance(res, LayerRef):
+        copy(res, name=name_ctx.get_child("output"))
+      else:
+        # we return more than one layer (thus also working on other layers of the subnet, that are not output)
+        # by convention: first layer is the output layer
+        res_flat = nest.flatten(res)
+        copy(res_flat[0], name=name_ctx.get_child("output"))
+      subnet_layer = self._make_layer()
+    if isinstance(res, LayerRef):
+      return subnet_layer  # maybe nicer to return subnet layer
+    return res
+
+  def make_layer_dict(self) -> LayerDictRaw:
     """
     Make subnet layer dict.
     """
-    from .layers import copy
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
-    name_ctx.is_subnet_ctx = True
-    res = self.forward(*args, **kwargs)
-    if isinstance(res, LayerRef):
-      copy(res, name=name_ctx.get_child("output"))
-      return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
-    else:
-      # we return more than one layer (thus also working on other layers of the subnet, that are not output)
-      # by convention: first layer is the output layer
-      res_flat = nest.flatten(res)
-      copy(res_flat[0], name=name_ctx.get_child("output"))
-      return (
-        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()},
-        nest.pack_sequence_as(res, res_flat))
+    return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
   def make_root_net_dict(self) -> NetDictRaw:
     """
