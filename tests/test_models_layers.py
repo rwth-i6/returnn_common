@@ -12,7 +12,44 @@ from pprint import pprint
 from nose.tools import assert_equal
 
 
-def test_simple_net():
+def test_simple_net_linear():
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(n_out=13)
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      x = get_extern_data("data")
+      x = self.linear(x)
+      return x
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+  assert "linear" in net_dict
+  dummy_run_net(net_dict)
+
+
+def test_simple_net_arithmetic():
+  class _Net(Module):
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      x = get_extern_data("data")
+      x = 1. / x + x * 2.
+      return x
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+  dummy_run_net(net_dict)
+
+
+def test_simple_net_lstm():
   class _Net(Module):
     def __init__(self):
       super().__init__()
