@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Union, Tuple
+from typing import Dict, Any, Optional, List, Union, Tuple, Set
 from returnn.util.basic import NotSpecified
 from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
@@ -113,12 +113,10 @@ class Layer(LayerRef):
   Represents a layer and its output, created by :class:`ILayerMaker`.
   """
 
-  def __init__(self, maker: ILayerMaker, layer_dict: LayerDictRaw):
+  def __init__(self, *, layer_dict: LayerDictRaw):
     super(Layer, self).__init__(name_ctx=NameCtx.top())
-    assert self.name_ctx.maker is maker
     assert self.name_ctx.layer is None
     self.name_ctx.layer = self
-    self.maker = maker
     self.layer_dict = layer_dict
 
   def mark_as_loss(self, loss_scale: Optional[float] = 1.0):
@@ -168,42 +166,43 @@ class ILayerMaker:
       name = camel_case_to_snake_case(name)
     return name
 
-  def _make_layer(self, layer_dict: LayerDictRaw) -> Layer:
-    """
-    Creates the layer. This also registers the layer instance in the top name ctx.
-    This assumes that the top name ctx corresponds to this layer maker.
-    """
+  def _make_layer(self, *args, **kwargs) -> Layer:
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
-    layer_dict = nest.map_structure(
-      lambda x: x.get_name() if isinstance(x, LayerRef) else x,
-      layer_dict)
-    name_ctx.is_subnet_ctx = False
     if self.calls:
       name_ctx.is_repeated_call = True
-      if name_ctx.parent and name_ctx.parent.is_repeated_call:
-        pass  # do nothing, parent will already set reuse_params
-      else:
-        layer_dict = layer_dict.copy()
-        assert "reuse_params" not in layer_dict
-        layer_dict["reuse_params"] = self.calls[0].get_name()
-    layer = Layer(self, layer_dict)
-    self.calls.append(layer)
-    return layer
+    layer_dict = self.make_layer_dict(*args, **kwargs)
+    return make_layer(layer_dict)
 
-  def __call__(self, *args, name: Optional[str] = None, **kwargs) -> Union[Layer, Tuple[LayerRef], Any]:
-    with NameCtx(maker=self, name=name) as name_ctx:
-      if self.calls:
-        name_ctx.is_repeated_call = True
-      layer_dict = self.make_layer_dict(*args, **kwargs)
-      ret = None
-      if not isinstance(layer_dict, dict):
-        layer_dict, ret = layer_dict
-        assert isinstance(layer_dict, dict)
-      layer = self._make_layer(layer_dict=layer_dict)
-      if ret:
-        return ret
-      return layer
+  def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Layer:
+    with NameCtx.get_from_call(maker=self, name=name):
+      return self._make_layer(*args, **kwargs)
+
+
+def make_layer(layer_dict: LayerDictRaw) -> Layer:
+  """
+  Creates the layer. This also registers the layer instance in the top name ctx.
+  This assumes that the top name ctx corresponds to this layer maker.
+  This is usually only used internally via :class:`ILayerMaker`.
+  """
+  name_ctx = NameCtx.top()
+  assert not name_ctx.layer_ref and not name_ctx.layer
+  assert name_ctx.maker
+  layer_dict = nest.map_structure(
+    lambda x: x.get_name() if isinstance(x, LayerRef) else x,
+    layer_dict)
+  name_ctx.is_subnet_ctx = False
+  if name_ctx.maker and name_ctx.maker.calls:
+    name_ctx.is_repeated_call = True
+    if name_ctx.parent and name_ctx.parent.is_repeated_call:
+      pass  # do nothing, parent will already set reuse_params
+    else:
+      layer_dict = layer_dict.copy()
+      assert "reuse_params" not in layer_dict
+      layer_dict["reuse_params"] = name_ctx.maker.calls[0].get_name()
+  layer = Layer(layer_dict=layer_dict)
+  name_ctx.maker.calls.append(layer)
+  return layer
 
 
 class Module(ILayerMaker):
@@ -243,13 +242,13 @@ class Module(ILayerMaker):
     name_ctx.is_subnet_ctx = True
     res = self.forward(*args, **kwargs)
     if isinstance(res, LayerRef):
-      copy(res, name="output")
+      copy(res, name=name_ctx.get_child("output"))
       return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
     else:
       # we return more than one layer (thus also working on other layers of the subnet, that are not output)
       # by convention: first layer is the output layer
       res_flat = nest.flatten(res)
-      copy(res_flat[0], name="output")
+      copy(res_flat[0], name=name_ctx.get_child("output"))
       return (
         {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()},
         nest.pack_sequence_as(res, res_flat))
@@ -264,7 +263,7 @@ class Module(ILayerMaker):
       name_ctx.is_subnet_ctx = True
       res = self.forward()
       if "output" not in name_ctx.childs:
-        copy(res, name="output")
+        copy(res, name=name_ctx.get_child("output"))
       return name_ctx.make_net_dict()
 
 
@@ -324,8 +323,9 @@ class Loop:
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__", "name"}}
     self.layer_maker = _LoopLayerMaker(loop=self)
-    self.name_ctx = NameCtx(maker=self.layer_maker, name=name, parent=NameCtx.current_ctx())
+    self.name_ctx = NameCtx(maker=self.layer_maker, suggested_name=name, parent=NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
+    self.name_ctx.extend_reserved_names({"output", "end"})
     self.state = _StateHolder(loop=self)
     self.outputs = []  # type: List[LayerRef]
 
@@ -335,15 +335,17 @@ class Loop:
 
   def __exit__(self, exc_type, exc_val, exc_tb):
     try:
-      if not self.outputs:  # stack or last was called at least once, so we have some output
-        raise Exception(f"{self}: call `stack` or `last` at least once to define some output")
-      # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
-      if "output" not in self.name_ctx.childs:
-        from .layers import copy
-        copy(self.outputs[0], name="output")
-      self.layer_maker.make_layer()
+      if not exc_type:
+        if not self.outputs:  # stack or last was called at least once, so we have some output
+          raise Exception(f"{self}: call `stack` or `last` at least once to define some output")
+        # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
+        if "output" not in self.name_ctx.childs:
+          from .layers import copy
+          copy(self.outputs[0], name=self.name_ctx.get_child("output"))
     finally:
       self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
+    if not exc_type:
+      self.layer_maker(name=self.name_ctx)
 
   def unstack(self, source: LayerRef, *, axis: Union[str, DimensionTag], name: Optional[str] = None) -> LayerRef:
     """
@@ -360,7 +362,7 @@ class Loop:
     """
     from .layers import copy
     if not name and "output" not in self.name_ctx.childs:
-      name = "output"
+      name = self.name_ctx.get_child("output")
     res = copy(source, name=name)
     assert isinstance(res, Layer)
     if res.name_ctx.name != "output":
@@ -380,15 +382,6 @@ class _LoopLayerMaker(ILayerMaker):
   def __init__(self, loop: Loop):
     super(_LoopLayerMaker, self).__init__()
     self.loop = loop
-
-  def make_layer(self) -> Layer:
-    """
-    Creates the layer. This also registers the layer instance in the top name ctx.
-    This assumes that the top name ctx corresponds to this layer maker.
-    """
-    assert not self.calls  # do not call this multiple times
-    layer_dict = self.make_layer_dict()
-    return self._make_layer(layer_dict)
 
   def make_layer_dict(self) -> LayerDictRaw:
     """
@@ -425,7 +418,7 @@ class _StateHolder:
     self._get_state(key).assign(value)
 
 
-class State(ILayerMaker):
+class State:
   """
   Represents some recurrent state, to be used with :class:`Loop`.
   It can also represent some nested hierarchy of states.
@@ -449,7 +442,7 @@ class State(ILayerMaker):
     assert not self.loop and not self.name and not self.name_ctx  # not yet assigned
     self.loop = loop
     self.name = name
-    self.name_ctx = NameCtx(name=name, maker=self)
+    self.name_ctx = NameCtx(suggested_name=name)
 
   def assign(self, value):
     """
@@ -460,7 +453,8 @@ class State(ILayerMaker):
       f"Cannot assign the rec state {self.loop}/{self.name} multiple times, "
       f"assigned previously to {self.assigned_value}, now to {value}")
     self.assigned_value = value
-    self.make_layer()
+    from .layers import copy
+    copy(value, name=self.name_ctx)
 
   def get(self):
     """
@@ -468,29 +462,8 @@ class State(ILayerMaker):
     """
     if self.assigned_value is None:  # not yet assigned
       # Return prev value
-      ctx = NameCtx(name=f"prev:{self.name_ctx.name}")
-      return LayerRef(name_ctx=ctx)
+      return NameCtx.top().get_child_layer_ref(f"prev:{self.name_ctx.name}")
     return self.assigned_value
-
-  def make_layer(self):
-    """
-    Make layer for the state, after some value was assigned.
-    """
-    with self.name_ctx:
-      self._make_layer(self.make_layer_dict())
-    assert self.name_ctx.layer
-
-  def make_layer_dict(self) -> LayerDictRaw:
-    """
-    Make layer dict for the state, after some value was assigned.
-    So this is just a copy layer.
-    """
-    assert not self.calls  # do not call this multiple times
-    assert self.assigned_value is not None
-    v = self.assigned_value
-    if isinstance(v, LayerRef):
-      return {"class": "copy", "from": v}
-    raise NotImplementedError()
 
 
 def get_root_extern_data(data_key: str) -> LayerRef:
@@ -517,15 +490,7 @@ def get_special_layer(name: str, *, scope: Optional[NameCtx] = None) -> LayerRef
   """
   if not scope:
     scope = NameCtx.current_ctx()  # must exist
-  if name in scope.childs:
-    name_ = scope.childs[name]
-    assert name_.layer_ref
-    return name_.layer_ref
-  else:
-    name_ = NameCtx(name=name, parent=scope)
-    layer_ref = LayerRef(name_ctx=name_)
-    assert name_.layer_ref is layer_ref
-    return layer_ref
+  return scope.get_child_layer_ref(name)
 
 
 def get_sub_layer(layer: LayerRef, name: str) -> LayerRef:
@@ -533,8 +498,7 @@ def get_sub_layer(layer: LayerRef, name: str) -> LayerRef:
   Like the "{layer}/{name}" syntax in RETURNN.
   Normally this should only be needed for internal usage.
   """
-  ctx = NameCtx(maker=None, name=name, parent=layer.name_ctx)
-  return LayerRef(name_ctx=ctx)
+  return layer.name_ctx.get_child_layer_ref(name)
 
 
 class NameCtx:
@@ -579,6 +543,7 @@ class NameCtx:
 
   def __init__(self, *,
                maker: Optional[ILayerMaker] = None,
+               suggested_name: Optional[str] = None,
                name: Optional[str] = None,
                parent: Optional[NameCtx] = NotSpecified):
     self.maker = maker
@@ -588,17 +553,44 @@ class NameCtx:
     self.is_repeated_call = False
     self.childs = {}  # type: Dict[str, NameCtx]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
-    self.name = name if name else (self._get_name() if self.parent else None)
+    if not name:
+      if suggested_name:
+        name = self._get_unique_name(suggested_name)
+      elif self.parent:
+        name = self._get_name()
+    self.name = name
     if self.parent:
       assert self.name
       assert self.parent.is_subnet_ctx
       assert self.name not in self.parent.childs
       self.parent.childs[self.name] = self
 
+  @classmethod
+  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], maker: ILayerMaker) -> NameCtx:
+    """
+    This is used e.g. for user module or maker calls.
+    The name argument can either be a predefined name ctx, or a suggested name.
+    """
+    if isinstance(name, NameCtx):
+      if name.maker is None:
+        name.maker = maker
+      else:
+        assert name.maker is maker
+      return name
+    assert not name or isinstance(name, str)
+    return NameCtx(maker=maker, suggested_name=name)
+
   def __repr__(self):
     ls = self.get_abs_name_ctx_list()
     debug_name = "/".join(repr(ctx.name) for ctx in ls)
     return f"<{self.__class__.__name__} maker:{self.maker} name:{debug_name} root:{id(ls[0]):x}>"
+
+  def extend_reserved_names(self, names: Set[str]):
+    """
+    Extend reserved child names.
+    """
+    # Do not update inplace because we want an own instance on self.
+    self._ReservedNames = self._ReservedNames | names
 
   def make_net_dict(self) -> NetDictRaw:
     """
@@ -617,7 +609,7 @@ class NameCtx:
     from .layers import copy
     assert self.is_subnet_ctx
     assert "output" not in self.childs
-    return copy(ref, name="output")
+    return copy(ref, name=self.get_child("output"))
 
   def get_abs_name_ctx_list(self) -> List[NameCtx]:
     """
@@ -655,6 +647,32 @@ class NameCtx:
     prefix = "base:" * (len(cur_scope_abs) - common_len)
     postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
     return prefix + postfix
+
+  def get_child(self, name: str) -> NameCtx:
+    """
+    Makes sure the child exists.
+    """
+    if name in self.childs:
+      return self.childs[name]
+    else:
+      return NameCtx(name=name, parent=self)  # also registers in self.childs
+
+  def get_child_with_layer_ref(self, name: str) -> NameCtx:
+    """
+    Makes sure the child exists, including a corresponding layer ref.
+    Creates the child together with a layer ref if it does not exist yet.
+    """
+    child = self.get_child(name)
+    if not child.layer_ref:
+      layer_ref = LayerRef(name_ctx=child)
+      assert child.layer_ref is layer_ref
+    return child
+
+  def get_child_layer_ref(self, name: str) -> LayerRef:
+    """
+    Get child layer ref. Makes sure it exists.
+    """
+    return self.get_child_with_layer_ref(name).layer_ref
 
   def __enter__(self):
     if self.parent:
@@ -700,8 +718,8 @@ class NameCtx:
     # Fallback to the canonical name.
     return self.maker.get_canonical_name()
 
-  def _get_unique_name(self) -> str:
-    name = self._get_suggested_name()
+  def _get_unique_name(self, suggested_name: Optional[str] = None) -> str:
+    name = suggested_name or self._get_suggested_name()
     reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
     if self.parent.maker:
       reserved_names |= set(vars(self.parent.maker).keys())
