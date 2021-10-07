@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Union, Tuple, Set
+from typing import Dict, Any, Optional, List, Union, Set
 from returnn.util.basic import NotSpecified
 from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
