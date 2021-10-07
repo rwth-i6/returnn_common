@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Union, Optional, Tuple, List, Dict, Any
 from returnn.util.basic import NotSpecified
 from returnn.tf.util.basic import DimensionTag
-from .base import NameCtx, ILayerMaker, LayerRef, LayerDictRaw
+from .base import NameCtx, ILayerMaker, Layer, LayerRef, LayerDictRaw
 
 
 class _Base(ILayerMaker):
@@ -167,7 +167,7 @@ class _Source(_Base):
 def external_data(
                   *,
                   data_key: Optional[str] = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This gives access to some entry from network.extern_data (:class:`ExternData`).
 
@@ -249,7 +249,7 @@ class _Copy(_ConcatInput):
 def copy(
          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
          *,
-         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This layer does nothing, it copies its input.
   If multiple sources are provided, they are concatenated in the feature-dim.
@@ -287,7 +287,7 @@ def dropout(
             dropout_noise_shape: Any = NotSpecified,
             dropout_on_forward: bool = NotSpecified,
             mask: Optional[str] = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Just the same as :class:`CopyLayer`, because that one already supports dropout.
 
@@ -354,7 +354,7 @@ def scaled_gradient(
                     source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                     *,
                     scale: float,
-                    name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                    name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Just tf.identity in the forward pass.
   Scales the gradient by some factor in backprop.
@@ -417,7 +417,7 @@ def activation(
                source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                *,
                activation: str,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This layer just applies an activation function.
   See :func:`TFUtil.get_activation_function` about supported functions.
@@ -543,7 +543,7 @@ def batch_norm(
                gamma_init: Union[str, float] = NotSpecified,
                beta_init: Union[str, float] = NotSpecified,
                masked_time: bool = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Implements batch-normalization (https://arxiv.org/abs/1502.03167) as a separate layer.
 
@@ -642,7 +642,7 @@ def layer_norm(
                source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                *,
                epsilon: float = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Applies `layer-normalization <https://arxiv.org/abs/1607.06450>`__.
 
@@ -755,7 +755,7 @@ def norm(
          scale: bool = NotSpecified,
          bias: bool = NotSpecified,
          epsilon: float = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Normalize over specified axes, e.g. time and/or feature axis.
 
@@ -860,7 +860,7 @@ def math_norm(
               p: Union[int, float],
               axes: Any,
               keep_dims: bool = NotSpecified,
-              name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+              name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Calculates sum(abs(x) ** p) ** (1./p).
 
@@ -957,7 +957,7 @@ def slice(
           slice_start: Optional[int] = NotSpecified,
           slice_end: Optional[int] = NotSpecified,
           slice_step: Optional[int] = NotSpecified,
-          name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Slicing on the input, i.e. x[start:end:step] in some axis.
   See also :class:`SliceNdLayer`, for variable start.
@@ -1058,7 +1058,7 @@ def slice_nd(
              start: LayerRef,
              size: Optional[Union[int, LayerRef]],
              min_size: Optional[int] = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This takes out a slice-range from the time axis,
   e.g. ``x[start:start + size]``.
@@ -1135,7 +1135,7 @@ def gather(
            *,
            position: Union[LayerRef, int],
            axis: str,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
   If the input is a layer of the shape ``[B,D,F1]``, and position of shape ``[B,F2]``, this will yield output of the
@@ -1255,7 +1255,7 @@ def scatter_nd(
                position_axis: Union[str, int],
                output_dim_via_time_from: LayerRef,
                filter_invalid_indices: bool = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   The inverse of :class:`GatherNdLayer`.
   Mostly a wrapper for ``tf.scatter_nd``.
@@ -1432,7 +1432,7 @@ def length(
            add_time_axis: bool = NotSpecified,
            dtype: str = NotSpecified,
            sparse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Returns the length of sources as (B,), via input size_placeholder.
 
@@ -1532,7 +1532,7 @@ def softmax(
             window_size: Optional[Union[LayerRef, int]] = NotSpecified,
             use_time_mask: bool = NotSpecified,
             log_space: bool = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This applies a softmax over spatial axis/axes (currently only time axis supported).
   E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
@@ -1635,7 +1635,7 @@ def seq_len_mask(
                  start: Optional[LayerRef] = NotSpecified,
                  window_start: Optional[LayerRef] = NotSpecified,
                  window_size: Optional[Union[LayerRef, int]] = NotSpecified,
-                 name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                 name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Masks some values away given the seq_len_source with mask_value.
   Also see :class:`SoftmaxOverSpatialLayer`.
@@ -1727,7 +1727,7 @@ def rand_int(
              minval: int = NotSpecified,
              dtype: str = NotSpecified,
              seed: Optional[int] = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Generates random numbers using ``tf.random.uniform``
 
@@ -1814,7 +1814,7 @@ def range_(
            delta: Union[int, float] = NotSpecified,
            dtype: Optional[str] = NotSpecified,
            sparse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
@@ -1896,7 +1896,7 @@ def range_in_axis(
                   axis: str,
                   dtype: str = NotSpecified,
                   sparse: bool = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Assume that the input is e.g. (B,T,D), and you specify axis="T", you will get (B=1,T,D=1),
   where the specified axis is filled with ``tf.range``.
@@ -1980,7 +1980,7 @@ def range_from_length(
                       *,
                       dtype: str = NotSpecified,
                       sparse: bool = NotSpecified,
-                      name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                      name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Given some dynamic sequence lengths as input, this creates a tf.range over the implied dimension.
   As a side effect, this can create a new dyn dim tag for the given sequence lengths.
@@ -2031,7 +2031,7 @@ class _BatchSoftmax(_ConcatInput):
 def batch_softmax(
                   source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                   *,
-                  name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Softmax over spacial and feature axis
 
@@ -2091,7 +2091,7 @@ def constant(
              value: Union[int, float, bool] = NotSpecified,
              dtype: Optional[str] = NotSpecified,
              with_batch_dim: bool = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Output is a constant value.
 
@@ -2192,7 +2192,7 @@ def window(
            axis: str = NotSpecified,
            padding: str = NotSpecified,
            stride: int = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -2286,7 +2286,7 @@ def cumsum(
            axis: str = NotSpecified,
            additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
            reverse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
@@ -2368,7 +2368,7 @@ def pad(
         padding: Any,
         value: Union[int, float] = NotSpecified,
         mode: str = NotSpecified,
-        name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+        name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds (e.g. zero) padding in some axis or axes.
 
@@ -2455,7 +2455,7 @@ def merge_dims(
                *,
                axes: Any,
                keep_order: bool = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Merges a list of axes into a single one. (Flatten the dims.)
   E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
@@ -2545,7 +2545,7 @@ def _split(
            axis: Optional[str] = NotSpecified,
            num_splits: Optional[int] = NotSpecified,
            size_splits: Optional[List[int]] = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Splits one axis into multiple parts, via tf.split.
   self.output is simply the input copied.
@@ -2647,7 +2647,7 @@ def split_dims(
                dims: Any,
                pad_to_multiples: Optional[bool] = NotSpecified,
                pad_value: Union[int, float] = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Splits one axis into multiple axes.
   E.g. if you know that your feature-dim is composed by a window,
@@ -2719,7 +2719,7 @@ def split_batch_time(
                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                      *,
                      base: LayerRef,
-                     name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A very specific layer which expects to get input of shape (batch * time, ...)
   and converts it into (batch, time, ...), where it recovers the seq-lens from some other layer.
@@ -2793,7 +2793,7 @@ def flatten_batch(
                   *,
                   axis: str = NotSpecified,
                   batch_major: bool = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Merges one axis into the batch axis.
   If the axis has dynamic lengths, this would use flattening,
@@ -2880,7 +2880,7 @@ def unflatten_nd(
                  sizes: LayerRef,
                  num_axes: int,
                  declare_same_sizes_as: Optional[Dict[int, LayerRef]] = NotSpecified,
-                 name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                 name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This keeps the batch axis as-is, i.e. the flattening/unflattening did not happen on the batch axis.
 
@@ -2945,7 +2945,7 @@ def repeat(
            *,
            repetitions: Union[LayerRef, int],
            axis: str = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A wrapper around tf.repeat, but supports an additional batch axis for the durations
   The sum of the repetitions has to be non-zero for each sequence in the batch.
@@ -3011,7 +3011,7 @@ def tile(
          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
          *,
          multiples: Dict[str, int],
-         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A wrapper around tf.tile
 
@@ -3069,7 +3069,7 @@ def cast(
          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
          *,
          dtype: str,
-         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Cast to some other dtype.
 
@@ -3175,7 +3175,7 @@ def reinterpret_data(
                      set_sparse: Optional[bool] = NotSpecified,
                      set_sparse_dim: Union[int, None, NotSpecified] = NotSpecified,
                      increase_sparse_dim: Optional[int] = NotSpecified,
-                     name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Acts like the :class:`CopyLayer` but reinterprets the role of some axes or data.
 
@@ -3393,7 +3393,7 @@ def pool(
          dilation_rate: Any = NotSpecified,
          strides: Any = NotSpecified,
          use_channel_first: bool = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
@@ -3474,7 +3474,7 @@ def dct(
         type: int = NotSpecified,
         n: Optional[int] = NotSpecified,
         norm: Optional[str] = NotSpecified,
-        name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+        name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Layer to perform DCT
   Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
@@ -3659,7 +3659,7 @@ def reduce(
            keep_dims: bool = NotSpecified,
            enforce_batch_dim_axis: int = NotSpecified,
            use_time_mask: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This reduces some axis by using "sum" or "max".
   It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
@@ -3744,7 +3744,7 @@ def reduce_out(
                *,
                mode: str,
                num_pieces: int,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Combination of :class:`SplitDimsLayer` applied to the feature dim
   and :class:`ReduceLayer` applied to the resulting feature dim.
@@ -3820,7 +3820,7 @@ def squeeze(
             axis: Any,
             enforce_batch_dim_axis: Optional[int] = NotSpecified,
             allow_no_op: bool = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Removes an axis with dimension 1.
   This is basically a wrapper around tf.squeeze.
@@ -3876,7 +3876,7 @@ def stack(
           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
           *,
           axis: Optional[int] = NotSpecified,
-          name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Stacks multiple inputs together using :func:`tf.stack`.
   This creates a new dimension for the stack.
@@ -3952,7 +3952,7 @@ def prefix_in_time(
                    prefix: Union[float, str] = NotSpecified,
                    repeat: Union[int, LayerRef] = NotSpecified,
                    size_base: Optional[LayerRef] = NotSpecified,
-                   name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds some prefix in time dimension.
   This is kind of the reverse of :class:`SliceNdLayer` does.
@@ -4025,7 +4025,7 @@ def postfix_in_time(
                     *,
                     postfix: Union[float, int, LayerRef] = NotSpecified,
                     repeat: int = NotSpecified,
-                    name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                    name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds some postfix in time dimension.
 
@@ -4092,7 +4092,7 @@ def time_chunking(
                   *,
                   chunk_size: int,
                   chunk_step: int,
-                  name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
 
@@ -4138,7 +4138,7 @@ def time_un_chunking(
                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                      *,
                      chunking_layer: LayerRef,
-                     name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
 
@@ -4228,7 +4228,7 @@ def dot(
         var2: Any = NotSpecified,
         add_var2_if_empty: bool = NotSpecified,
         debug: bool = NotSpecified,
-        name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+        name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This performs a dot-product of two sources.
   The underlying matmul expects shapes (shared..., I, J) * (shared..., J, K) -> (shared..., I, K).
@@ -4324,7 +4324,7 @@ def shift_axis(
                amount: int,
                pad: bool = NotSpecified,
                adjust_size_info: bool = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Shifts the dimensions in an axis around.
   This layer may change the axis-dimension.
@@ -4418,7 +4418,7 @@ def resize(
            kind: str = NotSpecified,
            fill_value: Optional[Union[int, float]] = NotSpecified,
            fill_dropout: float = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Resizes the input, i.e. upsampling or downsampling.
   Supports different kinds, such as linear interpolation or nearest-neighbor.
@@ -4490,7 +4490,7 @@ def remove(
            source: LayerRef,
            *,
            symbol: int,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Currently, assumes sparse data, and removes a specific symbol from the data.
 
@@ -4582,7 +4582,7 @@ def _combine(
              eval: Union[str, callable] = NotSpecified,
              eval_locals: Optional[Dict[str]] = NotSpecified,
              eval_for_output_loss: bool = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Applies a binary operation, such as addition, to all sources while accumulating the partial results.
   In the first step, the binary operation is performed on the first two sources.
@@ -4666,7 +4666,7 @@ def eval(
          with_bias: bool = NotSpecified,
          eval_locals: Optional[Dict[str]] = NotSpecified,
          eval_for_output_loss: bool = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Evaluates some string.
   The :class:`CombineLayer` provides this functionality, thus this is just a special case of it.
@@ -4763,7 +4763,7 @@ def compare(
             *,
             kind: str = NotSpecified,
             value: Optional[Union[float, int]] = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Compares element-wise the tokens of all input sequences among themselves and/or with a specified given value.
   The comparisons are performed in a chain according to the order in which they are listed.
@@ -4842,7 +4842,7 @@ def switch(
            condition: Union[LayerRef, bool],
            true_from: Optional[Union[LayerRef, float, int]],
            false_from: Optional[Union[LayerRef, float, int]],
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Wrapper around ``tf.where()`` (or more generically :func:`TFUtil.where_bc`),
   or statically choose a single source if the condition is a callable (...)->bool.
@@ -4934,7 +4934,7 @@ def search_sorted(
                   values: LayerRef,
                   axis: str = NotSpecified,
                   side: str = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Basically wraps :func:`tf.searchsorted`.
 
@@ -5028,7 +5028,7 @@ def variable(
              add_time_axis: bool = NotSpecified,
              trainable: bool = NotSpecified,
              init: Union[str, float, int] = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
   See defaults.
@@ -5110,7 +5110,7 @@ def forced_alignment(
                      align_target: LayerRef,
                      topology: str,
                      input_type: str,
-                     name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Calculates a forced alignment, via Viterbi algorithm.
 
@@ -5218,7 +5218,7 @@ def fast_baum_welch(
                     am_scale: float = NotSpecified,
                     min_prob: float = NotSpecified,
                     staircase_seq_len_source: Optional[LayerRef] = NotSpecified,
-                    name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                    name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
   We expect that our input are +log scores, e.g. use log-softmax.
@@ -5305,7 +5305,7 @@ def synthetic_gradient(
                        *,
                        gradient: LayerRef,
                        meta_loss_scale: float = NotSpecified,
-                       name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                       name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This is a generalized way to be able to replace the true gradient with any kind of predicted gradient.
   This enabled to implement the idea from here:
@@ -5369,7 +5369,7 @@ def tikhonov_regularization(
                             source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                             *,
                             meta_loss_scale: float = NotSpecified,
-                            name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds the Tikhonov regularization as a meta-loss (see :class:`TFUtil.MetaLosses`).
 
@@ -5432,7 +5432,7 @@ def print(
           *,
           summarize: Optional[int] = NotSpecified,
           extra_print_args: Union[List, Tuple] = NotSpecified,
-          name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Prints the sources to console/log, via :func:`TFUtil.py_print`.
 
@@ -5530,7 +5530,7 @@ def hdf_dump(
              labels: Optional[List[str]] = NotSpecified,
              extend_existing_file: bool = NotSpecified,
              dump_per_run: bool = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Dumps into HDF file, compatible to :class:`HDFDataset`.
 
@@ -5773,7 +5773,7 @@ def rec_unstack(
                 source: LayerRef,
                 *,
                 axis: Union[str, DimensionTag],
-                name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This is supposed to be used inside a :class:`RecLayer`.
   The input is supposed to be outside the rec layer (i.e. via ``base:``).
@@ -5975,7 +5975,7 @@ def choice(
            scheduled_sampling: Optional[Dict] = NotSpecified,
            cheating: Union[bool, str] = NotSpecified,
            explicit_search_sources: Optional[List[LayerRef]] = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This layer represents a choice to be made in search during inference,
   such as choosing the top-k outputs from a log-softmax for beam search.
@@ -6096,7 +6096,7 @@ def decide(
            *,
            length_normalization: bool = NotSpecified,
            search: Union[NotSpecified, bool] = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This is kind of the counter-part to the choice layer.
   This only has an effect in search mode.
@@ -6147,7 +6147,7 @@ class _ChoiceGetBeamScores(_Base):
 def choice_get_beam_scores(
                            source: LayerRef,
                            *,
-                           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Gets beam scores from :class:`SearchChoices`.
   This requires that the source has search choices.
@@ -6187,7 +6187,7 @@ class _ChoiceGetSrcBeams(_Base):
 def choice_get_src_beams(
                          source: LayerRef,
                          *,
-                         name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Gets source beam indices from :class:`SearchChoices`.
   This requires that the source has search choices.
@@ -6270,7 +6270,7 @@ def positional_encoding(
                         add_to_input: bool = NotSpecified,
                         constant: int = NotSpecified,
                         offset: Optional[LayerRef] = NotSpecified,
-                        name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                        name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Provides positional encoding in the form of (batch, time, n_out) or (time, batch, n_out)
   where n_out is the number of channels, if it is run outside a :class:`RecLayer`,
@@ -6380,7 +6380,7 @@ def ken_lm_state(
                  input_step_offset: int = NotSpecified,
                  dense_output: bool = NotSpecified,
                  debug: bool = NotSpecified,
-                 name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                 name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Get next word (or subword) each frame,
   accumulates string,
@@ -6468,7 +6468,7 @@ def edit_distance_table(
                         *,
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
-                        name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                        name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Given a source and a target, calculates the edit distance table between them.
   Source can be inside a recurrent loop.
@@ -6551,7 +6551,7 @@ def optimal_completions(
                         *,
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
-                        name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+                        name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   We expect to get the inputs from :class:`EditDistanceTableLayer`, esp from the prev frame, like this:
   "opt_completions": {"class": "optimal_completions", "from": "prev:edit_dist_table"}.
@@ -6616,7 +6616,7 @@ def unmask(
            source: LayerRef,
            *,
            mask: LayerRef,
-           name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This is meant to be used together with :class:`MaskedComputationLayer`,
   which operates on input [B,T,D], and given a mask, returns [B,T',D'].
@@ -6852,7 +6852,7 @@ def cum_concat(
                source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
                *,
                new_dim: DimensionTag,
-               name: Optional[Union[str, NameCtx]] = None) -> LayerRef:
+               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.

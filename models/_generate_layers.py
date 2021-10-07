@@ -101,7 +101,7 @@ def setup():
   print("from typing import Union, Optional, Tuple, List, Dict, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("from returnn.tf.util.basic import DimensionTag", file=f)
-  print("from .base import NameCtx, ILayerMaker, LayerRef, LayerDictRaw", file=f)
+  print("from .base import NameCtx, ILayerMaker, Layer, LayerRef, LayerDictRaw", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
   for layer_class in layer_classes:
@@ -222,7 +222,7 @@ def setup():
         for param in mod_args:
           print(f"{prefix}{param.get_module_param_code_str()},", file=f)
           args.append(param.get_module_param_name())
-      print(f"{prefix}name: Optional[Union[str, NameCtx]] = None) -> LayerRef:", file=f)
+      print(f"{prefix}name: Optional[Union[str, NameCtx]] = None) -> Layer:", file=f)
       print('  """', file=f)
       if layer_class.__doc__:
         for i, line in enumerate(layer_class.__doc__.splitlines(keepends=True)):
