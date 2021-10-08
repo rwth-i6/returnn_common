@@ -437,7 +437,9 @@ class Loop:
     self.name_ctx.is_subnet_ctx = True
     self.name_ctx.extend_reserved_names({"output", "end"})
     self.state = _StateHolder(loop=self)
+    self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
+    self.end_ref = None  # type: Optional[LayerRef]
 
   def __enter__(self) -> Loop:
     self.name_ctx.__enter__()
@@ -448,6 +450,8 @@ class Loop:
       if not exc_type:
         if not self.outputs:  # stack or last was called at least once, so we have some output
           raise Exception(f"{self}: call `stack` or `last` at least once to define some output")
+        if not self.end_ref and not self.unstacked_refs:
+          raise Exception(f"{self}: call `unstack` or `end` at least once to define the loop length")
         # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
         if "output" not in self.name_ctx.childs:
           from .layers import copy
@@ -461,9 +465,10 @@ class Loop:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     """
-    self  # noqa  # not needed currently...
     from .layers import rec_unstack
-    return rec_unstack(source, axis=axis, name=name)
+    res = rec_unstack(source, axis=axis, name=name)
+    self.unstacked_refs.append(res)
+    return res
 
   def stack(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
     """
@@ -486,6 +491,16 @@ class Loop:
     """
     # TODO ...
     raise NotImplementedError("Loop.last not implemented yet...")
+
+  def end(self, source: LayerRef) -> LayerRef:
+    """
+    For loops with dynamic ending condition (which might not use unstack),
+    this defines the ending condition.
+    """
+    assert not self.end_ref  # do not call this multiple times
+    from .layers import copy
+    self.end_ref = copy(source, name=self.name_ctx.get_child("end"))
+    return self.end_ref
 
 
 class _LoopLayerMaker(ILayerMaker):
