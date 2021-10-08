@@ -60,11 +60,26 @@ def setup():
   # (https://github.com/tensorflow/tensorflow/issues/24496).
   # os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
-  import tensorflow as tf
-  print("TensorFlow:", tf.__version__)
+  # ----------------
+  # So far only external deps.
+  # Now setup the paths for this repo and do some basic checks.
+
+  if parent_root_dir not in sys.path:
+    sys.path.insert(0, parent_root_dir)  # make `import returnn_common` work
+
+  import importlib
+
+  if _expected_mod_name != _my_old_mod_name:
+    globals()["__package__"] = _expected_mod_name[:_expected_mod_name.rfind(".")]
+    globals()["__name__"] = _expected_mod_name
+    sys.modules[_expected_mod_name] = sys.modules[_my_old_mod_name]
+    mod = importlib.import_module(_expected_mod_name)
+    assert vars(mod) is globals()
+
+  import returnn_common  # noqa  # test import
 
   import returnn
-  print("RETURNN:", returnn.__version__)
+  print("RETURNN:", returnn.__long_version__, returnn.__file__)
 
   import returnn.util.basic as util
   util.init_thread_join_hack()
@@ -90,23 +105,10 @@ def setup():
   except ImportError:
     print("no faulthandler")
 
-  # ----------------
-  # So far only external deps.
-  # Now setup the paths for this repo and do some basic checks.
+  import tensorflow as tf
+  print("TensorFlow:", tf.__version__)
 
-  if parent_root_dir not in sys.path:
-    sys.path.insert(0, parent_root_dir)  # make `import returnn_common` work
-
-  import importlib
-
-  if _expected_mod_name != _my_old_mod_name:
-    globals()["__package__"] = _expected_mod_name[:_expected_mod_name.rfind(".")]
-    globals()["__name__"] = _expected_mod_name
-    sys.modules[_expected_mod_name] = sys.modules[_my_old_mod_name]
-    mod = importlib.import_module(_expected_mod_name)
-    assert vars(mod) is globals()
-
-  import returnn_common  # noqa
+  # Now some trickery for some good main default.
 
   main_mod = sys.modules.get("__main__")
   if main_mod and os.path.dirname(os.path.realpath(os.path.abspath(main_mod.__file__))) == my_dir:
