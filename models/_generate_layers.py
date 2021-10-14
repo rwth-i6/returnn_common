@@ -444,7 +444,9 @@ class LayerSignature:
         mod = Module(...)
         out, last_state = mod(in, [initial_state])
     """
-    if self.layer_class.get_rec_initial_extra_outputs.__func__ is LayerBase.get_rec_initial_extra_outputs.__func__:
+    if (
+          getattr(self.layer_class.get_rec_initial_extra_outputs, "__func__")
+          is getattr(LayerBase.get_rec_initial_extra_outputs, "__func__")):
       # Not derived, so no rec state.
       return False
     # Some special cases where the rec state is just an internal implementation detail
