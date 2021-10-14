@@ -23,7 +23,7 @@ from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
 from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
 from returnn.tf.layers.rec import RecLayer, RnnCellLayer
 from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
-from returnn.tf.layers.rec import ChoiceLayer, GenericAttentionLayer
+from returnn.tf.layers.rec import BaseChoiceLayer, ChoiceLayer, GenericAttentionLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -167,11 +167,13 @@ def setup():
 
     if layer_class.layer_class:
       print("", file=f)
-      if sig.has_source_param() or sig.has_module_call_args():
+      if sig.has_source_param() or sig.has_recurrent_state() or sig.has_module_call_args():
         print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
         print("  def make_layer_dict(self,", file=f)
         if sig.has_source_param():
           print(f"                      {sig.get_module_call_source_param_code_str()},", file=f)
+        if sig.has_recurrent_state():
+          print(f"                      {sig.get_module_call_state_param_code_str()},", file=f)
         if sig.has_module_call_args():
           print("                      *,", file=f)
           for param in sig.get_module_call_args():
@@ -180,8 +182,10 @@ def setup():
       else:
         print("  def make_layer_dict(self) -> LayerDictRaw:", file=f)
       print(format_multi_line_str("Make layer dict", indent="    "), file=f)
-      if sig.has_module_call_args():
+      if sig.has_module_call_args() or sig.has_recurrent_state():
         print("    args = {", file=f)
+        if sig.has_recurrent_state():
+          print(f"      'initial_state': state,", file=f)
         for param in sig.get_module_call_args():
           print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
         print("    }", file=f)
@@ -190,7 +194,7 @@ def setup():
       print(f"      'class': {layer_class.layer_class!r},", file=f)
       if sig.has_source_param():
         print("      'from': source,", file=f)
-      if sig.has_module_call_args():
+      if sig.has_module_call_args() or sig.has_recurrent_state():
         print("      **args,", file=f)
       print("      **self.get_opts()}", file=f)
     else:
@@ -216,6 +220,9 @@ def setup():
       if sig.has_source_param():
         print(f"{prefix}{sig.get_module_call_source_param_code_str()},", file=f)
         args.append("source")
+      if sig.has_recurrent_state():
+        print(f"{prefix}{sig.get_module_call_state_param_code_str()},", file=f)
+        args.append("state")
       print(f"{prefix}*,", file=f)
       mod_args = sig.get_all_derived_args()
       if mod_args:
@@ -236,6 +243,8 @@ def setup():
         print("", file=f)
       if sig.has_source_param():
         print(f"  {sig.get_module_call_source_docstring()}", file=f)
+      if sig.has_recurrent_state():
+        print(f"  {sig.get_module_call_state_docstring()}", file=f)
       for param in mod_args:
         print(param.get_module_param_docstring(indent="  "), file=f)
       print("  :param str|None name:", file=f)
@@ -253,11 +262,16 @@ def setup():
         if not param.is_module_init_arg():
           module_call_args.append(param)
       if sig.has_source_param() and not module_call_args:
-        print(f"  return mod(source, name=name)", file=f)
+        if sig.has_recurrent_state():
+          print(f"  return mod(source, state, name=name)", file=f)
+        else:
+          print(f"  return mod(source, name=name)", file=f)
       else:
         print(f"  return mod(", file=f)
         if sig.has_source_param():
           print("    source,", file=f)
+        if sig.has_recurrent_state():
+          print("    state,", file=f)
         for param in module_call_args:
           print(f"    {param.get_module_param_name()}={param.get_module_param_name()},", file=f)
         print("    name=name)", file=f)
@@ -336,6 +350,20 @@ class LayerSignature:
     s += " source:"
     return s
 
+  def get_module_call_state_param_code_str(self):
+    """
+    Code for `state` param
+    """
+    assert self.has_recurrent_state()
+    return "state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified"
+
+  def get_module_call_state_docstring(self):
+    """
+    Code for docstring of `source` param
+    """
+    assert self.has_recurrent_state()
+    return ":param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:"
+
   def has_module_init_args(self) -> bool:
     """
     Whether there are other call args (despite source)
@@ -392,21 +420,44 @@ class LayerSignature:
         ls.append(param)
     return ls
 
-  def is_functional(self):
+  def is_functional(self) -> bool:
     """
     :return: Whether this is purely functional, i.e. it has no params/variables.
       Also see: https://github.com/rwth-i6/returnn_common/issues/30
-    :rtype: bool
     """
     if self.layer_class is VariableLayer:
       # Even though this obviously has a variable, I think the functional API is nicer for this.
       return True
     return not self._has_variables()
 
+  def has_recurrent_state(self) -> bool:
+    """
+    :return: whether the layer has recurrent state. that implies an extended API like:
+
+      Inside a loop::
+
+        mod = Module(...)
+        out, state = mod(in, prev_state)
+
+      Outside a loop::
+
+        mod = Module(...)
+        out, last_state = mod(in, [initial_state])
+    """
+    if self.layer_class.get_rec_initial_extra_outputs.__func__ is LayerBase.get_rec_initial_extra_outputs.__func__:
+      # Not derived, so no rec state.
+      return False
+    # Some special cases where the rec state is just an internal implementation detail
+    # and not supposed to be set by the user.
+    if issubclass(self.layer_class, BaseChoiceLayer):
+      return False
+    return True
+
   _IgnoreParamNames = {
     "self", "name", "network", "output",
     "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
     "reuse_params", "rec_previous_layer", "control_dependencies_on_output",
+    "initial_state",
     "extra_deps", "batch_norm",
     "is_output_layer",
   }
@@ -507,7 +558,13 @@ class LayerSignature:
     self.docstring = "\n".join(lines)
 
   def __repr__(self):
-    return f"<{self.__class__.__name__} {self.layer_class.__name__} {self.inspect_init_sig}>"
+    args = []
+    if self.has_source_param():
+      args.append("source")
+    if self.has_recurrent_state():
+      args.append("state")
+    args += [arg.get_module_param_name() for arg in self.get_all_derived_args()]
+    return f"<{self.__class__.__name__} {self.layer_class.__name__} ({', '.join(args)})>"
 
   def _find_super_call_assignments(self):
     """
