@@ -99,7 +99,7 @@ class LayerRef:
     """
     return self.name_ctx.get_abs_name()
 
-  def mark_as_loss(self):
+  def mark_as_loss(self, loss_scale: Optional[float] = 1.0):
     """
     Mark this as a loss.
     """
