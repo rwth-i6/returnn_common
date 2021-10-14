@@ -268,22 +268,34 @@ class ILayerMaker:
     if self.calls:
       name_ctx.is_repeated_call = True
     layer_dict = self.make_layer_dict(*args, **kwargs)
-    return make_layer(layer_dict)
+    return make_layer(layer_dict, name_ctx=name_ctx)
 
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Layer:
     with NameCtx.get_from_call(maker=self, name=name):
       return self._make_layer(*args, **kwargs)
 
 
-def make_layer(layer_dict: LayerDictRaw) -> Layer:
+def make_layer(layer_dict: LayerDictRaw, *,
+               name: Optional[str] = None, name_ctx: Optional[NameCtx] = None) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   This assumes that the top name ctx corresponds to this layer maker.
   This is usually only used internally via :class:`ILayerMaker`.
+
+  :param LayerDictRaw layer_dict:
+  :param str|None name: layer name. if given, will create a new :class:`NameCtx`
+  :param NameCtx|None name_ctx: if given, will use this name ctx.
+    You can either pass ``name_ctx`` or ``name`` but not both.
   """
-  name_ctx = NameCtx.top()
-  assert not name_ctx.layer_ref and not name_ctx.layer
-  assert name_ctx.maker
+  if name:
+    assert not name_ctx
+    assert isinstance(name, str)
+    name_ctx = NameCtx(suggested_name=name)
+  elif name_ctx:
+    assert isinstance(name_ctx, NameCtx)
+  else:
+    name_ctx = NameCtx.top()
+  assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = nest.map_structure(
     lambda x: x.get_name() if isinstance(x, LayerRef) else x,
     layer_dict)
@@ -297,7 +309,8 @@ def make_layer(layer_dict: LayerDictRaw) -> Layer:
       assert "reuse_params" not in layer_dict
       layer_dict["reuse_params"] = name_ctx.maker.calls[0].get_name()
   layer = Layer(layer_dict=layer_dict)
-  name_ctx.maker.calls.append(layer)
+  if name_ctx.maker:
+    name_ctx.maker.calls.append(layer)
   return layer
 
 
