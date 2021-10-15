@@ -60,7 +60,7 @@ def test_simple_net_lstm():
       Forward
       """
       x = get_extern_data("data")
-      x = self.lstm(x)
+      x, _ = self.lstm(x)
       return x
 
   net = _Net()
@@ -74,7 +74,7 @@ def test_simple_net_explicit_root_ctx():
   lstm = Lstm(n_out=13)
 
   with NameCtx.new_root() as name_ctx:
-    out = lstm(get_extern_data("data"))
+    out, _ = lstm(get_extern_data("data"))
     assert isinstance(out, Layer)
     assert_equal(out.get_name(), "lstm")
 
@@ -103,8 +103,8 @@ def test_simple_net_share_params():
       """
       x = get_extern_data("data")
       x = self.linear(x)
-      x = self.lstm(x)
-      x = self.lstm(x)
+      x, _ = self.lstm(x)
+      x, _ = self.lstm(x)
       return x
 
   net = _Net()
