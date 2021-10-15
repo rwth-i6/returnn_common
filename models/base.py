@@ -292,7 +292,7 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
     """
     assert self.has_recurrent_state
     from ._generated_layers import _get_last_hidden_state
-    return _get_last_hidden_state(layer)
+    return _get_last_hidden_state(layer, name=f"{layer.name_ctx.name}_state")
 
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> (
         Union[Layer, Tuple[Layer, Union[Layer, Tuple[LayerRef, ...]]]]):
@@ -300,8 +300,8 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
       layer = self._make_layer(*args, **kwargs)
       if not self.has_recurrent_state:
         return layer
-      state = self._get_recurrent_state(layer)
-      return layer, state
+    state = self._get_recurrent_state(layer)
+    return layer, state
 
 
 def make_layer(layer_dict: LayerDictRaw, *,
