@@ -843,14 +843,14 @@ class NameCtx:
 
   def __enter__(self):
     if self.parent:
-      assert self.stack[-1] is self.parent
+      assert self.stack[-1] is self.parent, f"{self}.__enter__: stack {self.stack} top is not parent {self.parent}"
     else:
-      assert not self.stack
+      assert not self.stack, f"{self}.__enter__ without parent, unexpected stack {self.stack}"
     self.stack.append(self)
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    assert self.stack[-1] is self
+    assert self.stack[-1] is self, f"{self}.__exit__: stack {self.stack} top is not self"
     self.stack.pop(-1)
 
   def _get_name(self) -> str:
