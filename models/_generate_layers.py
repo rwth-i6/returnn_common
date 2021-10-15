@@ -53,7 +53,6 @@ BlacklistLayerClassNames = {
   "accumulate_mean",
   "framewise_statistics",
   "image_summary",
-  "get_last_hidden_state",  # we handle all state explicitly, there is no hidden state
   "get_rec_accumulated",  # covered by our Loop logic
   "decide_keep_beam",  # internal
   "rnn_cell",  # -> rec
@@ -69,6 +68,7 @@ BlacklistLayerClassNames = {
 LayersHidden = {
   "combine",  # only needed as base
   "split",
+  "get_last_hidden_state",  # we handle all state explicitly, there is no hidden state. this is only needed internally
 }
 
 BlacklistLayerArgs = {
@@ -101,7 +101,7 @@ def setup():
   print("from typing import Union, Optional, Tuple, List, Dict, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("from returnn.tf.util.basic import DimensionTag", file=f)
-  print("from .base import NameCtx, ILayerMaker, Layer, LayerRef, LayerDictRaw", file=f)
+  print("from .base import NameCtx, ILayerMaker, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerDictRaw", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
   for layer_class in layer_classes:
@@ -113,7 +113,7 @@ def setup():
       assert cls_base in signatures
       cls_base_str = get_module_class_name_for_layer_class(signatures[cls_base])
     else:
-      cls_base_str = "ILayerMaker"
+      cls_base_str = "_ReturnnWrappedLayerBase"
 
     print(f"\n\nclass {cls_str}({cls_base_str}):", file=f)
     if layer_class.__doc__:
@@ -123,6 +123,9 @@ def setup():
       print('  """', file=f)
     else:
       print(format_multi_line_str("(undocumented...)", indent="  "), file=f)
+
+    print(f"  returnn_layer_class = {sig.layer_class.layer_class!r}", file=f)
+    print(f"  has_recurrent_state = {sig.has_recurrent_state()}", file=f)
 
     if sig.need_module_init():
       print("", file=f)

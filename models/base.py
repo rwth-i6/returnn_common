@@ -4,12 +4,12 @@ Base interfaces.
 The core interfaces for the user are:
 
 * :class:`ILayerMaker`, to directly create a layer dict.
-  We recommend to use this only for directly wrapping RETURNN layers
+  We recommend using this only for directly wrapping RETURNN layers
   and not for any higher-level logic,
   which should be done as a :class:`Module`.
 
 * :class:`Module`, to write PyTorch-style code, which acts like a subnetwork.
-  We recommend to use this as the base interface
+  We recommend using this as the base interface
   for any higher-level interfaces
   (such as a generic decoder interface).
 
@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Union, Set
+from typing import Dict, Any, Optional, List, Tuple, Union, Set
 from returnn.util.basic import NotSpecified
 from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
@@ -273,6 +273,35 @@ class ILayerMaker:
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Layer:
     with NameCtx.get_from_call(maker=self, name=name):
       return self._make_layer(*args, **kwargs)
+
+
+# noinspection PyAbstractClass
+class _ReturnnWrappedLayerBase(ILayerMaker):
+  """
+  Base class for all automatically wrapped layers.
+  """
+  returnn_layer_class: Optional[str] = None
+  has_recurrent_state: bool = False
+
+  def _get_recurrent_state(self, layer: Layer) -> Union[LayerRef, Tuple[LayerRef, ...]]:
+    """
+    :returns: the recurrent state
+
+    You might override this in case the state is more complex,
+    and return some named tuple or any other hierarchical structure.
+    """
+    assert self.has_recurrent_state
+    from ._generated_layers import _get_last_hidden_state
+    return _get_last_hidden_state(layer)
+
+  def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> (
+        Union[Layer, Tuple[Layer, Union[Layer, Tuple[LayerRef, ...]]]]):
+    with NameCtx.get_from_call(maker=self, name=name):
+      layer = self._make_layer(*args, **kwargs)
+      if not self.has_recurrent_state:
+        return layer
+      state = self._get_recurrent_state(layer)
+      return layer, state
 
 
 def make_layer(layer_dict: LayerDictRaw, *,

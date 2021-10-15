@@ -11,10 +11,10 @@ from __future__ import annotations
 from typing import Union, Optional, Tuple, List, Dict, Any
 from returnn.util.basic import NotSpecified
 from returnn.tf.util.basic import DimensionTag
-from .base import NameCtx, ILayerMaker, Layer, LayerRef, LayerDictRaw
+from .base import NameCtx, ILayerMaker, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerDictRaw
 
 
-class _Base(ILayerMaker):
+class _Base(_ReturnnWrappedLayerBase):
   """
   This is the base class for all layers.
   Every layer by default has a list of source layers `sources` and defines `self.output` which is of type :class:`Data`.
@@ -45,6 +45,8 @@ class _Base(ILayerMaker):
               return get_concat_sources_data_template(kwargs["sources"], name="%s_output" % kwargs["name"])
 
   """
+  returnn_layer_class = None
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -132,6 +134,8 @@ class _Source(_Base):
   """
   This gives access to some entry from network.extern_data (:class:`ExternData`).
   """
+  returnn_layer_class = 'source'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -189,6 +193,8 @@ class _ConcatInput(_Base):
   If there is only a single source, will not do anything.
   This layer also optionally can do dropout on the input.
   """
+  returnn_layer_class = None
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -231,6 +237,8 @@ class _Copy(_ConcatInput):
   This layer does nothing, it copies its input.
   If multiple sources are provided, they are concatenated in the feature-dim.
   """
+  returnn_layer_class = 'copy'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -265,6 +273,8 @@ class _Dropout(_Copy):
   """
   Just the same as :class:`CopyLayer`, because that one already supports dropout.
   """
+  returnn_layer_class = 'dropout'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -314,6 +324,8 @@ class _ScaledGradient(_Copy):
   Can be used as gradient reversal layer (with negative factor).
   Uses :func:`TFUtil.scaled_gradient`, or :func:`tf.stop_gradient`
   """
+  returnn_layer_class = 'scaled_grad'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -377,6 +389,8 @@ class _Activation(_ConcatInput):
   See :func:`TFUtil.get_activation_function` about supported functions.
   Also see :class:`EvalLayer` and :class:`CombineLayer` for similar layers.
   """
+  returnn_layer_class = 'activation'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -439,6 +453,8 @@ class _BatchNorm(_Copy):
 
   Also see :class:`NormLayer`.
   """
+  returnn_layer_class = 'batch_norm'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -602,6 +618,8 @@ class _LayerNorm(_ConcatInput):
   or all axes except batch and time.
   For a more generic variant, see :class:`NormLayer`.
   """
+  returnn_layer_class = 'layer_norm'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -690,6 +708,8 @@ class _Norm(_ConcatInput):
   `here <https://stats.stackexchange.com/questions/485550/is-group-norm-with-g-1-equiv-to-layer-norm>`__
   and `here <https://github.com/tensorflow/addons/issues/2143>`__.
   """
+  returnn_layer_class = 'norm'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -807,6 +827,8 @@ class _MathNorm(_ConcatInput):
   """
   Calculates sum(abs(x) ** p) ** (1./p).
   """
+  returnn_layer_class = 'math_norm'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -899,6 +921,8 @@ class _Slice(_ConcatInput):
 
   We just support slicing in a single axis here, with optional striding (slice_step).
   """
+  returnn_layer_class = 'slice'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1007,6 +1031,8 @@ class _SliceNd(_ConcatInput):
   See also :class:`GatherNdLayer`.
   :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
   """
+  returnn_layer_class = 'slice_nd'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1106,6 +1132,8 @@ class _Gather(_ConcatInput):
   It provides the same functionality as the deprecated ``GatherNdLayer``, but is more generic.
   See also :class:`GatherNdLayer`.
   """
+  returnn_layer_class = 'gather'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -1199,6 +1227,8 @@ class _ScatterNd(_ConcatInput):
 
   In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
   """
+  returnn_layer_class = 'scatter_nd'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1311,6 +1341,8 @@ class Linear(_ConcatInput):
   with an optional bias term and an optional activation function.
   See also :class:`DotLayer`, :class:`ElemwiseProdLayer`, :class:`WeightedSumLayer`.
   """
+  returnn_layer_class = 'linear'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1374,6 +1406,8 @@ class _Length(_Base):
   """
   Returns the length of sources as (B,), via input size_placeholder.
   """
+  returnn_layer_class = 'length'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1462,6 +1496,8 @@ class _SoftmaxOverSpatial(_ConcatInput):
   In contrast to :class:`SoftmaxLayer`, this will not do a linear transformation.
   See :class:`SeqLenMaskLayer` if you just want to apply a masking.
   """
+  returnn_layer_class = 'softmax_over_spatial'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1575,6 +1611,8 @@ class _SeqLenMask(_ConcatInput):
   Also see :class:`SoftmaxOverSpatialLayer`.
   Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
   """
+  returnn_layer_class = 'seq_len_mask'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1667,6 +1705,8 @@ class _RandInt(_Base):
   """
   Generates random numbers using ``tf.random.uniform``
   """
+  returnn_layer_class = 'rand_int'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1754,6 +1794,8 @@ class _Range(_Base):
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
   """
+  returnn_layer_class = 'range'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1843,6 +1885,8 @@ class _RangeInAxis(_Base):
   where the specified axis is filled with ``tf.range``.
   See also :class:`RangeLayer`.
   """
+  returnn_layer_class = 'range_in_axis'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1935,6 +1979,8 @@ class _RangeFromLength(_Base):
     y: {class: range_from_length, from: x_len}
 
   """
+  returnn_layer_class = 'range_from_length'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2013,6 +2059,8 @@ class _BatchSoftmax(_ConcatInput):
   """
   Softmax over spacial and feature axis
   """
+  returnn_layer_class = 'batch_softmax'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -2046,6 +2094,8 @@ class _Constant(_Base):
   """
   Output is a constant value.
   """
+  returnn_layer_class = 'constant'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2124,6 +2174,8 @@ class _Window(_ConcatInput):
   This is not to take out a window from the time-dimension.
   See :class:`SliceLayer` or :class:`SliceNdLayer`.
   """
+  returnn_layer_class = 'window'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2238,6 +2290,8 @@ class _Cumsum(_ConcatInput):
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
   """
+  returnn_layer_class = 'cumsum'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2320,6 +2374,8 @@ class _Pad(_ConcatInput):
   """
   Adds (e.g. zero) padding in some axis or axes.
   """
+  returnn_layer_class = 'pad'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2410,6 +2466,8 @@ class _MergeDims(_ConcatInput):
   When you want to merge batch and time, but remove the padding efficiently, i.e. flatten it,
   see :class:`FlattenBatchLayer`.
   """
+  returnn_layer_class = 'merge_dims'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2502,6 +2560,8 @@ class _Split(_ConcatInput):
   self.output is simply the input copied.
   Each part can be accessed via the sublayers "/%i".
   """
+  returnn_layer_class = 'split'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2597,6 +2657,8 @@ class _SplitDims(_ConcatInput):
   Also see :class:`SplitBatchTimeLayer`.
   Also see :class:`MergeDimsLayer` which can undo this operation.
   """
+  returnn_layer_class = 'split_dims'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2703,6 +2765,8 @@ class _SplitBatchTime(_ConcatInput):
   and converts it into (batch, time, ...), where it recovers the seq-lens from some other layer.
   See :class:`SplitDimsLayer` for a more generic layer.
   """
+  returnn_layer_class = 'split_batch_time'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -2755,6 +2819,8 @@ class _FlattenBatch(_ConcatInput):
   See also :class:`MergeDimsLayer`, which does not do flattening,
   i.e. the size stays the same.
   """
+  returnn_layer_class = 'flatten_batch'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2839,6 +2905,8 @@ class _UnflattenNd(_ConcatInput):
 
   This basically wraps :func:`TFUtil.unflatten_nd`.
   """
+  returnn_layer_class = 'unflatten_nd'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2926,6 +2994,8 @@ class _Repeat(_ConcatInput):
 
   This layer can only be used with Tensorflow 1.15.0 or newer.
   """
+  returnn_layer_class = 'repeat'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -2981,6 +3051,8 @@ class _Tile(_ConcatInput):
   """
   A wrapper around tf.tile
   """
+  returnn_layer_class = 'tile'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3039,6 +3111,8 @@ class _Cast(_Copy):
   """
   Cast to some other dtype.
   """
+  returnn_layer_class = 'cast'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3097,6 +3171,8 @@ class _ReinterpretData(_ConcatInput):
   """
   Acts like the :class:`CopyLayer` but reinterprets the role of some axes or data.
   """
+  returnn_layer_class = 'reinterpret_data'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3227,6 +3303,8 @@ class Conv(_ConcatInput):
   A generic convolution layer which supports 1D, 2D and 3D convolution.
   Pooling can be done in the separate "pool" layer.
   """
+  returnn_layer_class = 'conv'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3338,6 +3416,8 @@ class _Pool(_ConcatInput):
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
   """
+  returnn_layer_class = 'pool'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3434,6 +3514,8 @@ class _Dct(_ConcatInput):
   Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
   https://www.tensorflow.org/api_docs/python/tf/signal/dct
   """
+  returnn_layer_class = 'dct'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3509,6 +3591,8 @@ class TransposedConv(_ConcatInput):
   Transposed convolution, sometimes also called deconvolution.
   See :func:`tf.nn.conv2d_transpose` (currently we support 1D/2D).
   """
+  returnn_layer_class = 'transposed_conv'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3599,6 +3683,8 @@ class _Reduce(_ConcatInput):
   This reduces some axis by using "sum" or "max".
   It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
   """
+  returnn_layer_class = 'reduce'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3709,6 +3795,8 @@ class _ReduceOut(_ConcatInput):
   and :class:`ReduceLayer` applied to the resulting feature dim.
   This can e.g. be used to do maxout.
   """
+  returnn_layer_class = 'reduce_out'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3777,6 +3865,8 @@ class _Squeeze(_ConcatInput):
   Removes an axis with dimension 1.
   This is basically a wrapper around tf.squeeze.
   """
+  returnn_layer_class = 'squeeze'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3860,6 +3950,8 @@ class _Stack(_Base):
 
   For concatenation (in feature dimension), see :class:`CopyLayer`.
   """
+  returnn_layer_class = 'stack'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -3911,6 +4003,8 @@ class _PrefixInTime(_ConcatInput):
   Adds some prefix in time dimension.
   This is kind of the reverse of :class:`SliceNdLayer` does.
   """
+  returnn_layer_class = 'prefix_in_time'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3987,6 +4081,8 @@ class _PostfixInTime(_ConcatInput):
   """
   Adds some postfix in time dimension.
   """
+  returnn_layer_class = 'postfix_in_time'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4057,6 +4153,8 @@ class _TimeChunking(_ConcatInput):
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
   """
+  returnn_layer_class = 'time_chunking'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4122,6 +4220,8 @@ class _TimeUnChunking(_ConcatInput):
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
   """
+  returnn_layer_class = 'time_unchunking'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -4173,6 +4273,8 @@ class _Dot(_Base):
   The var-dims don't need to exist.
   All other axes (shared...) are expected to match.
   """
+  returnn_layer_class = 'dot'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4275,6 +4377,8 @@ class _ShiftAxis(_ConcatInput):
 
   This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
   """
+  returnn_layer_class = 'shift_axis'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4365,6 +4469,8 @@ class _Resize(_ConcatInput):
   Resizes the input, i.e. upsampling or downsampling.
   Supports different kinds, such as linear interpolation or nearest-neighbor.
   """
+  returnn_layer_class = 'resize'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4460,6 +4566,8 @@ class _Remove(_Base):
   It is recommended to use :class:`MaskedComputationLayer` in combination with e.g.
   a :class:CompareLayer` instead, as this provides more flexibility.
   """
+  returnn_layer_class = 'remove'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4526,6 +4634,8 @@ class _Combine(_Base):
   Its basic working is similar to the `reduce` function used in functional programming.
   Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
   """
+  returnn_layer_class = 'combine'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4632,6 +4742,8 @@ class _Eval(_Combine):
   You can overwrite it by (partially) specifying `out_type`.
   `out_type` can also be a generic Python function, returning a `Data` instance.
   """
+  returnn_layer_class = 'eval'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4727,6 +4839,8 @@ class _Compare(_Base):
       }, "target": "classes0"}
 
   """
+  returnn_layer_class = 'compare'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4823,6 +4937,8 @@ class _Switch(_Base):
   See also :class:`CondLayer`.
   See also :class:`SeqLenMaskLayer` if you just want to mask using the sequence lengths.
   """
+  returnn_layer_class = 'switch'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -4888,6 +5004,8 @@ class _SearchSorted(_Base):
   where each entry is the index of the value within the sorted sequence.
   All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
   """
+  returnn_layer_class = 'search_sorted'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4978,6 +5096,8 @@ class _Variable(_Base):
   Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
   See defaults.
   """
+  returnn_layer_class = 'variable'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5067,6 +5187,8 @@ class _ForcedAlignment(_ConcatInput):
   """
   Calculates a forced alignment, via Viterbi algorithm.
   """
+  returnn_layer_class = 'forced_align'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5145,6 +5267,8 @@ class _FastBaumWelch(_ConcatInput):
   Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
   We expect that our input are +log scores, e.g. use log-softmax.
   """
+  returnn_layer_class = 'fast_bw'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5267,6 +5391,8 @@ class _SyntheticGradient(_ConcatInput):
   This enabled to implement the idea from here:
     Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
   """
+  returnn_layer_class = 'synthetic_gradient'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5339,6 +5465,8 @@ class _TikhonovRegularization(_Copy):
   """
   Adds the Tikhonov regularization as a meta-loss (see :class:`TFUtil.MetaLosses`).
   """
+  returnn_layer_class = 'tikhonov_regularization'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5397,6 +5525,8 @@ class _Print(_Base):
   """
   Prints the sources to console/log, via :func:`TFUtil.py_print`.
   """
+  returnn_layer_class = 'print'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5472,6 +5602,8 @@ class _HDFDump(_Base):
 
   It currently uses :class:`SimpleHDFWriter` internally.
   """
+  returnn_layer_class = 'hdf_dump'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5636,6 +5768,8 @@ class Rec(_ConcatInput):
 
   Also see :ref:`recurrency`.
   """
+  returnn_layer_class = 'rec'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5740,6 +5874,73 @@ class Rec(_ConcatInput):
       **self.get_opts()}
 
 
+class _GetLastHiddenState(_Base):
+  """
+  Will combine (concat or add or so) all the last hidden states from all sources.
+  """
+  returnn_layer_class = 'get_last_hidden_state'
+  has_recurrent_state = False
+
+  # noinspection PyShadowingBuiltins,PyShadowingNames
+  def __init__(self,
+               *,
+               combine: str = NotSpecified,
+               key: Optional[Union[str, int]] = NotSpecified,
+               **kwargs):
+    """
+    :param str combine: "concat" or "add"
+    :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
+    """
+    super().__init__(**kwargs)
+    self.combine = combine
+    self.key = key
+
+  def get_opts(self):
+    """
+    Return all options
+    """
+    opts = {
+      'combine': self.combine,
+      'key': self.key,
+    }
+    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
+    return {**opts, **super().get_opts()}
+
+  # noinspection PyShadowingBuiltins,PyShadowingNames
+  def make_layer_dict(self,
+                      source: LayerRef,
+                      ) -> LayerDictRaw:
+    """
+    Make layer dict
+    """
+    return {
+      'class': 'get_last_hidden_state',
+      'from': source,
+      **self.get_opts()}
+
+
+# noinspection PyShadowingBuiltins,PyShadowingNames
+def _get_last_hidden_state(
+                           source: LayerRef,
+                           *,
+                           combine: str = NotSpecified,
+                           key: Optional[Union[str, int]] = NotSpecified,
+                           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+  """
+  Will combine (concat or add or so) all the last hidden states from all sources.
+
+  :param LayerRef source:
+  :param str combine: "concat" or "add"
+  :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
+  :param str|None name:
+  """
+  mod = _GetLastHiddenState(
+    combine=combine,
+    key=key,
+    )
+  return mod(source, name=name)
+
+
 class _RecUnstack(_Base):
   """
   This is supposed to be used inside a :class:`RecLayer`.
@@ -5756,6 +5957,8 @@ class _RecUnstack(_Base):
   Effectively, this layer is very similar to :class:`CopyLayer`,
   with the only special behavior that it assigns the loop dimension of RecLayer.
   """
+  returnn_layer_class = 'rec_unstack'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -5814,6 +6017,8 @@ class _BaseChoice(_Base):
   This is a base-class for any layer which defines a new search choice,
   i.e. which defines ``self.search_choices``.
   """
+  returnn_layer_class = None
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5867,6 +6072,8 @@ class _Choice(_BaseChoice):
   Note, that the way scores are combined assumes the sources to be independent. If you want to model a dependency,
   use separate ChoiceLayers and let the input of one depend on the output of the other.
   """
+  returnn_layer_class = 'choice'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6064,6 +6271,8 @@ class _Decide(_BaseChoice):
   Thus, this will do a decision based on the scores.
   In will convert the data to batch-major mode.
   """
+  returnn_layer_class = 'decide'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6138,6 +6347,8 @@ class _ChoiceGetBeamScores(_Base):
     This layer might be deprecated in the future.
 
   """
+  returnn_layer_class = 'choice_get_beam_scores'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6178,6 +6389,8 @@ class _ChoiceGetSrcBeams(_Base):
   Gets source beam indices from :class:`SearchChoices`.
   This requires that the source has search choices.
   """
+  returnn_layer_class = 'choice_get_src_beams'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6221,6 +6434,8 @@ class _PositionalEncoding(_ConcatInput):
   The positional encoding is the same as in Tensor2Tensor.
   See :func:`TFUtil.get_positional_encoding`.
   """
+  returnn_layer_class = 'positional_encoding'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6319,6 +6534,8 @@ class _KenLmState(_ConcatInput):
   using KenLM (https://kheafield.com/code/kenlm/) (see :mod:`TFKenLM`).
   EOS (</s>) token must be used explicitly.
   """
+  returnn_layer_class = 'kenlm'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6440,6 +6657,8 @@ class _EditDistanceTable(_Base):
 
   See also :class:`OptimalCompletionsLayer`.
   """
+  returnn_layer_class = 'edit_distance_table'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6531,6 +6750,8 @@ class _OptimalCompletions(_Base):
   This makes most sense when you enable beam search (even, or esp, during training).
   Note that you probably want to have this all before the last choice, where you still have more beams open.
   """
+  returnn_layer_class = 'optimal_completions'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6615,6 +6836,8 @@ class _Unmask(_Base):
   this is a no-op, and we just return the input as is.
   In that case, the repetition logic is handled via :class:`MaskedComputationLayer`.
   """
+  returnn_layer_class = 'unmask'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6678,6 +6901,8 @@ class TwoDLSTM(_Base):
   Currently only from left-to-right in the time axis.
   Can be inside a recurrent loop, or outside.
   """
+  returnn_layer_class = 'twod_lstm'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6757,6 +6982,8 @@ class RelativePositionalEncoding(_ConcatInput):
                                      "key_shift": output + '_rel_pos'}
 
   """
+  returnn_layer_class = 'relative_positional_encoding'
+  has_recurrent_state = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6848,6 +7075,8 @@ class _CumConcat(_ConcatInput):
   This way following layers use different seq lengths of `new_dim` for different loop frames,
   just like if the `T` dim would actually exist.
   """
+  returnn_layer_class = 'cum_concat'
+  has_recurrent_state = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
