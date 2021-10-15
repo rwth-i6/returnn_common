@@ -749,8 +749,13 @@ class NameCtx:
 
   def __repr__(self):
     ls = self.get_abs_name_ctx_list()
-    debug_name = "/".join(repr(ctx.name) for ctx in ls)
-    return f"<{self.__class__.__name__} maker:{self.maker} name:{debug_name} root:{id(ls[0]):x}>"
+    if len(ls) == 0:
+      debug_name = "???"
+    elif len(ls) == 1 and ls[0].name is None:
+      debug_name = "/"
+    else:
+      debug_name = "/".join(repr(ctx.name) if i > 0 or ctx.name is not None else '' for i, ctx in enumerate(ls))
+    return f"<{self.__class__.__name__} maker:{self.maker} name:{debug_name}>"
 
   def extend_reserved_names(self, names: Set[str]):
     """
