@@ -4764,7 +4764,9 @@ class _Eval(_Combine):
       'eval': self.eval,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
+    opts.update(super().get_opts())
+    opts.pop('kind')
+    return opts
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6293,7 +6295,9 @@ class _Decide(_BaseChoice):
       'length_normalization': self.length_normalization,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
+    opts.update(super().get_opts())
+    opts.pop('beam_size')
+    return opts
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,

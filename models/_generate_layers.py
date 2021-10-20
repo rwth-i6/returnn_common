@@ -138,7 +138,7 @@ def setup():
             print("               *,", file=f)
             printed_keyword_only_symbol = True
           print(f"               {param.get_module_param_code_str()},", file=f)
-      print(f"               {'**kwargs' if issubclass(cls_base, LayerBase) else ''}):", file=f)
+      print(f"               {'**kwargs' if layer_class != LayerBase else ''}):", file=f)
       print('    """', file=f)
       if sig.docstring:
         for line in sig.docstring.splitlines():
@@ -153,7 +153,7 @@ def setup():
         if param.is_module_init_arg():
           print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
 
-    if sig.has_module_init_args():
+    if sig.has_module_init_args() or sig.has_defined_base_params():
       print("", file=f)
       print("  def get_opts(self):", file=f)
       print(format_multi_line_str("Return all options", indent="    "), file=f)
@@ -163,8 +163,14 @@ def setup():
           print(f"      '{param.returnn_name}': self.{param.get_module_param_name()},", file=f)
       print("    }", file=f)
       print("    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}", file=f)
-      if issubclass(cls_base, LayerBase):
-        print("    return {**opts, **super().get_opts()}", file=f)
+      if layer_class != LayerBase:
+        if sig.has_defined_base_params():
+          print("    opts.update(super().get_opts())", file=f)
+          for key in sig.get_defined_base_params():
+            print(f"    opts.pop({key!r})", file=f)
+          print("    return opts", file=f)
+        else:
+          print("    return {**opts, **super().get_opts()}", file=f)
       else:
         print("    return opts", file=f)
 
@@ -279,7 +285,7 @@ def setup():
           print(f"    {param.get_module_param_name()}={param.get_module_param_name()},", file=f)
         print("    name=name)", file=f)
 
-    print(layer_class, name, sig)
+    print(name, sig)
 
 
 class LayerSignature:
@@ -294,7 +300,7 @@ class LayerSignature:
     self.inspect_init_sig = inspect.signature(layer_class.__init__)
     self.params = {}  # type: Dict[str, LayerSignature.Param]
     self.docstring = None  # type: Optional[str]
-    self._defined_base_params = set()
+    self._defined_base_params = []  # type: List[str]
     self._init_args()
     self._parse_init_docstring()
     self._find_super_call_assignments()
@@ -609,7 +615,7 @@ class LayerSignature:
         continue
       assert key in base_sig.params
       param = base_sig.params[key]
-      self._defined_base_params.add(key)
+      self._defined_base_params.append(key)
       if key == value and value not in self.params:
         if param.param_type_s and "NotSpecified" not in param.param_type_s:
           assert "Optional" in param.param_type_s or "None" in param.param_type_s
@@ -623,6 +629,18 @@ class LayerSignature:
     :return: whether we have a specific super call for __init__
     """
     return bool(self._super_call_assignments)
+
+  def has_defined_base_params(self) -> bool:
+    """
+    :return: whether it defines base params through super init
+    """
+    return bool(self.get_defined_base_params())
+
+  def get_defined_base_params(self) -> List[str]:
+    """
+    :return: base params which are explicitly defined by this layer
+    """
+    return [p for p in self._defined_base_params if p not in self.params]
 
   def need_module_init(self) -> bool:
     """
