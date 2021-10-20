@@ -49,6 +49,22 @@ def test_simple_net_arithmetic():
   dummy_run_net(net_dict)
 
 
+def test_eval():
+  class _Net(Module):
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      x = get_extern_data("data")
+      x = eval(x, eval="source(0) * 2.5")
+      return x
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+  dummy_run_net(net_dict)
+
+
 def test_simple_net_lstm():
   class _Net(Module):
     def __init__(self):
