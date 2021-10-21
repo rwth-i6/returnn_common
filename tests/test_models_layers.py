@@ -423,7 +423,7 @@ def test_module_list():
       return out
 
   net = _Net()
-  net_dict = net.make_layer_dict()
+  net_dict = net.make_root_net_dict()
   pprint(net_dict)
 
   assert net_dict["linear"]["from"] == "data:data"
