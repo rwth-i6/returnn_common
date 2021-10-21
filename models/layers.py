@@ -41,6 +41,9 @@ class Lstm(Rec):
 
 
 class ModuleList(Module):
+  """
+  Module list, getting passed an Interable of Modules and creates a list of Modules in that order
+  """
   def __init__(self, modules: Optional[Iterable[Module]] = None):
     super().__init__()
     self._modules = []
