@@ -408,9 +408,11 @@ def test_get_name_in_current_ctx():
       assert_equal(sub_2.get_name_in_current_ctx(), "base:sub_2")
       assert_equal(child_2.get_name_in_current_ctx(), "base:sub_2/child_2")
 
+
 def test_module_list():
   class _Net(Module):
     def __init__(self):
+      super().__init__()
       self.ls = ModuleList([Linear(i) for i in range(4)])
 
     def forward(self) -> LayerRef:

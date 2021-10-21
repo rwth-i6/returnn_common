@@ -49,18 +49,24 @@ class ModuleList(Module):
         self._modules.append(module)
 
   def append(self, module: Module) -> "ModuleList":
-    "appends one module to the list"
+    """
+    appends one module to the list"
+    """
     self._modules.append(module)
     return self
 
   def extend(self, modules: Iterable[Module]) -> "ModuleList":
-    "appends multiple modules to the list"
+    """
+    appends multiple modules to the list
+    """
     for module in modules:
       self._modules.append(module)
     return self
 
   def insert(self, index: int, module: Module) -> "ModuleList":
-    "inserts one module at a certain position into the list"
+    """
+    inserts one module at a certain position into the list
+    """
     self._modules.insert(index, module)
     return self
 
@@ -72,3 +78,10 @@ class ModuleList(Module):
 
   def __getitem__(self, idx: int) -> Module:
     return self._modules[idx]
+
+  def forward(self) -> LayerRef:
+    """
+    Constructs the output.
+    You can write PyTorch-style code here.
+    """
+    raise NotImplementedError
