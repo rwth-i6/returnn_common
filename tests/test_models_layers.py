@@ -407,3 +407,27 @@ def test_get_name_in_current_ctx():
       assert_equal(child_1.get_name_in_current_ctx(), "same/child_1")
       assert_equal(sub_2.get_name_in_current_ctx(), "base:sub_2")
       assert_equal(child_2.get_name_in_current_ctx(), "base:sub_2/child_2")
+
+def test_module_list():
+  class _Net(Module):
+    def __init__(self):
+      self.ls = ModuleList([Linear(i) for i in range(4)])
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      out = get_extern_data("data")
+      for layer in self.ls:
+        out = layer(out)
+      return out
+
+  net = _Net()
+  net_dict = net.make_layer_dict()
+  pprint(net_dict)
+
+  assert net_dict["linear"]["from"] == "data:data"
+  assert net_dict["linear_0"]["from"] == "linear"
+  assert net_dict["linear_1"]["from"] == "linear_0"
+  assert net_dict["linear_2"]["from"] == "linear_1"
+  assert net_dict["output"]["from"] == "linear_2"

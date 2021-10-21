@@ -4,6 +4,7 @@ Wrap RETURNN layers
 
 from ._generated_layers import *  # noqa
 from .base import Module  # noqa
+from typing import Iterator, Iterable
 
 
 def split(source: LayerRef, *,
@@ -37,3 +38,37 @@ class Lstm(Rec):
       unit_opts["rec_weight_dropout_shape"] = rec_weight_dropout_shape
     super(Lstm, self).__init__(
       unit="nativelstm2", unit_opts=unit_opts, **kwargs)
+
+
+class ModuleList(Module):
+  def __init__(self, modules: Optional[Iterable[Module]] = None):
+    super().__init__()
+    self._modules = []
+    if modules is not None:
+      for module in modules:
+        self._modules.append(module)
+
+  def append(self, module: Module) -> "ModuleList":
+    "appends one module to the list"
+    self._modules.append(module)
+    return self
+
+  def extend(self, modules: Iterable[Module]) -> "ModuleList":
+    "appends multiple modules to the list"
+    for module in modules:
+      self._modules.append(module)
+    return self
+
+  def insert(self, index: int, module: Module) -> "ModuleList":
+    "inserts one module at a certain position into the list"
+    self._modules.insert(index, module)
+    return self
+
+  def __len__(self) -> int:
+    return len(self._modules)
+
+  def __iter__(self) -> Iterator[Module]:
+    return iter(self._modules)
+
+  def __getitem__(self, idx: int) -> Module:
+    return self._modules[idx]
