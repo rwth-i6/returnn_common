@@ -213,9 +213,8 @@ def setup():
     # Make function if this is functional
     name = get_module_class_name_for_layer_class(sig)
     if sig.is_functional() and not layer_class.__name__.startswith("_") and layer_class.layer_class:
-      assert name.startswith("_")
       module_name = name
-      name = camel_case_to_snake_case(name[1:])
+      name = camel_case_to_snake_case(name.lstrip("_"))
       if name in FunctionNameMap:
         name = FunctionNameMap[name]
       if sig.layer_class.layer_class in LayersHidden:
@@ -825,7 +824,7 @@ def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
   name = name[:-len("Layer")]
   if name.startswith("_"):
     return name
-  if sig.is_functional() or layer_class.layer_class in LayersHidden:
+  if layer_class.layer_class in LayersHidden:
     return "_" + name  # we make a public function for it, but the module is hidden
   return name
 
