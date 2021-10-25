@@ -62,7 +62,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator
 from returnn.util.basic import NotSpecified
 from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
@@ -276,6 +276,42 @@ class ILayerMaker:
     with NameCtx.get_from_call(maker=self, name=name):
       return self._make_layer(*args, **kwargs)
 
+  def children(self) -> Iterator[ILayerMaker]:
+    """
+    Get all (immediate) children makers
+    """
+    for name, child in self.named_children():
+      yield child
+
+  def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
+    """
+    Get all (immediate) children makers
+    """
+    return iter([])
+
+  def children_deep(self) -> Iterator[ILayerMaker]:
+    """
+    Get all children (deeply)
+    """
+    for name, child in self.named_children_deep():
+      yield child
+
+  def named_children_deep(self, memo: Optional[Set[ILayerMaker]] = None, prefix: str = ''):
+    """
+    Get all children (deeply)
+    """
+    if memo is None:
+      memo = set()
+    if self not in memo:
+      memo.add(self)
+      yield prefix, self
+      for name, maker in self.named_children():
+        if maker is None:
+          continue
+        sub_prefix = prefix + ('.' if prefix else '') + name
+        for m in maker.named_children_deep(memo, sub_prefix):
+          yield m
+
 
 # noinspection PyAbstractClass
 class _ReturnnWrappedLayerBase(ILayerMaker):
@@ -420,6 +456,24 @@ class Module(ILayerMaker):
         copy(res, name=name_ctx.get_child("output"))
       return name_ctx.make_net_dict()
 
+  def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
+    """
+    Get all (immediate) children makers
+    """
+    for key, value in vars(self).items():
+      if isinstance(value, ILayerMaker):
+        yield key, value
+
+  @property
+  def has_variables(self):
+    """
+    Whether this module has variables
+    """
+    for maker in self.children():
+      if maker.has_variables:
+        return True
+    return False
+
 
 class Loop:
   """
@@ -559,6 +613,24 @@ class _LoopLayerMaker(ILayerMaker):
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
     return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.loop.extra_opts}
+
+  def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
+    """
+    Children
+    """
+    for name, sub_name_ctx in self.loop.name_ctx.childs.items():
+      if sub_name_ctx.maker:
+        yield name, sub_name_ctx.maker
+
+  @property
+  def has_variables(self):
+    """
+    Whether this module has variables
+    """
+    for maker in self.children():
+      if maker.has_variables:
+        return True
+    return False
 
 
 class _StateHolder:
@@ -722,6 +794,7 @@ class NameCtx:
     self.is_repeated_call = False
     self.childs = {}  # type: Dict[str, NameCtx]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
+    self.name = name  # early assign such that debug repr works later
     if not name:
       if suggested_name:
         name = self._get_unique_name(suggested_name)
@@ -862,13 +935,14 @@ class NameCtx:
 
   def _get_name(self) -> str:
     assert self.parent and self.maker
-    if self.parent.maker:
-      reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
-      for key, value in vars(self.parent.maker).items():
-        if key in reserved_names:
-          continue
-        if value is self.maker:
-          return key
+    # Check all parents
+    for parent in reversed(self.get_abs_name_ctx_list()[:-1]):
+      if parent.maker:
+        for key, value in vars(parent.maker).items():
+          if value is self.maker:
+            return self._get_unique_name(key)
+    assert not self.maker.has_variables, (
+      f"{self.maker} has variables but is not assigned as attrib to any parent {self.parent}")
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
