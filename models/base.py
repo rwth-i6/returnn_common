@@ -935,14 +935,13 @@ class NameCtx:
 
   def _get_name(self) -> str:
     assert self.parent and self.maker
-    # Check all parents
-    for parent in reversed(self.get_abs_name_ctx_list()[:-1]):
-      if parent.maker:
-        for key, value in vars(parent.maker).items():
-          if value is self.maker:
-            return self._get_unique_name(key)
-    assert not self.maker.has_variables, (
-      f"{self.maker} has variables but is not assigned as attrib to any parent {self.parent}")
+    if self.parent.maker:
+      reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
+      for key, value in vars(self.parent.maker).items():
+        if key in reserved_names:
+          continue
+        if value is self.maker:
+          return key  # can use the name as it is not in the parent name ctx yet
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
