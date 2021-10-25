@@ -47,6 +47,7 @@ class _Base(_ReturnnWrappedLayerBase):
   """
   returnn_layer_class = None
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -136,6 +137,7 @@ class Source(_Base):
   """
   returnn_layer_class = 'source'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -195,6 +197,7 @@ class _ConcatInput(_Base):
   """
   returnn_layer_class = None
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -239,6 +242,7 @@ class Copy(_ConcatInput):
   """
   returnn_layer_class = 'copy'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -275,6 +279,7 @@ class Dropout(Copy):
   """
   returnn_layer_class = 'dropout'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -326,6 +331,7 @@ class ScaledGradient(Copy):
   """
   returnn_layer_class = 'scaled_grad'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -391,6 +397,7 @@ class Activation(_ConcatInput):
   """
   returnn_layer_class = 'activation'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -455,6 +462,7 @@ class BatchNorm(Copy):
   """
   returnn_layer_class = 'batch_norm'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -620,6 +628,7 @@ class LayerNorm(_ConcatInput):
   """
   returnn_layer_class = 'layer_norm'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -710,6 +719,7 @@ class Norm(_ConcatInput):
   """
   returnn_layer_class = 'norm'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -829,6 +839,7 @@ class MathNorm(_ConcatInput):
   """
   returnn_layer_class = 'math_norm'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -923,6 +934,7 @@ class Slice(_ConcatInput):
   """
   returnn_layer_class = 'slice'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1033,6 +1045,7 @@ class SliceNd(_ConcatInput):
   """
   returnn_layer_class = 'slice_nd'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1134,6 +1147,7 @@ class Gather(_ConcatInput):
   """
   returnn_layer_class = 'gather'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -1229,6 +1243,7 @@ class ScatterNd(_ConcatInput):
   """
   returnn_layer_class = 'scatter_nd'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1343,6 +1358,7 @@ class Linear(_ConcatInput):
   """
   returnn_layer_class = 'linear'
   has_recurrent_state = False
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1408,6 +1424,7 @@ class Length(_Base):
   """
   returnn_layer_class = 'length'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1498,6 +1515,7 @@ class SoftmaxOverSpatial(_ConcatInput):
   """
   returnn_layer_class = 'softmax_over_spatial'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1613,6 +1631,7 @@ class SeqLenMask(_ConcatInput):
   """
   returnn_layer_class = 'seq_len_mask'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1707,6 +1726,7 @@ class RandInt(_Base):
   """
   returnn_layer_class = 'rand_int'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1796,6 +1816,7 @@ class Range(_Base):
   """
   returnn_layer_class = 'range'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1887,6 +1908,7 @@ class RangeInAxis(_Base):
   """
   returnn_layer_class = 'range_in_axis'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -1981,6 +2003,7 @@ class RangeFromLength(_Base):
   """
   returnn_layer_class = 'range_from_length'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2061,6 +2084,7 @@ class BatchSoftmax(_ConcatInput):
   """
   returnn_layer_class = 'batch_softmax'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -2096,6 +2120,7 @@ class Constant(_Base):
   """
   returnn_layer_class = 'constant'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2176,6 +2201,7 @@ class Window(_ConcatInput):
   """
   returnn_layer_class = 'window'
   has_recurrent_state = True
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2292,6 +2318,7 @@ class Cumsum(_ConcatInput):
   """
   returnn_layer_class = 'cumsum'
   has_recurrent_state = True
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2376,6 +2403,7 @@ class Pad(_ConcatInput):
   """
   returnn_layer_class = 'pad'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2468,6 +2496,7 @@ class MergeDims(_ConcatInput):
   """
   returnn_layer_class = 'merge_dims'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2562,6 +2591,7 @@ class _Split(_ConcatInput):
   """
   returnn_layer_class = 'split'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2659,6 +2689,7 @@ class SplitDims(_ConcatInput):
   """
   returnn_layer_class = 'split_dims'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2767,6 +2798,7 @@ class SplitBatchTime(_ConcatInput):
   """
   returnn_layer_class = 'split_batch_time'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -2821,6 +2853,7 @@ class FlattenBatch(_ConcatInput):
   """
   returnn_layer_class = 'flatten_batch'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2907,6 +2940,7 @@ class UnflattenNd(_ConcatInput):
   """
   returnn_layer_class = 'unflatten_nd'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -2996,6 +3030,7 @@ class Repeat(_ConcatInput):
   """
   returnn_layer_class = 'repeat'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -3053,6 +3088,7 @@ class Tile(_ConcatInput):
   """
   returnn_layer_class = 'tile'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3113,6 +3149,7 @@ class Cast(Copy):
   """
   returnn_layer_class = 'cast'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3173,6 +3210,7 @@ class ReinterpretData(_ConcatInput):
   """
   returnn_layer_class = 'reinterpret_data'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3305,6 +3343,7 @@ class Conv(_ConcatInput):
   """
   returnn_layer_class = 'conv'
   has_recurrent_state = False
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3418,6 +3457,7 @@ class Pool(_ConcatInput):
   """
   returnn_layer_class = 'pool'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3516,6 +3556,7 @@ class Dct(_ConcatInput):
   """
   returnn_layer_class = 'dct'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3593,6 +3634,7 @@ class TransposedConv(_ConcatInput):
   """
   returnn_layer_class = 'transposed_conv'
   has_recurrent_state = False
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3685,6 +3727,7 @@ class Reduce(_ConcatInput):
   """
   returnn_layer_class = 'reduce'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3797,6 +3840,7 @@ class ReduceOut(_ConcatInput):
   """
   returnn_layer_class = 'reduce_out'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3867,6 +3911,7 @@ class Squeeze(_ConcatInput):
   """
   returnn_layer_class = 'squeeze'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -3952,6 +3997,7 @@ class Stack(_Base):
   """
   returnn_layer_class = 'stack'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -4005,6 +4051,7 @@ class PrefixInTime(_ConcatInput):
   """
   returnn_layer_class = 'prefix_in_time'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4083,6 +4130,7 @@ class PostfixInTime(_ConcatInput):
   """
   returnn_layer_class = 'postfix_in_time'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4155,6 +4203,7 @@ class TimeChunking(_ConcatInput):
   """
   returnn_layer_class = 'time_chunking'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4222,6 +4271,7 @@ class TimeUnChunking(_ConcatInput):
   """
   returnn_layer_class = 'time_unchunking'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -4275,6 +4325,7 @@ class Dot(_Base):
   """
   returnn_layer_class = 'dot'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4379,6 +4430,7 @@ class ShiftAxis(_ConcatInput):
   """
   returnn_layer_class = 'shift_axis'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4471,6 +4523,7 @@ class Resize(_ConcatInput):
   """
   returnn_layer_class = 'resize'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4568,6 +4621,7 @@ class Remove(_Base):
   """
   returnn_layer_class = 'remove'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4636,6 +4690,7 @@ class _Combine(_Base):
   """
   returnn_layer_class = 'combine'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4744,6 +4799,7 @@ class Eval(_Combine):
   """
   returnn_layer_class = 'eval'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4843,6 +4899,7 @@ class Compare(_Base):
   """
   returnn_layer_class = 'compare'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -4941,6 +4998,7 @@ class Switch(_Base):
   """
   returnn_layer_class = 'switch'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -5008,6 +5066,7 @@ class SearchSorted(_Base):
   """
   returnn_layer_class = 'search_sorted'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5100,6 +5159,7 @@ class Variable(_Base):
   """
   returnn_layer_class = 'variable'
   has_recurrent_state = False
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5191,6 +5251,7 @@ class ForcedAlignment(_ConcatInput):
   """
   returnn_layer_class = 'forced_align'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5271,6 +5332,7 @@ class FastBaumWelch(_ConcatInput):
   """
   returnn_layer_class = 'fast_bw'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5395,6 +5457,7 @@ class SyntheticGradient(_ConcatInput):
   """
   returnn_layer_class = 'synthetic_gradient'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5469,6 +5532,7 @@ class TikhonovRegularization(Copy):
   """
   returnn_layer_class = 'tikhonov_regularization'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5529,6 +5593,7 @@ class Print(_Base):
   """
   returnn_layer_class = 'print'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5606,6 +5671,7 @@ class HDFDump(_Base):
   """
   returnn_layer_class = 'hdf_dump'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5772,6 +5838,7 @@ class Rec(_ConcatInput):
   """
   returnn_layer_class = 'rec'
   has_recurrent_state = True
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5882,6 +5949,7 @@ class _GetLastHiddenState(_Base):
   """
   returnn_layer_class = 'get_last_hidden_state'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -5961,6 +6029,7 @@ class RecUnstack(_Base):
   """
   returnn_layer_class = 'rec_unstack'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6021,6 +6090,7 @@ class BaseChoice(_Base):
   """
   returnn_layer_class = None
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6076,6 +6146,7 @@ class Choice(BaseChoice):
   """
   returnn_layer_class = 'choice'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6275,6 +6346,7 @@ class Decide(BaseChoice):
   """
   returnn_layer_class = 'decide'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6353,6 +6425,7 @@ class ChoiceGetBeamScores(_Base):
   """
   returnn_layer_class = 'choice_get_beam_scores'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6395,6 +6468,7 @@ class ChoiceGetSrcBeams(_Base):
   """
   returnn_layer_class = 'choice_get_src_beams'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6440,6 +6514,7 @@ class PositionalEncoding(_ConcatInput):
   """
   returnn_layer_class = 'positional_encoding'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6540,6 +6615,7 @@ class KenLmState(_ConcatInput):
   """
   returnn_layer_class = 'kenlm'
   has_recurrent_state = True
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6663,6 +6739,7 @@ class EditDistanceTable(_Base):
   """
   returnn_layer_class = 'edit_distance_table'
   has_recurrent_state = True
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6756,6 +6833,7 @@ class OptimalCompletions(_Base):
   """
   returnn_layer_class = 'optimal_completions'
   has_recurrent_state = False
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6842,6 +6920,7 @@ class Unmask(_Base):
   """
   returnn_layer_class = 'unmask'
   has_recurrent_state = True
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
@@ -6907,6 +6986,7 @@ class TwoDLSTM(_Base):
   """
   returnn_layer_class = 'twod_lstm'
   has_recurrent_state = True
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -6988,6 +7068,7 @@ class RelativePositionalEncoding(_ConcatInput):
   """
   returnn_layer_class = 'relative_positional_encoding'
   has_recurrent_state = False
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -7081,6 +7162,7 @@ class CumConcat(_ConcatInput):
   """
   returnn_layer_class = 'cum_concat'
   has_recurrent_state = True
+  has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,

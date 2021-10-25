@@ -126,6 +126,7 @@ def setup():
 
     print(f"  returnn_layer_class = {sig.layer_class.layer_class!r}", file=f)
     print(f"  has_recurrent_state = {sig.has_recurrent_state()}", file=f)
+    print(f"  has_variables = {sig.has_variables()}", file=f)
 
     if sig.need_module_init():
       print("", file=f)
@@ -436,7 +437,7 @@ class LayerSignature:
     if self.layer_class is VariableLayer:
       # Even though this obviously has a variable, I think the functional API is nicer for this.
       return True
-    return not self._has_variables()
+    return not self.has_variables()
 
   def has_recurrent_state(self) -> bool:
     """
@@ -679,7 +680,7 @@ class LayerSignature:
       return self.others[cls_base]
     return None
 
-  def _has_variables(self):
+  def has_variables(self):
     """
     :return: whether this layers has variables. this is somewhat heuristically
     :rtype: bool
@@ -692,7 +693,7 @@ class LayerSignature:
       return True
     derived = self.derived_layer()
     if derived:
-      return derived._has_variables()
+      return derived.has_variables()
     return False
 
   class Param:

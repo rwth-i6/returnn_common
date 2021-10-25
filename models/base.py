@@ -234,6 +234,8 @@ class ILayerMaker:
   """
   Makes a layer.
   """
+  has_variables: bool = True
+
   def __init__(self):
     self.calls = []  # type: List[Layer]
 
