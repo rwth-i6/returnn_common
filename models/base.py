@@ -138,21 +138,21 @@ class LayerRef:
     return _combine([convert_to_layer_ref(other), self], kind="truediv", name="truediv")
 
   def __neg__(self) -> LayerRef:
-    from .layers import eval
+    from . import eval
     return eval(self, eval="-source(0)", name="neg")
 
   def __invert__(self) -> LayerRef:
-    from .layers import eval
+    from . import eval
     return eval(self, eval="tf.logical_not(source(0))", name="invert")
 
   def __pow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> LayerRef:
     assert modulo is None
-    from .layers import eval
+    from . import eval
     return eval([self, convert_to_layer_ref(other)], eval="tf.math.pow(source(0), source(1))", name="pow")
 
   def __rpow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> LayerRef:
     assert modulo is None
-    from .layers import eval
+    from . import eval
     return eval([convert_to_layer_ref(other), self], eval="tf.math.pow(source(0), source(1))", name="pow")
 
   def __and__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
@@ -164,43 +164,43 @@ class LayerRef:
     return _combine([self, convert_to_layer_ref(other)], kind="logical_or", name="logical_or")
 
   def __abs__(self) -> LayerRef:
-    from .layers import eval
+    from . import eval
     return eval(self, eval="tf.abs(source(0))", name="abs")
 
   def __ceil__(self) -> LayerRef:
-    from .layers import eval
+    from . import eval
     return eval(self, eval="tf.math.ceil(source(0))", name="ceil")
 
   def __floor__(self) -> LayerRef:
-    from .layers import eval
+    from . import eval
     return eval(self, eval="tf.math.floor(source(0))", name="floor")
 
   def __floordiv__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import eval
+    from . import eval
     return eval([self, convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
 
   def __eq__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import compare
+    from . import compare
     return compare([self, convert_to_layer_ref(other)], kind="equal", name="equal")
 
   def __ne__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import compare
+    from . import compare
     return compare([self, convert_to_layer_ref(other)], kind="not_equal", name="not_equal")
 
   def __lt__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import compare
+    from . import compare
     return compare([self, convert_to_layer_ref(other)], kind="less", name="less")
 
   def __le__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import compare
+    from . import compare
     return compare([self, convert_to_layer_ref(other)], kind="less_equal", name="less_equal")
 
   def __gt__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import compare
+    from . import compare
     return compare([self, convert_to_layer_ref(other)], kind="greater", name="greater")
 
   def __ge__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from .layers import compare
+    from . import compare
     return compare([self, convert_to_layer_ref(other)], kind="greater_equal", name="greater_equal")
 
 
@@ -421,7 +421,7 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
   """
   if isinstance(x, LayerRef):
     return x
-  from .layers import constant
+  from . import constant
   return constant(value=x)
 
 
@@ -457,7 +457,7 @@ class Module(ILayerMaker):
     raise NotImplementedError
 
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Union[Layer, Any]:
-    from .layers import copy
+    from . import copy
     with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = self.forward(*args, **kwargs)
@@ -486,7 +486,7 @@ class Module(ILayerMaker):
     Make net dict, to be used as the main RETURNN network, not within a subnetwork.
     Extern data can be accessed via :func:`get_root_extern_data`.
     """
-    from .layers import copy
+    from . import copy
     with NameCtx(maker=self, parent=None) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = self.forward()
@@ -590,7 +590,7 @@ class Loop:
           raise Exception(f"{self}: call `unstack` or `end` at least once to define the loop length")
         # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
         if "output" not in self.name_ctx.childs:
-          from .layers import copy
+          from . import copy
           copy(self.outputs[0], name=self.name_ctx.get_child("output"))
     finally:
       self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
@@ -601,7 +601,7 @@ class Loop:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     """
-    from .layers import rec_unstack
+    from . import rec_unstack
     res = rec_unstack(source, axis=axis, name=name)
     self.unstacked_refs.append(res)
     return res
@@ -611,7 +611,7 @@ class Loop:
     Accumulates the frames of source within the loop,
     to make it accessible outside the loop.
     """
-    from .layers import copy
+    from . import copy
     if not name and "output" not in self.name_ctx.childs:
       name = self.name_ctx.get_child("output")
     res = copy(source, name=name)
@@ -634,7 +634,7 @@ class Loop:
     this defines the ending condition.
     """
     assert not self.end_ref  # do not call this multiple times
-    from .layers import copy
+    from . import copy
     self.end_ref = copy(source, name=self.name_ctx.get_child("end"))
     return self.end_ref
 
@@ -732,7 +732,7 @@ class State:
       f"Cannot assign the rec state {self.loop}/{self.name} multiple times, "
       f"assigned previously to {self.assigned_value}, now to {value}")
     self.assigned_value = value
-    from .layers import copy
+    from . import copy
     copy(value, name=self.name_ctx)
 
   def get(self):
@@ -891,7 +891,7 @@ class NameCtx:
     """
     Assume this is a subnet, and make a default output.
     """
-    from .layers import copy
+    from . import copy
     assert self.is_subnet_ctx
     assert "output" not in self.childs
     return copy(ref, name=self.get_child("output"))

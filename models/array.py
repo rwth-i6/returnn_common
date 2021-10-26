@@ -1,9 +1,10 @@
 """
-Wrap RETURNN layers
+Array (Tensor) functions
 """
 
-from ._generated_layers import *  # noqa
-from .base import Module  # noqa
+from typing import Optional, Tuple, List
+from returnn.util.basic import NotSpecified
+from .base import LayerRef
 
 
 def split(source: LayerRef, *,
@@ -22,18 +23,3 @@ def split(source: LayerRef, *,
     assert isinstance(size_splits, (tuple, list))
     num_splits = len(size_splits)
   return tuple(get_sub_layer(res, str(i)) for i in range(num_splits))
-
-
-class Lstm(Rec):
-  """
-  LSTM
-  """
-  def __init__(self, *, rec_weight_dropout=0, rec_weight_dropout_shape=None, **kwargs):
-    assert "unit_opts" not in kwargs, "we handle that here"
-    unit_opts = {}
-    if rec_weight_dropout:
-      unit_opts["rec_weight_dropout"] = rec_weight_dropout
-    if rec_weight_dropout_shape:
-      unit_opts["rec_weight_dropout_shape"] = rec_weight_dropout_shape
-    super(Lstm, self).__init__(
-      unit="nativelstm2", unit_opts=unit_opts, **kwargs)
