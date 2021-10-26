@@ -431,21 +431,21 @@ class Module(ILayerMaker):
 
   You can write PyTorch-like code here, like::
 
-  >>>> from returnn_common.models import Module, Linear, tanh, layer_norm
-  >>>>
-  >>>> class MyModule(Module):
-  >>>>
-  >>>>   def __init__(self, dim: int, activation=tanh):
-  >>>>     super().__init__()
-  >>>>     self.linear = Linear(dim)
-  >>>>     self.activation = activation
-  >>>>
-  >>>>   def forward(self, x: LayerRef) -> LayerRef:
-  >>>>     x_ = x
-  >>>>     x = layer_norm(x)
-  >>>>     x = self.linear(x)
-  >>>>     x = self.activation(x)
-  >>>>     return x_ + x
+  >>> from returnn_common.models import Module, Linear, tanh, layer_norm
+  >>>
+  >>> class MyModule(Module):
+  >>>
+  >>>   def __init__(self, dim: int, activation=tanh):
+  >>>     super().__init__()
+  >>>     self.linear = Linear(dim)
+  >>>     self.activation = activation
+  >>>
+  >>>   def forward(self, x: LayerRef) -> LayerRef:
+  >>>     x_ = x
+  >>>     x = layer_norm(x)
+  >>>     x = self.linear(x)
+  >>>     x = self.activation(x)
+  >>>     return x_ + x
 
   """
 
