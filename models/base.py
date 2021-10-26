@@ -232,7 +232,41 @@ class Layer(LayerRef):
 
 class ILayerMaker:
   """
-  Makes a layer.
+  Makes a RETURNN layer.
+
+  Also see :func:`make_layer` and :class:`Module`.
+
+  A RETURNN layer also has some specific input and output,
+  and usually its own parameters.
+
+  This is in contrast to PyTorch or Keras, where a module or layer
+  has params, but getting some output for some input
+  requires an additional `forward` call,
+  which can be called multiple times.
+  Every such call would then share the same module parameters.
+
+  :class:`ILayerMaker` is similar to PyTorch/Keras
+  in that it can be called multiple times.
+  Every call would create a RETURNN layer,
+  where every call after the first would share the params
+  with the first layer,
+  via the RETURNN ``reuse_params`` layer option.
+
+  A user would create an instance and then call it,
+  and get :class:`Layer` instances.
+  The naming logic of created layers
+  is handled via :class:`NameCtx`.
+
+  A developer which wants to derive its own layer maker
+  would overwrite the :func:`make_layer_dict`.
+  Usually this is never needed though,
+  as all standard RETURNN layers are already wrapped,
+  and any potential operation should be possible to be defined
+  using the standard RETURNN layers.
+  For one-time usages, :func:`make_layer` is probably easier.
+  For defining own modules (subnetworks)
+  based on existing modules or layers,
+  see :class:`Module`.
   """
   has_variables: bool = True
 
@@ -246,7 +280,7 @@ class ILayerMaker:
     """
     Return layer dict.
 
-    The :class:`LayerDictRaw` can references other layers by using ``layer.get_name()``,
+    The :class:`LayerDictRaw` can reference other layers by using ``layer.get_name()``,
     or also by using :class:`LayerRef` instances directly,
     which will automatically be translated to ``layer.get_name()``.
     """
@@ -397,17 +431,21 @@ class Module(ILayerMaker):
 
   You can write PyTorch-like code here, like::
 
-      def __init__(self, dim: int, activation=tanh):
-        self.layer_norm = LayerNorm()
-        self.linear = Linear(dim)
-        self.activation = activation
-
-      def forward(self, x: LayerRef) -> LayerRef:
-        x_ = x
-        x = self.layer_norm(x)
-        x = self.linear(x)
-        x = self.activation(x)
-        return x_ + x
+  >>>> from returnn_common.models import Module, Linear, tanh, layer_norm
+  >>>>
+  >>>> class MyModule(Module):
+  >>>>
+  >>>>   def __init__(self, dim: int, activation=tanh):
+  >>>>     super().__init__()
+  >>>>     self.linear = Linear(dim)
+  >>>>     self.activation = activation
+  >>>>
+  >>>>   def forward(self, x: LayerRef) -> LayerRef:
+  >>>>     x_ = x
+  >>>>     x = layer_norm(x)
+  >>>>     x = self.linear(x)
+  >>>>     x = self.activation(x)
+  >>>>     return x_ + x
 
   """
 
