@@ -400,11 +400,20 @@ def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[str] = None, name_ctx: Optional[NameCtx] = None) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
-  This assumes that the top name ctx corresponds to this layer maker.
-  This is usually only used internally via :class:`ILayerMaker`.
+  When no name is given, this assumes that the top name ctx corresponds to this layer maker.
+
+  This is used internally via :class:`ILayerMaker`
+  but might also be used to wrap simple RETURNN layers.
+  If a layer has params and you want the param sharing logic,
+  you should instead derive a new class from :class:`ILayerMaker`.
+  Usually, you do not need either of these,
+  as all standard layers should already be wrapped,
+  and it should be possible to define any possible logic
+  using that.
+  (If this is not the case, please report an issue.)
 
   :param LayerDictRaw layer_dict:
-  :param str|None name: layer name. if given, will create a new :class:`NameCtx`
+  :param str|None name: (suggested) layer name. if given, will create a new :class:`NameCtx`
   :param NameCtx|None name_ctx: if given, will use this name ctx.
     You can either pass ``name_ctx`` or ``name`` but not both.
   """
