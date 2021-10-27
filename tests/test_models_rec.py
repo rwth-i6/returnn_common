@@ -51,3 +51,22 @@ def test_rec_simple_iter():
   net_dict = make_root_net_dict(net, "data")
   pprint(net_dict)
   dummy_run_net(net_dict)
+
+
+def test_rec_hidden():
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.lstm = Lstm(n_out=13)
+
+    def forward(self, x: LayerRef) -> LayerRef:
+      """
+      Forward
+      """
+      y, (h, c) = self.lstm(x)
+      return concat([y, h, c])
+
+  net = _Net()
+  net_dict = make_root_net_dict(net, "data")
+  pprint(net_dict)
+  dummy_run_net(net_dict)
