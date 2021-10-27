@@ -34,7 +34,7 @@ Code example::
         return y
 
     net = Network()
-    net_dict = net.make_root_net_dict("data")
+    net_dict = make_root_net_dict(net, "data")
 
 
 Alternatively, use ``with NameCtx.new_root() as name_ctx``
@@ -509,27 +509,6 @@ class Module(ILayerMaker):
     assert name_ctx.maker is self
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
-  def make_root_net_dict(self, *args, **kwargs) -> NetDictRaw:
-    """
-    Make net dict, to be used as the main RETURNN network, not within a subnetwork.
-    Any passed arguments are keys of extern data,
-    and are forwarded to the module.
-    """
-    from . import copy
-    with NameCtx(maker=self, parent=None) as name_ctx:
-      name_ctx.is_subnet_ctx = True
-      args = tuple(get_extern_data(arg) for arg in args)
-      kwargs = {key: get_extern_data(value) for (key, value) in kwargs.items()}
-      res = self.forward(*args, **kwargs)
-      if "output" not in name_ctx.children:
-        if isinstance(res, LayerRef):
-          copy(res, name=name_ctx.get_child("output"))
-        else:
-          res_list = nest.flatten(res)
-          assert res_list and isinstance(res_list[0], LayerRef)
-          copy(res_list[0], name=name_ctx.get_child("output"))
-      return name_ctx.make_net_dict()
-
   def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
     """
     Get all (immediate) children makers
@@ -548,6 +527,29 @@ class Module(ILayerMaker):
       if maker.has_variables:
         return True
     return False
+
+
+def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
+  """
+  Make net dict, to be used as the main RETURNN network, not within a subnetwork.
+  Any passed arguments are keys of extern data,
+  and are forwarded to the module.
+  """
+  assert isinstance(model, Module)
+  from . import copy
+  with NameCtx(maker=model, parent=None) as name_ctx:
+    name_ctx.is_subnet_ctx = True
+    args = tuple(get_extern_data(arg) for arg in args)
+    kwargs = {key: get_extern_data(value) for (key, value) in kwargs.items()}
+    res = model.forward(*args, **kwargs)
+    if "output" not in name_ctx.children:
+      if isinstance(res, LayerRef):
+        copy(res, name=name_ctx.get_child("output"))
+      else:
+        res_list = nest.flatten(res)
+        assert res_list and isinstance(res_list[0], LayerRef)
+        copy(res_list[0], name=name_ctx.get_child("output"))
+    return name_ctx.make_net_dict()
 
 
 class Loop:
@@ -798,6 +800,7 @@ def get_extern_data(data_key: str) -> LayerRef:
   """
   Get extern data from current scope.
   """
+  assert isinstance(data_key, str)
   return get_special_layer(f"data:{data_key}")
 
 

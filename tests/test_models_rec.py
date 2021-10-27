@@ -28,7 +28,7 @@ def test_rec_ff():
       return y
 
   net = _Net()
-  net_dict = net.make_root_net_dict("data")
+  net_dict = make_root_net_dict(net, "data")
   pprint(net_dict)
   dummy_run_net(net_dict)
 
@@ -48,6 +48,6 @@ def test_rec_simple_iter():
       return y
 
   net = _Net()
-  net_dict = net.make_root_net_dict("data")
+  net_dict = make_root_net_dict(net, "data")
   pprint(net_dict)
   dummy_run_net(net_dict)
