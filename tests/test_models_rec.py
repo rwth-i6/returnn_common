@@ -70,3 +70,26 @@ def test_rec_hidden():
   net_dict = make_root_net_dict(net, "data")
   pprint(net_dict)
   dummy_run_net(net_dict)
+
+
+def test_rec_hidden_initial():
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(13)
+      self.lstm = Lstm(13)
+
+    def forward(self, x: LayerRef) -> LayerRef:
+      """
+      Forward
+      """
+      y = self.linear(x)
+      state = None
+      for i in range(3):
+        y, state = self.lstm(y, state=state)
+      return y
+
+  net = _Net()
+  net_dict = make_root_net_dict(net, "data")
+  pprint(net_dict)
+  dummy_run_net(net_dict)
