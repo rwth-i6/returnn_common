@@ -449,11 +449,11 @@ def test_module_list():
   net_dict = net.make_root_net_dict()
   pprint(net_dict)
 
-  assert net_dict["0"]["from"] == "data:data"
-  assert net_dict["1"]["from"] == "0"
-  assert net_dict["2"]["from"] == "1"
-  assert net_dict["3"]["from"] == "2"
-  assert net_dict["output"]["from"] == "3"
+  assert net_dict["ls.0"]["from"] == "data:data"
+  assert net_dict["ls.1"]["from"] == "ls.0"
+  assert net_dict["ls.2"]["from"] == "ls.1"
+  assert net_dict["ls.3"]["from"] == "ls.2"
+  assert net_dict["output"]["from"] == "ls.3"
 
 
 def test_sequential_base_case():

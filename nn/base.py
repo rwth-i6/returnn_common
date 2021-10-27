@@ -1006,6 +1006,26 @@ class NameCtx:
   def _get_suggested_name(self) -> str:
     assert self.maker
     reserved_names = set(self.parent.children.keys()) | self._ReservedNames
+    if self.parent.maker:
+      # Check parent name scope maker, any attrib from there to self.maker.
+      # Do a breadth-first search through the parents, starting from self.maker,
+      # until we find self.parent.maker.
+      queue = [self.maker]
+      cache = {}  # parent -> full attrib
+      while queue:
+        maker = queue.pop(0)
+        postfix = f".{cache[maker]}" if maker in cache else ""
+        for parent, attr in maker.parents_with_attr():
+          if parent in cache:
+            if cache[parent] in reserved_names:
+              cache[parent] = attr + postfix  # anyway overwrite
+            continue
+          cache[parent] = attr + postfix
+          queue.append(parent)
+        if self.parent.maker in cache:
+          break
+      if self.parent.maker in cache:
+        return cache[self.parent.maker]
     # Check parent maker (or module), and use this attrib name.
     # First check if we can find any attr which is not yet reserved.
     for parent, attr in self.maker.parents_with_attr():
