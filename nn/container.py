@@ -1,8 +1,11 @@
 """
 container functions
 """
-from returnn_common.nn import *
+
+from __future__ import annotations
+from .base import Module
 from typing import Iterable, Iterator
+
 
 class ModuleList(Module):
   """
@@ -18,14 +21,14 @@ class ModuleList(Module):
   def _get_makers(self):
     return {key: value for (key, value) in vars(self).items() if isinstance(value, ILayerMaker)}
 
-  def append(self, module: Module) -> "ModuleList":
+  def append(self, module: Module) -> ModuleList:
     """
     appends one module to the list
     """
     setattr(self, str(len(self)), module)
     return self
 
-  def extend(self, modules: Iterable[Module]) -> "ModuleList":
+  def extend(self, modules: Iterable[Module]) -> ModuleList:
     """
     appends multiple modules to the list
     """
@@ -49,7 +52,7 @@ class Sequential(ModuleList):
 
   def __init__(self, *modules):
     super().__init__()
-    if len(modules) == 1 and isinstance(modules[0], Dict):
+    if len(modules) == 1 and isinstance(modules[0], dict):
       for key, module in modules[0].items():
         setattr(self, key, module)
     else:
