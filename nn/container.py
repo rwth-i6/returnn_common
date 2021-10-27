@@ -4,7 +4,7 @@ container functions
 
 from __future__ import annotations
 from .base import Module, ILayerMaker, LayerRef
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator, Optional, Union
 
 
 class ModuleList(Module):
@@ -13,7 +13,6 @@ class ModuleList(Module):
   """
   def __init__(self, modules: Optional[Iterable[Module]] = None):
     super().__init__()
-    self._modules = []
     if modules is not None:
       for idx, module in enumerate(modules):
         setattr(self, str(idx), module)
@@ -47,7 +46,7 @@ class ModuleList(Module):
     if isinstance(idx, slice):
       return self.__class__(dict(list(self._get_makers().items())[idx]))
     else:
-      return self._get_makers()[str(idx)]
+      return list(self._get_makers().values())[idx]
 
   def __setitem__(self, idx: int, module: Module) -> None:
     key = list(self._get_makers().keys())[idx]
@@ -61,7 +60,7 @@ class Sequential(ModuleList):
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
 
-  def __init__(self, *modules):
+  def __init__(self, *modules: Union[Iterable[Module], dict]):
     super().__init__()
     if len(modules) == 1 and isinstance(modules[0], dict):
       for key, module in modules[0].items():
