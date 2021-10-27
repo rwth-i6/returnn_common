@@ -508,7 +508,7 @@ class Module(ILayerMaker):
     with NameCtx(maker=self, parent=None) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = self.forward()
-      if "output" not in name_ctx.childs:
+      if "output" not in name_ctx.children:
         copy(res, name=name_ctx.get_child("output"))
       return name_ctx.make_net_dict()
 
@@ -608,7 +608,7 @@ class Loop:
         if not self.end_ref and not self.unstacked_refs:
           raise Exception(f"{self}: call `unstack` or `end` at least once to define the loop length")
         # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
-        if "output" not in self.name_ctx.childs:
+        if "output" not in self.name_ctx.children:
           from . import copy
           copy(self.outputs[0], name=self.name_ctx.get_child("output"))
     finally:
@@ -631,7 +631,7 @@ class Loop:
     to make it accessible outside the loop.
     """
     from . import copy
-    if not name and "output" not in self.name_ctx.childs:
+    if not name and "output" not in self.name_ctx.children:
       name = self.name_ctx.get_child("output")
     res = copy(source, name=name)
     assert isinstance(res, Layer)
@@ -676,7 +676,7 @@ class _LoopLayerMaker(ILayerMaker):
     Children
     """
     # We rely on deterministic order of dict.
-    for name, sub_name_ctx in self.loop.name_ctx.childs.items():
+    for name, sub_name_ctx in self.loop.name_ctx.children.items():
       if sub_name_ctx.maker:
         yield name, sub_name_ctx.maker
 
@@ -850,7 +850,7 @@ class NameCtx:
     self.layer = None  # type: Optional[Layer]
     self.is_subnet_ctx = False
     self.is_repeated_call = False
-    self.childs = {}  # type: Dict[str, NameCtx]
+    self.children = {}  # type: Dict[str, NameCtx]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name  # early assign such that debug repr works later
     if not name:
@@ -862,8 +862,8 @@ class NameCtx:
     if self.parent:
       assert self.name
       assert self.parent.is_subnet_ctx
-      assert self.name not in self.parent.childs
-      self.parent.childs[self.name] = self
+      assert self.name not in self.parent.children
+      self.parent.children[self.name] = self
 
   @classmethod
   def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], maker: ILayerMaker) -> NameCtx:
@@ -902,7 +902,7 @@ class NameCtx:
     Create net dict.
     """
     net_dict = {}
-    for key, value in self.childs.items():
+    for key, value in self.children.items():
       if value.layer:
         net_dict[key] = value.layer.layer_dict
     return net_dict
@@ -913,7 +913,7 @@ class NameCtx:
     """
     from . import copy
     assert self.is_subnet_ctx
-    assert "output" not in self.childs
+    assert "output" not in self.children
     return copy(ref, name=self.get_child("output"))
 
   def get_abs_name_ctx_list(self) -> List[NameCtx]:
@@ -957,10 +957,10 @@ class NameCtx:
     """
     Makes sure the child exists.
     """
-    if name in self.childs:
-      return self.childs[name]
+    if name in self.children:
+      return self.children[name]
     else:
-      return NameCtx(name=name, parent=self)  # also registers in self.childs
+      return NameCtx(name=name, parent=self)  # also registers in self.children
 
   def get_child_with_layer_ref(self, name: str) -> NameCtx:
     """
@@ -993,7 +993,7 @@ class NameCtx:
 
   def _get_suggested_name(self) -> str:
     assert self.maker
-    reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
+    reserved_names = set(self.parent.children.keys()) | self._ReservedNames
     # Check parent maker (or module), and use this attrib name.
     # First check if we can find any attr which is not yet reserved.
     for parent, attr in self.maker.parents_with_attr():
@@ -1013,7 +1013,7 @@ class NameCtx:
 
   def _get_unique_name(self, suggested_name: Optional[str] = None) -> str:
     name = suggested_name or self._get_suggested_name()
-    reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
+    reserved_names = set(self.parent.children.keys()) | self._ReservedNames
     if self.parent.maker:
       # Also reserve all attrib names of the parent maker.
       # However, we allow to use the name if it is the attrib itself.
