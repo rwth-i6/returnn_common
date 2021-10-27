@@ -16,11 +16,10 @@ def test_rec_ff():
       super().__init__()
       self.rec_linear = Linear(n_out=13)
 
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       # https://github.com/rwth-i6/returnn_common/issues/16
       with Loop() as loop:
         x_ = loop.unstack(x, axis="T")
@@ -29,18 +28,17 @@ def test_rec_ff():
       return y
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict("data")
   pprint(net_dict)
   dummy_run_net(net_dict)
 
 
 def test_rec_simple_iter():
   class _Net(Module):
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       # https://github.com/rwth-i6/returnn_common/issues/16
       with Loop(max_seq_len=10) as loop:
         loop.state.i = State()
@@ -50,6 +48,6 @@ def test_rec_simple_iter():
       return y
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict("data")
   pprint(net_dict)
   dummy_run_net(net_dict)

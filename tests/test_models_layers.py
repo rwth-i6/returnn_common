@@ -18,18 +18,44 @@ def test_simple_net_linear():
       super().__init__()
       self.linear = Linear(n_out=13)
 
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
-      x = self.linear(x)
-      return x
+      return self.linear(x)
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict("data")
   pprint(net_dict)
   assert "linear" in net_dict
+  dummy_run_net(net_dict)
+
+
+def test_simple_net_module_explicit_root_ctx():
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = Linear(n_out=13)
+
+    def forward(self, x) -> LayerRef:
+      """
+      Forward
+      """
+      return self.linear(x)
+
+  net = _Net()
+
+  with NameCtx.new_root() as name_ctx:
+    out = net(get_extern_data("data"), name=name_ctx)
+    assert isinstance(out, Layer)
+    name_ctx.make_default_output(out)
+    net_dict = name_ctx.make_net_dict()
+    pprint(net_dict)
+
+  assert "linear" in net_dict
+  lstm_layer_dict = net_dict["linear"]
+  assert_equal(lstm_layer_dict["class"], "linear")
+  assert_equal(lstm_layer_dict["from"], "data:data")
   dummy_run_net(net_dict)
 
 
@@ -39,16 +65,15 @@ def test_simple_net_rc():
       super().__init__()
       self.linear = rc.nn.Linear(n_out=13)
 
-    def forward(self) -> rc.nn.LayerRef:
+    def forward(self, x: rc.nn.LayerRef) -> rc.nn.LayerRef:
       """
       Forward
       """
-      x = rc.nn.get_extern_data("data")
       x = self.linear(x)
       return x
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   assert "linear" in net_dict
   dummy_run_net(net_dict)
@@ -56,32 +81,30 @@ def test_simple_net_rc():
 
 def test_simple_net_arithmetic():
   class _Net(Module):
-    def forward(self) -> LayerRef:
+    def forward(self, x) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       x = 1. / x + x * 2.
       return x
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   dummy_run_net(net_dict)
 
 
 def test_eval():
   class _Net(Module):
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       x = eval(x, eval="source(0) * 2.5")
       return x
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   dummy_run_net(net_dict)
 
@@ -92,16 +115,15 @@ def test_simple_net_lstm():
       super().__init__()
       self.lstm = Lstm(n_out=13)
 
-    def forward(self) -> LayerRef:
+    def forward(self, x) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       x, _ = self.lstm(x)
       return x
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   assert "lstm" in net_dict
   dummy_run_net(net_dict)
@@ -134,18 +156,17 @@ def test_simple_net_share_params():
       self.linear = Linear(n_out=13, activation=None)
       self.lstm = Lstm(n_out=13)
 
-    def forward(self) -> LayerRef:
+    def forward(self, x) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       x = self.linear(x)
       x, _ = self.lstm(x)
       x, _ = self.lstm(x)
       return x
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   assert "lstm" in net_dict
   assert "lstm_0" in net_dict
@@ -243,16 +264,15 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.sub = _SubNet()
 
-    def forward(self) -> LayerRef:
+    def forward(self, x) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       out, add_out = self.sub(x)
       return out
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/linear"
   assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "base:data:data"
@@ -288,16 +308,15 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubNet()
 
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       out, add_out = self.sub(x)
       return out
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/sub/linear"
   assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub/linear"
@@ -325,17 +344,16 @@ def test_from_call_variations():
       self.sub = _SubNet()
       self.sub2 = _SubNet()
 
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       out, add_out = self.sub(x)
       out2, add_out2 = self.sub2(add_out)
       return out2
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub2/linear2"
   assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "base:data:data"
@@ -382,11 +400,10 @@ def test_from_call_variations2():
       self.sub2 = _SubNet2()
       self.linear = Linear(n_out=13, activation=None)
 
-    def forward(self) -> LayerRef:
+    def forward(self, x: LayerRef) -> LayerRef:
       """
       Forward
       """
-      x = get_extern_data("data")
       out, add_out = self.sub(x)
       assert_equal(out.get_name(), "sub/linear2")
       assert_equal(add_out.get_name(), "sub/linear")
@@ -398,7 +415,7 @@ def test_from_call_variations2():
       return out2
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict(x="data")
   pprint(net_dict)
 
 
@@ -436,17 +453,16 @@ def test_module_list():
       super().__init__()
       self.ls = ModuleList([Linear(i) for i in range(4)])
 
-    def forward(self) -> LayerRef:
+    def forward(self, out: LayerRef) -> LayerRef:
       """
       Forward
       """
-      out = get_extern_data("data")
       for layer in self.ls:
         out = layer(out)
       return out
 
   net = _Net()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict("data")
   pprint(net_dict)
 
   assert net_dict["ls.0"]["from"] == "data:data"
@@ -462,16 +478,15 @@ def test_sequential_base_case():
       super().__init__()
       self.seq = Sequential(Linear(1), Linear(2), Linear(3))
 
-    def forward(self) -> LayerRef:
+    def forward(self, data: LayerRef) -> LayerRef:
       """
       Forward
       """
-      data = get_extern_data('data')
       seq = self.seq(data)
       return seq
 
   net = _TestSequential()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict("data")
   pprint(net_dict)
 
   assert net_dict["seq"]["subnetwork"]["0"]["from"] == "base:data:data"
@@ -492,16 +507,15 @@ def test_sequential_named_case():
       x["three"] = Linear(3)
       self.seq = Sequential(x)
 
-    def forward(self) -> LayerRef:
+    def forward(self, data: LayerRef) -> LayerRef:
       """
       Forward
       """
-      data = get_extern_data('data')
       seq = self.seq(data)
       return seq
 
   net = _TestSequential()
-  net_dict = net.make_root_net_dict()
+  net_dict = net.make_root_net_dict("data")
   pprint(net_dict)
 
   assert net_dict["seq"]["subnetwork"]["one"]["from"] == "base:data:data"

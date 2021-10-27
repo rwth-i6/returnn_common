@@ -29,13 +29,12 @@ Code example::
         super().__init__()
         self.lstm = Lstm(n_out=1024)
 
-      def forward(self):
-        x = get_extern_data("data")
+      def forward(self, x):
         y = self.lstm(x)
         return y
 
     net = Network()
-    net_dict = net.make_root_net_dict()
+    net_dict = net.make_root_net_dict("data")
 
 
 Alternatively, use ``with NameCtx.new_root() as name_ctx``
@@ -488,6 +487,8 @@ class Module(ILayerMaker):
     with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = self.forward(*args, **kwargs)
+      if name_ctx.parent is None:  # root
+        return res  # special logic, no output layers, no subnetwork layer needed
       if isinstance(res, LayerRef):
         copy(res, name=name_ctx.get_child("output"))
       else:
@@ -508,17 +509,25 @@ class Module(ILayerMaker):
     assert name_ctx.maker is self
     return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
 
-  def make_root_net_dict(self) -> NetDictRaw:
+  def make_root_net_dict(self, *args, **kwargs) -> NetDictRaw:
     """
     Make net dict, to be used as the main RETURNN network, not within a subnetwork.
-    Extern data can be accessed via :func:`get_root_extern_data`.
+    Any passed arguments are keys of extern data,
+    and are forwarded to the module.
     """
     from . import copy
     with NameCtx(maker=self, parent=None) as name_ctx:
       name_ctx.is_subnet_ctx = True
-      res = self.forward()
+      args = tuple(get_extern_data(arg) for arg in args)
+      kwargs = {key: get_extern_data(value) for (key, value) in kwargs.items()}
+      res = self.forward(*args, **kwargs)
       if "output" not in name_ctx.children:
-        copy(res, name=name_ctx.get_child("output"))
+        if isinstance(res, LayerRef):
+          copy(res, name=name_ctx.get_child("output"))
+        else:
+          res_list = nest.flatten(res)
+          assert res_list and isinstance(res_list[0], LayerRef)
+          copy(res_list[0], name=name_ctx.get_child("output"))
       return name_ctx.make_net_dict()
 
   def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
@@ -992,10 +1001,6 @@ class NameCtx:
     return self.get_child_with_layer_ref(name).layer_ref
 
   def __enter__(self):
-    if self.parent:
-      assert self.stack[-1] is self.parent, f"{self}.__enter__: stack {self.stack} top is not parent {self.parent}"
-    else:
-      assert not self.stack, f"{self}.__enter__ without parent, unexpected stack {self.stack}"
     self.stack.append(self)
     return self
 
