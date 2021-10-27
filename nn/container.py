@@ -9,7 +9,7 @@ from typing import Iterable, Iterator, Optional
 
 class ModuleList(Module):
   """
-  Module list, getting passed an Interable of Modules and creates a list of Modules in that order
+  Module list, getting passed an Iterable of Modules and creates a list of Modules in that order
   """
   def __init__(self, modules: Optional[Iterable[Module]] = None):
     super().__init__()
