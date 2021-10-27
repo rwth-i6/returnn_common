@@ -420,8 +420,14 @@ def make_layer(layer_dict: LayerDictRaw, *,
     assert not name_ctx
     assert isinstance(name, str)
     name_ctx = NameCtx(suggested_name=name)
-  elif name_ctx:
+    return make_layer(layer_dict=layer_dict, name_ctx=name_ctx)
+  if name_ctx:
     assert isinstance(name_ctx, NameCtx)
+    if NameCtx.top() is name_ctx:
+      pass  # go on
+    else:
+      with name_ctx:
+        return make_layer(layer_dict=layer_dict)
   else:
     name_ctx = NameCtx.top()
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
