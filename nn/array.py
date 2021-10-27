@@ -2,9 +2,23 @@
 Array (Tensor) functions
 """
 
-from typing import Optional, Tuple, List
+from typing import Optional, Union, Tuple, List
 from returnn.util.basic import NotSpecified
-from .base import LayerRef
+from .base import LayerRef, Layer
+
+
+def concat(sources: Union[List[LayerRef], Tuple[LayerRef, ...]], *,
+           axis: Optional[str] = NotSpecified,
+           name: Optional[str] = None) -> Layer:
+  """
+  Concatenates multiple sources (by default in feature axis).
+  """
+  if axis is NotSpecified or axis is None or axis.upper() == "F":
+    # standard case
+    from .base import make_layer
+    return make_layer({"class": "copy", "from": sources}, name=name or "concat")
+  else:
+    raise NotImplementedError(f"Cannot handle concat with axis {axis!r} yet")
 
 
 def split(source: LayerRef, *,
