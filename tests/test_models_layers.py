@@ -428,3 +428,84 @@ def test_get_name_in_current_ctx():
       assert_equal(child_1.get_name_in_current_ctx(), "same/child_1")
       assert_equal(sub_2.get_name_in_current_ctx(), "base:sub_2")
       assert_equal(child_2.get_name_in_current_ctx(), "base:sub_2/child_2")
+
+
+def test_module_list():
+  class _Net(Module):
+    def __init__(self):
+      super().__init__()
+      self.ls = ModuleList([Linear(i) for i in range(4)])
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      out = get_extern_data("data")
+      for layer in self.ls:
+        out = layer(out)
+      return out
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+
+  assert net_dict["0"]["from"] == "data:data"
+  assert net_dict["1"]["from"] == "0"
+  assert net_dict["2"]["from"] == "1"
+  assert net_dict["3"]["from"] == "2"
+  assert net_dict["output"]["from"] == "3"
+
+
+def test_sequential_base_case():
+  class _TestSequential(Module):
+    def __init__(self):
+      super().__init__()
+      self.seq = Sequential(Linear(1), Linear(2), Linear(3))
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      data = get_extern_data('data')
+      seq = self.seq(data)
+      return seq
+
+  net = _TestSequential()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+
+  assert net_dict["seq"]["subnetwork"]["0"]["from"] == "base:data:data"
+  assert net_dict["seq"]["subnetwork"]["1"]["from"] == "0"
+  assert net_dict["seq"]["subnetwork"]["2"]["from"] == "1"
+  assert net_dict["seq"]["subnetwork"]["output"]["from"] == "2"
+  assert net_dict["output"]["from"] == "seq"
+
+
+def test_sequential_named_case():
+  class _TestSequential(Module):
+    def __init__(self):
+      super().__init__()
+      from collections import OrderedDict
+      x = OrderedDict()
+      x["one"] = Linear(1)
+      x["two"] = Linear(2)
+      x["three"] = Linear(3)
+      self.seq = Sequential(x)
+
+    def forward(self) -> LayerRef:
+      """
+      Forward
+      """
+      data = get_extern_data('data')
+      seq = self.seq(data)
+      return seq
+
+  net = _TestSequential()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+
+  assert net_dict["seq"]["subnetwork"]["one"]["from"] == "base:data:data"
+  assert net_dict["seq"]["subnetwork"]["two"]["from"] == "one"
+  assert net_dict["seq"]["subnetwork"]["three"]["from"] == "two"
+  assert net_dict["seq"]["subnetwork"]["output"]["from"] == "three"
+  assert net_dict["output"]["from"] == "seq"
