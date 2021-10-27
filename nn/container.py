@@ -4,17 +4,18 @@ container functions
 
 from __future__ import annotations
 from .base import Module, ILayerMaker, LayerRef
-from typing import Iterable, Iterator, Optional, Union
+from typing import Iterable, Iterator, Optional, Union, Dict
 
 
 class ModuleList(Module):
   """
   Module list, getting passed an Iterable of Modules and creates a list of Modules in that order
   """
-  def __init__(self, modules: Optional[Iterable[Module]] = None):
+  def __init__(self, modules: Optional[Iterable[ILayerMaker]] = None):
     super().__init__()
     if modules is not None:
       for idx, module in enumerate(modules):
+        assert isinstance(module, ILayerMaker)
         setattr(self, str(idx), module)
 
   def _get_makers(self):
@@ -60,13 +61,15 @@ class Sequential(ModuleList):
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
 
-  def __init__(self, *modules: Union[Iterable[Module], dict]):
+  def __init__(self, *modules: Union[ILayerMaker, Dict[str, ILayerMaker]]):
     super().__init__()
     if len(modules) == 1 and isinstance(modules[0], dict):
       for key, module in modules[0].items():
+        assert isinstance(module, ILayerMaker)
         setattr(self, key, module)
     else:
       for idx, module in enumerate(modules):
+        assert isinstance(module, ILayerMaker)
         setattr(self, str(idx), module)
 
   def forward(self, inp) -> LayerRef:
