@@ -18,7 +18,7 @@ class ModuleList(Module):
   def _get_makers(self):
     return {key: value for (key, value) in vars(self).items() if isinstance(value, ILayerMaker)}
 
-  def append(self, module: Module) -> "ModuleList"":
+  def append(self, module: Module) -> "ModuleList":
     """
     appends one module to the list
     """
