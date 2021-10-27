@@ -42,6 +42,17 @@ class ModuleList(Module):
   def __iter__(self) -> Iterator[Module]:
     return iter(self._get_makers().values())
 
+  def __getitem__(self, idx) -> ModuleList:
+    from builtins import slice
+    if isinstance(idx, slice):
+      return self.__class__(dict(list(self._get_makers().items())[idx]))
+    else:
+      return self._get_makers()[str(idx)]
+
+  def __setitem__(self, idx: int, module: Module) -> None:
+    key = list(self._get_makers().keys())[idx]
+    return setattr(self, key, module)
+
   forward = Module.forward  # stays abstract
 
 
