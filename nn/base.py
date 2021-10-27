@@ -369,6 +369,7 @@ class ILayerMaker:
 class LayerState(dict):
   """
   Covers all the state of a layer.
+  This behaves somewhat like a namedtuple, although we derive from dict.
   """
   def __init__(self, *args, **kwargs):
     if kwargs:
@@ -379,6 +380,9 @@ class LayerState(dict):
       super().__init__(state=args[0])
     else:
       raise ValueError("need args or kwargs")
+
+  def __getattr__(self, item):
+    return self[item]
 
   def __iter__(self):
     return iter(self.values())
