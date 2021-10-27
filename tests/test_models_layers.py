@@ -6,6 +6,7 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net
 
+import returnn_common as rc
 from returnn_common.nn import *
 from pprint import pprint
 from nose.tools import assert_equal
@@ -22,6 +23,27 @@ def test_simple_net_linear():
       Forward
       """
       x = get_extern_data("data")
+      x = self.linear(x)
+      return x
+
+  net = _Net()
+  net_dict = net.make_root_net_dict()
+  pprint(net_dict)
+  assert "linear" in net_dict
+  dummy_run_net(net_dict)
+
+
+def test_simple_net_rc():
+  class _Net(rc.nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = rc.nn.Linear(n_out=13)
+
+    def forward(self) -> rc.nn.LayerRef:
+      """
+      Forward
+      """
+      x = rc.nn.get_extern_data("data")
       x = self.linear(x)
       return x
 
