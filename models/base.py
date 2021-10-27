@@ -271,6 +271,10 @@ class ILayerMaker:
   has_variables: bool = True
 
   def __init__(self):
+    # Actually we would want an ordered set for parents, but Python does not provide this.
+    # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
+    # Also note that the current code does not clean this up when you do delattr later or so.
+    self._parents = {}  # type: Dict[Tuple[ILayerMaker, str], None]  # (parent,attrib) -> None
     self.calls = []  # type: List[Layer]
 
   def __repr__(self):
@@ -309,6 +313,22 @@ class ILayerMaker:
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Layer:
     with NameCtx.get_from_call(maker=self, name=name):
       return self._make_layer(*args, **kwargs)
+
+  def __setattr__(self, key: str, value):
+    super().__setattr__(key, value)
+    if isinstance(value, ILayerMaker):
+      value._parents[(self, key)] = None
+
+  def parents_with_attr(self) -> Iterator[Tuple[ILayerMaker, str]]:
+    """
+    Get all (immediate) parent makers, and the attrib name which points to us
+    """
+    # We rely on deterministic order of dict.
+    for parent, attr in self._parents.keys():
+      # We currently don't do proper cleanup of _parents via delattr etc,
+      # so explicitly check.
+      if getattr(parent, attr, None) is self:
+        yield parent, attr
 
   def children(self) -> Iterator[ILayerMaker]:
     """
@@ -496,6 +516,7 @@ class Module(ILayerMaker):
     """
     Get all (immediate) children makers
     """
+    # We rely on deterministic order of dict and vars.
     for key, value in vars(self).items():
       if isinstance(value, ILayerMaker):
         yield key, value
@@ -654,6 +675,7 @@ class _LoopLayerMaker(ILayerMaker):
     """
     Children
     """
+    # We rely on deterministic order of dict.
     for name, sub_name_ctx in self.loop.name_ctx.childs.items():
       if sub_name_ctx.maker:
         yield name, sub_name_ctx.maker
@@ -970,28 +992,19 @@ class NameCtx:
     self.stack.pop(-1)
 
   def _get_name(self) -> str:
-    assert self.parent and self.maker
-    if self.parent.maker:
-      reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
-      for key, value in vars(self.parent.maker).items():
-        if key in reserved_names:
-          continue
-        if value is self.maker:
-          return key  # can use the name as it is not in the parent name ctx yet
     return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
-    assert self.parent and self.maker
-    # Check parent maker (or module) whether it has our maker (or module) as attrib,
-    # and use this attrib name.
-    # Check all parents for cases like Loop.
-    parent = self.parent
-    while parent:
-      if parent.maker:
-        for key, value in vars(parent.maker).items():
-          if value is self.maker:
-            return key
-      parent = parent.parent
+    assert self.maker
+    reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
+    # Check parent maker (or module), and use this attrib name.
+    # First check if we can find any attr which is not yet reserved.
+    for parent, attr in self.maker.parents_with_attr():
+      if attr not in reserved_names:
+        return attr
+    # Now again, to just use any.
+    for parent, attr in self.maker.parents_with_attr():
+      return attr
     # Check potential previous calls, and reuse their name.
     for call in self.maker.calls:
       if call is self:
@@ -1005,6 +1018,10 @@ class NameCtx:
     name = suggested_name or self._get_suggested_name()
     reserved_names = set(self.parent.childs.keys()) | self._ReservedNames
     if self.parent.maker:
+      # Also reserve all attrib names of the parent maker.
+      # However, we allow to use the name if it is the attrib itself.
+      if self.maker and name not in reserved_names and getattr(self.parent.maker, name, None) is self.maker:
+        return name
       reserved_names |= set(vars(self.parent.maker).keys())
     if name not in reserved_names:
       return name
