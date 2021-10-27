@@ -383,7 +383,16 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
     """
     assert self.has_recurrent_state
     from ._generated_layers import _get_last_hidden_state
-    return _get_last_hidden_state(layer, name=f"{layer.name_ctx.name}_state")
+    # Note that this is actually layer specific.
+    # We try to use a number of heuristics to get it right for the common cases.
+    name = f"{layer.name_ctx.name}_state"
+    n_out = layer.layer_dict["n_out"]
+    if layer.layer_dict["class"] == "rec" and isinstance(layer.layer_dict["unit"], str):
+      if "lstm" in layer.layer_dict["unit"].lower():
+        h = _get_last_hidden_state(layer, n_out=n_out, key="h", name=f"{name}_h")
+        c = _get_last_hidden_state(layer, n_out=n_out, key="c", name=f"{name}_c")
+        return h, c
+    return _get_last_hidden_state(layer, n_out=n_out, name=name)
 
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> (
         Union[Layer, Tuple[Layer, Union[Layer, Tuple[LayerRef, ...]]]]):
