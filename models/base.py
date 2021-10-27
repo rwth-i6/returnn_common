@@ -860,10 +860,7 @@ class NameCtx:
         name = self._get_unique_name()
     self.name = name
     if self.parent:
-      assert self.name
-      assert self.parent.is_subnet_ctx
-      assert self.name not in self.parent.children
-      self.parent.children[self.name] = self
+      self.parent._add_child(self)
 
   @classmethod
   def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], maker: ILayerMaker) -> NameCtx:
@@ -952,6 +949,12 @@ class NameCtx:
     prefix = "base:" * (len(cur_scope_abs) - common_len)
     postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
     return prefix + postfix
+
+  def _add_child(self, child: NameCtx):
+    assert child.name
+    assert child.parent.is_subnet_ctx
+    assert child.name not in self.children
+    self.children[child.name] = child
 
   def get_child(self, name: str) -> NameCtx:
     """
