@@ -16,5 +16,7 @@ class Lstm(Rec):
       unit_opts["rec_weight_dropout"] = rec_weight_dropout
     if rec_weight_dropout_shape:
       unit_opts["rec_weight_dropout_shape"] = rec_weight_dropout_shape
-    super(Lstm, self).__init__(
-      unit="nativelstm2", unit_opts=unit_opts, **kwargs)
+    if unit_opts:
+      kwargs = kwargs.copy()
+      kwargs["unit_opts"] = unit_opts
+    super(Lstm, self).__init__(unit="nativelstm2", **kwargs)
