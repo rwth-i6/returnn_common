@@ -857,7 +857,7 @@ class NameCtx:
       if suggested_name:
         name = self._get_unique_name(suggested_name)
       elif self.parent:
-        name = self._get_name()
+        name = self._get_unique_name()
     self.name = name
     if self.parent:
       assert self.name
@@ -990,9 +990,6 @@ class NameCtx:
   def __exit__(self, exc_type, exc_val, exc_tb):
     assert self.stack[-1] is self, f"{self}.__exit__: stack {self.stack} top is not self"
     self.stack.pop(-1)
-
-  def _get_name(self) -> str:
-    return self._get_unique_name()
 
   def _get_suggested_name(self) -> str:
     assert self.maker
