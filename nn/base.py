@@ -366,6 +366,24 @@ class ILayerMaker:
           yield m
 
 
+class LayerState(dict):
+  """
+  Covers all the state of a layer.
+  """
+  def __init__(self, *args, **kwargs):
+    if kwargs:
+      assert not args
+      super().__init__(**kwargs)
+    elif args:
+      assert len(args) == 1
+      super().__init__(state=args[0])
+    else:
+      raise ValueError("need args or kwargs")
+
+  def __iter__(self):
+    return iter(self.values())
+
+
 # noinspection PyAbstractClass
 class _ReturnnWrappedLayerBase(ILayerMaker):
   """
@@ -374,7 +392,7 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
   returnn_layer_class: Optional[str] = None
   has_recurrent_state: bool = False
 
-  def _get_recurrent_state(self, layer: Layer) -> Union[LayerRef, Tuple[LayerRef, ...]]:
+  def _get_recurrent_state(self, layer: Layer) -> LayerState:
     """
     :returns: the recurrent state
 
@@ -391,12 +409,18 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
       if "lstm" in layer.layer_dict["unit"].lower():
         h = _get_last_hidden_state(layer, n_out=n_out, key="h", name=f"{name}_h")
         c = _get_last_hidden_state(layer, n_out=n_out, key="c", name=f"{name}_c")
-        return h, c
-    return _get_last_hidden_state(layer, n_out=n_out, name=name)
+        return LayerState(h=h, c=c)
+    return LayerState(_get_last_hidden_state(layer, n_out=n_out, name=name))
 
-  def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> (
-        Union[Layer, Tuple[Layer, Union[Layer, Tuple[LayerRef, ...]]]]):
+  def __call__(self, *args,
+               name: Optional[Union[str, NameCtx]] = None,
+               state: Optional[LayerState] = None,
+               **kwargs
+               ) -> Union[Layer, Tuple[Layer, LayerState]]:
     with NameCtx.get_from_call(maker=self, name=name):
+      if state:
+        kwargs = kwargs.copy()
+        kwargs["initial_state"] = state
       layer = self._make_layer(*args, **kwargs)
       if not self.has_recurrent_state:
         return layer
