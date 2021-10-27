@@ -368,7 +368,10 @@ class ILayerMaker:
 
 class LayerState(dict):
   """
-  Covers all the state of a layer.
+  Covers all the state of a layer,
+  i.e. exactly what needs to be stored and passed into the module or layer maker
+  next time you call it as initial state.
+
   This behaves somewhat like a namedtuple, although we derive from dict.
   """
   def __init__(self, *args, **kwargs):
@@ -379,13 +382,10 @@ class LayerState(dict):
       assert len(args) == 1
       super().__init__(state=args[0])
     else:
-      raise ValueError("need args or kwargs")
+      super().__init__()
 
   def __getattr__(self, item):
     return self[item]
-
-  def __iter__(self):
-    return iter(self.values())
 
 
 # noinspection PyAbstractClass
@@ -418,13 +418,9 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
 
   def __call__(self, *args,
                name: Optional[Union[str, NameCtx]] = None,
-               state: Optional[LayerState] = None,
                **kwargs
                ) -> Union[Layer, Tuple[Layer, LayerState]]:
     with NameCtx.get_from_call(maker=self, name=name):
-      if state:
-        kwargs = kwargs.copy()
-        kwargs["initial_state"] = state
       layer = self._make_layer(*args, **kwargs)
       if not self.has_recurrent_state:
         return layer

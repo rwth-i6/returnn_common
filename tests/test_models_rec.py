@@ -63,8 +63,8 @@ def test_rec_hidden():
       """
       Forward
       """
-      y, (h, c) = self.lstm(x)
-      return concat([y, h, c])
+      y, state = self.lstm(x)
+      return concat([y, state.h, state.c])
 
   net = _Net()
   net_dict = make_root_net_dict(net, "data")
