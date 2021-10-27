@@ -4,8 +4,8 @@ Predefined LMs
 """
 
 from ....data import get_common_data_path
-from ....models.lstm import make_lstm
-from ....models.lm import Lm
+from ....nn.lstm import make_lstm
+from ....nn.lm import Lm
 from .vocabs import bpe1k
 
 
