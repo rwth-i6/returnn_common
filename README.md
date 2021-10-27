@@ -1,8 +1,84 @@
-# Usage
+# `returnn_common`
 
-This is intended to be used for the [RETURNN](https://github.com/rwth-i6/returnn) `returnn.import_` mechanism.
+This repo provides common building blocks for RETURNN,
+such as models or networks, network creation code,
+datasets, etc.
+
+# `nn`: Network definitions, models
+
+RETURNN originally used dicts to define the network (model, computation graph).
+The network consists of layers, where each layer represents a block of operations and potentially also parameters.
+In here, we adopt many conventions by PyTorch or functional Keras and other frameworks,
+such that you use pure Python code to define the network (model, computation graph).
+Further, a module instance does not represent the actual computation
+but only once you call it with actual inputs,
+then it will perform the actual computation
+(create a RETURNN layer, or the corresponding RETURNN layer dict).
+
+
+## Usage examples
+
+```
+import returnn_common as rc
+
+
+class MyModelBlock(rc.nn.Module):
+  def __init__(self, dim: int, hidden: int, dropout: float = 0.1):
+    self.linear_out = rc.nn.Linear(dim)
+    self.linear_hidden = rc.nn.Linear(hidden)
+    self.dropout = dropout
+
+  def forward(self, x: rc.nn.LayerRef) -> rc.nn.Layer:
+    y = rc.nn.layer_norm(x)
+    y = self.linear_hidden(y)
+    y = rc.nn.sigmoid(y)
+    y = self.linear_out(x)
+    y = rc.nn.dropout(y, dropout=self.dropout)
+    return x + y
+```
+
+In case you want to have this three times separately now:
+```
+class MyModel(rc.nn.Module):
+  def __init__(self, dim: int):
+    self.block1 = MyModelBlock(1024, 512)
+    self.block2 = MyModelBlock(1024, 512)
+    self.block3 = MyModelBlock(1024, 512)
+    
+  def forward(self, x: rc.nn.LayerRef) -> rc.nn.Layer:
+    x = self.block1(x)
+    x = self.block2(x)
+    x = self.block3(x)
+    return x
+```
+
+Or if you want to share the parameters but run this three times:
+```
+class MyModel(rc.nn.Module):
+  def __init__(self, dim: int):
+    self.block = MyModelBlock(1024, 512)
+    
+  def forward(self, x: rc.nn.LayerRef) -> rc.nn.Layer:
+    x = self.block(x)
+    x = self.block(x)
+    x = self.block(x)
+    return x
+```
+
+
+# Installation and usage
+
+When this is integrated as part of a Sisyphus recipe,
+the common way people use it is similar as for i6_experiments,
+i.e. you would `git clone` this repo into your `recipes` directory.
+
+
+## Usage via `returnn.import_`
+
+Earlier, this was intended to be used for the [RETURNN](https://github.com/rwth-i6/returnn) `returnn.import_` mechanism.
 See [returnn #436 for initial `import_` discussions](https://github.com/rwth-i6/returnn/discussions/436).
 See [#2 for discussions on `import_` usage here](https://github.com/rwth-i6/returnn_common/issues/2).
+Note that this might not be the preferred usage pattern anymore but this is up to you.
 
 Usage example for config:
 
