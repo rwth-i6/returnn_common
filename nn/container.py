@@ -3,7 +3,7 @@ container functions
 """
 
 from __future__ import annotations
-from .base import Module
+from .base import Module, ILayerMaker
 from typing import Iterable, Iterator
 
 
