@@ -2,7 +2,7 @@
 container functions
 """
 from returnn_common.nn import *
-
+from typing import Iterable, Iterator
 
 class ModuleList(Module):
   """
@@ -39,7 +39,7 @@ class ModuleList(Module):
   def __iter__(self) -> Iterator[Module]:
     return iter(self._get_makers().values())
 
-  forward = ILayerMaker.forward  # stays abstract
+  forward = Module.forward  # stays abstract
 
 
 class Sequential(ModuleList):
