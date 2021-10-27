@@ -475,14 +475,15 @@ class LayerSignature:
 
   _LayerClassesWithExplicitDim = {
     LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer,
-    PositionalEncodingLayer, RelativePositionalEncodingLayer}
+    PositionalEncodingLayer, RelativePositionalEncodingLayer,
+    "get_last_hidden_state"}
 
   _LayerClassesWithExplicitTarget = {
     ChoiceLayer}
 
   def _init_args(self):
     # n_out is handled specially
-    if self.layer_class in self._LayerClassesWithExplicitDim:
+    if self._LayerClassesWithExplicitDim.intersection((self.layer_class, self.layer_class.layer_class)):
       self.params["n_out"] = LayerSignature.Param(
         self,
         inspect.Parameter(

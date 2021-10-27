@@ -5953,15 +5953,18 @@ class _GetLastHiddenState(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
+               n_out: int,
                *,
                combine: str = NotSpecified,
                key: Optional[Union[str, int]] = NotSpecified,
                **kwargs):
     """
+    :param int n_out: dimension. output will be of shape (batch, n_out)
     :param str combine: "concat" or "add"
     :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
     """
     super().__init__(**kwargs)
+    self.n_out = n_out
     self.combine = combine
     self.key = key
 
@@ -5970,6 +5973,7 @@ class _GetLastHiddenState(_Base):
     Return all options
     """
     opts = {
+      'n_out': self.n_out,
       'combine': self.combine,
       'key': self.key,
     }
@@ -5993,6 +5997,7 @@ class _GetLastHiddenState(_Base):
 def _get_last_hidden_state(
                            source: LayerRef,
                            *,
+                           n_out: int,
                            combine: str = NotSpecified,
                            key: Optional[Union[str, int]] = NotSpecified,
                            name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -6000,11 +6005,13 @@ def _get_last_hidden_state(
   Will combine (concat or add or so) all the last hidden states from all sources.
 
   :param LayerRef source:
+  :param int n_out: dimension. output will be of shape (batch, n_out)
   :param str combine: "concat" or "add"
   :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
   :param str|None name:
   """
   mod = _GetLastHiddenState(
+    n_out=n_out,
     combine=combine,
     key=key,
     )
