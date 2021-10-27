@@ -3,8 +3,8 @@ container functions
 """
 
 from __future__ import annotations
-from .base import Module, ILayerMaker
-from typing import Iterable, Iterator
+from .base import Module, ILayerMaker, LayerRef
+from typing import Iterable, Iterator, Optional
 
 
 class ModuleList(Module):
