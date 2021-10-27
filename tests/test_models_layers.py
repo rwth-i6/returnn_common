@@ -6,8 +6,7 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net
 
-from returnn_common.models import *
-from returnn_common.models.base import get_extern_data, NameCtx, Layer, LayerRef
+from returnn_common.nn import *
 from pprint import pprint
 from nose.tools import assert_equal
 
