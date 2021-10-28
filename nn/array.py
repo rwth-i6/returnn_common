@@ -2,12 +2,12 @@
 Array (Tensor) functions
 """
 
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Tuple, List
 from returnn.util.basic import NotSpecified
 from .base import LayerRef, Layer
 
 
-def concat(sources: Union[List[LayerRef], Tuple[LayerRef, ...]], *,
+def concat(*sources: LayerRef,
            axis: Optional[str] = NotSpecified,
            name: Optional[str] = None) -> Layer:
   """
