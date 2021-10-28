@@ -187,55 +187,7 @@ def external_data(
     name=name)
 
 
-class _ConcatInput(_Base):
-  """
-  Base layer which concatenates all incoming source layers in the feature dimension,
-  and provides that as `self.input_data`, which is of type :class:`Data`.
-  This is the most common thing what many layers do with the input sources.
-  If there is only a single source, will not do anything.
-  This layer also optionally can do dropout on the input.
-  """
-  returnn_layer_class = None
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dropout: float = NotSpecified,
-               dropout_noise_shape: Any = NotSpecified,
-               dropout_on_forward: bool = NotSpecified,
-               mask: Optional[str] = NotSpecified,
-               **kwargs):
-    """
-    :param float dropout: 0.0 means to apply no dropout. dropout will only be applied during training
-    :param dict[str|tuple,int|None] dropout_noise_shape: see :func:`returnn.tf.util.data.get_bc_shape`
-    :param bool dropout_on_forward: apply dropout during inference
-    :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
-    """
-    super().__init__(**kwargs)
-    self.dropout = dropout
-    self.dropout_noise_shape = dropout_noise_shape
-    self.dropout_on_forward = dropout_on_forward
-    self.mask = mask
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dropout': self.dropout,
-      'dropout_noise_shape': self.dropout_noise_shape,
-      'dropout_on_forward': self.dropout_on_forward,
-      'mask': self.mask,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
-
-
-class _Copy(_ConcatInput):
+class _Copy(_Base):
   """
   This layer does nothing, it copies its input.
   If multiple sources are provided, they are concatenated in the feature-dim.
@@ -246,11 +198,12 @@ class _Copy(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'copy',
       'from': source,
@@ -259,66 +212,17 @@ class _Copy(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def copy(
-         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+         source: LayerRef,
          *,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This layer does nothing, it copies its input.
   If multiple sources are provided, they are concatenated in the feature-dim.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|None name:
   """
   mod = _Copy()
-  return mod(source, name=name)
-
-
-class _Dropout(_Copy):
-  """
-  Just the same as :class:`CopyLayer`, because that one already supports dropout.
-  """
-  returnn_layer_class = 'dropout'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'dropout',
-      'from': source,
-      **self.get_opts()}
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def dropout(
-            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-            *,
-            dropout: float = NotSpecified,
-            dropout_noise_shape: Any = NotSpecified,
-            dropout_on_forward: bool = NotSpecified,
-            mask: Optional[str] = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  Just the same as :class:`CopyLayer`, because that one already supports dropout.
-
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
-  :param float dropout: 0.0 means to apply no dropout. dropout will only be applied during training
-  :param dict[str|tuple,int|None] dropout_noise_shape: see :func:`returnn.tf.util.data.get_bc_shape`
-  :param bool dropout_on_forward: apply dropout during inference
-  :param str|None mask: "dropout" or "unity" or None. this is obsolete and only here for historical reasons
-  :param str|None name:
-  """
-  mod = _Dropout(
-    dropout=dropout,
-    dropout_noise_shape=dropout_noise_shape,
-    dropout_on_forward=dropout_on_forward,
-    mask=mask,
-    )
   return mod(source, name=name)
 
 
@@ -356,11 +260,12 @@ class _ScaledGradient(_Copy):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'scaled_grad',
       'from': source,
@@ -369,7 +274,7 @@ class _ScaledGradient(_Copy):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def scaled_gradient(
-                    source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                    source: LayerRef,
                     *,
                     scale: float,
                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -379,7 +284,7 @@ def scaled_gradient(
   Can be used as gradient reversal layer (with negative factor).
   Uses :func:`returnn.tf.util.basic.scaled_gradient`, or :func:`tf.stop_gradient`
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param float scale: if 0., will use tf.stop_gradient
   :param str|None name:
   """
@@ -389,7 +294,7 @@ def scaled_gradient(
   return mod(source, name=name)
 
 
-class _Activation(_ConcatInput):
+class _Activation(_Base):
   """
   This layer just applies an activation function.
   See :func:`returnn.tf.util.basic.get_activation_function` about supported functions.
@@ -422,11 +327,12 @@ class _Activation(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'activation',
       'from': source,
@@ -435,7 +341,7 @@ class _Activation(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def activation(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                activation: str,
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -444,7 +350,7 @@ def activation(
   See :func:`returnn.tf.util.basic.get_activation_function` about supported functions.
   Also see :class:`EvalLayer` and :class:`CombineLayer` for similar layers.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str activation: e.g. "relu", "tanh", etc
   :param str|None name:
   """
@@ -540,11 +446,12 @@ class _BatchNorm(_Copy):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'batch_norm',
       'from': source,
@@ -553,7 +460,7 @@ class _BatchNorm(_Copy):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def batch_norm(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                use_shift: bool = NotSpecified,
                use_std: bool = NotSpecified,
@@ -582,7 +489,7 @@ def batch_norm(
   - The running average includes the statistics of the current batch.
   - The running average is also updated when not training.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param bool use_shift:
   :param bool use_std:
   :param float use_sample: defaults to 0.0 which is used in training
@@ -614,7 +521,7 @@ def batch_norm(
   return mod(source, name=name)
 
 
-class _LayerNorm(_ConcatInput):
+class _LayerNorm(_Base):
   """
   Applies `layer-normalization <https://arxiv.org/abs/1607.06450>`__.
 
@@ -653,11 +560,12 @@ class _LayerNorm(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'layer_norm',
       'from': source,
@@ -666,7 +574,7 @@ class _LayerNorm(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def layer_norm(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                epsilon: float = NotSpecified,
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -681,7 +589,7 @@ def layer_norm(
   or all axes except batch and time.
   For a more generic variant, see :class:`NormLayer`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param float epsilon:
   :param str|None name:
   """
@@ -691,7 +599,7 @@ def layer_norm(
   return mod(source, name=name)
 
 
-class _Norm(_ConcatInput):
+class _Norm(_Base):
   """
   Normalize over specified axes, e.g. time and/or feature axis.
 
@@ -758,13 +666,14 @@ class _Norm(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axes': axes,
     }
@@ -778,7 +687,7 @@ class _Norm(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def norm(
-         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+         source: LayerRef,
          *,
          axes: Any,
          param_shape: Any = NotSpecified,
@@ -811,7 +720,7 @@ def norm(
   `here <https://stats.stackexchange.com/questions/485550/is-group-norm-with-g-1-equiv-to-layer-norm>`__
   and `here <https://github.com/tensorflow/addons/issues/2143>`__.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|list[str] axes: axes over which the mean and variance are computed, e.g. "F" or "TF"
   :param str|list[str]|tuple[str]|int|list[int]|tuple[int] param_shape: shape of the scale and bias parameters.
     You can also refer to (static) axes of the input, such as the feature-dim.
@@ -833,7 +742,7 @@ def norm(
     name=name)
 
 
-class _MathNorm(_ConcatInput):
+class _MathNorm(_Base):
   """
   Calculates sum(abs(x) ** p) ** (1./p).
   """
@@ -868,13 +777,14 @@ class _MathNorm(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axes': axes,
     }
@@ -888,7 +798,7 @@ class _MathNorm(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def math_norm(
-              source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+              source: LayerRef,
               *,
               p: Union[int, float],
               axes: Any,
@@ -897,7 +807,7 @@ def math_norm(
   """
   Calculates sum(abs(x) ** p) ** (1./p).
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int|float p:
   :param str|list[str] axes:
   :param bool keep_dims:
@@ -913,7 +823,7 @@ def math_norm(
     name=name)
 
 
-class _Slice(_ConcatInput):
+class _Slice(_Base):
   """
   Slicing on the input, i.e. x[start:end:step] in some axis.
   See also :class:`SliceNdLayer`, for variable start.
@@ -967,13 +877,14 @@ class _Slice(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Union[int, str],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -987,7 +898,7 @@ class _Slice(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def slice(
-          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+          source: LayerRef,
           *,
           axis: Union[int, str],
           slice_start: Optional[int] = NotSpecified,
@@ -1012,7 +923,7 @@ def slice(
 
   We just support slicing in a single axis here, with optional striding (slice_step).
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int|str axis:
   :param int|None slice_start:
   :param int|None slice_end:
@@ -1030,7 +941,7 @@ def slice(
     name=name)
 
 
-class _SliceNd(_ConcatInput):
+class _SliceNd(_Base):
   """
   This takes out a slice-range from the time axis,
   e.g. ``x[start:start + size]``.
@@ -1070,7 +981,7 @@ class _SliceNd(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       start: LayerRef,
                       size: Optional[Union[int, LayerRef]],
@@ -1078,6 +989,7 @@ class _SliceNd(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'start': start,
       'size': size,
@@ -1092,7 +1004,7 @@ class _SliceNd(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def slice_nd(
-             source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+             source: LayerRef,
              *,
              start: LayerRef,
              size: Optional[Union[int, LayerRef]],
@@ -1110,7 +1022,7 @@ def slice_nd(
   See also :class:`GatherNdLayer`.
   :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase start: (B,...)
   :param int|LayerBase|None size: if None, it uses the max possible size,
     and it becomes a dynamic axis.
@@ -1127,7 +1039,7 @@ def slice_nd(
     name=name)
 
 
-class _Gather(_ConcatInput):
+class _Gather(_Base):
   """
   Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
   If the input is a layer of the shape ``[B,D,F1]``, and position of shape ``[B,F2]``, this will yield output of the
@@ -1151,7 +1063,7 @@ class _Gather(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       position: Union[LayerRef, int],
                       axis: str,
@@ -1159,6 +1071,7 @@ class _Gather(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'position': position,
       'axis': axis,
@@ -1173,7 +1086,7 @@ class _Gather(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def gather(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            *,
            position: Union[LayerRef, int],
            axis: str,
@@ -1195,7 +1108,7 @@ def gather(
   It provides the same functionality as the deprecated ``GatherNdLayer``, but is more generic.
   See also :class:`GatherNdLayer`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase|int position: Layer containing the indices used to select the slices of the input from.
     If another layer, must be of type ``int32`` or ``int64``.
     Can also specify a constant ``int``.
@@ -1210,7 +1123,7 @@ def gather(
     name=name)
 
 
-class _ScatterNd(_ConcatInput):
+class _ScatterNd(_Base):
   """
   The inverse of :class:`GatherNdLayer`.
   Mostly a wrapper for ``tf.scatter_nd``.
@@ -1272,7 +1185,7 @@ class _ScatterNd(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       position: LayerRef,
                       output_dim_via_time_from: LayerRef,
@@ -1280,6 +1193,7 @@ class _ScatterNd(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'position': position,
       'output_dim_via_time_from': output_dim_via_time_from,
@@ -1294,7 +1208,7 @@ class _ScatterNd(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def scatter_nd(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                position: LayerRef,
                position_axis: Union[str, int],
@@ -1331,7 +1245,7 @@ def scatter_nd(
 
   In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase position: indices into first axis (excluding batch) of the output
   :param str|int position_axis: axis in `position` to replace by the output-dim
   :param LayerBase output_dim_via_time_from: use the time-dim from this layer as the output-dim
@@ -1349,7 +1263,7 @@ def scatter_nd(
     name=name)
 
 
-class Linear(_ConcatInput):
+class Linear(_Base):
   """
   Linear/forward/fully-connected/1x1-conv layer.
   Does a linear transformation on the feature-dimension of the input
@@ -1407,11 +1321,12 @@ class Linear(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'linear',
       'from': source,
@@ -1464,6 +1379,7 @@ class _Length(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -1505,7 +1421,7 @@ def length(
     name=name)
 
 
-class _SoftmaxOverSpatial(_ConcatInput):
+class _SoftmaxOverSpatial(_Base):
   """
   This applies a softmax over spatial axis/axes (currently only time axis supported).
   E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
@@ -1551,7 +1467,7 @@ class _SoftmaxOverSpatial(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Optional[str] = NotSpecified,
                       start: Optional[LayerRef] = NotSpecified,
@@ -1561,6 +1477,7 @@ class _SoftmaxOverSpatial(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
       'start': start,
@@ -1577,7 +1494,7 @@ class _SoftmaxOverSpatial(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def softmax(
-            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+            source: LayerRef,
             *,
             axis: Optional[str] = NotSpecified,
             energy_factor: Optional[float] = NotSpecified,
@@ -1594,7 +1511,7 @@ def softmax(
   In contrast to :class:`SoftmaxLayer`, this will not do a linear transformation.
   See :class:`SeqLenMaskLayer` if you just want to apply a masking.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|None axis: which axis to do the softmax over
   :param float|None energy_factor: the energy will be scaled by this factor.
     This is like a temperature for the softmax.
@@ -1623,7 +1540,7 @@ def softmax(
     name=name)
 
 
-class _SeqLenMask(_ConcatInput):
+class _SeqLenMask(_Base):
   """
   Masks some values away given the seq_len_source with mask_value.
   Also see :class:`SoftmaxOverSpatialLayer`.
@@ -1656,7 +1573,7 @@ class _SeqLenMask(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Union[str, int] = NotSpecified,
                       seq_len_source: Optional[LayerRef] = NotSpecified,
@@ -1667,6 +1584,7 @@ class _SeqLenMask(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
       'seq_len_source': seq_len_source,
@@ -1684,7 +1602,7 @@ class _SeqLenMask(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def seq_len_mask(
-                 source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                 source: LayerRef,
                  *,
                  mask_value: float,
                  axis: Union[str, int] = NotSpecified,
@@ -1698,7 +1616,7 @@ def seq_len_mask(
   Also see :class:`SoftmaxOverSpatialLayer`.
   Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param float mask_value:
   :param str|int axis:
   :param LayerBase|None seq_len_source: if not given, uses source
@@ -1772,6 +1690,7 @@ class _RandInt(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'rand_int',
       'from': source,
@@ -1862,6 +1781,7 @@ class _Range(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'range',
       'from': source,
@@ -1944,6 +1864,7 @@ class _RangeInAxis(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -2037,6 +1958,7 @@ class _RangeFromLength(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'range_from_length',
       'from': source,
@@ -2078,7 +2000,7 @@ def range_from_length(
   return mod(source, name=name)
 
 
-class _BatchSoftmax(_ConcatInput):
+class _BatchSoftmax(_Base):
   """
   Softmax over spacial and feature axis
   """
@@ -2088,11 +2010,12 @@ class _BatchSoftmax(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'batch_softmax',
       'from': source,
@@ -2101,13 +2024,13 @@ class _BatchSoftmax(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def batch_softmax(
-                  source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                  source: LayerRef,
                   *,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Softmax over spacial and feature axis
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|None name:
   """
   mod = _BatchSoftmax()
@@ -2184,7 +2107,7 @@ def constant(
     name=name)
 
 
-class _Window(_ConcatInput):
+class _Window(_Base):
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -2242,7 +2165,7 @@ class _Window(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       *,
                       axis: str = NotSpecified,
@@ -2250,6 +2173,7 @@ class _Window(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
       'axis': axis,
@@ -2264,7 +2188,7 @@ class _Window(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def window(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
            *,
            window_size: int,
@@ -2288,7 +2212,7 @@ def window(
   This is not to take out a window from the time-dimension.
   See :class:`SliceLayer` or :class:`SliceNdLayer`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param int window_size:
   :param int|None window_left:
@@ -2312,7 +2236,7 @@ def window(
     name=name)
 
 
-class _Cumsum(_ConcatInput):
+class _Cumsum(_Base):
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
   """
@@ -2347,7 +2271,7 @@ class _Cumsum(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       *,
                       axis: str = NotSpecified,
@@ -2355,6 +2279,7 @@ class _Cumsum(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
       'axis': axis,
@@ -2369,7 +2294,7 @@ class _Cumsum(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def cumsum(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
            *,
            axis: str = NotSpecified,
@@ -2379,7 +2304,7 @@ def cumsum(
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param str axis: see :func:`Data.get_axis_from_description`
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
@@ -2397,7 +2322,7 @@ def cumsum(
     name=name)
 
 
-class _Pad(_ConcatInput):
+class _Pad(_Base):
   """
   Adds (e.g. zero) padding in some axis or axes.
   """
@@ -2436,13 +2361,14 @@ class _Pad(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axes': axes,
     }
@@ -2456,7 +2382,7 @@ class _Pad(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def pad(
-        source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+        source: LayerRef,
         *,
         axes: Any,
         padding: Any,
@@ -2466,7 +2392,7 @@ def pad(
   """
   Adds (e.g. zero) padding in some axis or axes.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|list[str] axes: e.g. "F" etc. see :func:`Dataset.get_axes_from_description`.
   :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
   :param int|float value: what constant value to pad, with mode=="constant"
@@ -2484,7 +2410,7 @@ def pad(
     name=name)
 
 
-class _MergeDims(_ConcatInput):
+class _MergeDims(_Base):
   """
   Merges a list of axes into a single one. (Flatten the dims.)
   E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
@@ -2528,13 +2454,14 @@ class _MergeDims(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axes: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axes': axes,
     }
@@ -2548,7 +2475,7 @@ class _MergeDims(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def merge_dims(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                axes: Any,
                keep_order: bool = NotSpecified,
@@ -2562,7 +2489,7 @@ def merge_dims(
   When you want to merge batch and time, but remove the padding efficiently, i.e. flatten it,
   see :class:`FlattenBatchLayer`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|list[str]|list[int] axes: see Data.get_axes_from_description(), e.g. "except_time"
   :param bool keep_order: By default (for historical reasons), the axes are sorted, and then merged.
     Thus, the order of incoming axes will influence the result.
@@ -2583,7 +2510,7 @@ def merge_dims(
     name=name)
 
 
-class _Split(_ConcatInput):
+class _Split(_Base):
   """
   Splits one axis into multiple parts, via tf.split.
   self.output is simply the input copied.
@@ -2620,13 +2547,14 @@ class _Split(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Optional[str] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -2640,7 +2568,7 @@ class _Split(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _split(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            *,
            axis: Optional[str] = NotSpecified,
            num_splits: Optional[int] = NotSpecified,
@@ -2651,7 +2579,7 @@ def _split(
   self.output is simply the input copied.
   Each part can be accessed via the sublayers "/%i".
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|None axis: feature axis by default
   :param int|None num_splits:
   :param list[int]|None size_splits:
@@ -2667,7 +2595,7 @@ def _split(
     name=name)
 
 
-class _SplitDims(_ConcatInput):
+class _SplitDims(_Base):
   """
   Splits one axis into multiple axes.
   E.g. if you know that your feature-dim is composed by a window,
@@ -2724,13 +2652,14 @@ class _SplitDims(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: str,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -2744,7 +2673,7 @@ class _SplitDims(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def split_dims(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                axis: str,
                dims: Any,
@@ -2770,7 +2699,7 @@ def split_dims(
   Also see :class:`SplitBatchTimeLayer`.
   Also see :class:`MergeDimsLayer` which can undo this operation.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str axis: e.g. "F"
   :param tuple[int]|list[int] dims: what the axis should be split into. e.g. (window, -1)
   :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
@@ -2790,7 +2719,7 @@ def split_dims(
     name=name)
 
 
-class _SplitBatchTime(_ConcatInput):
+class _SplitBatchTime(_Base):
   """
   A very specific layer which expects to get input of shape (batch * time, ...)
   and converts it into (batch, time, ...), where it recovers the seq-lens from some other layer.
@@ -2802,13 +2731,14 @@ class _SplitBatchTime(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       base: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'base': base,
     }
@@ -2822,7 +2752,7 @@ class _SplitBatchTime(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def split_batch_time(
-                     source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                     source: LayerRef,
                      *,
                      base: LayerRef,
                      name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -2831,7 +2761,7 @@ def split_batch_time(
   and converts it into (batch, time, ...), where it recovers the seq-lens from some other layer.
   See :class:`SplitDimsLayer` for a more generic layer.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase base: used to recover the seq-lens
   :param str|None name:
   """
@@ -2842,7 +2772,7 @@ def split_batch_time(
     name=name)
 
 
-class _FlattenBatch(_ConcatInput):
+class _FlattenBatch(_Base):
   """
   Merges one axis into the batch axis.
   If the axis has dynamic lengths, this would use flattening,
@@ -2878,13 +2808,14 @@ class _FlattenBatch(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -2898,7 +2829,7 @@ class _FlattenBatch(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def flatten_batch(
-                  source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                  source: LayerRef,
                   *,
                   axis: str = NotSpecified,
                   batch_major: bool = NotSpecified,
@@ -2911,7 +2842,7 @@ def flatten_batch(
   See also :class:`MergeDimsLayer`, which does not do flattening,
   i.e. the size stays the same.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str axis:
   :param bool batch_major: if False, will flatten in time-major manner
   :param str|None name:
@@ -2925,7 +2856,7 @@ def flatten_batch(
     name=name)
 
 
-class _UnflattenNd(_ConcatInput):
+class _UnflattenNd(_Base):
   """
   This keeps the batch axis as-is, i.e. the flattening/unflattening did not happen on the batch axis.
 
@@ -2965,7 +2896,7 @@ class _UnflattenNd(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       sizes: LayerRef,
                       declare_same_sizes_as: Optional[Dict[int, LayerRef]] = NotSpecified,
@@ -2973,6 +2904,7 @@ class _UnflattenNd(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'sizes': sizes,
       'declare_same_sizes_as': declare_same_sizes_as,
@@ -2987,7 +2919,7 @@ class _UnflattenNd(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def unflatten_nd(
-                 source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                 source: LayerRef,
                  *,
                  sizes: LayerRef,
                  num_axes: int,
@@ -3005,7 +2937,7 @@ def unflatten_nd(
 
   This basically wraps :func:`returnn.tf.util.basic.unflatten_nd`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase sizes:
   :param int num_axes:
   :param dict[int,LayerBase]|None declare_same_sizes_as:
@@ -3021,7 +2953,7 @@ def unflatten_nd(
     name=name)
 
 
-class _Repeat(_ConcatInput):
+class _Repeat(_Base):
   """
   A wrapper around tf.repeat, but supports an additional batch axis for the durations
   The sum of the repetitions has to be non-zero for each sequence in the batch.
@@ -3034,7 +2966,7 @@ class _Repeat(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       repetitions: Union[LayerRef, int],
                       axis: str = NotSpecified,
@@ -3042,6 +2974,7 @@ class _Repeat(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'repetitions': repetitions,
       'axis': axis,
@@ -3056,7 +2989,7 @@ class _Repeat(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def repeat(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            *,
            repetitions: Union[LayerRef, int],
            axis: str = NotSpecified,
@@ -3067,7 +3000,7 @@ def repeat(
 
   This layer can only be used with Tensorflow 1.15.0 or newer.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase|int repetitions:
     number of repetitions for each sequence and position in target axis.
     Can be [B,T] or [T,B] or some subset of that shape
@@ -3082,7 +3015,7 @@ def repeat(
     name=name)
 
 
-class _Tile(_ConcatInput):
+class _Tile(_Base):
   """
   A wrapper around tf.tile
   """
@@ -3113,11 +3046,12 @@ class _Tile(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'tile',
       'from': source,
@@ -3126,14 +3060,14 @@ class _Tile(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def tile(
-         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+         source: LayerRef,
          *,
          multiples: Dict[str, int],
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A wrapper around tf.tile
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param dict[str, int] multiples: number of multiples per axis (axis provided as str)
   :param str|None name:
   """
@@ -3174,11 +3108,12 @@ class _Cast(_Copy):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'cast',
       'from': source,
@@ -3187,14 +3122,14 @@ class _Cast(_Copy):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def cast(
-         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+         source: LayerRef,
          *,
          dtype: str,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Cast to some other dtype.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str dtype:
   :param str|None name:
   """
@@ -3204,7 +3139,7 @@ def cast(
   return mod(source, name=name)
 
 
-class _ReinterpretData(_ConcatInput):
+class _ReinterpretData(_Base):
   """
   Acts like the :class:`CopyLayer` but reinterprets the role of some axes or data.
   """
@@ -3268,13 +3203,14 @@ class _ReinterpretData(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       size_base: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'size_base': size_base,
     }
@@ -3288,7 +3224,7 @@ class _ReinterpretData(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reinterpret_data(
-                     source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                     source: LayerRef,
                      *,
                      switch_axes: Any = NotSpecified,
                      size_base: Optional[LayerRef] = NotSpecified,
@@ -3303,7 +3239,7 @@ def reinterpret_data(
   """
   Acts like the :class:`CopyLayer` but reinterprets the role of some axes or data.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|list[str] switch_axes: e.g. "bt" to switch batch and time axes
   :param LayerBase|None size_base: copy the size_placeholder from the given layer
   :param dict[str,int|str] set_axes:
@@ -3336,7 +3272,7 @@ def reinterpret_data(
     name=name)
 
 
-class Conv(_ConcatInput):
+class Conv(_Base):
   """
   A generic convolution layer which supports 1D, 2D and 3D convolution.
   Pooling can be done in the separate "pool" layer.
@@ -3430,7 +3366,7 @@ class Conv(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       filter: Optional[LayerRef] = NotSpecified,
                       bias: Optional[LayerRef] = NotSpecified,
@@ -3438,6 +3374,7 @@ class Conv(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'filter': filter,
       'bias': bias,
@@ -3450,7 +3387,7 @@ class Conv(_ConcatInput):
       **self.get_opts()}
 
 
-class _Pool(_ConcatInput):
+class _Pool(_Base):
   """
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
@@ -3502,11 +3439,12 @@ class _Pool(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'pool',
       'from': source,
@@ -3515,7 +3453,7 @@ class _Pool(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def pool(
-         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+         source: LayerRef,
          *,
          mode: str,
          pool_size: Tuple[int],
@@ -3528,7 +3466,7 @@ def pool(
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str mode: "max" or "avg"
   :param tuple[int] pool_size: shape of the window of each reduce
   :param str padding: "valid" or "same"
@@ -3548,7 +3486,7 @@ def pool(
   return mod(source, name=name)
 
 
-class _Dct(_ConcatInput):
+class _Dct(_Base):
   """
   Layer to perform DCT
   Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
@@ -3589,11 +3527,12 @@ class _Dct(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'dct',
       'from': source,
@@ -3602,7 +3541,7 @@ class _Dct(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dct(
-        source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+        source: LayerRef,
         *,
         type: int = NotSpecified,
         n: Optional[int] = NotSpecified,
@@ -3613,7 +3552,7 @@ def dct(
   Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
   https://www.tensorflow.org/api_docs/python/tf/signal/dct
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int type: DCT type to perform. Must be 1, 2, 3, or 4
   :param int|None n: length of the transform
   :param str|None norm: normalization to apply. Must be None or "ortho"
@@ -3627,7 +3566,7 @@ def dct(
   return mod(source, name=name)
 
 
-class TransposedConv(_ConcatInput):
+class TransposedConv(_Base):
   """
   Transposed convolution, sometimes also called deconvolution.
   See :func:`tf.nn.conv2d_transpose` (currently we support 1D/2D).
@@ -3700,7 +3639,7 @@ class TransposedConv(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       filter: Optional[LayerRef] = NotSpecified,
                       bias: Optional[LayerRef] = NotSpecified,
@@ -3708,6 +3647,7 @@ class TransposedConv(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'filter': filter,
       'bias': bias,
@@ -3720,7 +3660,7 @@ class TransposedConv(_ConcatInput):
       **self.get_opts()}
 
 
-class _Reduce(_ConcatInput):
+class _Reduce(_Base):
   """
   This reduces some axis by using "sum" or "max".
   It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
@@ -3768,7 +3708,7 @@ class _Reduce(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axes: Any = NotSpecified,
                       axis: Any = NotSpecified,
@@ -3776,6 +3716,7 @@ class _Reduce(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axes': axes,
       'axis': axis,
@@ -3790,7 +3731,7 @@ class _Reduce(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reduce(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            *,
            mode: str,
            axes: Any = NotSpecified,
@@ -3803,7 +3744,7 @@ def reduce(
   This reduces some axis by using "sum" or "max".
   It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
   :param int|list[int]|str axes: One axis or multiple axis to reduce.
     It accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature",
@@ -3832,7 +3773,7 @@ def reduce(
     name=name)
 
 
-class _ReduceOut(_ConcatInput):
+class _ReduceOut(_Base):
   """
   Combination of :class:`SplitDimsLayer` applied to the feature dim
   and :class:`ReduceLayer` applied to the resulting feature dim.
@@ -3869,11 +3810,12 @@ class _ReduceOut(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'reduce_out',
       'from': source,
@@ -3882,7 +3824,7 @@ class _ReduceOut(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reduce_out(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                mode: str,
                num_pieces: int,
@@ -3892,7 +3834,7 @@ def reduce_out(
   and :class:`ReduceLayer` applied to the resulting feature dim.
   This can e.g. be used to do maxout.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str mode: "sum" or "max" or "mean"
   :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
   :param str|None name:
@@ -3904,7 +3846,7 @@ def reduce_out(
   return mod(source, name=name)
 
 
-class _Squeeze(_ConcatInput):
+class _Squeeze(_Base):
   """
   Removes an axis with dimension 1.
   This is basically a wrapper around tf.squeeze.
@@ -3940,13 +3882,14 @@ class _Squeeze(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Any,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -3960,7 +3903,7 @@ class _Squeeze(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def squeeze(
-            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+            source: LayerRef,
             *,
             axis: Any,
             enforce_batch_dim_axis: Optional[int] = NotSpecified,
@@ -3970,7 +3913,7 @@ def squeeze(
   Removes an axis with dimension 1.
   This is basically a wrapper around tf.squeeze.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int|list[int]|str axis: one axis or multiple axis to squeeze.
     this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
     it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
@@ -4001,13 +3944,14 @@ class _Stack(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: Union[List[LayerRef], Tuple[LayerRef]],
                       *,
                       axis: Optional[int] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
     args = {
       'axis': axis,
     }
@@ -4021,7 +3965,7 @@ class _Stack(_Base):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def stack(
-          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+          source: Union[List[LayerRef], Tuple[LayerRef]],
           *,
           axis: Optional[int] = NotSpecified,
           name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -4031,7 +3975,7 @@ def stack(
 
   For concatenation (in feature dimension), see :class:`CopyLayer`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param list[LayerRef]|tuple[LayerRef] source:
   :param int|None axis: new axis.
     If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
     i.e. some reasonable default for a new spatial axis.
@@ -4044,7 +3988,7 @@ def stack(
     name=name)
 
 
-class _PrefixInTime(_ConcatInput):
+class _PrefixInTime(_Base):
   """
   Adds some prefix in time dimension.
   This is kind of the reverse of :class:`SliceNdLayer` does.
@@ -4076,7 +4020,7 @@ class _PrefixInTime(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       repeat: Union[int, LayerRef] = NotSpecified,
                       size_base: Optional[LayerRef] = NotSpecified,
@@ -4084,6 +4028,7 @@ class _PrefixInTime(_ConcatInput):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'repeat': repeat,
       'size_base': size_base,
@@ -4098,7 +4043,7 @@ class _PrefixInTime(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def prefix_in_time(
-                   source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                   source: LayerRef,
                    *,
                    prefix: Union[float, str] = NotSpecified,
                    repeat: Union[int, LayerRef] = NotSpecified,
@@ -4108,7 +4053,7 @@ def prefix_in_time(
   Adds some prefix in time dimension.
   This is kind of the reverse of :class:`SliceNdLayer` does.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param float|str prefix: either some constant or another layer
   :param int|LayerBase repeat: how often to repeat the postfix
   :param LayerBase|None size_base: copy seq-lens from here
@@ -4124,7 +4069,7 @@ def prefix_in_time(
     name=name)
 
 
-class _PostfixInTime(_ConcatInput):
+class _PostfixInTime(_Base):
   """
   Adds some postfix in time dimension.
   """
@@ -4155,13 +4100,14 @@ class _PostfixInTime(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       postfix: Union[float, int, LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'postfix': postfix,
     }
@@ -4175,7 +4121,7 @@ class _PostfixInTime(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def postfix_in_time(
-                    source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                    source: LayerRef,
                     *,
                     postfix: Union[float, int, LayerRef] = NotSpecified,
                     repeat: int = NotSpecified,
@@ -4183,7 +4129,7 @@ def postfix_in_time(
   """
   Adds some postfix in time dimension.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param float|int|LayerBase postfix: constant or other layer without time axis to use as postfix
   :param int repeat: how often to repeat the postfix
   :param str|None name:
@@ -4197,7 +4143,7 @@ def postfix_in_time(
     name=name)
 
 
-class _TimeChunking(_ConcatInput):
+class _TimeChunking(_Base):
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
   """
@@ -4232,11 +4178,12 @@ class _TimeChunking(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'time_chunking',
       'from': source,
@@ -4245,7 +4192,7 @@ class _TimeChunking(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def time_chunking(
-                  source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                  source: LayerRef,
                   *,
                   chunk_size: int,
                   chunk_step: int,
@@ -4253,7 +4200,7 @@ def time_chunking(
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int chunk_size:
   :param int chunk_step:
   :param str|None name:
@@ -4265,7 +4212,7 @@ def time_chunking(
   return mod(source, name=name)
 
 
-class _TimeUnChunking(_ConcatInput):
+class _TimeUnChunking(_Base):
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
   """
@@ -4275,13 +4222,14 @@ class _TimeUnChunking(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       chunking_layer: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'chunking_layer': chunking_layer,
     }
@@ -4295,14 +4243,14 @@ class _TimeUnChunking(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def time_un_chunking(
-                     source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                     source: LayerRef,
                      *,
                      chunking_layer: LayerRef,
                      name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param TimeChunkingLayer chunking_layer:
   :param str|None name:
   """
@@ -4370,11 +4318,12 @@ class _Dot(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: LayerRef,
+                      source: Union[List[LayerRef], Tuple[LayerRef]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
     return {
       'class': 'dot',
       'from': source,
@@ -4383,7 +4332,7 @@ class _Dot(_Base):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dot(
-        source: LayerRef,
+        source: Union[List[LayerRef], Tuple[LayerRef]],
         *,
         red1: Any = NotSpecified,
         red2: Any = NotSpecified,
@@ -4401,7 +4350,7 @@ def dot(
   The var-dims don't need to exist.
   All other axes (shared...) are expected to match.
 
-  :param LayerRef source:
+  :param list[LayerRef]|tuple[LayerRef] source:
   :param str|int|tuple[str|int]|list[str|int] red1: reduce axes of first source
   :param str|int|tuple[str|int]|list[str|int] red2: reduce axes of second source
   :param str|int|tuple[str|int]|list[str|int]|None var1: var axes of first source
@@ -4421,7 +4370,7 @@ def dot(
   return mod(source, name=name)
 
 
-class _ShiftAxis(_ConcatInput):
+class _ShiftAxis(_Base):
   """
   Shifts the dimensions in an axis around.
   This layer may change the axis-dimension.
@@ -4464,13 +4413,14 @@ class _ShiftAxis(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Union[str, int],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -4484,7 +4434,7 @@ class _ShiftAxis(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def shift_axis(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                *,
                axis: Union[str, int],
                amount: int,
@@ -4497,7 +4447,7 @@ def shift_axis(
 
   This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str|int axis: single axis to shift
   :param int amount: number of elements to shift
                  (<0 for left-shift, >0 for right-shift)
@@ -4516,7 +4466,7 @@ def shift_axis(
     name=name)
 
 
-class _Resize(_ConcatInput):
+class _Resize(_Base):
   """
   Resizes the input, i.e. upsampling or downsampling.
   Supports different kinds, such as linear interpolation or nearest-neighbor.
@@ -4560,13 +4510,14 @@ class _Resize(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       axis: Union[str, int],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -4580,7 +4531,7 @@ class _Resize(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def resize(
-           source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+           source: LayerRef,
            *,
            factor: int,
            axis: Union[str, int],
@@ -4592,7 +4543,7 @@ def resize(
   Resizes the input, i.e. upsampling or downsampling.
   Supports different kinds, such as linear interpolation or nearest-neighbor.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int factor:
   :param str|int axis: the axis to resize, counted with batch-dim. can also be "T" for time
   :param str kind: "linear", "nn"/"nearest_neighbor", "cubic", "fill"
@@ -4651,6 +4602,7 @@ class _Remove(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'remove',
       'from': source,
@@ -4736,11 +4688,12 @@ class _Combine(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: Union[List[LayerRef], Tuple[LayerRef]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
     return {
       'class': 'combine',
       'from': source,
@@ -4749,7 +4702,7 @@ class _Combine(_Base):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _combine(
-             source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+             source: Union[List[LayerRef], Tuple[LayerRef]],
              *,
              kind: str,
              activation: Optional[str] = NotSpecified,
@@ -4766,7 +4719,7 @@ def _combine(
   Its basic working is similar to the `reduce` function used in functional programming.
   Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param list[LayerRef]|tuple[LayerRef] source:
   :param str kind:
     currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `logical_and`, `logical_or`, or `eval`
   :param str|None activation: if provided, activation function to apply, e.g. "tanh" or "relu"
@@ -4831,6 +4784,9 @@ class _Eval(_Combine):
     """
     Make layer dict
     """
+    assert (
+      isinstance(source, LayerRef) or
+      (isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)))
     return {
       'class': 'eval',
       'from': source,
@@ -4929,11 +4885,12 @@ class _Compare(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: Union[List[LayerRef], Tuple[LayerRef]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
     return {
       'class': 'compare',
       'from': source,
@@ -4942,7 +4899,7 @@ class _Compare(_Base):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def compare(
-            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+            source: Union[List[LayerRef], Tuple[LayerRef]],
             *,
             kind: str = NotSpecified,
             value: Optional[Union[float, int]] = NotSpecified,
@@ -4969,7 +4926,7 @@ def compare(
       }, "target": "classes0"}
 
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param list[LayerRef]|tuple[LayerRef] source:
   :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
     or other supported TF comparison ops
   :param float|int|None value: if specified, will also compare to this
@@ -5102,6 +5059,7 @@ class _SearchSorted(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'sorted_sequence': sorted_sequence,
       'values': values,
@@ -5245,7 +5203,7 @@ def variable(
     name=name)
 
 
-class _ForcedAlignment(_ConcatInput):
+class _ForcedAlignment(_Base):
   """
   Calculates a forced alignment, via Viterbi algorithm.
   """
@@ -5280,13 +5238,14 @@ class _ForcedAlignment(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       align_target: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'align_target': align_target,
     }
@@ -5300,7 +5259,7 @@ class _ForcedAlignment(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def forced_alignment(
-                     source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                     source: LayerRef,
                      *,
                      align_target: LayerRef,
                      topology: str,
@@ -5309,7 +5268,7 @@ def forced_alignment(
   """
   Calculates a forced alignment, via Viterbi algorithm.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase align_target:
   :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
   :param str input_type: "log_prob" or "prob"
@@ -5325,7 +5284,7 @@ def forced_alignment(
     name=name)
 
 
-class _FastBaumWelch(_ConcatInput):
+class _FastBaumWelch(_Base):
   """
   Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
   We expect that our input are +log scores, e.g. use log-softmax.
@@ -5385,13 +5344,14 @@ class _FastBaumWelch(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       staircase_seq_len_source: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'staircase_seq_len_source': staircase_seq_len_source,
     }
@@ -5405,7 +5365,7 @@ class _FastBaumWelch(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def fast_baum_welch(
-                    source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                    source: LayerRef,
                     *,
                     align_target: str,
                     align_target_key: Optional[str] = NotSpecified,
@@ -5421,7 +5381,7 @@ def fast_baum_welch(
   Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
   We expect that our input are +log scores, e.g. use log-softmax.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param str align_target: e.g. "sprint" or "staircase"
   :param str|None align_target_key: e.g. "classes", used for e.g. align_target "ctc"
   :param dict[str] ctc_opts: used for align_target "ctc"
@@ -5449,7 +5409,7 @@ def fast_baum_welch(
     name=name)
 
 
-class _SyntheticGradient(_ConcatInput):
+class _SyntheticGradient(_Base):
   """
   This is a generalized way to be able to replace the true gradient with any kind of predicted gradient.
   This enabled to implement the idea from here:
@@ -5482,13 +5442,14 @@ class _SyntheticGradient(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       gradient: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'gradient': gradient,
     }
@@ -5502,7 +5463,7 @@ class _SyntheticGradient(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def synthetic_gradient(
-                       source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                       source: LayerRef,
                        *,
                        gradient: LayerRef,
                        meta_loss_scale: float = NotSpecified,
@@ -5512,7 +5473,7 @@ def synthetic_gradient(
   This enabled to implement the idea from here:
     Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerBase gradient:
   :param float meta_loss_scale:
   :param str|None name:
@@ -5557,11 +5518,12 @@ class _TikhonovRegularization(_Copy):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'tikhonov_regularization',
       'from': source,
@@ -5570,14 +5532,14 @@ class _TikhonovRegularization(_Copy):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def tikhonov_regularization(
-                            source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                            source: LayerRef,
                             *,
                             meta_loss_scale: float = NotSpecified,
                             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds the Tikhonov regularization as a meta-loss (see :class:`returnn.tf.util.basic.MetaLosses`).
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param float meta_loss_scale:
   :param str|None name:
   """
@@ -5627,6 +5589,7 @@ class _Print(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'print',
       'from': source,
@@ -5719,6 +5682,7 @@ class _HDFDump(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'extra': extra,
     }
@@ -5776,7 +5740,7 @@ def hdf_dump(
     name=name)
 
 
-class Rec(_ConcatInput):
+class Rec(_Base):
   """
   Recurrent layer, has support for several implementations of LSTMs (via ``unit`` argument),
   see :ref:`tf_lstm_benchmark` (https://returnn.readthedocs.io/en/latest/tf_lstm_benchmark.html),
@@ -5926,12 +5890,13 @@ class Rec(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]] = (),
+                      source: LayerRef = (),
                       state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
     }
@@ -5987,6 +5952,7 @@ class _GetLastHiddenState(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'get_last_hidden_state',
       'from': source,
@@ -6047,6 +6013,7 @@ class _RecUnstack(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'axis': axis,
     }
@@ -6240,6 +6207,7 @@ class _Choice(_BaseChoice):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'target': target,
       'explicit_search_sources': explicit_search_sources,
@@ -6385,6 +6353,7 @@ class _Decide(_BaseChoice):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'decide',
       'from': source,
@@ -6441,6 +6410,7 @@ class _ChoiceGetBeamScores(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'choice_get_beam_scores',
       'from': source,
@@ -6484,6 +6454,7 @@ class _ChoiceGetSrcBeams(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'choice_get_src_beams',
       'from': source,
@@ -6506,7 +6477,7 @@ def choice_get_src_beams(
   return mod(source, name=name)
 
 
-class _PositionalEncoding(_ConcatInput):
+class _PositionalEncoding(_Base):
   """
   Provides positional encoding in the form of (batch, time, n_out) or (time, batch, n_out)
   where n_out is the number of channels, if it is run outside a :class:`RecLayer`,
@@ -6554,13 +6525,14 @@ class _PositionalEncoding(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       *,
                       offset: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'offset': offset,
     }
@@ -6574,7 +6546,7 @@ class _PositionalEncoding(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def positional_encoding(
-                        source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                        source: LayerRef,
                         *,
                         n_out: int,
                         add_to_input: bool = NotSpecified,
@@ -6593,7 +6565,7 @@ def positional_encoding(
   The positional encoding is the same as in Tensor2Tensor.
   See :func:`returnn.tf.util.basic.get_positional_encoding`.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param int n_out: output dimension
   :param bool add_to_input: will add the signal to the input
   :param int constant: if positive, always output the corresponding positional encoding.
@@ -6611,7 +6583,7 @@ def positional_encoding(
     name=name)
 
 
-class _KenLmState(_ConcatInput):
+class _KenLmState(_Base):
   """
   Get next word (or subword) each frame,
   accumulates string,
@@ -6671,12 +6643,13 @@ class _KenLmState(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
     }
@@ -6690,7 +6663,7 @@ class _KenLmState(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def ken_lm_state(
-                 source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                 source: LayerRef,
                  state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                  *,
                  lm_file: Any,
@@ -6709,7 +6682,7 @@ def ken_lm_state(
   using KenLM (https://kheafield.com/code/kenlm/) (see :mod:`TFKenLM`).
   EOS (</s>) token must be used explicitly.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
   :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
@@ -6781,6 +6754,7 @@ class _EditDistanceTable(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
     }
@@ -6874,6 +6848,7 @@ class _OptimalCompletions(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'optimal_completions',
       'from': source,
@@ -6939,6 +6914,7 @@ class _Unmask(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
       'mask': mask,
@@ -7040,6 +7016,7 @@ class TwoDLSTM(_Base):
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
     }
@@ -7051,7 +7028,7 @@ class TwoDLSTM(_Base):
       **self.get_opts()}
 
 
-class RelativePositionalEncoding(_ConcatInput):
+class RelativePositionalEncoding(_Base):
   """
   Relative positioning term as introduced by Shaw et al., 2018
 
@@ -7112,18 +7089,19 @@ class RelativePositionalEncoding(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     return {
       'class': 'relative_positional_encoding',
       'from': source,
       **self.get_opts()}
 
 
-class _CumConcat(_ConcatInput):
+class _CumConcat(_Base):
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
@@ -7194,12 +7172,13 @@ class _CumConcat(_ConcatInput):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+                      source: LayerRef,
                       state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
+    assert isinstance(source, LayerRef)
     args = {
       'initial_state': state,
     }
@@ -7213,7 +7192,7 @@ class _CumConcat(_ConcatInput):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def cum_concat(
-               source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+               source: LayerRef,
                state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                *,
                new_dim: DimensionTag,
@@ -7261,7 +7240,7 @@ def cum_concat(
   This way following layers use different seq lengths of `new_dim` for different loop frames,
   just like if the `T` dim would actually exist.
 
-  :param LayerRef|list[LayerRef]|tuple[LayerRef] source:
+  :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param DimensionTag new_dim:
   :param str|None name:

@@ -36,6 +36,9 @@ _out_filename = f"{_my_dir}/_generated_layers.py"
 # If you think some of these are needed, or you are unsure how to get the corresponding functionality,
 # please open an issue.
 BlacklistLayerClassNames = {
+  "_ConcatInputLayer",  # we don't do automatic concat, https://github.com/rwth-i6/returnn_common/issues/41
+  "DropoutLayer",  # we do that manually
+
   "RecStepInfoLayer",
   "_TemplateLayer",
   "cond", "masked_computation", "subnetwork",
@@ -108,10 +111,8 @@ def setup():
     sig = LayerSignature(layer_class, signatures)
     signatures[layer_class] = sig
     cls_str = get_module_class_name_for_layer_class(sig)
-    cls_base = layer_class.__base__
-    if issubclass(cls_base, LayerBase):
-      assert cls_base in signatures
-      cls_base_str = get_module_class_name_for_layer_class(signatures[cls_base])
+    if layer_class != LayerBase:
+      cls_base_str = get_module_class_name_for_layer_class(sig.derived_layer())
     else:
       cls_base_str = "_ReturnnWrappedLayerBase"
 
@@ -192,6 +193,19 @@ def setup():
       else:
         print("  def make_layer_dict(self) -> LayerDictRaw:", file=f)
       print(format_multi_line_str("Make layer dict", indent="    "), file=f)
+      if sig.has_source_param():
+        if sig.need_multiple_sources():
+          print(
+            "    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)",
+            file=f)
+        elif sig.support_multiple_sources():
+          print(
+            "    assert (\n"
+            "      isinstance(source, LayerRef) or\n"
+            "      (isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)))",
+            file=f)
+        else:
+          print("    assert isinstance(source, LayerRef)", file=f)
       if sig.has_module_call_args() or sig.has_recurrent_state():
         print("    args = {", file=f)
         if sig.has_recurrent_state():
@@ -318,8 +332,22 @@ class LayerSignature:
   def support_multiple_sources(self) -> bool:
     """
     Whether "from" supports multiple sources (list of layers).
+    When :func:`need_multiple_sources` returns true, this ofc also implies that it supports it,
+    and we do not necessarily list all those cases here.
     """
-    if issubclass(self.layer_class, (_ConcatInputLayer, CombineLayer, CompareLayer, StackLayer)):
+    if issubclass(self.layer_class, (CombineLayer, CompareLayer, StackLayer)):
+      return True
+    return False
+
+  def need_multiple_sources(self) -> bool:
+    """
+    Whether "from" needs multiple sources (list of layers).
+    """
+    if self.layer_class.layer_class == "eval":
+      return False
+    if issubclass(self.layer_class, (CombineLayer, CompareLayer, StackLayer)):
+      return True
+    if self.layer_class.layer_class in {"dot"}:
       return True
     return False
 
@@ -338,7 +366,9 @@ class LayerSignature:
     """
     assert self.has_source_param()
     s = "source: "
-    if self.support_multiple_sources():
+    if self.need_multiple_sources():
+      s += "Union[List[LayerRef], Tuple[LayerRef]]"
+    elif self.support_multiple_sources():
       s += "Union[LayerRef, List[LayerRef], Tuple[LayerRef]]"
     else:
       s += "LayerRef"
@@ -352,7 +382,9 @@ class LayerSignature:
     Code for docstring of `source` param
     """
     s = ":param "
-    if self.support_multiple_sources():
+    if self.need_multiple_sources():
+      s += "list[LayerRef]|tuple[LayerRef]"
+    elif self.support_multiple_sources():
       s += "LayerRef|list[LayerRef]|tuple[LayerRef]"
     else:
       s += "LayerRef"
@@ -414,9 +446,8 @@ class LayerSignature:
         break
       if sig.layer_class.__base__ in stop_bases:
         break
-      assert sig.layer_class.__base__ in self.others
       blacklist.update(sig._defined_base_params)
-      sig = self.others[sig.layer_class.__base__]
+      sig = sig.derived_layer()
     return ls
 
   def get_module_call_args(self) -> List[Param]:
@@ -678,6 +709,8 @@ class LayerSignature:
     """
     cls_base = self.layer_class.__base__
     if issubclass(cls_base, LayerBase):
+      if cls_base.__name__ in BlacklistLayerClassNames or cls_base.layer_class in BlacklistLayerClassNames:
+        return self.others[LayerBase]
       return self.others[cls_base]
     return None
 
