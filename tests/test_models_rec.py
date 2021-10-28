@@ -23,7 +23,7 @@ def test_rec_ff():
       # https://github.com/rwth-i6/returnn_common/issues/16
       with Loop() as loop:
         x_ = loop.unstack(x, axis="T")
-        loop.state.h = self.rec_linear([x_, loop.state.h])
+        loop.state.h = self.rec_linear(concat(x_, loop.state.h))
         y = loop.stack(loop.state.h)
       return y
 

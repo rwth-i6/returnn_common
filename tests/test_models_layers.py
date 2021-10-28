@@ -182,12 +182,14 @@ def test_explicit_root_ctx_sub():
     # noinspection PyShadowingNames
     def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
       super().__init__()
-      self.linear = Linear(n_out=n_out, l2=l2, dropout=dropout, with_bias=False, activation=None)
+      self.linear = Linear(n_out=n_out, l2=l2)
+      self.dropout = dropout
 
     def forward(self, x: LayerRef) -> LayerRef:
       """
       forward
       """
+      x = dropout(x, self.dropout, name="pre")
       x = self.linear(x)
       return x
 
@@ -206,6 +208,10 @@ def test_explicit_root_ctx_sub():
   assert "linear" in sub_net_dict
   lin_layer_dict = sub_net_dict["linear"]
   assert_equal(lin_layer_dict["class"], "linear")
+  assert_equal(lin_layer_dict["from"], "pre")
+  assert "pre" in sub_net_dict
+  lin_layer_dict = sub_net_dict["pre"]
+  assert_equal(lin_layer_dict["class"], "dropout")
   assert_equal(lin_layer_dict["from"], "base:data:data")
   dummy_run_net(net_dict)
 
@@ -218,12 +224,14 @@ def test_root_mod_call_twice():
     # noinspection PyShadowingNames
     def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
       super().__init__()
-      self.linear = Linear(n_out=n_out, l2=l2, dropout=dropout, with_bias=False, activation=None)
+      self.linear = Linear(n_out=n_out, l2=l2)
+      self.dropout = dropout
 
     def forward(self, x: LayerRef) -> LayerRef:
       """
       forward
       """
+      x = dropout(x, self.dropout)
       x = self.linear(x)
       return x
 
