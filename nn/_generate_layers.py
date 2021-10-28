@@ -826,7 +826,7 @@ def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
   name = name[:-len("Layer")]
   if name.startswith("_"):
     return name
-  if layer_class.layer_class in LayersHidden:
+  if layer_class.layer_class in LayersHidden or sig.is_functional():
     return "_" + name  # we make a public function for it, but the module is hidden
   return name
 
