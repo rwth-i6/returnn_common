@@ -3,7 +3,7 @@ container functions
 """
 
 from __future__ import annotations
-from .base import Module, ILayerMaker, LayerRef
+from .base import Module, ILayerMaker, LayerRef, Layer
 from typing import Iterable, Iterator, Union, Dict, Callable
 
 
@@ -79,6 +79,13 @@ class Sequential(ModuleList):
     for module in self:
       inp = module(inp)
     return inp
+
+
+def sequential(source: LayerRef, *modules) -> Layer:
+  """
+  Wraps ``Sequential(*modules)(source)``
+  """
+  return Sequential(*modules)(source)
 
 
 def _convert_to_maker(obj: _ModT) -> ILayerMaker:
