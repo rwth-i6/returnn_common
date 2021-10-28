@@ -6,5 +6,6 @@ from .base import *
 from ._generated_layers import *
 from .math_ import *
 from .array_ import *
+from .utils import *
 from .rec import *
 from .container import *
