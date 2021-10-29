@@ -289,9 +289,9 @@ class ILayerMaker:
     """
     raise NotImplementedError
 
-  def get_canonical_name(self) -> str:
+  def get_default_name(self) -> str:
     """
-    Get a canonical layer name if we do not have a Module attribute.
+    Get a default layer name (used when we do not have a Module attribute pointing to this).
     """
     name = self.__class__.__name__
     if name.startswith("_"):
@@ -1088,7 +1088,7 @@ class NameCtx:
       if call.name_ctx.parent is self.parent:
         return call.name_ctx.name
     # Fallback to the canonical name.
-    return self.maker.get_canonical_name()
+    return self.maker.get_default_name()
 
   def _get_unique_name(self, suggested_name: Optional[str] = None) -> str:
     name = suggested_name or self._get_suggested_name()
