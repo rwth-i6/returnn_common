@@ -472,7 +472,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
     name_ctx.is_repeated_call = True
     if name_ctx.parent and name_ctx.parent.is_repeated_call:
       pass  # do nothing, parent will already set reuse_params
-    else:
+    elif name_ctx.maker.has_variables:  # param sharing only needed if there are actual variables
       layer_dict = layer_dict.copy()
       assert "reuse_params" not in layer_dict
       layer_dict["reuse_params"] = name_ctx.maker.calls[0].get_name()
