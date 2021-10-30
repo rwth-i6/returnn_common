@@ -129,26 +129,6 @@ def test_simple_net_lstm():
   dummy_run_net(net_dict)
 
 
-def test_simple_net_explicit_root_ctx():
-  lstm = Lstm(n_out=13)
-
-  with NameCtx.new_root() as name_ctx:
-    out, _ = lstm(get_extern_data("data"))
-    assert isinstance(out, Layer)
-    assert_equal(out.get_name(), "lstm")
-
-    name_ctx.make_default_output(out)
-    net_dict = name_ctx.make_net_dict()
-    pprint(net_dict)
-
-  assert "lstm" in net_dict
-  lstm_layer_dict = net_dict["lstm"]
-  assert_equal(lstm_layer_dict["class"], "rec")
-  assert_equal(lstm_layer_dict["unit"], "nativelstm2")
-  assert_equal(lstm_layer_dict["from"], "data:data")
-  dummy_run_net(net_dict)
-
-
 def test_simple_net_share_params():
   class _Net(Module):
     def __init__(self):
@@ -170,7 +150,7 @@ def test_simple_net_share_params():
   pprint(net_dict)
   assert "lstm" in net_dict
   assert "lstm_0" in net_dict
-  assert_equal(net_dict["lstm_0"]["reuse_params"], "lstm")
+  assert_equal(net_dict["lstm_0"]["name_scope"], "lstm")
   dummy_run_net(net_dict)
 
 
@@ -195,24 +175,21 @@ def test_explicit_root_ctx_sub():
 
   with NameCtx.new_root() as name_ctx:
     net = Net()
-    out = net(get_extern_data("data"))
+    out = net(get_extern_data("data"), name=name_ctx)
     assert isinstance(out, Layer)
-    assert_equal(out.get_name(), "net")
 
     name_ctx.make_default_output(out)
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
-  assert "net" in net_dict
-  sub_net_dict = net_dict["net"]["subnetwork"]
-  assert "linear" in sub_net_dict
-  lin_layer_dict = sub_net_dict["linear"]
+  assert "linear" in net_dict
+  lin_layer_dict = net_dict["linear"]
   assert_equal(lin_layer_dict["class"], "linear")
   assert_equal(lin_layer_dict["from"], "pre")
-  assert "pre" in sub_net_dict
-  lin_layer_dict = sub_net_dict["pre"]
+  assert "pre" in net_dict
+  lin_layer_dict = net_dict["pre"]
   assert_equal(lin_layer_dict["class"], "dropout")
-  assert_equal(lin_layer_dict["from"], "base:data:data")
+  assert_equal(lin_layer_dict["from"], "data:data")
   dummy_run_net(net_dict)
 
 
@@ -237,21 +214,19 @@ def test_root_mod_call_twice():
 
   with NameCtx.new_root() as name_ctx:
     test_block = TestBlock()
-    y = test_block(get_extern_data("input1"))
+    y = test_block(get_extern_data("input1"), name=name_ctx)
     z = test_block(get_extern_data("input2"))
 
     print(y)
     assert isinstance(y, LayerRef)
-    assert_equal(y.get_name(), "test_block")
     print(z)
     assert isinstance(z, LayerRef)
-    assert_equal(z.get_name(), "test_block_0")
 
     net_dict = name_ctx.make_net_dict()
     pprint(net_dict)
 
-  assert "test_block" in net_dict and "test_block_0" in net_dict
-  assert_equal(net_dict["test_block_0"]["reuse_params"], "test_block")
+  assert "linear" in net_dict and "test_block" in net_dict
+  assert_equal(net_dict["test_block"]["name_scope"], "")
 
 
 def test_multiple_returns_depth_1():

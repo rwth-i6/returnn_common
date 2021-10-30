@@ -88,13 +88,13 @@ class LayerRef:
 
   def get_name(self) -> str:
     """
-    Return layer name, valid in the current active name context.
+    :return: RETURNN layer name, valid in the current active name context.
     """
     return self.name_ctx.get_name_in_current_ctx()
 
   def get_abs_name(self) -> str:
     """
-    Return absolute layer name starting from root context.
+    :return: absolute RETURNN layer name starting from root context.
     """
     return self.name_ctx.get_abs_name()
 
@@ -268,13 +268,14 @@ class ILayerMaker:
   see :class:`Module`.
   """
   has_variables: bool = True
+  layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
 
   def __init__(self):
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
     # Also note that the current code does not clean this up when you do delattr later or so.
     self._parents = {}  # type: Dict[Tuple[ILayerMaker, str], None]  # (parent,attrib) -> None
-    self.calls = []  # type: List[Layer]
+    self.calls = []  # type: List[NameCtx]
 
   def __repr__(self):
     return f"<{self.__class__.__name__}>"
@@ -467,18 +468,35 @@ def make_layer(layer_dict: LayerDictRaw, *,
   layer_dict = nest.map_structure(
     lambda x: x.get_name() if isinstance(x, LayerRef) else x,
     layer_dict)
+  layer_dict = layer_dict.copy()
+
+  if name_ctx.maker and name_ctx.maker.has_variables:
+    # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
+    # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
+    if name_ctx.is_root:
+      pass  # nothing to do
+    else:
+      # The parent name ctx RETURNN layer will also have the right name_scope set,
+      # so this layers name scope default is simply based on that.
+      layer_abs_name_scope_parent = name_ctx.parent.layer_abs_name_scope
+      if layer_abs_name_scope_parent:
+        layer_abs_name_scope_parent += "/"
+      layer_abs_name_scope_default = layer_abs_name_scope_parent + name_ctx.name
+      if layer_abs_name_scope_default != name_ctx.layer_abs_name_scope:  # default does not match what we require
+        assert "name_scope" not in layer_dict
+        if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope:
+          layer_dict["name_scope"] = ""
+        elif name_ctx.layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
+          layer_dict["name_scope"] = name_ctx.layer_abs_name_scope[len(layer_abs_name_scope_parent):]
+        else:  # must use absolute
+          layer_dict["name_scope"] = "/" + name_ctx.layer_abs_name_scope
+
   name_ctx.is_subnet_ctx = False
   if name_ctx.maker and name_ctx.maker.calls:
     name_ctx.is_repeated_call = True
-    if name_ctx.parent and name_ctx.parent.is_repeated_call:
-      pass  # do nothing, parent will already set reuse_params
-    elif name_ctx.maker.has_variables:  # param sharing only needed if there are actual variables
-      layer_dict = layer_dict.copy()
-      assert "reuse_params" not in layer_dict
-      layer_dict["reuse_params"] = name_ctx.maker.calls[0].get_name()
   layer = Layer(layer_dict=layer_dict)
   if name_ctx.maker:
-    name_ctx.maker.calls.append(layer)
+    name_ctx.maker.calls.append(name_ctx)
   return layer
 
 
@@ -527,7 +545,9 @@ class Module(ILayerMaker):
       name_ctx.is_subnet_ctx = True
       res = self.forward(*args, **kwargs)
       if name_ctx.parent is None:  # root
-        return res  # special logic, no output layers, no subnetwork layer needed
+        # special logic, no output layers, no subnetwork layer needed
+        self.calls.append(name_ctx)
+        return res
       if isinstance(res, LayerRef):
         copy(res, name=name_ctx.get_child("output"))
       else:
@@ -718,6 +738,8 @@ class Loop:
 
 
 class _LoopLayerMaker(ILayerMaker):
+  layer_name_scope = ""
+
   def __init__(self, loop: Loop):
     super(_LoopLayerMaker, self).__init__()
     self.loop = loop
@@ -908,6 +930,7 @@ class NameCtx:
     self.maker = maker
     self.layer_ref = None  # type: Optional[LayerRef]
     self.layer = None  # type: Optional[Layer]
+    self._layer_abs_name_scope = None  # type: Optional[str]
     self.is_subnet_ctx = False
     self.is_repeated_call = False
     self.children = {}  # type: Dict[str, NameCtx]
@@ -946,6 +969,23 @@ class NameCtx:
     else:
       debug_name = "/".join(repr(ctx.name) if i > 0 or ctx.name is not None else '' for i, ctx in enumerate(ls))
     return f"<{self.__class__.__name__} maker:{self.maker} name:{debug_name}>"
+
+  @property
+  def root(self) -> NameCtx:
+    """
+    :return: root name ctx
+    """
+    root = self
+    while root.parent:
+      root = root.parent
+    return root
+
+  @property
+  def is_root(self) -> bool:
+    """
+    :return: whether this is a root ctx
+    """
+    return not self.parent
 
   def extend_reserved_names(self, names: Set[str]):
     """
@@ -986,11 +1026,77 @@ class NameCtx:
 
   def get_abs_name(self) -> str:
     """
-    Return absolute layer name starting from root context.
+    :return: absolute RETURNN layer name starting from root context.
     """
     ls = self.get_abs_name_ctx_list()
     assert len(ls) >= 2 and not ls[0].name and ls[-1] is self and ls[-1].name
     return "/".join(ctx.name for ctx in ls[1:])
+
+  @property
+  def layer_abs_name_scope(self) -> str:
+    """
+    :return: layer abs name scope
+    """
+    if self._layer_abs_name_scope is not None:
+      return self._layer_abs_name_scope
+    assert self.maker
+    if self.maker.layer_name_scope is not NotSpecified:
+      assert isinstance(self.maker.layer_name_scope, str)
+      if self.maker.layer_name_scope == "":
+        self._layer_abs_name_scope = self.parent.layer_abs_name_scope
+      else:
+        parent_prefix = self.parent.layer_abs_name_scope
+        if parent_prefix:
+          parent_prefix += "/"
+        self._layer_abs_name_scope = parent_prefix + self.maker.layer_name_scope
+    else:
+      self._layer_abs_name_scope = self._get_abs_canonical_name()
+    return self._layer_abs_name_scope
+
+  def _get_abs_canonical_name(self, join_str="/") -> str:
+    """
+    :param str join_str: maybe "." is more common for attrib chains.
+      however, we use "/" as default, to make this consistent to :func:`get_abs_name`.
+    :return: unique absolute layer name for the maker (module) hierarchy.
+      https://github.com/rwth-i6/returnn_common/issues/25
+    """
+    assert self.maker, f"{self} is not assigned to a maker (module)"
+    root = self.root
+    root_maker = root.maker  # might be None
+    assert root_maker, f"root name ctx {self.root} is not assigned to a maker (module)"
+    if root_maker is self.maker:
+      return ""  # special case
+    # Do a breadth-first search through the parents, starting from self.maker, until we find root_maker.
+    queue = [self.maker]
+    cache = {}  # maker -> full name
+    while queue:
+      maker = queue.pop(0)
+      postfix = (join_str + cache[maker]) if maker in cache else ""
+      for parent, attr in maker.parents_with_attr():
+        if parent in cache:
+          continue
+        for call in parent.calls:
+          if call.root is root:  # same name ctx hierarchy
+            assert call.is_root or call.layer_abs_name_scope is not None
+            if call.is_root or call.layer_abs_name_scope == "":
+              return attr + postfix
+            assert call.layer_abs_name_scope
+            return call.layer_abs_name_scope + join_str + attr + postfix
+        cache[parent] = attr + postfix
+        queue.append(parent)
+      if root_maker in cache:
+        break
+    if root_maker not in cache:
+      err_msgs = []
+      for maker, name in cache.items():
+        err_msgs.append(f"  {maker}: {name}\n")
+      if not err_msgs:
+        err_msgs.append(f"  (None, {self.maker} has no parent modules)\n")
+      raise Exception(
+        f"{self}: no abs canonical name found."
+        f" Found partial names:\n{''.join(err_msgs)}"
+        f"There must be a path of attribs from the root {root_maker} to {self.maker}.")
+    return cache[root_maker]
 
   def get_name_in_current_ctx(self) -> str:
     """
@@ -1085,8 +1191,8 @@ class NameCtx:
     for call in self.maker.calls:
       if call is self:
         continue  # ignore this
-      if call.name_ctx.parent is self.parent:
-        return call.name_ctx.name
+      if call.parent is self.parent:
+        return call.name
     # Fallback to the canonical name.
     return self.maker.get_default_name()
 
