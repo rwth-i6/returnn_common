@@ -434,7 +434,7 @@ def test_module_list():
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.ls = ModuleList([Linear(i) for i in range(4)])
+      self.ls = ModuleList([Linear(i + 3) for i in range(4)])
 
     def forward(self, out: LayerRef) -> LayerRef:
       """
@@ -453,6 +453,14 @@ def test_module_list():
   assert net_dict["ls.2"]["from"] == "ls.1"
   assert net_dict["ls.3"]["from"] == "ls.2"
   assert net_dict["output"]["from"] == "ls.3"
+
+  assert_equal(
+    net_dict,
+    {'ls.0': {'class': 'linear', 'from': 'data:data', 'n_out': 3, 'name_scope': 'ls/0'},
+     'ls.1': {'class': 'linear', 'from': 'ls.0', 'n_out': 4, 'name_scope': 'ls/1'},
+     'ls.2': {'class': 'linear', 'from': 'ls.1', 'n_out': 5, 'name_scope': 'ls/2'},
+     'ls.3': {'class': 'linear', 'from': 'ls.2', 'n_out': 6, 'name_scope': 'ls/3'},
+     'output': {'class': 'copy', 'from': 'ls.3'}})
 
 
 def test_sequential_base_case():
