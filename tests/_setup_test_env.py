@@ -183,6 +183,7 @@ def _try_hook_into_tests():
 def _main(mod):
   print("Test module:", mod)
   sep = "-" * 80 + "\n"
+  import unittest
 
   if len(sys.argv) > 1:
     tests = sys.argv[1:]
@@ -202,8 +203,12 @@ def _main(mod):
   for key, value in vars(mod).items():
     if key.startswith("test_") and callable(value):
       print(f"{key}()")
-      value()
-      print("Ok.")
+      try:
+        value()
+      except unittest.SkipTest as exc:
+        print("Skip test:", exc)
+      else:
+        print("Ok.")
       print(sep)
   print("All ok.")
 
