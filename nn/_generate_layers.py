@@ -498,10 +498,13 @@ class LayerSignature:
   _IgnoreParamNames = {
     "self", "name", "network", "output",
     "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
-    "reuse_params", "rec_previous_layer", "control_dependencies_on_output",
-    "initial_state",
-    "extra_deps", "batch_norm",
-    "is_output_layer",
+    "name_scope", "reuse_params",
+    "rec_previous_layer", "control_dependencies_on_output",
+    "initial_state", "initial_output",
+    "extra_deps", "collocate_with",
+    "batch_norm",
+    "is_output_layer", "register_as_extern_data",
+    "copy_output_loss_from_source_idx",
   }
 
   _LayerClassesWithExplicitDim = {

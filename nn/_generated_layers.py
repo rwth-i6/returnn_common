@@ -55,17 +55,13 @@ class _Base(_ReturnnWrappedLayerBase):
                param_device: Optional[str] = NotSpecified,
                only_on_eval: bool = NotSpecified,
                only_on_search: bool = NotSpecified,
-               copy_output_loss_from_source_idx: Optional[int] = NotSpecified,
                l2: Optional[float] = NotSpecified,
                darc1: Optional[float] = NotSpecified,
                spatial_smoothing: Optional[float] = NotSpecified,
                param_variational_noise: Optional[float] = NotSpecified,
                updater_opts: Optional[Dict[str]] = NotSpecified,
-               initial_output: Union[str, float] = NotSpecified,
-               collocate_with: Optional[List[str]] = NotSpecified,
                trainable: Optional[bool] = NotSpecified,
                custom_param_importer: Optional[Union[str, callable]] = NotSpecified,
-               register_as_extern_data: Optional[str] = NotSpecified,
                ):
     """
     Usually the arguments, when specified in the network dict,
@@ -76,34 +72,26 @@ class _Base(_ReturnnWrappedLayerBase):
       see https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/util/device_name_utils.h
     :param bool only_on_eval: if True, this layer will only be calculated in eval
     :param bool only_on_search: if True, this layer will only be calculated when search is done
-    :param int|None copy_output_loss_from_source_idx: if set, will copy output_loss from this source
     :param float|None l2: for constraints
     :param float|None darc1: for constraints. see Generalization in Deep Learning, https://arxiv.org/abs/1710.05468
     :param float|None spatial_smoothing: see :func:`returnn.tf.util.basic.spatial_smoothing_energy`
     :param float|None param_variational_noise: adds variational noise to the params during training
     :param dict[str]|None updater_opts: accepts similar opts as TFUpdater, e.g. "optimizer", "learning_rate", ...
-    :param str|float initial_output: used for recurrent layer, see self.get_rec_initial_output()
-    :param list[str]|None collocate_with: in the rec layer, collocate with the specified other layers
     :param bool|None trainable: whether the parameters of this layer will be trained.
       default (None) inherits from the parent layer if there is one, or otherwise True.
     :param str|callable|None custom_param_importer: used by :func:`set_param_values_by_dict`
-    :param str|None register_as_extern_data: registers output in network.extern_data
     """
     super().__init__()
     self.param_device = param_device
     self.only_on_eval = only_on_eval
     self.only_on_search = only_on_search
-    self.copy_output_loss_from_source_idx = copy_output_loss_from_source_idx
     self.l2 = l2
     self.darc1 = darc1
     self.spatial_smoothing = spatial_smoothing
     self.param_variational_noise = param_variational_noise
     self.updater_opts = updater_opts
-    self.initial_output = initial_output
-    self.collocate_with = collocate_with
     self.trainable = trainable
     self.custom_param_importer = custom_param_importer
-    self.register_as_extern_data = register_as_extern_data
 
   def get_opts(self):
     """
@@ -113,17 +101,13 @@ class _Base(_ReturnnWrappedLayerBase):
       'param_device': self.param_device,
       'only_on_eval': self.only_on_eval,
       'only_on_search': self.only_on_search,
-      'copy_output_loss_from_source_idx': self.copy_output_loss_from_source_idx,
       'L2': self.l2,
       'darc1': self.darc1,
       'spatial_smoothing': self.spatial_smoothing,
       'param_variational_noise': self.param_variational_noise,
       'updater_opts': self.updater_opts,
-      'initial_output': self.initial_output,
-      'collocate_with': self.collocate_with,
       'trainable': self.trainable,
       'custom_param_importer': self.custom_param_importer,
-      'register_as_extern_data': self.register_as_extern_data,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return opts
