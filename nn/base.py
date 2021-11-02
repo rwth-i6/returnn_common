@@ -62,7 +62,7 @@ Code conventions:
 
 from __future__ import annotations
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator
-from returnn.util.basic import NotSpecified
+from returnn.util.basic import NotSpecified, OptionalNotImplementedError
 from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
 
@@ -282,13 +282,23 @@ class ILayerMaker:
 
   def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
     """
-    Return layer dict.
+    :return: layer dict.
 
     The :class:`LayerDictRaw` can reference other layers by using ``layer.get_name()``,
     or also by using :class:`LayerRef` instances directly,
     which will automatically be translated to ``layer.get_name()``.
     """
     raise NotImplementedError
+
+  def default_initial_state(self) -> LayerState:
+    """
+    :return: default initial state, to be used if the module (layer) has recurrent (hidden) state.
+      When a module has recurrent state,
+      the convention is to return a tuple with instance :class:`LayerState` as the last item,
+      and to accept the ``state`` argument with a :class:`LayerState` with the same nested structure.
+      This can be a nested structure and should match the structure of the ``state`` argument and returned value.
+    """
+    raise OptionalNotImplementedError
 
   def get_default_name(self) -> str:
     """
@@ -385,8 +395,13 @@ class LayerState(dict):
     else:
       super().__init__()
 
+  def __repr__(self):
+    return f"{self.__class__.__name__}({', '.join(f'{k}={v!r}' for (k, v) in self.items())})"
+
   def __getattr__(self, item):
-    return self[item]
+    if item in self:
+      return self[item]
+    raise AttributeError(f"{self}.{item}")
 
 
 # noinspection PyAbstractClass
@@ -427,6 +442,19 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
         return layer
     state = self._get_recurrent_state(layer)
     return layer, state
+
+  def default_initial_state(self) -> LayerState:
+    """
+    :return: default initial state
+    """
+    assert self.has_recurrent_state
+    # Match the logic of _get_recurrent_state above.
+    if self.returnn_layer_class == "rec":
+      unit = getattr(self, "unit")
+      if isinstance(unit, str):
+        if "lstm" in unit.lower():
+          return LayerState(h=0, c=0)  # TODO get real shape... how to get batch dim?
+    raise NotImplementedError(f"{self}.default_initial_state")
 
 
 def make_layer(layer_dict: LayerDictRaw, *,
@@ -675,6 +703,9 @@ class Loop:
     self.outputs = []  # type: List[LayerRef]
     self.end_ref = None  # type: Optional[LayerRef]
 
+  def __repr__(self):
+    return f"<{self.__class__.__name__} {self.name_ctx.get_abs_name_repr()}>"
+
   def __enter__(self) -> Loop:
     self.name_ctx.__enter__()
     return self
@@ -777,13 +808,13 @@ class _StateHolder:
     self._loop = loop
     self._state = {}  # type: Dict[str, State]
 
+  def __repr__(self):
+    return f"{self._loop}.state"
+
   def _get_state(self, name: str) -> State:
     if name in self._state:
       return self._state[name]
-    state = State()
-    state.set_name_and_loop(name=name, loop=self._loop)
-    self._state[name] = state
-    return state
+    raise AttributeError(f"{self}: Unknown state attrib {name!r}. Assign the initial state first.")
 
   def __getattr__(self, item):
     return self._get_state(item).get()
@@ -792,7 +823,8 @@ class _StateHolder:
     if key in {"_state", "_loop"}:
       return super().__setattr__(key, value)
     if isinstance(value, State):
-      value.set_name_and_loop(name=key, loop=self._loop)
+      # noinspection PyProtectedMember
+      value._set_name_and_loop(name=key, loop=self._loop)
       self._state[key] = value
       return
     self._get_state(key).assign(value)
@@ -804,16 +836,19 @@ class State:
   It can also represent some nested hierarchy of states.
   """
 
-  def __init__(self, *, shape=None, initial=None):
+  def __init__(self, *, initial: Union[LayerRef, Any]):
+    """
+    :param initial: some layer-ref, or any kind of nested structure of layers.
+    """
     super(State, self).__init__()
-    self.shape = shape
+    assert initial is not None
     self.initial = initial
     self.loop = None  # type: Optional[Loop]
     self.name = None  # type: Optional[str]
-    self.name_ctx = None  # type: Optional[NameCtx]
+    self.name_ctx = None  # type: Optional[Union[NameCtx, Any]]  # same nested structure as initial
     self.assigned_value = None
 
-  def set_name_and_loop(self, *, name: str, loop: Loop):
+  def _set_name_and_loop(self, *, name: str, loop: Loop):
     """
     Assigns the name (internally on first assignment).
     """
@@ -822,27 +857,37 @@ class State:
     assert not self.loop and not self.name and not self.name_ctx  # not yet assigned
     self.loop = loop
     self.name = name
-    self.name_ctx = NameCtx(suggested_name=name)
+    self.name_ctx = nest.map_structure_with_tuple_paths(
+      lambda path, ref: NameCtx(suggested_name=f"state.{name}.{'.'.join(str(key) for key in path)}"),
+      self.initial)
 
   def assign(self, value):
     """
     Assign the new value for the current iteration.
     """
+    assert self.name_ctx is not None
     assert value is not None
     assert self.assigned_value is None, (
       f"Cannot assign the rec state {self.loop}/{self.name} multiple times, "
       f"assigned previously to {self.assigned_value}, now to {value}")
+    nest.assert_same_structure(self.initial, value)
+    nest.assert_same_structure(self.name_ctx, value)
     self.assigned_value = value
     from . import copy
-    copy(value, name=self.name_ctx)
+    nest.map_structure(
+      lambda ref, name_ctx: copy(ref, name=name_ctx),
+      value, self.name_ctx)
 
   def get(self):
     """
     Return prev or current value
     """
+    assert self.name_ctx is not None
     if self.assigned_value is None:  # not yet assigned
       # Return prev value
-      return NameCtx.top().get_child_layer_ref(f"prev:{self.name_ctx.name}")
+      return nest.map_structure(
+        lambda name_ctx: NameCtx.top().get_child_layer_ref(f"prev:{name_ctx.name}"),
+        self.name_ctx)
     return self.assigned_value
 
 
@@ -961,14 +1006,7 @@ class NameCtx:
     return NameCtx(maker=maker, suggested_name=name)
 
   def __repr__(self):
-    ls = self.get_abs_name_ctx_list()
-    if len(ls) == 0:
-      debug_name = "???"
-    elif len(ls) == 1 and ls[0].name is None:
-      debug_name = "/"
-    else:
-      debug_name = "/".join(repr(ctx.name) if i > 0 or ctx.name is not None else '' for i, ctx in enumerate(ls))
-    return f"<{self.__class__.__name__} maker:{self.maker} name:{debug_name}>"
+    return f"<{self.__class__.__name__} maker:{self.maker} name:{self.get_abs_name_repr()}>"
 
   @property
   def root(self) -> NameCtx:
@@ -1031,6 +1069,19 @@ class NameCtx:
     ls = self.get_abs_name_ctx_list()
     assert len(ls) >= 2 and not ls[0].name and ls[-1] is self and ls[-1].name
     return "/".join(ctx.name for ctx in ls[1:])
+
+  def get_abs_name_repr(self) -> str:
+    """
+    :return: Some repr for our absolute name.
+    """
+    ls = self.get_abs_name_ctx_list()
+    if len(ls) == 0:
+      debug_name = "???"
+    elif len(ls) == 1 and ls[0].name is None:
+      debug_name = "/"
+    else:
+      debug_name = "/".join(repr(ctx.name) if i > 0 or ctx.name is not None else '' for i, ctx in enumerate(ls))
+    return debug_name
 
   @property
   def layer_abs_name_scope(self) -> str:
