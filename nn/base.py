@@ -76,6 +76,18 @@ RawTensorTypes = Union[int, float, complex, bool, str]
 class LayerRef:
   """
   Refers to a layer.
+
+  An instance of this class can be treated very much like a tensor.
+  It supports all the common unary and binary math operations such as addition.
+  This is the intended view point for the user,
+  to treat instances of this class like a tensor.
+
+  For most layers, instead of just having an instance of :class:`LayerRef`,
+  you would instead directly have an instance of :class:`Layer`.
+
+  You do not create instances of this object explicitly
+  but they are created via :func:`get_special_layer` or :class:`NameCtx.get_child_layer_ref`,
+  or layers (:class:`Layer`) via any of the layer makers, modules or other functions.
   """
 
   def __init__(self, *, name_ctx: NameCtx):
@@ -205,11 +217,12 @@ class LayerRef:
 
 class Layer(LayerRef):
   """
-  Represents a layer and its output, created by :class:`ILayerMaker`.
+  Represents a layer and its output, created by :class:`ILayerMaker` or :func:`make_layer`.
+  You would not create an instance of this explicitly.
   """
 
-  def __init__(self, *, layer_dict: LayerDictRaw):
-    super(Layer, self).__init__(name_ctx=NameCtx.top())
+  def __init__(self, *, layer_dict: LayerDictRaw, name_ctx: NameCtx):
+    super(Layer, self).__init__(name_ctx=name_ctx)
     assert self.name_ctx.layer is None
     self.name_ctx.layer = self
     self.layer_dict = layer_dict
@@ -271,6 +284,11 @@ class ILayerMaker:
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
 
   def __init__(self):
+    """
+    By convention, any options to the layer maker or module are passed to the constructor,
+    and potential changing inputs (other layers)
+    are passed to :func:`__call__` (:func:`make_layer_dict`).
+    """
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
     # Also note that the current code does not clean this up when you do delattr later or so.
@@ -284,9 +302,14 @@ class ILayerMaker:
     """
     :return: layer dict.
 
-    The :class:`LayerDictRaw` can reference other layers by using ``layer.get_name()``,
-    or also by using :class:`LayerRef` instances directly,
-    which will automatically be translated to ``layer.get_name()``.
+    The arguments are usually other layers, via :class:`LayerRef` instances.
+    The returned :class:`LayerDictRaw` can reference other layers by using :class:`LayerRef` instances.
+    It can further contain subnetworks via :class:`Net` instances,
+    although you mostly would not use this in custom implementations
+    but use :class:`Module` or :class:`Loop` instead.
+
+    This function is implemented by derived classes.
+    This function will be called by :func:`__call__` with all arguments forwarded.
     """
     raise NotImplementedError
 
@@ -321,6 +344,9 @@ class ILayerMaker:
     return make_layer(layer_dict, name_ctx=name_ctx)
 
   def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Layer:
+    """
+    This calls :func:`make_layer_dict` internally and creates a corresponding :class:`Layer` instance.
+    """
     with NameCtx.get_from_call(maker=self, name=name):
       return self._make_layer(*args, **kwargs)
 
@@ -473,7 +499,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   using that.
   (If this is not the case, please report an issue.)
 
-  :param LayerDictRaw layer_dict:
+  :param LayerDictRaw layer_dict: can contain :class:`LayerRef` instances
   :param str|None name: (suggested) layer name. if given, will create a new :class:`NameCtx`
   :param NameCtx|None name_ctx: if given, will use this name ctx.
     You can either pass ``name_ctx`` or ``name`` but not both.
@@ -493,9 +519,6 @@ def make_layer(layer_dict: LayerDictRaw, *,
   else:
     name_ctx = NameCtx.top()
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
-  layer_dict = nest.map_structure(
-    lambda x: x.get_name() if isinstance(x, LayerRef) else x,
-    layer_dict)
   layer_dict = layer_dict.copy()
 
   if name_ctx.maker and name_ctx.maker.has_variables:
@@ -522,7 +545,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   name_ctx.is_subnet_ctx = False
   if name_ctx.maker and name_ctx.maker.calls:
     name_ctx.is_repeated_call = True
-  layer = Layer(layer_dict=layer_dict)
+  layer = Layer(layer_dict=layer_dict, name_ctx=name_ctx)
   if name_ctx.maker:
     name_ctx.maker.calls.append(name_ctx)
   return layer
@@ -594,7 +617,7 @@ class Module(ILayerMaker):
     """
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
-    return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net_dict()}
+    return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()}
 
   def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
     """
@@ -636,7 +659,8 @@ def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
         res_list = nest.flatten(res)
         assert res_list and isinstance(res_list[0], LayerRef)
         copy(res_list[0], name=name_ctx.get_child("output"))
-    return name_ctx.make_net_dict()
+    net = name_ctx.make_net()
+  return net.make_net_dict_raw()
 
 
 class Loop:
@@ -781,7 +805,7 @@ class _LoopLayerMaker(ILayerMaker):
     """
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
-    return {"class": "rec", "from": [], "unit": name_ctx.make_net_dict(), **self.loop.extra_opts}
+    return {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts}
 
   def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
     """
@@ -927,6 +951,34 @@ def get_sub_layer(layer: LayerRef, name: str) -> LayerRef:
   return layer.name_ctx.get_child_layer_ref(name)
 
 
+class Net:
+  """
+  Represents a RETURNN (sub) network.
+  It can create a net dict when needed.
+  """
+  def __init__(self, *, name_ctx: NameCtx):
+    self.name_ctx = name_ctx
+
+  def _map_elem_resolve(self, obj: Any) -> Any:
+    if isinstance(obj, LayerRef):
+      return obj.name_ctx.get_name_in_ctx(ctx=self.name_ctx)
+    if isinstance(obj, Net):
+      return obj.make_net_dict_raw()
+    return obj
+
+  def make_net_dict_raw(self) -> NetDictRaw:
+    """
+    Create raw net dict, not containing any :class:`LayerRef` or :class:`Net` instances anymore.
+    """
+    net_dict = {}
+    for key, value in self.name_ctx.children.items():
+      if value.layer:
+        layer_dict = value.layer.layer_dict
+        layer_dict = nest.map_structure(self._map_elem_resolve, layer_dict)
+        net_dict[key] = layer_dict
+    return net_dict
+
+
 class NameCtx:
   """
   This is a helper class to keep track of the current name context when creating layers.
@@ -1032,15 +1084,11 @@ class NameCtx:
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
 
-  def make_net_dict(self) -> NetDictRaw:
+  def make_net(self) -> Net:
     """
-    Create net dict.
+    Create new (sub) net, an instance of :class:`Net`.
     """
-    net_dict = {}
-    for key, value in self.children.items():
-      if value.layer:
-        net_dict[key] = value.layer.layer_dict
-    return net_dict
+    return Net(name_ctx=self)
 
   def make_default_output(self, ref: LayerRef) -> LayerRef:
     """
@@ -1086,7 +1134,7 @@ class NameCtx:
   @property
   def layer_abs_name_scope(self) -> str:
     """
-    :return: layer abs name scope
+    :return: layer abs name scope, i.e. the TF name scope of variables
     """
     if self._layer_abs_name_scope is not None:
       return self._layer_abs_name_scope
@@ -1149,27 +1197,33 @@ class NameCtx:
         f"There must be a path of attribs from the root {root_maker} to {self.maker}.")
     return cache[root_maker]
 
+  def get_name_in_ctx(self, ctx: NameCtx) -> str:
+    """
+    Get layer name valid in given scope.
+    """
+    if self.parent is ctx:  # fast path
+      return self.name
+    ctx_scope_abs = ctx.get_abs_name_ctx_list()
+    self_name_abs = self.get_abs_name_ctx_list()
+    assert ctx_scope_abs[0] is self_name_abs[0]  # same root
+    common_len = 0
+    max_common_len = min(len(ctx_scope_abs), len(self_name_abs))
+    while common_len < max_common_len and ctx_scope_abs[common_len] is self_name_abs[common_len]:
+      common_len += 1
+    prefix = "base:" * (len(ctx_scope_abs) - common_len)
+    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
+    return prefix + postfix
+
   def get_name_in_current_ctx(self) -> str:
     """
     Get layer name valid for current scope.
     """
-    cur_scope = NameCtx.current_ctx()
-    if self.parent is cur_scope:  # fast path
-      return self.name
-    cur_scope_abs = cur_scope.get_abs_name_ctx_list()
-    self_name_abs = self.get_abs_name_ctx_list()
-    assert cur_scope_abs[0] is self_name_abs[0]  # same root
-    common_len = 0
-    max_common_len = min(len(cur_scope_abs), len(self_name_abs))
-    while common_len < max_common_len and cur_scope_abs[common_len] is self_name_abs[common_len]:
-      common_len += 1
-    prefix = "base:" * (len(cur_scope_abs) - common_len)
-    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
-    return prefix + postfix
+    return self.get_name_in_ctx(ctx=NameCtx.current_ctx())
 
   def _add_child(self, child: NameCtx):
     assert child.name
-    assert child.parent.is_subnet_ctx
+    assert child.parent is self
+    assert self.is_subnet_ctx
     assert child.name not in self.children
     self.children[child.name] = child
 

@@ -49,7 +49,7 @@ def test_simple_net_module_explicit_root_ctx():
     out = net(get_extern_data("data"), name=name_ctx)
     assert isinstance(out, Layer)
     name_ctx.make_default_output(out)
-    net_dict = name_ctx.make_net_dict()
+    net_dict = name_ctx.make_net().make_net_dict_raw()
     pprint(net_dict)
 
   assert "linear" in net_dict
@@ -179,7 +179,7 @@ def test_explicit_root_ctx_sub():
     assert isinstance(out, Layer)
 
     name_ctx.make_default_output(out)
-    net_dict = name_ctx.make_net_dict()
+    net_dict = name_ctx.make_net().make_net_dict_raw()
     pprint(net_dict)
 
   assert "linear" in net_dict
@@ -222,7 +222,7 @@ def test_root_mod_call_twice():
     print(z)
     assert isinstance(z, LayerRef)
 
-    net_dict = name_ctx.make_net_dict()
+    net_dict = name_ctx.make_net().make_net_dict_raw()
     pprint(net_dict)
 
   assert "linear" in net_dict and "test_block" in net_dict
