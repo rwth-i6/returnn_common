@@ -20,7 +20,7 @@ which can be thought of as analogue to :class:`torch.Tensor` or :class:`tf.Tenso
 Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
 
 The root network should be a :class:`Module`,
-and then you can use ``mod.make_root_net_dict()``
+and then you can use ``make_root_net_dict()``
 to get the network dict.
 Code example::
 
@@ -35,20 +35,6 @@ Code example::
 
     net = Network()
     net_dict = make_root_net_dict(net, "data")
-
-
-Alternatively, use ``with NameCtx.new_root() as name_ctx``
-to setup an unnamed root name context
-and then ``name_ctx.make_net_dict()``
-to get the network dict.
-Code example::
-
-    with NameCtx.new_root() as root_name_ctx:
-      lstm = Lstm(n_out=1024)
-      x = get_extern_data("data")
-      y = lstm(x)
-
-    net_dict = root_name_ctx.make_net_dict()
 
 ---
 
