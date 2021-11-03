@@ -9,6 +9,7 @@ from .returnn_helpers import dummy_run_net
 from returnn_common.nn import *
 from pprint import pprint
 import unittest
+from nose.tools import assert_equal
 
 
 def test_rec_ff():
@@ -32,6 +33,20 @@ def test_rec_ff():
   net = _Net()
   net_dict = make_root_net_dict(net, "data")
   pprint(net_dict)
+  assert_equal(
+    net_dict,
+    {'loop': {'class': 'rec',
+              'from': [],
+              'unit': {'concat': {'class': 'copy',
+                                  'from': ('rec_unstack', 'prev:state.h')},
+                       'output': {'class': 'copy', 'from': 'state.h'},
+                       'rec_unstack': {'axis': 'T',
+                                       'class': 'rec_unstack',
+                                       'from': 'base:data:data'},
+                       'state.h': {'class': 'linear',
+                                   'from': 'concat',
+                                   'n_out': 13}}},
+     'output': {'class': 'copy', 'from': 'loop/output'}})
   dummy_run_net(net_dict)
 
 

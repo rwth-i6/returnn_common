@@ -908,7 +908,7 @@ class State:
     self.loop = loop
     self.name = name
     self.name_ctx = nest.map_structure_with_tuple_paths(
-      lambda path, ref: NameCtx(suggested_name=f"state.{name}.{'.'.join(str(key) for key in path)}"),
+      lambda path, ref: NameCtx(suggested_name='.'.join(str(key) for key in ('state', name) + path)),
       self.initial)
 
   def assign(self, value):
@@ -923,10 +923,13 @@ class State:
     nest.assert_same_structure(self.initial, value)
     nest.assert_same_structure(self.name_ctx, value)
     self.assigned_value = value
-    from . import copy
-    nest.map_structure(
-      lambda ref, name_ctx: copy(ref, name=name_ctx),
-      value, self.name_ctx)
+
+    def _map_ref_to_name_ctx(layer_ref: LayerRef, name_ctx: NameCtx):
+      assert isinstance(layer_ref, LayerRef)
+      assert isinstance(name_ctx, NameCtx)
+      _move_layer_ref_to_new_name_ctx(layer_ref=layer_ref, name_ctx=name_ctx)
+
+    nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx)
 
   @staticmethod
   def _map_name_ctx_to_prev_layer_ref(name_ctx: NameCtx) -> PrevLayerRef:
@@ -1347,3 +1350,25 @@ class NameCtx:
       if name_ not in reserved_names:
         return name_
       i += 1
+
+
+def _move_layer_ref_to_new_name_ctx(*, layer_ref: LayerRef, name_ctx: NameCtx):
+  """
+  Moves an existing layer ref (with assigned name ctx)
+  to another name ctx (without assigned layer or layer ref).
+
+  This assumes that there are no other references to layer_ref.name_ctx
+  because those would become invalid.
+  References to layer_ref itself should be fine.
+  """
+  assert not name_ctx.layer and not name_ctx.layer_ref  # none yet assigned
+
+  # Remove layer_ref.name_ctx from its parent name ctx.
+  old_ref_ctx = layer_ref.name_ctx.parent.children.pop(layer_ref.name_ctx.name)
+  assert old_ref_ctx is layer_ref.name_ctx
+
+  # Now reassign.
+  layer_ref.name_ctx = name_ctx
+  name_ctx.layer_ref = layer_ref
+  if isinstance(layer_ref, Layer):
+    name_ctx.layer = layer_ref
