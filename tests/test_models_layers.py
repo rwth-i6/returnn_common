@@ -155,10 +155,7 @@ def test_simple_net_share_params():
 
 
 def test_explicit_root_ctx_sub():
-  class Net(Module):
-    """
-    Net
-    """
+  class _Net(Module):
     # noinspection PyShadowingNames
     def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
       super().__init__()
@@ -174,7 +171,7 @@ def test_explicit_root_ctx_sub():
       return x
 
   with NameCtx.new_root() as name_ctx:
-    net = Net()
+    net = _Net()
     out = net(get_extern_data("data"), name=name_ctx)
     assert isinstance(out, Layer)
 
