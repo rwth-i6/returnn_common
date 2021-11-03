@@ -827,6 +827,32 @@ class _LoopLayerMaker(ILayerMaker):
     return False
 
 
+class PrevLayerRef(LayerRef):
+  """
+  Refers to a layer from the previous loop iteration.
+  """
+  @classmethod
+  def get_prev_ref(cls, *, cur_layer_name_ctx: NameCtx) -> PrevLayerRef:
+    """
+    Create prev ref.
+    """
+    parent_name_ctx = cur_layer_name_ctx.parent
+    prev_layer_name_ctx = parent_name_ctx.get_child(f"prev:{cur_layer_name_ctx.name}")
+    if prev_layer_name_ctx.layer_ref:
+      prev_layer_ref = prev_layer_name_ctx.layer_ref
+      assert isinstance(prev_layer_ref, PrevLayerRef)
+      assert prev_layer_ref.cur_layer_name_ctx is cur_layer_name_ctx
+    else:
+      prev_layer_ref = PrevLayerRef(name_ctx=prev_layer_name_ctx, cur_layer_name_ctx=cur_layer_name_ctx)
+      assert prev_layer_name_ctx.layer_ref is prev_layer_ref
+    return prev_layer_ref
+
+  def __init__(self, *, name_ctx: NameCtx, cur_layer_name_ctx: NameCtx):
+    # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
+    super().__init__(name_ctx=name_ctx)
+    self.cur_layer_name_ctx = cur_layer_name_ctx
+
+
 class _StateHolder:
   def __init__(self, loop: Loop):
     self._loop = loop
@@ -902,6 +928,11 @@ class State:
       lambda ref, name_ctx: copy(ref, name=name_ctx),
       value, self.name_ctx)
 
+  @staticmethod
+  def _map_name_ctx_to_prev_layer_ref(name_ctx: NameCtx) -> PrevLayerRef:
+    assert isinstance(name_ctx, NameCtx)
+    return PrevLayerRef.get_prev_ref(cur_layer_name_ctx=name_ctx)
+
   def get(self):
     """
     Return prev or current value
@@ -909,9 +940,7 @@ class State:
     assert self.name_ctx is not None
     if self.assigned_value is None:  # not yet assigned
       # Return prev value
-      return nest.map_structure(
-        lambda name_ctx: NameCtx.top().get_child_layer_ref(f"prev:{name_ctx.name}"),
-        self.name_ctx)
+      return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx)
     return self.assigned_value
 
 
