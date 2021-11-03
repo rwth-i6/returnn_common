@@ -924,12 +924,49 @@ class State:
     nest.assert_same_structure(self.name_ctx, value)
     self.assigned_value = value
 
-    def _map_ref_to_name_ctx(layer_ref: LayerRef, name_ctx: NameCtx):
+    def _map_ref_to_name_ctx(layer_ref: LayerRef, name_ctx: NameCtx, initial: Any):
       assert isinstance(layer_ref, LayerRef)
       assert isinstance(name_ctx, NameCtx)
+
+      # Potential optimization for RETURNN layers.
+      # See _ReturnnWrappedLayerBase._get_recurrent_state.
+      if isinstance(layer_ref, Layer):
+        if layer_ref.layer_dict["class"] == "get_last_hidden_state":
+          used_state_eliminate_optimization = False
+          key = layer_ref.layer_dict.get("key", "state")
+          src = layer_ref.layer_dict["from"]
+          assert isinstance(src, Layer)
+          layer_dict_opt_name = "state"
+          if layer_dict_opt_name not in src.layer_dict:
+            # TODO this should be cleaned up. currently we only really use initial_state in generated layers...
+            #   https://github.com/rwth-i6/returnn/issues/732
+            #   This is actually incorrect, but not here but in the generated layers...
+            #     https://github.com/rwth-i6/returnn_common/issues/31
+            layer_dict_opt_name = "initial_state"
+          src_state_opt = src.layer_dict.get(layer_dict_opt_name)
+          if isinstance(src_state_opt, LayerState):
+            src_state_for_key = src_state_opt.get(key)
+            if isinstance(src_state_for_key, PrevLayerRef):
+              if src_state_for_key.cur_layer_name_ctx is name_ctx:
+                # The 'state' argument of the rec layer refers to "prev:..." of the state.
+                # So we don't need to pass it now.
+                used_state_eliminate_optimization = True
+                src_state_opt[key] = None
+                # We need to pass the initial_state instead though.
+                src_initial_state_opt = src.layer_dict.setdefault("initial_state", LayerState())
+                src_initial_state_opt[key] = initial
+                # If there is any other code which refers to this state, it can access the passed layer.
+                # So anyway pass through.
+
+          if not used_state_eliminate_optimization:
+            raise NotImplementedError(
+              f"{self}.assign to {layer_ref} on {src}:"
+              f" We need https://github.com/rwth-i6/returnn_common/issues/31"
+              f" and https://github.com/rwth-i6/returnn/issues/732.")
+
       _move_layer_ref_to_new_name_ctx(layer_ref=layer_ref, name_ctx=name_ctx)
 
-    nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx)
+    nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
   @staticmethod
   def _map_name_ctx_to_prev_layer_ref(name_ctx: NameCtx) -> PrevLayerRef:
@@ -1364,11 +1401,15 @@ def _move_layer_ref_to_new_name_ctx(*, layer_ref: LayerRef, name_ctx: NameCtx):
   assert not name_ctx.layer and not name_ctx.layer_ref  # none yet assigned
 
   # Remove layer_ref.name_ctx from its parent name ctx.
-  old_ref_ctx = layer_ref.name_ctx.parent.children.pop(layer_ref.name_ctx.name)
-  assert old_ref_ctx is layer_ref.name_ctx
+  _remove_name_ctx_from_parent(layer_ref.name_ctx)
 
   # Now reassign.
   layer_ref.name_ctx = name_ctx
   name_ctx.layer_ref = layer_ref
   if isinstance(layer_ref, Layer):
     name_ctx.layer = layer_ref
+
+
+def _remove_name_ctx_from_parent(name_ctx: NameCtx):
+  old_name_ctx = name_ctx.parent.children.pop(name_ctx.name)
+  assert old_name_ctx is name_ctx

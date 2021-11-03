@@ -8,7 +8,6 @@ from .returnn_helpers import dummy_run_net
 
 from returnn_common.nn import *
 from pprint import pprint
-import unittest
 from nose.tools import assert_equal
 
 
@@ -50,7 +49,6 @@ def test_rec_ff():
   dummy_run_net(net_dict)
 
 
-@unittest.skip("TODO ...")
 def test_rec_inner_lstm():
   class _Net(Module):
     def __init__(self):
