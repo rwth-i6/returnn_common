@@ -922,14 +922,7 @@ class State:
           key = layer_ref.layer_dict.get("key", "state")
           src = layer_ref.layer_dict["from"]
           assert isinstance(src, Layer)
-          layer_dict_opt_name = "state"
-          if layer_dict_opt_name not in src.layer_dict:
-            # TODO this should be cleaned up. currently we only really use initial_state in generated layers...
-            #   https://github.com/rwth-i6/returnn/issues/732
-            #   This is actually incorrect, but not here but in the generated layers...
-            #     https://github.com/rwth-i6/returnn_common/issues/31
-            layer_dict_opt_name = "initial_state"
-          src_state_opt = src.layer_dict.get(layer_dict_opt_name)
+          src_state_opt = src.layer_dict.get("state")
           if isinstance(src_state_opt, LayerState):
             src_state_for_key = src_state_opt.get(key)
             if isinstance(src_state_for_key, PrevLayerRef):
@@ -938,6 +931,8 @@ class State:
                 # So we don't need to pass it now.
                 used_state_eliminate_optimization = True
                 src_state_opt[key] = None
+                if all(opt is None for opt in nest.flatten(src_state_opt)):
+                  del src.layer_dict["state"]
                 # We need to pass the initial_state instead though.
                 src_initial_state_opt = src.layer_dict.setdefault("initial_state", LayerState())
                 src_initial_state_opt[key] = initial
