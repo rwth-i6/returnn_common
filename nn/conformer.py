@@ -13,9 +13,9 @@ class _PositionwiseFeedForward(nn.Module):
       FF -> Activation -> Dropout -> FF
   """
 
-  def __init__(self, dim_model: int, dim_ff: int, dropout: float, activation):
+  def __init__(self, out_dim: int, dim_ff: int, dropout: float, activation):
     """
-    :param dim_model:
+    :param out_dim:
     :param dim_ff:
     :param dropout:
     :param activation:
@@ -25,14 +25,14 @@ class _PositionwiseFeedForward(nn.Module):
     self.dropout = dropout
     self.activation = activation
 
-    self.linear1 = nn.Linear(n_out=dim_ff)
-    self.linear2 = nn.Linear(n_out=dim_model)
+    self.linear_ff = nn.Linear(n_out=dim_ff)
+    self.linear_out = nn.Linear(n_out=out_dim)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
-    x_ff1 = self.linear1(inp)
+    x_ff1 = self.linear_ff(inp)
     x_act = self.activation(x_ff1)
     x_drop = nn.dropout(x_act, dropout=self.dropout)
-    x_ff2 = self.linear2(x_drop)
+    x_ff2 = self.linear_out(x_drop)
     return x_ff2
 
 
@@ -42,17 +42,17 @@ class _ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, dim_model: int, kernel_size: int, batch_norm_eps: float = 1e-5,
+  def __init__(self, out_dim: int, kernel_size: int, batch_norm_eps: float = 1e-5,
       batch_norm_momentum: float = 0.1, batch_norm_other_opts=None):
     """
-    :param dim_model:
+    :param out_dim:
     :param kernel_size:
     """
     super().__init__()
 
-    self.positionwise_conv1 = nn.Linear(n_out=dim_model * 2)
-    self.depthwise_conv = nn.Conv(n_out=dim_model, filter_size=(kernel_size,), groups=dim_model, padding='same')
-    self.positionwise_conv2 = nn.Linear(n_out=dim_model)
+    self.positionwise_conv1 = nn.Linear(n_out=out_dim * 2)
+    self.depthwise_conv = nn.Conv(n_out=out_dim, filter_size=(kernel_size,), groups=out_dim, padding='same')
+    self.positionwise_conv2 = nn.Linear(n_out=out_dim)
 
     if batch_norm_other_opts is None:
       batch_norm_other_opts = {}
@@ -134,14 +134,14 @@ class ConformerEncoderLayer(nn.Module):
     self.dropout = dropout
 
     self.ffn1 = _PositionwiseFeedForward(
-      dim_model=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
+      out_dim=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
     self.ffn2 = _PositionwiseFeedForward(
-      dim_model=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
+      out_dim=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
-    self.conv_module = _ConformerConvBlock(dim_model=enc_key_dim, kernel_size=conv_kernel_size)
+    self.conv_block = _ConformerConvBlock(out_dim=enc_key_dim, kernel_size=conv_kernel_size)
 
-    self.mhsa_module = MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
+    self.self_att = MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     # FFN
@@ -151,12 +151,12 @@ class ConformerEncoderLayer(nn.Module):
 
     # MHSA
     x_mhsa_ln = nn.layer_norm(x_ffn1_out)
-    x_mhsa = self.mhsa_module(x_mhsa_ln)
+    x_mhsa = self.self_att(x_mhsa_ln)
     x_mhsa_out = x_mhsa + x_ffn1_out
 
     # Conv
     x_conv_ln = nn.layer_norm(x_mhsa_out)
-    x_conv = self.conv_module(x_conv_ln)
+    x_conv = self.conv_block(x_conv_ln)
     x_conv_out = nn.dropout(x_conv, dropout=self.dropout) + x_mhsa_out
 
     # FFN
