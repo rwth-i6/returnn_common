@@ -726,7 +726,7 @@ class LayerSignature:
     for param in self.params.values():
       if "weights_init" in param.returnn_name:
         return True
-    if self.layer_class is VariableLayer:
+    if self.layer_class.layer_class in {"variable", "batch_norm"}:
       return True
     derived = self.derived_layer()
     if derived:

@@ -344,7 +344,7 @@ def activation(
   return mod(source, name=name)
 
 
-class _BatchNorm(_Copy):
+class BatchNorm(_Copy):
   """
   Implements batch-normalization (https://arxiv.org/abs/1502.03167) as a separate layer.
 
@@ -352,7 +352,7 @@ class _BatchNorm(_Copy):
   """
   returnn_layer_class = 'batch_norm'
   has_recurrent_state = False
-  has_variables = False
+  has_variables = True
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
@@ -440,69 +440,6 @@ class _BatchNorm(_Copy):
       'class': 'batch_norm',
       'from': source,
       **self.get_opts()}
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def batch_norm(
-               source: LayerRef,
-               *,
-               use_shift: bool = NotSpecified,
-               use_std: bool = NotSpecified,
-               use_sample: float = NotSpecified,
-               force_sample: bool = NotSpecified,
-               momentum: float = NotSpecified,
-               epsilon: float = NotSpecified,
-               update_sample_only_in_training: bool = NotSpecified,
-               delay_sample_update: bool = NotSpecified,
-               param_version: int = NotSpecified,
-               gamma_init: Union[str, float] = NotSpecified,
-               beta_init: Union[str, float] = NotSpecified,
-               masked_time: bool = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  Implements batch-normalization (https://arxiv.org/abs/1502.03167) as a separate layer.
-
-  Also see :class:`NormLayer`.
-
-  The default settings for these variables are set in the function "batch_norm" of the LayerBase. If you do not want
-  to change them you can leave them undefined here.
-  With our default settings:
-
-  - In training: use_sample=0, i.e. not using running average, using current batch mean/var.
-  - Not in training (e.g. eval): use_sample=1, i.e. using running average, not using current batch mean/var.
-  - The running average includes the statistics of the current batch.
-  - The running average is also updated when not training.
-
-  :param LayerRef source:
-  :param bool use_shift:
-  :param bool use_std:
-  :param float use_sample: defaults to 0.0 which is used in training
-  :param bool force_sample: even in eval, use the use_sample factor
-  :param float momentum: for the running average of sample_mean and sample_std
-  :param float epsilon:
-  :param bool update_sample_only_in_training:
-  :param bool delay_sample_update:
-  :param int param_version: 0 or 1
-  :param str|float gamma_init: see :func:`returnn.tf.util.basic.get_initializer`, for the scale
-  :param str|float beta_init: see :func:`returnn.tf.util.basic.get_initializer`, for the mean
-  :param bool masked_time: flatten and mask input tensor
-  :param str|None name:
-  """
-  mod = _BatchNorm(
-    use_shift=use_shift,
-    use_std=use_std,
-    use_sample=use_sample,
-    force_sample=force_sample,
-    momentum=momentum,
-    epsilon=epsilon,
-    update_sample_only_in_training=update_sample_only_in_training,
-    delay_sample_update=delay_sample_update,
-    param_version=param_version,
-    gamma_init=gamma_init,
-    beta_init=beta_init,
-    masked_time=masked_time,
-    )
-  return mod(source, name=name)
 
 
 class _LayerNorm(_Base):
