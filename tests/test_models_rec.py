@@ -9,6 +9,7 @@ from .returnn_helpers import dummy_run_net
 from returnn_common.nn import *
 from pprint import pprint
 from nose.tools import assert_equal
+from builtins import range as range_
 
 
 def test_rec_ff():
@@ -124,8 +125,8 @@ def test_rec_hidden_initial():
       """
       y = self.linear(x)
       state = None
-      for i in range(3):
-        y, state = self.lstm(y, state=state)
+      for _ in range_(3):
+        y, state = self.lstm(y, initial_state=state)
       return y
 
   net = _Net()
