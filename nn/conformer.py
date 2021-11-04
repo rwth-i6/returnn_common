@@ -5,7 +5,6 @@ Ref: https://arxiv.org/abs/2005.08100
 
 from typing import Tuple, List, Union
 from .. import nn
-from . import LayerRef
 
 
 class _PositionwiseFeedForward(nn.Module):
@@ -29,7 +28,7 @@ class _PositionwiseFeedForward(nn.Module):
     self.linear1 = nn.Linear(n_out=dim_ff)
     self.linear2 = nn.Linear(n_out=dim_model)
 
-  def forward(self, inp: LayerRef) -> LayerRef:
+  def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_ff1 = self.linear1(inp)
     x_act = self.activation(x_ff1)
     x_drop = nn.dropout(x_act, dropout=self.dropout)
@@ -62,11 +61,11 @@ class _ConformerConvBlock(nn.Module):
       delay_sample_update=True, **batch_norm_other_opts)
 
   @staticmethod
-  def _glu(v: LayerRef):
+  def _glu(v: nn.LayerRef):
     a, b = nn.split(v, axis='F')
     return a * nn.sigmoid(b)
 
-  def forward(self, inp: LayerRef) -> LayerRef:
+  def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_conv1 = self.positionwise_conv1(inp)
     x_act = self._glu(x_conv1)
     x_depthwise_conv = self.depthwise_conv(x_act)
@@ -102,7 +101,7 @@ class _ConformerConvSubsampleLayer(nn.Module):
       self.conv_layers.append(
         nn.Conv(activation=activation, filter_size=filter_size, n_out=channel_size, padding=padding))
 
-  def forward(self, inp: LayerRef) -> LayerRef:
+  def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x = nn.split_dims(inp, axis='F', dims=(-1, 1))
     for i, conv_layer in enumerate(self.conv_layers):
       x = conv_layer(x)
@@ -144,7 +143,7 @@ class ConformerEncoderLayer(nn.Module):
 
     self.mhsa_module = MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
 
-  def forward(self, inp: LayerRef) -> LayerRef:
+  def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     # FFN
     x_ffn1_ln = nn.layer_norm(inp)
     x_ffn1 = self.ffn1(x_ffn1_ln)
@@ -206,7 +205,7 @@ class ConformerEncoder(nn.Module):
       for _ in range(num_blocks)
     ])
 
-  def forward(self, inp: LayerRef) -> LayerRef:
+  def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_subsample = self.conv_subsample_layer(inp)
     x_linear = self.linear(x_subsample)
     x = nn.dropout(x_linear, dropout=self.dropout)
