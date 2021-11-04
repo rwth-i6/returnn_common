@@ -187,7 +187,7 @@ class ConformerEncoder(nn.Module):
 
     self.linear = nn.Linear(n_out=enc_key_dim, l2=l2, with_bias=False)
 
-    self.conformer_blocks = nn.ModuleList([
+    self.conformer_blocks = nn.Sequential([
       encoder_layer(
         conv_kernel_size=conv_kernel_size, ff_act=ff_act, ff_dim=ff_dim, dropout=dropout,
         att_dropout=att_dropout, enc_key_dim=enc_key_dim, att_n_heads=att_n_heads, l2=l2
@@ -199,6 +199,5 @@ class ConformerEncoder(nn.Module):
     x_subsample = self.conv_subsample_layer(inp)
     x_linear = self.linear(x_subsample)
     x = nn.dropout(x_linear, dropout=self.dropout)
-    for conformer_block in self.conformer_blocks:
-      x = conformer_block(x)
+    x = self.conformer_blocks(x)
     return x
