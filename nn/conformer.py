@@ -60,14 +60,9 @@ class _ConformerConvBlock(nn.Module):
       epsilon=batch_norm_eps, momentum=batch_norm_momentum, update_sample_only_in_training=True,
       delay_sample_update=True, **batch_norm_other_opts)
 
-  @staticmethod
-  def _glu(v: nn.LayerRef):
-    a, b = nn.split(v, axis='F')
-    return a * nn.sigmoid(b)
-
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_conv1 = self.positionwise_conv1(inp)
-    x_act = self._glu(x_conv1)
+    x_act = nn.glu(x_conv1)
     x_depthwise_conv = self.depthwise_conv(x_act)
     x_bn = self.batch_norm(x_depthwise_conv)
     x_swish = nn.swish(x_bn)
