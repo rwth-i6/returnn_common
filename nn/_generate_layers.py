@@ -83,7 +83,6 @@ FunctionNameMap = {
   "source": "external_data",  # but not used actually
   "norm": "normalize",
   "softmax_over_spatial": "softmax",  # generic also for normal softmax on feature
-  "range": "range_",  # do not overwrite builtin function
 }
 
 

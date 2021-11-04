@@ -1654,15 +1654,15 @@ class _Range(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def range_(
-           source: LayerRef,
-           *,
-           limit: Union[int, float],
-           start: Union[int, float] = NotSpecified,
-           delta: Union[int, float] = NotSpecified,
-           dtype: Optional[str] = NotSpecified,
-           sparse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+def range(
+          source: LayerRef,
+          *,
+          limit: Union[int, float],
+          start: Union[int, float] = NotSpecified,
+          delta: Union[int, float] = NotSpecified,
+          dtype: Optional[str] = NotSpecified,
+          sparse: bool = NotSpecified,
+          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
