@@ -551,15 +551,15 @@ class _Norm(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def norm(
-         source: LayerRef,
-         *,
-         axes: Any,
-         param_shape: Any = NotSpecified,
-         scale: bool = NotSpecified,
-         bias: bool = NotSpecified,
-         epsilon: float = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> Layer:
+def normalize(
+              source: LayerRef,
+              *,
+              axes: Any,
+              param_shape: Any = NotSpecified,
+              scale: bool = NotSpecified,
+              bias: bool = NotSpecified,
+              epsilon: float = NotSpecified,
+              name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Normalize over specified axes, e.g. time and/or feature axis.
 
