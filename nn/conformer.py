@@ -14,21 +14,20 @@ class _PositionwiseFeedForward(nn.Module):
       FF -> Activation -> Dropout -> FF
   """
 
-  def __init__(self, dim_model: int, dim_ff: int, dropout: float, activation, l2: float = 0.0):
+  def __init__(self, dim_model: int, dim_ff: int, dropout: float, activation):
     """
     :param dim_model:
     :param dim_ff:
     :param dropout:
     :param activation:
-    :param l2:
     """
     super().__init__()
 
     self.dropout = dropout
     self.activation = activation
 
-    self.linear1 = nn.Linear(n_out=dim_ff, l2=l2)
-    self.linear2 = nn.Linear(n_out=dim_model, l2=l2)
+    self.linear1 = nn.Linear(n_out=dim_ff)
+    self.linear2 = nn.Linear(n_out=dim_model)
 
   def forward(self, inp: LayerRef) -> LayerRef:
     x_ff1 = self.linear1(inp)
@@ -44,18 +43,17 @@ class _ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, dim_model: int, kernel_size: int, l2: float = 0.0, batch_norm_eps: float = 1e-5,
+  def __init__(self, dim_model: int, kernel_size: int, batch_norm_eps: float = 1e-5,
       batch_norm_momentum: float = 0.1, batch_norm_other_opts=None):
     """
     :param dim_model:
     :param kernel_size:
-    :param l2:
     """
     super().__init__()
 
-    self.positionwise_conv1 = nn.Linear(n_out=dim_model * 2, l2=l2)
-    self.depthwise_conv = nn.Conv(n_out=dim_model, filter_size=(kernel_size,), groups=dim_model, l2=l2, padding='same')
-    self.positionwise_conv2 = nn.Linear(n_out=dim_model, l2=l2)
+    self.positionwise_conv1 = nn.Linear(n_out=dim_model * 2)
+    self.depthwise_conv = nn.Conv(n_out=dim_model, filter_size=(kernel_size,), groups=dim_model, padding='same')
+    self.positionwise_conv2 = nn.Linear(n_out=dim_model)
 
     if batch_norm_other_opts is None:
       batch_norm_other_opts = {}
@@ -84,13 +82,12 @@ class _ConformerConvSubsampleLayer(nn.Module):
   """
 
   def __init__(self, filter_sizes: List[Tuple[int, ...]], pool_sizes: Union[List[Tuple[int, ...]], None],
-      channel_sizes: List[int], l2: float = 0.0, dropout: float = 0.3, activation: str = 'relu',
+      channel_sizes: List[int], dropout: float = 0.3, activation: str = 'relu',
       padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
     :param channel_sizes:
-    :param l2:
     :param dropout:
     :param activation:
     :param padding:
@@ -103,7 +100,7 @@ class _ConformerConvSubsampleLayer(nn.Module):
     self.conv_layers = nn.ModuleList()
     for filter_size, channel_size in zip(filter_sizes, channel_sizes):
       self.conv_layers.append(
-        nn.Conv(l2=l2, activation=activation, filter_size=filter_size, n_out=channel_size, padding=padding))
+        nn.Conv(activation=activation, filter_size=filter_size, n_out=channel_size, padding=padding))
 
   def forward(self, inp: LayerRef) -> LayerRef:
     x = nn.split_dims(inp, axis='F', dims=(-1, 1))
@@ -123,7 +120,7 @@ class ConformerEncoderLayer(nn.Module):
   """
 
   def __init__(self, conv_kernel_size: int, activation_ff, dim_ff: int, dropout: float, att_dropout: float,
-      enc_key_dim: int, num_heads: int, l2: float):
+      enc_key_dim: int, num_heads: int):
     """
     :param conv_kernel_size:
     :param activation_ff:
@@ -132,17 +129,16 @@ class ConformerEncoderLayer(nn.Module):
     :param att_dropout:
     :param enc_key_dim:
     :param num_heads:
-    :param l2:
     """
     super().__init__()
 
     self.dropout = dropout
 
     self.ffn1 = _PositionwiseFeedForward(
-      dim_model=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff, l2=l2)
+      dim_model=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
     self.ffn2 = _PositionwiseFeedForward(
-      dim_model=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff, l2=l2)
+      dim_model=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
     self.conv_module = _ConformerConvBlock(dim_model=enc_key_dim, kernel_size=conv_kernel_size)
 
@@ -180,7 +176,7 @@ class ConformerEncoder(nn.Module):
 
   def __init__(self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
       activation_ff=nn.swish, dim_ff: int = 512, dropout: float = 0.1, att_dropout: float = 0.1, enc_key_dim: int = 256,
-      num_heads: int = 4, l2: float = 0.0):
+      num_heads: int = 4):
     """
     :param encoder_layer:
     :param num_blocks:
@@ -191,7 +187,6 @@ class ConformerEncoder(nn.Module):
     :param att_dropout:
     :param enc_key_dim:
     :param att_n_heads:
-    :param l2:
     """
     super().__init__()
 
@@ -199,14 +194,14 @@ class ConformerEncoder(nn.Module):
 
     self.conv_subsample_layer = _ConformerConvSubsampleLayer(
       filter_sizes=[(3, 3), (3, 3)], pool_sizes=[(2, 2), (2, 2)], channel_sizes=[enc_key_dim, enc_key_dim],
-      l2=l2, dropout=dropout)
+      dropout=dropout)
 
-    self.linear = nn.Linear(n_out=enc_key_dim, l2=l2, with_bias=False)
+    self.linear = nn.Linear(n_out=enc_key_dim, with_bias=False)
 
     self.conformer_blocks = nn.Sequential([
       encoder_layer(
         conv_kernel_size=conv_kernel_size, activation_ff=activation_ff, dim_ff=dim_ff, dropout=dropout,
-        att_dropout=att_dropout, enc_key_dim=enc_key_dim, num_heads=num_heads, l2=l2
+        att_dropout=att_dropout, enc_key_dim=enc_key_dim, num_heads=num_heads
       )
       for _ in range(num_blocks)
     ])
