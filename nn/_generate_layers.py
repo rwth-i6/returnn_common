@@ -43,6 +43,7 @@ BlacklistLayerClassNames = {
   "_TemplateLayer",
   "cond", "masked_computation", "subnetwork",
 
+  "source",  # we have get_extern_data instead
   "swap_axes",
   "gather_nd",  # -> gather
   "softmax",  # misleading (because not just activation), also we will have a separate softmax activation
@@ -79,7 +80,7 @@ BlacklistLayerArgs = {
 }
 
 FunctionNameMap = {
-  "source": "external_data",
+  "source": "external_data",  # but not used actually
   "softmax_over_spatial": "softmax",  # generic also for normal softmax on feature
   "range": "range_",  # do not overwrite builtin function
 }

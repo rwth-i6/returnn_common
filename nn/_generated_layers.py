@@ -115,62 +115,6 @@ class _Base(_ReturnnWrappedLayerBase):
   make_layer_dict = ILayerMaker.make_layer_dict  # abstract
 
 
-class _Source(_Base):
-  """
-  This gives access to some entry from network.extern_data (:class:`ExternData`).
-  """
-  returnn_layer_class = 'source'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               data_key: Optional[str] = NotSpecified,
-               **kwargs):
-    """
-    :param str|None data_key:
-    """
-    super().__init__(**kwargs)
-    self.data_key = data_key
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'data_key': self.data_key,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  def make_layer_dict(self) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'source',
-      **self.get_opts()}
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def external_data(
-                  *,
-                  data_key: Optional[str] = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  This gives access to some entry from network.extern_data (:class:`ExternData`).
-
-  :param str|None data_key:
-  :param str|None name:
-  """
-  mod = _Source(
-    data_key=data_key,
-    )
-  return mod(
-    name=name)
-
-
 class _Copy(_Base):
   """
   This layer does nothing, it copies its input.
