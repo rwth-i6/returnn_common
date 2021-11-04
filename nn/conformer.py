@@ -40,7 +40,7 @@ class _ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, dim_model: int, kernel_size: Tuple[int], l2: float = 0.0, batch_norm_eps: float = 1e-5,
+  def __init__(self, dim_model: int, kernel_size: int, l2: float = 0.0, batch_norm_eps: float = 1e-5,
       batch_norm_momentum: float = 0.1, batch_norm_update_sample_only_in_training=True,
       batch_norm_delay_sample_update=True, batch_norm_other_opts=None):
     """
@@ -51,7 +51,7 @@ class _ConformerConvBlock(nn.Module):
     super().__init__()
 
     self.positionwise_conv1 = nn.Linear(n_out=dim_model * 2, l2=l2)
-    self.depthwise_conv = nn.Conv(n_out=dim_model, filter_size=kernel_size, groups=dim_model, l2=l2, padding='same')
+    self.depthwise_conv = nn.Conv(n_out=dim_model, filter_size=(kernel_size,), groups=dim_model, l2=l2, padding='same')
     self.positionwise_conv2 = nn.Linear(n_out=dim_model, l2=l2)
 
     if batch_norm_other_opts is None:
@@ -120,7 +120,7 @@ class ConformerEncoderLayer(nn.Module):
   Represents a conformer block
   """
 
-  def __init__(self, conv_kernel_size: Tuple[int], activation_ff, dim_ff: int, dropout: float, att_dropout: float,
+  def __init__(self, conv_kernel_size: int, activation_ff, dim_ff: int, dropout: float, att_dropout: float,
       enc_key_dim: int, num_heads: int, l2: float):
     """
     :param conv_kernel_size:
@@ -176,7 +176,7 @@ class ConformerEncoder(nn.Module):
   Represents Conformer encoder architecture
   """
 
-  def __init__(self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: Tuple[int, ...] = (32,),
+  def __init__(self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
       activation_ff=nn.swish, dim_ff: int = 512, dropout: float = 0.1, att_dropout: float = 0.1, enc_key_dim: int = 256,
       num_heads: int = 4, l2: float = 0.0):
     """
