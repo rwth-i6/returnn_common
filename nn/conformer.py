@@ -31,7 +31,11 @@ class _PositionwiseFeedForward(nn.Module):
     self.linear2 = nn.Linear(n_out=dim_model, l2=l2)
 
   def forward(self, inp: LayerRef) -> LayerRef:
-    return self.linear2(nn.dropout(self.activation(self.linear1(inp)), dropout=self.dropout))
+    x_ff1 = self.linear1(inp)
+    x_act = self.activation(x_ff1)
+    x_drop = nn.dropout(x_act, dropout=self.dropout)
+    x_ff2 = self.linear2(x_drop)
+    return x_ff2
 
 
 class _ConformerConvBlock(nn.Module):
