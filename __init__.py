@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
   from . import nn  # noqa
 
 else:
-  nn = LazyLoader("nn", globals())
+  LazyLoader("nn", globals())
 
 
 del typing
