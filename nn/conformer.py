@@ -144,7 +144,7 @@ class ConformerEncoderLayer(nn.Module):
 
     self.conv_module = _ConformerConvBlock(dim_model=enc_key_dim, kernel_size=conv_kernel_size)
 
-    self.mhsa_module = self.conv_module #MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
+    self.mhsa_module = MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
 
   def forward(self, inp: LayerRef) -> LayerRef:
     # FFN
