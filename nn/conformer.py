@@ -40,7 +40,9 @@ class _ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, dim_model: int, kernel_size: Tuple[int], l2: float = 0.0):
+  def __init__(self, dim_model: int, kernel_size: Tuple[int], l2: float = 0.0, batch_norm_eps: float = 1e-5,
+      batch_norm_momentum: float = 0.1, batch_norm_update_sample_only_in_training=True,
+      batch_norm_delay_sample_update=True, batch_norm_other_opts=None):
     """
     :param dim_model:
     :param kernel_size:
@@ -52,11 +54,23 @@ class _ConformerConvBlock(nn.Module):
     self.depthwise_conv = nn.Conv(n_out=dim_model, filter_size=kernel_size, groups=dim_model, l2=l2, padding='same')
     self.positionwise_conv2 = nn.Linear(n_out=dim_model, l2=l2)
 
+    if batch_norm_other_opts is None:
+      batch_norm_other_opts = {}
+
+    self.batch_norm = nn.BatchNorm(epsilon=batch_norm_eps, momentum=batch_norm_momentum,
+      update_sample_only_in_training=batch_norm_update_sample_only_in_training,
+      delay_sample_update=batch_norm_delay_sample_update, **batch_norm_other_opts)
+
+  @staticmethod
+  def _glu(v: LayerRef):
+    a, b = nn.split(v, axis='F')
+    return a * nn.sigmoid(b)
+
   def forward(self, inp: LayerRef) -> LayerRef:
     x_conv1 = self.positionwise_conv1(inp)
-    x_act = nn.glu(x_conv1)
+    x_act = self._glu(x_conv1)
     x_depthwise_conv = self.depthwise_conv(x_act)
-    x_bn = nn.batch_norm(x_depthwise_conv)
+    x_bn = self.batch_norm(x_depthwise_conv)
     x_swish = nn.swish(x_bn)
     x_conv2 = self.positionwise_conv2(x_swish)
     return x_conv2
