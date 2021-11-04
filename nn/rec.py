@@ -2,10 +2,10 @@
 Basic RNNs.
 """
 
-from ._generated_layers import Rec
+from ._generated_layers import _Rec
 
 
-class Lstm(Rec):
+class Lstm(_Rec):
   """
   LSTM
   """
@@ -19,4 +19,4 @@ class Lstm(Rec):
     if unit_opts:
       kwargs = kwargs.copy()
       kwargs["unit_opts"] = unit_opts
-    super(Lstm, self).__init__(n_out=n_out, unit="nativelstm2", **kwargs)
+    super().__init__(n_out=n_out, unit="nativelstm2", **kwargs)
