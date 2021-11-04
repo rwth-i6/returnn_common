@@ -35,6 +35,11 @@ def gelu(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="gelu")
 
 
+def glu(x: LayerRef) -> Layer:
+  """GLU"""
+  return activation(x, activation='glu')
+
+
 def exp(x: nn.LayerRef) -> nn.Layer:
   """exp"""
   return _activation(x, activation="exp")
@@ -102,3 +107,4 @@ def cumsum(
     name=name)
   del state
   return layer
+
