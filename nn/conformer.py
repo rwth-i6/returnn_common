@@ -41,8 +41,7 @@ class _ConformerConvBlock(nn.Module):
   """
 
   def __init__(self, dim_model: int, kernel_size: int, l2: float = 0.0, batch_norm_eps: float = 1e-5,
-      batch_norm_momentum: float = 0.1, batch_norm_update_sample_only_in_training=True,
-      batch_norm_delay_sample_update=True, batch_norm_other_opts=None):
+      batch_norm_momentum: float = 0.1, batch_norm_other_opts=None):
     """
     :param dim_model:
     :param kernel_size:
@@ -56,10 +55,9 @@ class _ConformerConvBlock(nn.Module):
 
     if batch_norm_other_opts is None:
       batch_norm_other_opts = {}
-
-    self.batch_norm = nn.BatchNorm(epsilon=batch_norm_eps, momentum=batch_norm_momentum,
-      update_sample_only_in_training=batch_norm_update_sample_only_in_training,
-      delay_sample_update=batch_norm_delay_sample_update, **batch_norm_other_opts)
+    self.batch_norm = nn.BatchNorm(
+      epsilon=batch_norm_eps, momentum=batch_norm_momentum, update_sample_only_in_training=True,
+      delay_sample_update=True, **batch_norm_other_opts)
 
   @staticmethod
   def _glu(v: LayerRef):
