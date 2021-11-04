@@ -2065,7 +2065,7 @@ def window(
            axis: str = NotSpecified,
            padding: str = NotSpecified,
            stride: int = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -2173,7 +2173,7 @@ def cumsum(
            axis: str = NotSpecified,
            additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
            reverse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
@@ -6555,7 +6555,7 @@ def ken_lm_state(
                  input_step_offset: int = NotSpecified,
                  dense_output: bool = NotSpecified,
                  debug: bool = NotSpecified,
-                 name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                 name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Get next word (or subword) each frame,
   accumulates string,
@@ -6660,7 +6660,7 @@ def edit_distance_table(
                         initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
-                        name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                        name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Given a source and a target, calculates the edit distance table between them.
   Source can be inside a recurrent loop.
@@ -6824,7 +6824,7 @@ def unmask(
            state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
            initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
            mask: LayerRef,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   This is meant to be used together with :class:`MaskedComputationLayer`,
   which operates on input [B,T,D], and given a mask, returns [B,T',D'].
@@ -7096,7 +7096,7 @@ def cum_concat(
                state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                new_dim: DimensionTag,
-               name: Optional[Union[str, NameCtx]] = None) -> Layer:
+               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.

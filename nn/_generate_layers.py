@@ -256,7 +256,10 @@ def setup():
         for param in mod_args:
           print(f"{prefix}{param.get_module_param_code_str()},", file=f)
           args.append(param.get_module_param_name())
-      print(f"{prefix}name: Optional[Union[str, NameCtx]] = None) -> Layer:", file=f)
+      print(
+        f"{prefix}name: Optional[Union[str, NameCtx]] = None)"
+        f" -> {'Tuple[Layer, Union[LayerRef, Any]]' if sig.has_recurrent_state() else 'Layer'}:",
+        file=f)
       print('  """', file=f)
       if layer_class.__doc__:
         for i, line in enumerate(layer_class.__doc__.splitlines(keepends=True)):
