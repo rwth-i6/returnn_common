@@ -2087,8 +2087,9 @@ class _Window(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
@@ -2096,7 +2097,8 @@ class _Window(_Base):
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
@@ -2110,8 +2112,9 @@ class _Window(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def window(
            source: LayerRef,
-           state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
            *,
+           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
            window_size: int,
            window_left: Optional[int] = NotSpecified,
            window_right: Optional[int] = NotSpecified,
@@ -2135,6 +2138,7 @@ def window(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param int window_size:
   :param int|None window_left:
   :param int|None window_right:
@@ -2152,7 +2156,8 @@ def window(
     )
   return mod(
     source,
-    state,
+    state=state,
+    initial_state=initial_state,
     axis=axis,
     name=name)
 
@@ -2193,8 +2198,9 @@ class _Cumsum(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       axis: str = NotSpecified,
                       ) -> LayerDictRaw:
     """
@@ -2202,7 +2208,8 @@ class _Cumsum(_Base):
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
@@ -2216,8 +2223,9 @@ class _Cumsum(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def cumsum(
            source: LayerRef,
-           state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
            *,
+           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
            axis: str = NotSpecified,
            additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
            reverse: bool = NotSpecified,
@@ -2227,6 +2235,7 @@ def cumsum(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param str axis: see :func:`Data.get_axis_from_description`
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
   :param bool reverse:
@@ -2238,7 +2247,8 @@ def cumsum(
     )
   return mod(
     source,
-    state,
+    state=state,
+    initial_state=initial_state,
     axis=axis,
     name=name)
 
@@ -5661,7 +5671,7 @@ def hdf_dump(
     name=name)
 
 
-class Rec(_Base):
+class _Rec(_Base):
   """
   Recurrent layer, has support for several implementations of LSTMs (via ``unit`` argument),
   see :ref:`tf_lstm_benchmark` (https://returnn.readthedocs.io/en/latest/tf_lstm_benchmark.html),
@@ -5812,14 +5822,17 @@ class Rec(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef = (),
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
+                      *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -6565,14 +6578,17 @@ class _KenLmState(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
+                      *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -6585,8 +6601,9 @@ class _KenLmState(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def ken_lm_state(
                  source: LayerRef,
-                 state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                  *,
+                 state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                 initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                  lm_file: Any,
                  vocab_file: Optional[str] = NotSpecified,
                  vocab_unknown_label: str = NotSpecified,
@@ -6605,6 +6622,7 @@ def ken_lm_state(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
   :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
   :param str vocab_unknown_label: for the vocabulary
@@ -6623,7 +6641,7 @@ def ken_lm_state(
     dense_output=dense_output,
     debug=debug,
     )
-  return mod(source, state, name=name)
+  return mod(source, state=state, initial_state=initial_state, name=name)
 
 
 class _EditDistanceTable(_Base):
@@ -6670,14 +6688,17 @@ class _EditDistanceTable(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
+                      *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -6690,8 +6711,9 @@ class _EditDistanceTable(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def edit_distance_table(
                         source: LayerRef,
-                        state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                         *,
+                        state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                        initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
                         name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -6708,6 +6730,7 @@ def edit_distance_table(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param bool debug:
   :param int|None blank_idx: if given, will keep the same row for this source label
   :param str|None name:
@@ -6716,7 +6739,7 @@ def edit_distance_table(
     debug=debug,
     blank_idx=blank_idx,
     )
-  return mod(source, state, name=name)
+  return mod(source, state=state, initial_state=initial_state, name=name)
 
 
 class _OptimalCompletions(_Base):
@@ -6828,8 +6851,9 @@ class _Unmask(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                       *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       mask: LayerRef,
                       ) -> LayerDictRaw:
     """
@@ -6837,7 +6861,8 @@ class _Unmask(_Base):
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
       'mask': mask,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
@@ -6851,8 +6876,9 @@ class _Unmask(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def unmask(
            source: LayerRef,
-           state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
            *,
+           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
            mask: LayerRef,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -6869,6 +6895,7 @@ def unmask(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param LayerBase mask: the same as as used for :class:`MaskedComputationLayer`.
     Outside loop: [B,T] or [T,B], original T. Inside loop, just [B].
   :param str|None name:
@@ -6876,12 +6903,13 @@ def unmask(
   mod = _Unmask()
   return mod(
     source,
-    state,
+    state=state,
+    initial_state=initial_state,
     mask=mask,
     name=name)
 
 
-class TwoDLSTM(_Base):
+class _TwoDLSTM(_Base):
   """
   2D LSTM.
 
@@ -6932,14 +6960,17 @@ class TwoDLSTM(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
+                      *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -7094,14 +7125,17 @@ class _CumConcat(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
-                      state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
+                      *,
+                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'initial_state': state,
+      'state': state,
+      'initial_state': initial_state,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -7114,8 +7148,9 @@ class _CumConcat(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def cum_concat(
                source: LayerRef,
-               state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified,
                *,
+               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                new_dim: DimensionTag,
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -7163,10 +7198,11 @@ def cum_concat(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
+  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param DimensionTag new_dim:
   :param str|None name:
   """
   mod = _CumConcat(
     new_dim=new_dim,
     )
-  return mod(source, state, name=name)
+  return mod(source, state=state, initial_state=initial_state, name=name)

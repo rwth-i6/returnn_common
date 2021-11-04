@@ -183,10 +183,11 @@ def setup():
         print("  def make_layer_dict(self,", file=f)
         if sig.has_source_param():
           print(f"                      {sig.get_module_call_source_param_code_str()},", file=f)
-        if sig.has_recurrent_state():
-          print(f"                      {sig.get_module_call_state_param_code_str()},", file=f)
-        if sig.has_module_call_args():
+        if sig.has_module_call_args() or sig.has_recurrent_state():
           print("                      *,", file=f)
+          if sig.has_recurrent_state():
+            print(f"                      {sig.get_module_call_state_param_code_str('state')},", file=f)
+            print(f"                      {sig.get_module_call_state_param_code_str('initial_state')},", file=f)
           for param in sig.get_module_call_args():
             print(f"                      {param.get_module_param_code_str()},", file=f)
         print("                      ) -> LayerDictRaw:",  file=f)
@@ -209,7 +210,8 @@ def setup():
       if sig.has_module_call_args() or sig.has_recurrent_state():
         print("    args = {", file=f)
         if sig.has_recurrent_state():
-          print(f"      'initial_state': state,", file=f)
+          print(f"      'state': state,", file=f)
+          print(f"      'initial_state': initial_state,", file=f)
         for param in sig.get_module_call_args():
           print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
         print("    }", file=f)
@@ -243,10 +245,11 @@ def setup():
       if sig.has_source_param():
         print(f"{prefix}{sig.get_module_call_source_param_code_str()},", file=f)
         args.append("source")
-      if sig.has_recurrent_state():
-        print(f"{prefix}{sig.get_module_call_state_param_code_str()},", file=f)
-        args.append("state")
       print(f"{prefix}*,", file=f)
+      if sig.has_recurrent_state():
+        print(f"{prefix}{sig.get_module_call_state_param_code_str('state')},", file=f)
+        print(f"{prefix}{sig.get_module_call_state_param_code_str('initial_state')},", file=f)
+        args.extend(("state", "initial_state"))
       mod_args = sig.get_all_derived_args()
       if mod_args:
         for param in mod_args:
@@ -267,7 +270,8 @@ def setup():
       if sig.has_source_param():
         print(f"  {sig.get_module_call_source_docstring()}", file=f)
       if sig.has_recurrent_state():
-        print(f"  {sig.get_module_call_state_docstring()}", file=f)
+        print(f"  {sig.get_module_call_state_docstring('state')}", file=f)
+        print(f"  {sig.get_module_call_state_docstring('initial_state')}", file=f)
       for param in mod_args:
         print(param.get_module_param_docstring(indent="  "), file=f)
       print("  :param str|None name:", file=f)
@@ -286,7 +290,7 @@ def setup():
           module_call_args.append(param)
       if sig.has_source_param() and not module_call_args:
         if sig.has_recurrent_state():
-          print(f"  return mod(source, state, name=name)", file=f)
+          print(f"  return mod(source, state=state, initial_state=initial_state, name=name)", file=f)
         else:
           print(f"  return mod(source, name=name)", file=f)
       else:
@@ -294,7 +298,8 @@ def setup():
         if sig.has_source_param():
           print("    source,", file=f)
         if sig.has_recurrent_state():
-          print("    state,", file=f)
+          print("    state=state,", file=f)
+          print("    initial_state=initial_state,", file=f)
         for param in module_call_args:
           print(f"    {param.get_module_param_name()}={param.get_module_param_name()},", file=f)
         print("    name=name)", file=f)
@@ -391,19 +396,19 @@ class LayerSignature:
     s += " source:"
     return s
 
-  def get_module_call_state_param_code_str(self):
+  def get_module_call_state_param_code_str(self, param_name: str):
     """
     Code for `state` param
     """
     assert self.has_recurrent_state()
-    return "state: Optional[Union[LayerRef, List[LayerRef], Tuple[LayerRef], NotSpecified]] = NotSpecified"
+    return f"{param_name}: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified"
 
-  def get_module_call_state_docstring(self):
+  def get_module_call_state_docstring(self, param_name: str):
     """
     Code for docstring of `source` param
     """
     assert self.has_recurrent_state()
-    return ":param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:"
+    return f":param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None {param_name}:"
 
   def has_module_init_args(self) -> bool:
     """
@@ -477,12 +482,12 @@ class LayerSignature:
       Inside a loop::
 
         mod = Module(...)
-        out, state = mod(in, prev_state)
+        out, state = mod(in, state=prev_state)
 
       Outside a loop::
 
         mod = Module(...)
-        out, last_state = mod(in, [initial_state])
+        out, last_state = mod(in, [initial_state=initial_state])
     """
     if (
           getattr(self.layer_class.get_rec_initial_extra_outputs, "__func__")
@@ -500,7 +505,7 @@ class LayerSignature:
     "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
     "name_scope", "reuse_params",
     "rec_previous_layer", "control_dependencies_on_output",
-    "initial_state", "initial_output",
+    "state", "initial_state", "initial_output",
     "extra_deps", "collocate_with",
     "batch_norm",
     "is_output_layer", "register_as_extern_data",
@@ -862,7 +867,7 @@ def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
   name = name[:-len("Layer")]
   if name.startswith("_"):
     return name
-  if layer_class.layer_class in LayersHidden or sig.is_functional():
+  if layer_class.layer_class in LayersHidden or sig.is_functional() or sig.has_recurrent_state():
     return "_" + name  # we make a public function for it, but the module is hidden
   return name
 
