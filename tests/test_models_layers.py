@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net
-
+from builtins import range as range_
 import returnn_common as rc
 from returnn_common.nn import *
 from pprint import pprint
@@ -431,7 +431,7 @@ def test_module_list():
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.ls = ModuleList([Linear(i + 3) for i in range(4)])
+      self.ls = ModuleList([Linear(i + 3) for i in range_(4)])
 
     def forward(self, out: LayerRef) -> LayerRef:
       """
