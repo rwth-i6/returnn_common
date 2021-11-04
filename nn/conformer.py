@@ -197,13 +197,13 @@ class ConformerEncoder(nn.Module):
 
     self.linear = nn.Linear(n_out=enc_key_dim, with_bias=False)
 
-    self.conformer_blocks = nn.Sequential([
+    self.conformer_blocks = nn.Sequential(
       encoder_layer(
         conv_kernel_size=conv_kernel_size, activation_ff=activation_ff, dim_ff=dim_ff, dropout=dropout,
         att_dropout=att_dropout, enc_key_dim=enc_key_dim, num_heads=num_heads
       )
       for _ in range(num_blocks)
-    ])
+    )
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_subsample = self.conv_subsample_layer(inp)
