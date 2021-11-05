@@ -50,6 +50,11 @@ def test_rec_ff():
   dummy_run_net(net_dict)
 
 
+def test_lstm_default_name():
+  assert_equal(LSTM(3).get_default_name(), "lstm")
+  assert_equal(LSTMStep(3).get_default_name(), "lstm")
+
+
 def test_rec_inner_lstm():
   class _Net(Module):
     def __init__(self):

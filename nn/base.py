@@ -268,6 +268,7 @@ class ILayerMaker:
   """
   has_variables: bool = True
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
+  default_name: Optional[str] = None
 
   def __init__(self):
     """
@@ -313,6 +314,8 @@ class ILayerMaker:
     """
     Get a default layer name (used when we do not have a Module attribute pointing to this).
     """
+    if self.default_name:
+      return self.default_name
     name = self.__class__.__name__
     if name.startswith("_"):
       name = name[1:]
