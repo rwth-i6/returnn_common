@@ -5,12 +5,11 @@ Array (Tensor) functions
 from typing import Optional, Tuple, List
 from returnn.util.basic import NotSpecified
 from .. import nn
-from .base import LayerRef, Layer
 
 
-def concat(*sources: LayerRef,
+def concat(*sources: nn.LayerRef,
            axis: Optional[str] = NotSpecified,
-           name: Optional[str] = None) -> Layer:
+           name: Optional[str] = None) -> nn.Layer:
   """
   Concatenates multiple sources (by default in feature axis).
   """
@@ -23,9 +22,9 @@ def concat(*sources: LayerRef,
 
 
 def cum_concat_step(
-      source: LayerRef, *, state: nn.LayerState,
+      source: nn.LayerRef, *, state: nn.LayerState,
       new_dim: nn.DimensionTag,
-      name: Optional[str] = None) -> Tuple[Layer, nn.LayerState]:
+      name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   See RETURNN :class:`CumConcatLayer` for details.
@@ -34,11 +33,11 @@ def cum_concat_step(
   return _cum_concat(source=source, state=state, new_dim=new_dim, name=name)
 
 
-def split(source: LayerRef, *,
+def split(source: nn.LayerRef, *,
           axis: Optional[str] = NotSpecified,
           num_splits: Optional[int] = NotSpecified,
           size_splits: Optional[List[int]] = NotSpecified,
-          ) -> Tuple[LayerRef, ...]:
+          ) -> Tuple[nn.LayerRef, ...]:
   """
   Split the input on the specified axis (by default feature).
   Basically a wrapper around tf.split.
@@ -53,14 +52,14 @@ def split(source: LayerRef, *,
 
 
 def window(
-      source: LayerRef, *,
+      source: nn.LayerRef, *,
       window_size: int,
       window_left: Optional[int] = NotSpecified,
       window_right: Optional[int] = NotSpecified,
       axis: str = NotSpecified,
       padding: str = NotSpecified,
       stride: int = NotSpecified,
-      name: Optional[str] = None) -> Layer:
+      name: Optional[str] = None) -> nn.Layer:
   """
   Window. See :func:`_generated_layers._window`.
   """
@@ -75,12 +74,12 @@ def window(
 
 
 def window_step(
-      source: LayerRef, *, state: nn.LayerState,
+      source: nn.LayerRef, *, state: nn.LayerState,
       window_size: int,
       axis: str = NotSpecified,
       padding: str = NotSpecified,
       stride: int = NotSpecified,
-      name: Optional[str] = None) -> Tuple[Layer, nn.LayerState]:
+      name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
   """
   Window into the past when iterating.
   See :func:`_generated_layers._window`.

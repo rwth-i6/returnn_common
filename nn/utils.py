@@ -4,32 +4,31 @@ Some generic utils (which doesn't fit into math_, array_, etc)
 
 from typing import Any, Optional, Tuple
 from .. import nn
-from .base import LayerRef, NotSpecified
 
 
 # noinspection PyShadowingNames
-def dropout(source: LayerRef,
+def dropout(source: nn.LayerRef,
             dropout: float,
             *,
-            noise_shape: Any = NotSpecified,
+            noise_shape: Any = nn.NotSpecified,
             on_forward: bool = False,
             name: Optional[str] = None
-            ) -> LayerRef:
+            ) -> nn.LayerRef:
   """
   Applies dropout.
   Dropout will only be applied during training (unless you set on_forward=True).
 
-  :param LayerRef source:
+  :param nn.LayerRef source:
   :param float dropout: 0.0 means to apply no dropout.
   :param dict[str|tuple,int|None] noise_shape: see :func:`returnn.tf.util.data.get_bc_shape`
   :param bool on_forward: apply dropout during inference
   :param str|None name:
   """
-  assert isinstance(source, LayerRef)
+  assert isinstance(source, nn.LayerRef)
   if not dropout:
     return source
   opts = {"dropout": dropout}
-  if noise_shape is not NotSpecified:
+  if noise_shape is not nn.NotSpecified:
     opts["dropout_noise_shape"] = noise_shape
   if on_forward:
     opts["dropout_on_forward"] = True
