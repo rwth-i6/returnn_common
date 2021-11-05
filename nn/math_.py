@@ -3,7 +3,8 @@ Some basic math functions
 (potential activation functions).
 """
 
-from .base import LayerRef, Layer, make_layer
+from .. import nn
+from .base import LayerRef, Layer
 
 
 def relu(x: LayerRef) -> Layer:
@@ -46,9 +47,25 @@ def sigmoid(x: LayerRef) -> Layer:
   return _activation(x, activation="sigmoid")
 
 
+def log_sigmoid(x: LayerRef) -> Layer:
+  """log sigmoid"""
+  return _activation(x, activation="log_sigmoid")
+
+
 def swish(x: LayerRef) -> Layer:
   """swish"""
   return _activation(x, activation="swish")
+
+
+# softmax already provided via generated layers
+softmax = nn.softmax
+
+
+def log_softmax(x: LayerRef, **kwargs) -> Layer:
+  """
+  Wraps :func:`nn.softmax` with log_space=True.
+  """
+  return nn.softmax(x, log_space=True, **kwargs)
 
 
 def _activation(x: LayerRef, activation: str) -> Layer:
@@ -57,4 +74,4 @@ def _activation(x: LayerRef, activation: str) -> Layer:
   Only for internal use.
   If anything is missing here in this module, please just add it.
   """
-  return make_layer({"class": "activation", "from": x, "activation": activation}, name=activation)
+  return nn.make_layer({"class": "activation", "from": x, "activation": activation}, name=activation)
