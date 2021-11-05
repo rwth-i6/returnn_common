@@ -1215,12 +1215,14 @@ class NameCtx:
     assert root_maker, f"root name ctx {self.root} is not assigned to a maker (module)"
     if root_maker is self.maker:
       return ""  # special case
-    # Do a breadth-first search through the parents, starting from self.maker, until we find root_maker.
+    # Do a depth-first search through the parents, starting from self.maker, until we find root_maker.
+    # Use depth-first instead of breadth-first to prefer the first parent when there are multiple.
     queue = [self.maker]
     cache = {}  # maker -> full name
     while queue:
-      maker = queue.pop(0)
+      maker = queue.pop(-1)  # depth-first
       postfix = (join_str + cache[maker]) if maker in cache else ""
+      queue_ext = []
       for parent, attr in maker.parents_with_attr():
         if parent in cache:
           continue
@@ -1232,7 +1234,8 @@ class NameCtx:
             assert call.layer_abs_name_scope
             return call.layer_abs_name_scope + join_str + attr + postfix
         cache[parent] = attr + postfix
-        queue.append(parent)
+        queue_ext.append(parent)
+      queue.extend(reversed(queue_ext))
       if root_maker in cache:
         break
     if root_maker not in cache:
@@ -1316,20 +1319,23 @@ class NameCtx:
     reserved_names = set(self.parent.children.keys()) | self._ReservedNames
     if self.parent.maker:
       # Check parent name scope maker, any attrib from there to self.maker.
-      # Do a breadth-first search through the parents, starting from self.maker,
+      # Do a depth-first search through the parents, starting from self.maker,
       # until we find self.parent.maker.
+      # Somewhat consistent to _get_abs_canonical_name.
       queue = [self.maker]
       cache = {}  # parent -> full attrib
       while queue:
-        maker = queue.pop(0)
+        maker = queue.pop(-1)  # depth-first
         postfix = f".{cache[maker]}" if maker in cache else ""
+        queue_ext = []
         for parent, attr in maker.parents_with_attr():
           if parent in cache:
             if cache[parent] in reserved_names:
               cache[parent] = attr + postfix  # anyway overwrite
             continue
           cache[parent] = attr + postfix
-          queue.append(parent)
+          queue_ext.append(parent)
+        queue.extend(reversed(queue_ext))
         if self.parent.maker in cache:
           break
       if self.parent.maker in cache:
