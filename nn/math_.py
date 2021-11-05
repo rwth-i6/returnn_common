@@ -7,6 +7,14 @@ from typing import Optional, Union
 from .. import nn
 
 
+def identity(x: nn.LayerRef) -> nn.LayerRef:
+  """
+  Identity function. Just to have one canonical.
+  Also see :func:`nn.copy`, which creates a new layer (which itself does nothing though).
+  """
+  return x
+
+
 def relu(x: nn.LayerRef) -> nn.Layer:
   """ReLU"""
   return _activation(x, activation="relu")
