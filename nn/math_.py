@@ -35,7 +35,7 @@ def gelu(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="gelu")
 
 
-def glu(v: LayerRef):
+def glu(v: LayerRef) -> Layer:
   """GLU https://arxiv.org/abs/1612.08083"""
   from . import split
   a, b = split(v, axis='F', num_splits=2)
