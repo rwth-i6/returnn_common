@@ -68,6 +68,7 @@ BlacklistLayerClassNames = {
   "concat_attention",
   "gauss_window_attention",
   "self_attention",
+  "relative_positional_encoding",
 }
 
 LayersHidden = {
