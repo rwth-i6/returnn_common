@@ -3,7 +3,7 @@ Conformer code.
 Ref: https://arxiv.org/abs/2005.08100
 """
 
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Callable
 from .. import nn
 
 
@@ -13,7 +13,7 @@ class _PositionwiseFeedForward(nn.Module):
       FF -> Activation -> Dropout -> FF
   """
 
-  def __init__(self, out_dim: int, dim_ff: int, dropout: float, activation):
+  def __init__(self, out_dim: int, dim_ff: int, dropout: float, activation: Callable[[nn.LayerRef], nn.LayerRef]):
     """
     :param out_dim:
     :param dim_ff:
@@ -78,7 +78,8 @@ class _ConformerConvSubsampleLayer(nn.Module):
 
   def __init__(
       self, filter_sizes: List[Tuple[int, ...]], pool_sizes: Union[List[Tuple[int, ...]], None],
-      channel_sizes: List[int], dropout: float = 0.3, activation=nn.relu, padding: str = 'same'):
+      channel_sizes: List[int], dropout: float = 0.3, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
+      padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
@@ -118,8 +119,8 @@ class ConformerEncoderLayer(nn.Module):
   """
 
   def __init__(
-      self, conv_kernel_size: int, activation_ff, dim_ff: int, dropout: float, att_dropout: float, enc_key_dim: int,
-      num_heads: int):
+      self, conv_kernel_size: int, activation_ff: Callable[[nn.LayerRef], nn.LayerRef], dim_ff: int, dropout: float,
+      att_dropout: float, enc_key_dim: int, num_heads: int):
     """
     :param conv_kernel_size:
     :param activation_ff:
@@ -174,8 +175,9 @@ class ConformerEncoder(nn.Module):
   """
 
   def __init__(
-      self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32, activation_ff=nn.swish,
-      dim_ff: int = 512, dropout: float = 0.1, att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4):
+      self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
+      activation_ff: Callable[[nn.LayerRef], nn.LayerRef] = nn.swish, dim_ff: int = 512, dropout: float = 0.1,
+      att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4):
     """
     :param encoder_layer:
     :param num_blocks:
