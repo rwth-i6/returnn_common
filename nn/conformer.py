@@ -3,7 +3,7 @@ Conformer code.
 Ref: https://arxiv.org/abs/2005.08100
 """
 
-from typing import Tuple, List, Union, Callable
+from typing import Tuple, List, Union, Callable, Optional
 from .. import nn
 
 
@@ -43,8 +43,8 @@ class _ConformerConvBlock(nn.Module):
   """
 
   def __init__(
-      self, out_dim: int, kernel_size: int, batch_norm_eps: float = 1e-5, batch_norm_momentum: float = 0.1,
-      batch_norm_other_opts=None):
+        self, out_dim: int, kernel_size: int, batch_norm_eps: float = 1e-5, batch_norm_momentum: float = 0.1,
+        batch_norm_other_opts=None):
     """
     :param out_dim:
     :param kernel_size:
@@ -77,9 +77,9 @@ class _ConformerConvSubsampleLayer(nn.Module):
   """
 
   def __init__(
-      self, filter_sizes: List[Tuple[int, ...]], pool_sizes: Union[List[Tuple[int, ...]], None],
-      channel_sizes: List[int], dropout: float = 0.3, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
-      padding: str = 'same'):
+        self, filter_sizes: List[Tuple[int, int]], pool_sizes: Optional[List[Tuple[int, int]]],
+        channel_sizes: List[int], dropout: float = 0.3, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
+        padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
@@ -119,8 +119,8 @@ class ConformerEncoderLayer(nn.Module):
   """
 
   def __init__(
-      self, conv_kernel_size: int, activation_ff: Callable[[nn.LayerRef], nn.LayerRef], dim_ff: int, dropout: float,
-      att_dropout: float, enc_key_dim: int, num_heads: int):
+        self, conv_kernel_size: int, activation_ff: Callable[[nn.LayerRef], nn.LayerRef], dim_ff: int, dropout: float,
+        att_dropout: float, enc_key_dim: int, num_heads: int):
     """
     :param conv_kernel_size:
     :param activation_ff:
@@ -175,9 +175,9 @@ class ConformerEncoder(nn.Module):
   """
 
   def __init__(
-      self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
-      activation_ff: Callable[[nn.LayerRef], nn.LayerRef] = nn.swish, dim_ff: int = 512, dropout: float = 0.1,
-      att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4):
+        self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
+        activation_ff: Callable[[nn.LayerRef], nn.LayerRef] = nn.swish, dim_ff: int = 512, dropout: float = 0.1,
+        att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4):
     """
     :param encoder_layer:
     :param num_blocks:
