@@ -44,6 +44,7 @@ BlacklistLayerClassNames = {
   "cond", "masked_computation", "subnetwork",
 
   "source",  # we have get_extern_data instead
+  "activation",  # will be explicit. https://github.com/rwth-i6/returnn_common/issues/63
   "swap_axes",
   "gather_nd",  # -> gather
   "softmax",  # misleading (because not just activation), also we will have a separate softmax activation
@@ -507,6 +508,7 @@ class LayerSignature:
   _IgnoreParamNames = {
     "self", "name", "network", "output",
     "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
+    "activation",  # more explicitly decoupled. https://github.com/rwth-i6/returnn_common/issues/62
     "name_scope", "reuse_params",
     "rec_previous_layer", "control_dependencies_on_output",
     "state", "initial_state", "initial_output",
