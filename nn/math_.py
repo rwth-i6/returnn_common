@@ -4,55 +4,54 @@ Some basic math functions
 """
 
 from .. import nn
-from .base import LayerRef, Layer
 
 
-def relu(x: LayerRef) -> Layer:
+def relu(x: nn.LayerRef) -> nn.Layer:
   """ReLU"""
   return _activation(x, activation="relu")
 
 
-def elu(x: LayerRef) -> Layer:
+def elu(x: nn.LayerRef) -> nn.Layer:
   """ELU https://arxiv.org/abs/1511.07289"""
   return _activation(x, activation="elu")
 
 
-def selu(x: LayerRef) -> Layer:
+def selu(x: nn.LayerRef) -> nn.Layer:
   """SELU https://arxiv.org/abs/1706.02515"""
   return _activation(x, activation="selu")
 
 
-def gelu(x: LayerRef) -> Layer:
+def gelu(x: nn.LayerRef) -> nn.Layer:
   """GELU https://arxiv.org/abs/1606.08415"""
   return _activation(x, activation="gelu")
 
 
-def exp(x: LayerRef) -> Layer:
+def exp(x: nn.LayerRef) -> nn.Layer:
   """exp"""
   return _activation(x, activation="exp")
 
 
-def log(x: LayerRef) -> Layer:
+def log(x: nn.LayerRef) -> nn.Layer:
   """log"""
   return _activation(x, activation="log")
 
 
-def tanh(x: LayerRef) -> Layer:
+def tanh(x: nn.LayerRef) -> nn.Layer:
   """tanh"""
   return _activation(x, activation="tanh")
 
 
-def sigmoid(x: LayerRef) -> Layer:
+def sigmoid(x: nn.LayerRef) -> nn.Layer:
   """sigmoid"""
   return _activation(x, activation="sigmoid")
 
 
-def log_sigmoid(x: LayerRef) -> Layer:
+def log_sigmoid(x: nn.LayerRef) -> nn.Layer:
   """log sigmoid"""
   return _activation(x, activation="log_sigmoid")
 
 
-def swish(x: LayerRef) -> Layer:
+def swish(x: nn.LayerRef) -> nn.Layer:
   """swish"""
   return _activation(x, activation="swish")
 
@@ -61,14 +60,14 @@ def swish(x: LayerRef) -> Layer:
 softmax = nn.softmax
 
 
-def log_softmax(x: LayerRef, **kwargs) -> Layer:
+def log_softmax(x: nn.LayerRef, **kwargs) -> nn.Layer:
   """
   Wraps :func:`nn.softmax` with log_space=True.
   """
   return nn.softmax(x, log_space=True, **kwargs)
 
 
-def _activation(x: LayerRef, activation: str) -> Layer:
+def _activation(x: nn.LayerRef, activation: str) -> nn.Layer:
   """
   RETURNN ActivationLayer.
   Only for internal use.
