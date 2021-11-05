@@ -78,7 +78,7 @@ class _ConformerConvSubsampleLayer(nn.Module):
 
   def __init__(
       self, filter_sizes: List[Tuple[int, ...]], pool_sizes: Union[List[Tuple[int, ...]], None],
-      channel_sizes: List[int], dropout: float = 0.3, activation: str = 'relu', padding: str = 'same'):
+      channel_sizes: List[int], dropout: float = 0.3, activation=nn.relu, padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
@@ -91,17 +91,19 @@ class _ConformerConvSubsampleLayer(nn.Module):
 
     self.dropout = dropout
     self.pool_sizes = pool_sizes
+    self.activation = activation
 
     self.conv_layers = nn.ModuleList()
     assert len(filter_sizes) == len(channel_sizes)
     for filter_size, channel_size in zip(filter_sizes, channel_sizes):
       self.conv_layers.append(
-        nn.Conv(activation=activation, filter_size=filter_size, n_out=channel_size, padding=padding))
+        nn.Conv(filter_size=filter_size, n_out=channel_size, padding=padding))
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x = nn.split_dims(inp, axis='F', dims=(-1, 1))
     for i, conv_layer in enumerate(self.conv_layers):
       x = conv_layer(x)
+      x = self.activation(x)
       if self.pool_sizes and i < len(self.pool_sizes):
         x = nn.pool(x, pool_size=self.pool_sizes[i], padding='same', mode='max')
       if self.dropout:
