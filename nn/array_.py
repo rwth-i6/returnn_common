@@ -4,6 +4,7 @@ Array (Tensor) functions
 
 from typing import Optional, Tuple, List
 from returnn.util.basic import NotSpecified
+from .. import nn
 from .base import LayerRef, Layer
 
 
@@ -19,6 +20,18 @@ def concat(*sources: LayerRef,
     return make_layer({"class": "copy", "from": sources}, name=name or "concat")
   else:
     raise NotImplementedError(f"Cannot handle concat with axis {axis!r} yet")
+
+
+def rec_cum_concat(
+      source: LayerRef, *, state: nn.LayerState,
+      new_dim: nn.DimensionTag,
+      name: Optional[str] = None) -> Tuple[Layer, nn.LayerState]:
+  """
+  Concatenates all previous frames of a time-axis.
+  See RETURNN :class:`CumConcatLayer` for details.
+  """
+  from ._generated_layers import _cum_concat
+  return _cum_concat(source=source, state=state, new_dim=new_dim, name=name)
 
 
 def split(source: LayerRef, *,
