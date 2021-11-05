@@ -873,6 +873,12 @@ def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
   name = name[:-len("Layer")]
   if name.startswith("_"):
     return name
+  # LayersHidden is our explicit list.
+  # When some layer is purely functional (is_functional), then we just make the function public
+  # but keep the wrapped layer maker hidden.
+  # When it has recurrent state, we either have a public function in case it is functional (no params),
+  # or if not (e.g. RecLayer, TwoDLSTMLayer), we anyway better should use explicit public wrappers.
+  # https://github.com/rwth-i6/returnn_common/issues/31
   if layer_class.layer_class in LayersHidden or sig.is_functional() or sig.has_recurrent_state():
     return "_" + name  # we make a public function for it, but the module is hidden
   return name
