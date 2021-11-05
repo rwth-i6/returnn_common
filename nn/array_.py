@@ -22,7 +22,7 @@ def concat(*sources: LayerRef,
     raise NotImplementedError(f"Cannot handle concat with axis {axis!r} yet")
 
 
-def rec_cum_concat(
+def cum_concat_step(
       source: LayerRef, *, state: nn.LayerState,
       new_dim: nn.DimensionTag,
       name: Optional[str] = None) -> Tuple[Layer, nn.LayerState]:
