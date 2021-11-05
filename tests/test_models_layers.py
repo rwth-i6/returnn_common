@@ -133,7 +133,7 @@ def test_simple_net_share_params():
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
       self.lstm = Lstm(n_out=13)
 
     def forward(self, x) -> LayerRef:
@@ -230,7 +230,7 @@ def test_multiple_returns_depth_1():
   class _SubNet(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
 
     def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
       """
@@ -262,7 +262,7 @@ def test_multiple_returns_depth_2():
   class _SubSubNet(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
 
     def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
       """
@@ -307,8 +307,8 @@ def test_from_call_variations():
   class _SubNet(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=13, activation=None)
-      self.linear2 = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
+      self.linear2 = Linear(n_out=13)
 
     def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
       """
@@ -346,8 +346,8 @@ def test_from_call_variations2():
   class _SubNet(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=13, activation=None)
-      self.linear2 = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
+      self.linear2 = Linear(n_out=13)
 
     def forward(self, x: LayerRef) -> Tuple[LayerRef, LayerRef]:
       """
@@ -360,8 +360,8 @@ def test_from_call_variations2():
   class _SubNet2(Module):
     def __init__(self):
       super().__init__()
-      self.linear = Linear(n_out=13, activation=None)
-      self.linear2 = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
+      self.linear2 = Linear(n_out=13)
 
     def forward(self, x: LayerRef, y: LayerRef) -> Tuple[LayerRef, LayerRef]:
       """
@@ -378,7 +378,7 @@ def test_from_call_variations2():
       super().__init__()
       self.sub = _SubNet()
       self.sub2 = _SubNet2()
-      self.linear = Linear(n_out=13, activation=None)
+      self.linear = Linear(n_out=13)
 
     def forward(self, x: LayerRef) -> LayerRef:
       """
