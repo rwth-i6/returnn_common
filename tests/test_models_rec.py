@@ -54,7 +54,7 @@ def test_rec_inner_lstm():
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.lstm = Lstm(13)
+      self.lstm = LSTMStep(13)
 
     def forward(self, x: LayerRef) -> LayerRef:
       """
@@ -97,7 +97,7 @@ def test_rec_hidden():
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.lstm = Lstm(n_out=13)
+      self.lstm = LSTM(n_out=13)
 
     def forward(self, x: LayerRef) -> LayerRef:
       """
@@ -117,7 +117,7 @@ def test_rec_hidden_initial():
     def __init__(self):
       super().__init__()
       self.linear = Linear(13)
-      self.lstm = Lstm(13)
+      self.lstm = LSTM(13)
 
     def forward(self, x: LayerRef) -> LayerRef:
       """

@@ -2,12 +2,34 @@
 Basic RNNs.
 """
 
+from typing import Optional
+from .. import nn
 from ._generated_layers import _Rec
 
 
-class Lstm(_Rec):
+class LSTM(_Rec):
   """
-  LSTM
+  LSTM operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
   """
   def __init__(self, n_out: int, **kwargs):
     super().__init__(n_out=n_out, unit="nativelstm2", **kwargs)
+
+  # noinspection PyMethodOverriding
+  def make_layer_dict(
+        self, source: nn.LayerRef, *, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
+    """make layer"""
+    return super().make_layer_dict(source, initial_state=initial_state)
+
+
+class LSTMStep(_Rec):
+  """
+  LSTM operating one step. returns (output, state) tuple, where state is (h,c).
+  """
+  def __init__(self, n_out: int, **kwargs):
+    super().__init__(n_out=n_out, unit="nativelstm2", **kwargs)
+
+  # noinspection PyMethodOverriding
+  def make_layer_dict(
+        self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.LayerDictRaw:
+    """make layer"""
+    return super().make_layer_dict(source, state=state)

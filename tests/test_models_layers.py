@@ -113,7 +113,7 @@ def test_simple_net_lstm():
   class _Net(Module):
     def __init__(self):
       super().__init__()
-      self.lstm = Lstm(n_out=13)
+      self.lstm = LSTM(n_out=13)
 
     def forward(self, x) -> LayerRef:
       """
@@ -134,7 +134,7 @@ def test_simple_net_share_params():
     def __init__(self):
       super().__init__()
       self.linear = Linear(n_out=13)
-      self.lstm = Lstm(n_out=13)
+      self.lstm = LSTM(n_out=13)
 
     def forward(self, x) -> LayerRef:
       """
