@@ -50,3 +50,44 @@ def split(source: LayerRef, *,
     assert isinstance(size_splits, (tuple, list))
     num_splits = len(size_splits)
   return tuple(get_sub_layer(res, str(i)) for i in range(num_splits))
+
+
+def window(
+      source: LayerRef, *,
+      window_size: int,
+      window_left: Optional[int] = NotSpecified,
+      window_right: Optional[int] = NotSpecified,
+      axis: str = NotSpecified,
+      padding: str = NotSpecified,
+      stride: int = NotSpecified,
+      name: Optional[str] = None) -> Layer:
+  """
+  Window. See :func:`_generated_layers._window`.
+  """
+  from ._generated_layers import _window
+  layer, state = _window(
+    source,
+    window_size=window_size, window_left=window_left, window_right=window_right,
+    axis=axis, padding=padding, stride=stride,
+    name=name)
+  del state
+  return layer
+
+
+def window_step(
+      source: LayerRef, *, state: nn.LayerState,
+      window_size: int,
+      axis: str = NotSpecified,
+      padding: str = NotSpecified,
+      stride: int = NotSpecified,
+      name: Optional[str] = None) -> Tuple[Layer, nn.LayerState]:
+  """
+  Window into the past when iterating.
+  See :func:`_generated_layers._window`.
+  """
+  from ._generated_layers import _window
+  return _window(
+    source, state=state,
+    window_size=window_size, window_left=window_size - 1, window_right=0,
+    axis=axis, padding=padding, stride=stride,
+    name=name)

@@ -3,6 +3,7 @@ Some basic math functions
 (potential activation functions).
 """
 
+from typing import Optional, Union
 from .. import nn
 
 
@@ -74,3 +75,23 @@ def _activation(x: nn.LayerRef, activation: str) -> nn.Layer:
   If anything is missing here in this module, please just add it.
   """
   return nn.make_layer({"class": "activation", "from": x, "activation": activation}, name=activation)
+
+
+def cumsum(
+      x: nn.LayerRef, *,
+      axis: str = nn.NotSpecified,
+      additional_left_summand_per_element: Optional[Union[str, int, float]] = nn.NotSpecified,
+      reverse: bool = nn.NotSpecified,
+      name: Optional[str] = None) -> nn.Layer:
+  """
+  Applies cumsum.
+  See :func:`._generated_layers._cumsum`.
+  """
+  from ._generated_layers import _cumsum
+  layer, state = _cumsum(
+    x, axis=axis,
+    additional_left_summand_per_element=additional_left_summand_per_element,
+    reverse=reverse,
+    name=name)
+  del state
+  return layer

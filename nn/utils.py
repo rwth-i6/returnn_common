@@ -2,7 +2,8 @@
 Some generic utils (which doesn't fit into math_, array_, etc)
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
+from .. import nn
 from .base import LayerRef, NotSpecified
 
 
@@ -36,3 +37,11 @@ def dropout(source: LayerRef,
   return make_layer(
     {"class": "dropout", "from": source, **opts},
     name=name or "dropout")
+
+
+def ken_lm_state_step(source: nn.LayerRef, *, state: nn.LayerState, **kwargs) -> Tuple[nn.Layer, nn.LayerState]:
+  """
+  See :func:`._generated_layers._ken_lm_state`.
+  """
+  from ._generated_layers import _ken_lm_state
+  return _ken_lm_state(source, state=state, initial_state=None, **kwargs)
