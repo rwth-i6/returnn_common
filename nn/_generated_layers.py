@@ -1984,18 +1984,18 @@ class _Window(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def window(
-           source: LayerRef,
-           *,
-           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           window_size: int,
-           window_left: Optional[int] = NotSpecified,
-           window_right: Optional[int] = NotSpecified,
-           axis: str = NotSpecified,
-           padding: str = NotSpecified,
-           stride: int = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+def _window(
+            source: LayerRef,
+            *,
+            state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+            initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+            window_size: int,
+            window_left: Optional[int] = NotSpecified,
+            window_right: Optional[int] = NotSpecified,
+            axis: str = NotSpecified,
+            padding: str = NotSpecified,
+            stride: int = NotSpecified,
+            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -2095,15 +2095,15 @@ class _Cumsum(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def cumsum(
-           source: LayerRef,
-           *,
-           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           axis: str = NotSpecified,
-           additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
-           reverse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+def _cumsum(
+            source: LayerRef,
+            *,
+            state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+            initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+            axis: str = NotSpecified,
+            additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
+            reverse: bool = NotSpecified,
+            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
@@ -6455,19 +6455,19 @@ class _KenLmState(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def ken_lm_state(
-                 source: LayerRef,
-                 *,
-                 state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                 initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                 lm_file: Any,
-                 vocab_file: Optional[str] = NotSpecified,
-                 vocab_unknown_label: str = NotSpecified,
-                 bpe_merge_symbol: Optional[str] = NotSpecified,
-                 input_step_offset: int = NotSpecified,
-                 dense_output: bool = NotSpecified,
-                 debug: bool = NotSpecified,
-                 name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+def _ken_lm_state(
+                  source: LayerRef,
+                  *,
+                  state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                  initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                  lm_file: Any,
+                  vocab_file: Optional[str] = NotSpecified,
+                  vocab_unknown_label: str = NotSpecified,
+                  bpe_merge_symbol: Optional[str] = NotSpecified,
+                  input_step_offset: int = NotSpecified,
+                  dense_output: bool = NotSpecified,
+                  debug: bool = NotSpecified,
+                  name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Get next word (or subword) each frame,
   accumulates string,
@@ -6565,14 +6565,14 @@ class _EditDistanceTable(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def edit_distance_table(
-                        source: LayerRef,
-                        *,
-                        state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                        initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                        debug: bool = NotSpecified,
-                        blank_idx: Optional[int] = NotSpecified,
-                        name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+def _edit_distance_table(
+                         source: LayerRef,
+                         *,
+                         state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                         initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                         debug: bool = NotSpecified,
+                         blank_idx: Optional[int] = NotSpecified,
+                         name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Given a source and a target, calculates the edit distance table between them.
   Source can be inside a recurrent loop.
@@ -6730,13 +6730,13 @@ class _Unmask(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def unmask(
-           source: LayerRef,
-           *,
-           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           mask: LayerRef,
-           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+def _unmask(
+            source: LayerRef,
+            *,
+            state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+            initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+            mask: LayerRef,
+            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   This is meant to be used together with :class:`MaskedComputationLayer`,
   which operates on input [B,T,D], and given a mask, returns [B,T',D'].
@@ -7002,13 +7002,13 @@ class _CumConcat(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def cum_concat(
-               source: LayerRef,
-               *,
-               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               new_dim: DimensionTag,
-               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+def _cum_concat(
+                source: LayerRef,
+                *,
+                state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                new_dim: DimensionTag,
+                name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
