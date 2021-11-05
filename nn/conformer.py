@@ -42,8 +42,9 @@ class _ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, out_dim: int, kernel_size: int, batch_norm_eps: float = 1e-5,
-      batch_norm_momentum: float = 0.1, batch_norm_other_opts=None):
+  def __init__(
+      self, out_dim: int, kernel_size: int, batch_norm_eps: float = 1e-5, batch_norm_momentum: float = 0.1,
+      batch_norm_other_opts=None):
     """
     :param out_dim:
     :param kernel_size:
@@ -75,9 +76,9 @@ class _ConformerConvSubsampleLayer(nn.Module):
   Conv 2D block with optional max-pooling
   """
 
-  def __init__(self, filter_sizes: List[Tuple[int, ...]], pool_sizes: Union[List[Tuple[int, ...]], None],
-      channel_sizes: List[int], dropout: float = 0.3, activation: str = 'relu',
-      padding: str = 'same'):
+  def __init__(
+      self, filter_sizes: List[Tuple[int, ...]], pool_sizes: Union[List[Tuple[int, ...]], None],
+      channel_sizes: List[int], dropout: float = 0.3, activation: str = 'relu', padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
@@ -92,6 +93,7 @@ class _ConformerConvSubsampleLayer(nn.Module):
     self.pool_sizes = pool_sizes
 
     self.conv_layers = nn.ModuleList()
+    assert len(filter_sizes) == len(channel_sizes)
     for filter_size, channel_size in zip(filter_sizes, channel_sizes):
       self.conv_layers.append(
         nn.Conv(activation=activation, filter_size=filter_size, n_out=channel_size, padding=padding))
@@ -113,8 +115,9 @@ class ConformerEncoderLayer(nn.Module):
   Represents a conformer block
   """
 
-  def __init__(self, conv_kernel_size: int, activation_ff, dim_ff: int, dropout: float, att_dropout: float,
-      enc_key_dim: int, num_heads: int):
+  def __init__(
+      self, conv_kernel_size: int, activation_ff, dim_ff: int, dropout: float, att_dropout: float, enc_key_dim: int,
+      num_heads: int):
     """
     :param conv_kernel_size:
     :param activation_ff:
@@ -168,9 +171,9 @@ class ConformerEncoder(nn.Module):
   Represents Conformer encoder architecture
   """
 
-  def __init__(self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
-      activation_ff=nn.swish, dim_ff: int = 512, dropout: float = 0.1, att_dropout: float = 0.1, enc_key_dim: int = 256,
-      num_heads: int = 4):
+  def __init__(
+      self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32, activation_ff=nn.swish,
+      dim_ff: int = 512, dropout: float = 0.1, att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4):
     """
     :param encoder_layer:
     :param num_blocks:
