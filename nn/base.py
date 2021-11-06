@@ -1279,7 +1279,6 @@ class NameCtx:
   def _add_child(self, child: NameCtx):
     assert child.name
     assert child.parent is self
-    assert self.is_subnet_ctx
     assert child.name not in self.children
     self.children[child.name] = child
 

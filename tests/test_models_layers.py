@@ -8,6 +8,7 @@ from .returnn_helpers import dummy_run_net
 from builtins import range as range_
 import returnn_common as rc
 from returnn_common.nn import *
+from returnn_common import nn
 from pprint import pprint
 from nose.tools import assert_equal
 
@@ -511,3 +512,22 @@ def test_sequential_named_case():
   assert net_dict["seq"]["subnetwork"]["three"]["from"] == "two"
   assert net_dict["seq"]["subnetwork"]["output"]["from"] == "three"
   assert net_dict["output"]["from"] == "seq"
+
+
+def test_split_glu():
+  class _Net(nn.Module):
+    def forward(self, x: nn.LayerRef) -> nn.Layer:
+      """forward"""
+      a, b = nn.split(x, axis="F", num_splits=2)
+      return a * nn.sigmoid(b)
+
+  net = _Net()
+  net_dict = make_root_net_dict(net, "data")
+  pprint(net_dict)
+
+  assert_equal(
+    net_dict,
+    {'mul': {'class': 'combine', 'from': ['split/0', 'sigmoid'], 'kind': 'mul'},
+     'output': {'class': 'copy', 'from': 'mul'},
+     'sigmoid': {'activation': 'sigmoid', 'class': 'activation', 'from': 'split/1'},
+     'split': {'axis': 'F', 'class': 'split', 'from': 'data:data', 'num_splits': 2}})
