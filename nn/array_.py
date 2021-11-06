@@ -45,7 +45,7 @@ def split(source: nn.LayerRef, *,
   from ._generated_layers import _split
   from .base import get_sub_layer
   res = _split(source, axis=axis, num_splits=num_splits, size_splits=size_splits, name=name)
-  if num_splits is None:
+  if num_splits is None or num_splits is NotSpecified:
     assert isinstance(size_splits, (tuple, list))
     num_splits = len(size_splits)
   return tuple(get_sub_layer(res, str(i)) for i in range(num_splits))
