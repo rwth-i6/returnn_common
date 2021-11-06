@@ -807,6 +807,11 @@ class LayerSignature:
         return "str"
       if self.returnn_name == "max_seq_len":
         return "Optional[Union[str, int]]"
+      if self.returnn_name == "axis":
+        t = "Union[str, DimensionTag]"
+        if "None" in self.param_type_s:
+          return f"Optional[{t}]"
+        return t
       if not self.param_type_s:
         return "Any"
       t = self.param_type_s

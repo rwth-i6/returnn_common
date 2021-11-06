@@ -678,7 +678,7 @@ class _Slice(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Union[int, str],
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -699,7 +699,7 @@ class _Slice(_Base):
 def slice(
           source: LayerRef,
           *,
-          axis: Union[int, str],
+          axis: Union[str, DimensionTag],
           slice_start: Optional[int] = NotSpecified,
           slice_end: Optional[int] = NotSpecified,
           slice_step: Optional[int] = NotSpecified,
@@ -865,7 +865,7 @@ class _Gather(_Base):
                       source: LayerRef,
                       *,
                       position: Union[LayerRef, int],
-                      axis: str,
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -888,7 +888,7 @@ def gather(
            source: LayerRef,
            *,
            position: Union[LayerRef, int],
-           axis: str,
+           axis: Union[str, DimensionTag],
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
@@ -1264,7 +1264,7 @@ class _SoftmaxOverSpatial(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Optional[str] = NotSpecified,
+                      axis: Optional[Union[str, DimensionTag]] = NotSpecified,
                       start: Optional[LayerRef] = NotSpecified,
                       window_start: Optional[Union[LayerRef, int]] = NotSpecified,
                       window_size: Optional[Union[LayerRef, int]] = NotSpecified,
@@ -1291,7 +1291,7 @@ class _SoftmaxOverSpatial(_Base):
 def softmax(
             source: LayerRef,
             *,
-            axis: Optional[str] = NotSpecified,
+            axis: Optional[Union[str, DimensionTag]] = NotSpecified,
             energy_factor: Optional[float] = NotSpecified,
             start: Optional[LayerRef] = NotSpecified,
             window_start: Optional[Union[LayerRef, int]] = NotSpecified,
@@ -1370,7 +1370,7 @@ class _SeqLenMask(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Union[str, int] = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       seq_len_source: Optional[LayerRef] = NotSpecified,
                       start: Optional[LayerRef] = NotSpecified,
                       window_start: Optional[LayerRef] = NotSpecified,
@@ -1400,7 +1400,7 @@ def seq_len_mask(
                  source: LayerRef,
                  *,
                  mask_value: float,
-                 axis: Union[str, int] = NotSpecified,
+                 axis: Union[str, DimensionTag] = NotSpecified,
                  seq_len_source: Optional[LayerRef] = NotSpecified,
                  start: Optional[LayerRef] = NotSpecified,
                  window_start: Optional[LayerRef] = NotSpecified,
@@ -1654,7 +1654,7 @@ class _RangeInAxis(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: str,
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -1675,7 +1675,7 @@ class _RangeInAxis(_Base):
 def range_in_axis(
                   source: LayerRef,
                   *,
-                  axis: str,
+                  axis: Union[str, DimensionTag],
                   dtype: str = NotSpecified,
                   sparse: bool = NotSpecified,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -1964,7 +1964,7 @@ class _Window(_Base):
                       *,
                       state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: str = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -1992,7 +1992,7 @@ def _window(
             window_size: int,
             window_left: Optional[int] = NotSpecified,
             window_right: Optional[int] = NotSpecified,
-            axis: str = NotSpecified,
+            axis: Union[str, DimensionTag] = NotSpecified,
             padding: str = NotSpecified,
             stride: int = NotSpecified,
             name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
@@ -2075,7 +2075,7 @@ class _Cumsum(_Base):
                       *,
                       state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: str = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2100,7 +2100,7 @@ def _cumsum(
             *,
             state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-            axis: str = NotSpecified,
+            axis: Union[str, DimensionTag] = NotSpecified,
             additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
             reverse: bool = NotSpecified,
             name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
@@ -2354,7 +2354,7 @@ class _Split(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Optional[str] = NotSpecified,
+                      axis: Optional[Union[str, DimensionTag]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2375,7 +2375,7 @@ class _Split(_Base):
 def _split(
            source: LayerRef,
            *,
-           axis: Optional[str] = NotSpecified,
+           axis: Optional[Union[str, DimensionTag]] = NotSpecified,
            num_splits: Optional[int] = NotSpecified,
            size_splits: Optional[List[int]] = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -2459,7 +2459,7 @@ class _SplitDims(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: str,
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2480,7 +2480,7 @@ class _SplitDims(_Base):
 def split_dims(
                source: LayerRef,
                *,
-               axis: str,
+               axis: Union[str, DimensionTag],
                dims: Any,
                pad_to_multiples: Optional[bool] = NotSpecified,
                pad_value: Union[int, float] = NotSpecified,
@@ -2615,7 +2615,7 @@ class _FlattenBatch(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: str = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2636,7 +2636,7 @@ class _FlattenBatch(_Base):
 def flatten_batch(
                   source: LayerRef,
                   *,
-                  axis: str = NotSpecified,
+                  axis: Union[str, DimensionTag] = NotSpecified,
                   batch_major: bool = NotSpecified,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -2774,7 +2774,7 @@ class _Repeat(_Base):
                       source: LayerRef,
                       *,
                       repetitions: Union[LayerRef, int],
-                      axis: str = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2797,7 +2797,7 @@ def repeat(
            source: LayerRef,
            *,
            repetitions: Union[LayerRef, int],
-           axis: str = NotSpecified,
+           axis: Union[str, DimensionTag] = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A wrapper around tf.repeat, but supports an additional batch axis for the durations
@@ -3508,7 +3508,7 @@ class _Reduce(_Base):
                       source: LayerRef,
                       *,
                       axes: Any = NotSpecified,
-                      axis: Any = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3532,7 +3532,7 @@ def reduce(
            *,
            mode: str,
            axes: Any = NotSpecified,
-           axis: Any = NotSpecified,
+           axis: Union[str, DimensionTag] = NotSpecified,
            keep_dims: bool = NotSpecified,
            enforce_batch_dim_axis: int = NotSpecified,
            use_time_mask: bool = NotSpecified,
@@ -3681,7 +3681,7 @@ class _Squeeze(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Any,
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3702,7 +3702,7 @@ class _Squeeze(_Base):
 def squeeze(
             source: LayerRef,
             *,
-            axis: Any,
+            axis: Union[str, DimensionTag],
             enforce_batch_dim_axis: Optional[int] = NotSpecified,
             allow_no_op: bool = NotSpecified,
             name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -3743,7 +3743,7 @@ class _Stack(_Base):
   def make_layer_dict(self,
                       source: Union[List[LayerRef], Tuple[LayerRef]],
                       *,
-                      axis: Optional[int] = NotSpecified,
+                      axis: Optional[Union[str, DimensionTag]] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3764,7 +3764,7 @@ class _Stack(_Base):
 def stack(
           source: Union[List[LayerRef], Tuple[LayerRef]],
           *,
-          axis: Optional[int] = NotSpecified,
+          axis: Optional[Union[str, DimensionTag]] = NotSpecified,
           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Stacks multiple inputs together using :func:`tf.stack`.
@@ -4212,7 +4212,7 @@ class _ShiftAxis(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Union[str, int],
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -4233,7 +4233,7 @@ class _ShiftAxis(_Base):
 def shift_axis(
                source: LayerRef,
                *,
-               axis: Union[str, int],
+               axis: Union[str, DimensionTag],
                amount: int,
                pad: bool = NotSpecified,
                adjust_size_info: bool = NotSpecified,
@@ -4309,7 +4309,7 @@ class _Resize(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Union[str, int],
+                      axis: Union[str, DimensionTag],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -4331,7 +4331,7 @@ def resize(
            source: LayerRef,
            *,
            factor: int,
-           axis: Union[str, int],
+           axis: Union[str, DimensionTag],
            kind: str = NotSpecified,
            fill_value: Optional[Union[int, float]] = NotSpecified,
            fill_dropout: float = NotSpecified,
@@ -4841,7 +4841,7 @@ class _SearchSorted(_Base):
                       *,
                       sorted_sequence: LayerRef,
                       values: LayerRef,
-                      axis: str = NotSpecified,
+                      axis: Union[str, DimensionTag] = NotSpecified,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -4866,7 +4866,7 @@ def search_sorted(
                   *,
                   sorted_sequence: LayerRef,
                   values: LayerRef,
-                  axis: str = NotSpecified,
+                  axis: Union[str, DimensionTag] = NotSpecified,
                   side: str = NotSpecified,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
