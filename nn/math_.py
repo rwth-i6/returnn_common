@@ -35,10 +35,10 @@ def gelu(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="gelu")
 
 
-def glu(v: LayerRef) -> Layer:
+def glu(x: nn.LayerRef, axis: Optional[str] = "F") -> nn.Layer:
   """GLU https://arxiv.org/abs/1612.08083"""
   from . import split
-  a, b = split(v, axis='F', num_splits=2)
+  a, b = split(x, axis=axis, num_splits=2)
   return a * sigmoid(b)
 
 
