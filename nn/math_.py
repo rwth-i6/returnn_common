@@ -66,7 +66,6 @@ def swish(x: nn.LayerRef) -> nn.Layer:
 
 
 # softmax already provided via generated layers
-softmax = nn.softmax
 
 
 def log_softmax(x: nn.LayerRef, **kwargs) -> nn.Layer:
