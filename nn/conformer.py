@@ -79,9 +79,9 @@ class _ConformerConvSubsample(nn.Module):
   """
 
   def __init__(
-        self, filter_sizes: List[Tuple[int, int]], pool_sizes: Optional[List[Tuple[int, int]]],
-        channel_sizes: List[int], dropout: float = 0.3, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
-        padding: str = 'same'):
+        self, filter_sizes: List[Tuple[int, int]], channel_sizes: List[int],
+        pool_sizes: Optional[List[Tuple[int, int]]] = None, dropout: float = 0.3,
+        activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu, padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
@@ -122,7 +122,7 @@ class ConformerEncoderLayer(nn.Module):
 
   def __init__(
         self, conv_kernel_size: int, activation_ff: Callable[[nn.LayerRef], nn.LayerRef], dim_ff: int, dropout: float,
-        att_dropout: float, enc_key_dim: int, num_heads: int, batch_norm_opts: Optional[Dict[str, Any]]):
+        att_dropout: float, enc_key_dim: int, num_heads: int, batch_norm_opts: Optional[Dict[str, Any]] = None):
     """
     :param conv_kernel_size:
     :param activation_ff:
