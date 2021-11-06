@@ -79,9 +79,9 @@ class _ConformerConvSubsample(nn.Module):
   """
 
   def __init__(
-        self, filter_sizes: List[Tuple[int, int]], channel_sizes: List[int],
-        pool_sizes: Optional[List[Tuple[int, int]]] = None, dropout: float = 0.3,
-        activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu, padding: str = 'same'):
+        self, filter_sizes: List[Tuple[int, int]], channel_sizes: List[int], dropout: float,
+        pool_sizes: Optional[List[Tuple[int, int]]] = None, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
+        padding: str = 'same'):
     """
     :param filter_sizes:
     :param pool_sizes:
