@@ -9,3 +9,4 @@ from .array_ import *
 from .utils import *
 from .rec import *
 from .container import *
+from .attention import *

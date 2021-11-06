@@ -531,3 +531,20 @@ def test_split_glu():
      'output': {'class': 'copy', 'from': 'mul'},
      'sigmoid': {'activation': 'sigmoid', 'class': 'activation', 'from': 'split/1'},
      'split': {'axis': 'F', 'class': 'split', 'from': 'data:data', 'num_splits': 2}})
+
+
+def test_self_attention():
+  time_dim = nn.DimensionTag(nn.DimensionTag.Types.Spatial, description="time")
+
+  class _Net(nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.self_att = nn.SelfAttention(axis=time_dim, key_dim_total=21, value_dim_total=33, num_heads=3)
+
+    def forward(self, x: nn.LayerRef) -> nn.Layer:
+      """forward"""
+      return self.self_att(x)
+
+  net = _Net()
+  net_dict = make_root_net_dict(net, "data")
+  pprint(net_dict)
