@@ -3,8 +3,9 @@ Conformer code.
 Ref: https://arxiv.org/abs/2005.08100
 """
 
-from typing import Tuple, List, Union, Callable, Optional
+from typing import Tuple, List, Callable, Optional, Dict, Any
 from .. import nn
+import copy
 
 
 class _PositionwiseFeedForward(nn.Module):
@@ -42,9 +43,7 @@ class _ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(
-        self, out_dim: int, kernel_size: int, batch_norm_eps: float = 1e-5, batch_norm_momentum: float = 0.1,
-        batch_norm_other_opts=None):
+  def __init__(self, out_dim: int, kernel_size: int, batch_norm_opts: Optional[Dict[str, Any]] = None):
     """
     :param out_dim:
     :param kernel_size:
@@ -55,11 +54,14 @@ class _ConformerConvBlock(nn.Module):
     self.depthwise_conv = nn.Conv(n_out=out_dim, filter_size=(kernel_size,), groups=out_dim, padding='same')
     self.positionwise_conv2 = nn.Linear(n_out=out_dim)
 
-    if batch_norm_other_opts is None:
-      batch_norm_other_opts = {}
+    batch_norm_opts = copy.deepcopy(batch_norm_opts)
+    if batch_norm_opts is None:
+      batch_norm_opts = {}
+    epsilon = batch_norm_opts.pop('epsilon', 1e-5)
+    momentum = batch_norm_opts.pop('momentum', 0.1)
     self.batch_norm = nn.BatchNorm(
-      epsilon=batch_norm_eps, momentum=batch_norm_momentum, update_sample_only_in_training=True,
-      delay_sample_update=True, **batch_norm_other_opts)
+      epsilon=epsilon, momentum=momentum, update_sample_only_in_training=True, delay_sample_update=True,
+      **batch_norm_opts)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_conv1 = self.positionwise_conv1(inp)
@@ -120,7 +122,7 @@ class ConformerEncoderLayer(nn.Module):
 
   def __init__(
         self, conv_kernel_size: int, activation_ff: Callable[[nn.LayerRef], nn.LayerRef], dim_ff: int, dropout: float,
-        att_dropout: float, enc_key_dim: int, num_heads: int):
+        att_dropout: float, enc_key_dim: int, num_heads: int, batch_norm_opts: Optional[Dict[str, Any]]):
     """
     :param conv_kernel_size:
     :param activation_ff:
@@ -140,7 +142,8 @@ class ConformerEncoderLayer(nn.Module):
     self.ffn2 = _PositionwiseFeedForward(
       out_dim=enc_key_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
-    self.conv_block = _ConformerConvBlock(out_dim=enc_key_dim, kernel_size=conv_kernel_size)
+    self.conv_block = _ConformerConvBlock(
+      out_dim=enc_key_dim, kernel_size=conv_kernel_size, batch_norm_opts=batch_norm_opts)
 
     self.self_att = MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
 
@@ -177,7 +180,8 @@ class ConformerEncoder(nn.Module):
   def __init__(
         self, encoder_layer: nn.Module, num_blocks: int, conv_kernel_size: int = 32,
         activation_ff: Callable[[nn.LayerRef], nn.LayerRef] = nn.swish, dim_ff: int = 512, dropout: float = 0.1,
-        att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4):
+        att_dropout: float = 0.1, enc_key_dim: int = 256, num_heads: int = 4,
+        batch_norm_opts: Optional[Dict[str, Any]] = None):
     """
     :param encoder_layer:
     :param num_blocks:
@@ -202,7 +206,7 @@ class ConformerEncoder(nn.Module):
     self.conformer_blocks = nn.Sequential(
       encoder_layer(
         conv_kernel_size=conv_kernel_size, activation_ff=activation_ff, dim_ff=dim_ff, dropout=dropout,
-        att_dropout=att_dropout, enc_key_dim=enc_key_dim, num_heads=num_heads
+        att_dropout=att_dropout, enc_key_dim=enc_key_dim, num_heads=num_heads, batch_norm_opts=batch_norm_opts
       )
       for _ in range(num_blocks)
     )
