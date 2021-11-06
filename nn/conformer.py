@@ -73,7 +73,7 @@ class _ConformerConvBlock(nn.Module):
     return x_conv2
 
 
-class _ConformerConvSubsampleLayer(nn.Module):
+class _ConformerConvSubsample(nn.Module):
   """
   Conv 2D block with optional max-pooling
   """
@@ -197,7 +197,7 @@ class ConformerEncoder(nn.Module):
 
     self.dropout = dropout
 
-    self.conv_subsample_layer = _ConformerConvSubsampleLayer(
+    self.conv_subsample_layer = _ConformerConvSubsample(
       filter_sizes=[(3, 3), (3, 3)], pool_sizes=[(2, 2), (2, 2)], channel_sizes=[enc_key_dim, enc_key_dim],
       dropout=dropout)
 
