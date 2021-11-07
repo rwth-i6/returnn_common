@@ -178,8 +178,7 @@ class ConformerEncoder(nn.Module):
   Represents Conformer encoder architecture
   """
 
-  def __init__(
-        self, encoder_layer: Union[ConformerEncoderLayer, Any], num_blocks: int):
+  def __init__(self, encoder_layer: Union[ConformerEncoderLayer, Any], num_blocks: int):
     """
     :param encoder_layer:
     :param num_blocks:
