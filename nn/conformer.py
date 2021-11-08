@@ -131,7 +131,7 @@ class ConformerEncoderLayer(nn.Module):
     :param att_dropout: attention dropout value
     :param out_dim: the output feature dimension
     :param num_heads: the number of attention heads
-    :param batch_norm_opts: batch norm options
+    :param batch_norm_opts: passed to :class:`nn.BatchNorm`
     """
     super().__init__()
 
@@ -181,7 +181,7 @@ class ConformerEncoder(nn.Module):
 
   def __init__(self, encoder_layer: ConformerEncoderLayer, num_layers: int):
     """
-    :param encoder_layer: an instance of `class:ConformerEncoderLayer`
+    :param encoder_layer: an instance of :class:`ConformerEncoderLayer`
     :param num_layers: the number of encoder layers
     """
     super().__init__()
