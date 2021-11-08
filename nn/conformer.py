@@ -8,7 +8,7 @@ from .. import nn
 import copy
 
 
-class _PositionwiseFeedForward(nn.Module):
+class ConformerPositionwiseFeedForward(nn.Module):
   """
   Conformer position-wise feedforward neural network layer
       FF -> Activation -> Dropout -> FF
@@ -16,10 +16,10 @@ class _PositionwiseFeedForward(nn.Module):
 
   def __init__(self, out_dim: int, dim_ff: int, dropout: float, activation: Callable[[nn.LayerRef], nn.LayerRef]):
     """
-    :param out_dim:
-    :param dim_ff:
-    :param dropout:
-    :param activation:
+    :param out_dim: output feature dimension
+    :param dim_ff: dimension of the feed-forward layers
+    :param dropout: dropout value
+    :param activation: activation function
     """
     super().__init__()
 
@@ -37,7 +37,7 @@ class _PositionwiseFeedForward(nn.Module):
     return x_ff2
 
 
-class _ConformerConvBlock(nn.Module):
+class ConformerConvBlock(nn.Module):
   """
   Conformer convolution block
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
@@ -45,8 +45,9 @@ class _ConformerConvBlock(nn.Module):
 
   def __init__(self, out_dim: int, kernel_size: int, batch_norm_opts: Optional[Dict[str, Any]] = None):
     """
-    :param out_dim:
-    :param kernel_size:
+    :param out_dim: output feature dimension
+    :param kernel_size: kernel size of depthwise convolution
+    :param batch_norm_opts: batch norm options
     """
     super().__init__()
 
@@ -71,7 +72,7 @@ class _ConformerConvBlock(nn.Module):
     return x_conv2
 
 
-class _ConformerConvSubsample(nn.Module):
+class ConformerConvSubsample(nn.Module):
   """
   Conv 2D block with optional max-pooling
   """
@@ -81,12 +82,12 @@ class _ConformerConvSubsample(nn.Module):
         pool_sizes: Optional[List[Tuple[int, int]]] = None, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
         padding: str = 'same'):
     """
-    :param filter_sizes:
-    :param channel_sizes:
-    :param dropout:
-    :param pool_sizes:
-    :param activation:
-    :param padding:
+    :param filter_sizes: a list of filter sizes for the conv layer
+    :param channel_sizes: the number of output channels
+    :param dropout: the dropout value
+    :param pool_sizes: a list of pooling factors applied after conv layer
+    :param activation: the activation function
+    :param padding: 'same' or 'valid'
     """
     super().__init__()
 
@@ -123,30 +124,30 @@ class ConformerEncoderLayer(nn.Module):
         dim_ff: int = 2048, dropout: float = 0.1, att_dropout: float = 0.1, out_dim: int = 512, num_heads: int = 8,
         batch_norm_opts: Optional[Dict[str, Any]] = None):
     """
-    :param conv_kernel_size:
-    :param activation_ff:
-    :param dim_ff:
-    :param dropout:
-    :param att_dropout:
-    :param out_dim:
-    :param num_heads:
-    :param batch_norm_opts:
+    :param conv_kernel_size: the kernel size of depthwise convolution
+    :param activation_ff: activation funtion for feed-forward network
+    :param dim_ff: the dimension of feed-forward layers
+    :param dropout: the dropout value
+    :param att_dropout: attention dropout value
+    :param out_dim: the output feature dimension
+    :param num_heads: the number of attention heads
+    :param batch_norm_opts: batch norm options
     """
     super().__init__()
 
     self.dropout = dropout
     self.out_dim = out_dim
 
-    self.ffn1 = _PositionwiseFeedForward(
+    self.ffn1 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
-    self.ffn2 = _PositionwiseFeedForward(
+    self.ffn2 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
-    self.conv_block = _ConformerConvBlock(
+    self.conv_block = ConformerConvBlock(
       out_dim=out_dim, kernel_size=conv_kernel_size, batch_norm_opts=batch_norm_opts)
 
-    self.self_att = MultiheadAttention(enc_key_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
+    self.self_att = MultiheadAttention(out_dim, num_heads, dropout=att_dropout)  # TODO: to be implemented
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     # FFN
@@ -178,23 +179,23 @@ class ConformerEncoder(nn.Module):
   Represents Conformer encoder architecture
   """
 
-  def __init__(self, encoder_layer: Union[ConformerEncoderLayer, Any], num_blocks: int):
+  def __init__(self, encoder_layer: ConformerEncoderLayer, num_layers: int):
     """
-    :param encoder_layer:
-    :param num_blocks:
+    :param encoder_layer: an instance of `class:ConformerEncoderLayer`
+    :param num_layers: the number of encoder layers
     """
     super().__init__()
 
-    self.dropout = getattr(encoder_layer, 'dropout')
-    out_dim = getattr(encoder_layer, 'out_dim')
+    self.dropout = encoder_layer.dropout
+    self.out_dim = encoder_layer.out_dim
 
-    self.conv_subsample_layer = _ConformerConvSubsample(
-      filter_sizes=[(3, 3), (3, 3)], pool_sizes=[(2, 2), (2, 2)], channel_sizes=[out_dim, out_dim],
+    self.conv_subsample_layer = ConformerConvSubsample(
+      filter_sizes=[(3, 3), (3, 3)], pool_sizes=[(2, 2), (2, 2)], channel_sizes=[self.out_dim, self.out_dim],
       dropout=self.dropout)
 
-    self.linear = nn.Linear(n_out=out_dim, with_bias=False)
+    self.linear = nn.Linear(n_out=self.out_dim, with_bias=False)
 
-    self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_blocks))
+    self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     x_subsample = self.conv_subsample_layer(inp)
