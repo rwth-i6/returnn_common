@@ -26,7 +26,7 @@ def test_rec_ff():
       with Loop() as loop:
         x_ = loop.unstack(x, axis="T")
         loop.state.h = State(initial=0)  # TODO proper initial...
-        loop.state.h = self.rec_linear(concat((x_, "F"), (loop.state.h, "F"))
+        loop.state.h = self.rec_linear(concat((x_, "F"), (loop.state.h, "F")))
         y = loop.stack(loop.state.h)
       return y
 
