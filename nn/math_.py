@@ -35,6 +35,13 @@ def gelu(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="gelu")
 
 
+def glu(x: nn.LayerRef, axis: Optional[str] = "F") -> nn.Layer:
+  """GLU https://arxiv.org/abs/1612.08083"""
+  from . import split
+  a, b = split(x, axis=axis, num_splits=2)
+  return a * sigmoid(b)
+
+
 def exp(x: nn.LayerRef) -> nn.Layer:
   """exp"""
   return _activation(x, activation="exp")
@@ -102,3 +109,4 @@ def cumsum(
     name=name)
   del state
   return layer
+
