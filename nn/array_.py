@@ -8,12 +8,15 @@ from .. import nn
 
 
 def concat(*sources: Tuple[nn.LayerRef, Union[str, nn.DimensionTag]],
+           allow_broadcast=False,
            name: Optional[str] = None) -> nn.Layer:
   """
   Concatenates multiple sources (by default in feature axis).
   """
-  return nn.make_layer(
-    {"class": "concat", "from": sources}, name=name or "concat")
+  opts = {}
+  if allow_broadcast:
+    opts["allow_broadcast"] = True
+  return nn.make_layer({"class": "concat", "from": sources, **opts}, name=name or "concat")
 
 
 def cum_concat_step(
