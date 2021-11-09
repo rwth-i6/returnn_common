@@ -48,7 +48,7 @@ class SelfAttentionStep(nn.Module):
   """
   Auto-regressive self-attention
   """
-  def __init__(self, *, key_dim_total, value_dim_total, num_heads: int, att_dropout: float):
+  def __init__(self, *, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
     super().__init__()
     self.key_dim_total = key_dim_total
     self.key_dim_per_head = key_dim_total // num_heads
