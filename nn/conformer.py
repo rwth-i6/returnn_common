@@ -57,9 +57,6 @@ class ConformerConvBlock(nn.Module):
 
     if batch_norm_opts is None:
       batch_norm_opts = {}
-    batch_norm_opts = batch_norm_opts.copy()
-    batch_norm_opts.setdefault('epsilon', 1e-5)
-    batch_norm_opts.setdefault('momentum', 0.1)
     self.batch_norm = nn.BatchNorm(update_sample_only_in_training=True, delay_sample_update=True, **batch_norm_opts)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
