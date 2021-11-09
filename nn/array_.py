@@ -7,18 +7,13 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-def concat(*sources: nn.LayerRef,
-           axis: Optional[str] = NotSpecified,
+def concat(*sources: Tuple[nn.LayerRef, Union[str, nn.DimensionTag]],
            name: Optional[str] = None) -> nn.Layer:
   """
   Concatenates multiple sources (by default in feature axis).
   """
-  if axis is NotSpecified or axis is None or axis.upper() == "F":
-    # standard case
-    from .base import make_layer
-    return make_layer({"class": "copy", "from": sources}, name=name or "concat")
-  else:
-    raise NotImplementedError(f"Cannot handle concat with axis {axis!r} yet")
+  return nn.make_layer(
+    {"class": "concat", "from": sources}, name=name or "concat")
 
 
 def cum_concat_step(
