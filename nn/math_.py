@@ -109,4 +109,3 @@ def cumsum(
     name=name)
   del state
   return layer
-
