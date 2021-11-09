@@ -10,7 +10,7 @@ class SelfAttention(nn.Module):
   """
   Classic self attention
   """
-  def __init__(self, *, axis: nn.DimensionTag, key_dim_total, value_dim_total, num_heads: int):
+  def __init__(self, *, axis: nn.DimensionTag, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
     super().__init__()
     self.axis = axis
     self.key_dim_total = key_dim_total
@@ -20,6 +20,7 @@ class SelfAttention(nn.Module):
     self.num_heads = num_heads
     self.qkv = nn.Linear(key_dim_total * 2 + value_dim_total)
     self.expand_dim = nn.DimensionTag(kind=nn.DimensionTag.Types.Spatial, description="self_att_expand_dim")
+    self.att_dropout = att_dropout
 
   def forward(self, source: nn.LayerRef) -> nn.Layer:
     """forward"""
@@ -36,6 +37,7 @@ class SelfAttention(nn.Module):
     v = nn.reinterpret_data(v, set_dim_tags={self.axis: self.expand_dim}, name="v_new_dim")
     energy = nn.dot([q, k], red1="static:-1", red2="static:-1", var1=self.axis, var2=self.expand_dim, name="energy")
     att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
+    att_weights = nn.dropout(att_weights, self.att_dropout)
     att = nn.dot(
       [att_weights, v], red1=self.expand_dim, red2=self.expand_dim, var1=self.axis, var2="static:-1", name="att")
     output = nn.merge_dims(att, axes="static", name="output")
@@ -46,7 +48,7 @@ class SelfAttentionStep(nn.Module):
   """
   Auto-regressive self-attention
   """
-  def __init__(self, *, key_dim_total, value_dim_total, num_heads: int):
+  def __init__(self, *, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
     super().__init__()
     self.key_dim_total = key_dim_total
     self.key_dim_per_head = key_dim_total // num_heads
@@ -55,6 +57,7 @@ class SelfAttentionStep(nn.Module):
     self.num_heads = num_heads
     self.qkv = nn.Linear(key_dim_total * 2 + value_dim_total)
     self.expand_dim = nn.DimensionTag(kind=nn.DimensionTag.Types.Spatial, description="self_att_expand_dim")
+    self.att_dropout = att_dropout
 
   def forward(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
     """forward"""
@@ -73,6 +76,7 @@ class SelfAttentionStep(nn.Module):
     energy = nn.dot(
       [q, k_accum], red1="static:-1", red2="static:-1", var1=None, var2=self.expand_dim, name="energy")
     att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
+    att_weights = nn.dropout(att_weights, self.att_dropout)
     att = nn.dot(
       [att_weights, v_accum],
       red1=self.expand_dim, red2=self.expand_dim, var1=None, var2="static:-1", name="att")
