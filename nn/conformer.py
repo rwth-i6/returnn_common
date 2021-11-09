@@ -147,7 +147,8 @@ class ConformerEncoderLayer(nn.Module):
     self.conv_block = ConformerConvBlock(
       out_dim=out_dim, kernel_size=conv_kernel_size, batch_norm_opts=batch_norm_opts)
 
-    self.self_att = nn.SelfAttention(axis='T', key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads)
+    self.self_att = nn.SelfAttention(
+      axis='T', key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
