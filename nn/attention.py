@@ -10,7 +10,7 @@ class SelfAttention(nn.Module):
   """
   Classic self attention
   """
-  def __init__(self, *, axis: nn.DimensionTag, key_dim_total, value_dim_total, num_heads: int, att_dropout: float):
+  def __init__(self, *, axis: nn.DimensionTag, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
     super().__init__()
     self.axis = axis
     self.key_dim_total = key_dim_total
