@@ -26,7 +26,7 @@ def test_rec_ff():
       with Loop() as loop:
         x_ = loop.unstack(x, axis="T")
         loop.state.h = State(initial=0)  # TODO proper initial...
-        loop.state.h = self.rec_linear(concat(x_, loop.state.h))
+        loop.state.h = self.rec_linear(concat((x_, "F"), (loop.state.h, "F"))
         y = loop.stack(loop.state.h)
       return y
 
@@ -109,7 +109,7 @@ def test_rec_hidden():
       Forward
       """
       y, state = self.lstm(x)
-      return concat(y, state.h, state.c)
+      return concat((y, "F"), (state.h, "F"), (state.c, "F"))
 
   net = _Net()
   net_dict = make_root_net_dict(net, "data")
