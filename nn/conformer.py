@@ -30,6 +30,7 @@ class ConformerPositionwiseFeedForward(nn.Module):
     self.linear_out = nn.Linear(n_out=out_dim)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
+    """forward"""
     x_ff1 = self.linear_ff(inp)
     x_act = self.activation(x_ff1)
     x_drop = nn.dropout(x_act, dropout=self.dropout)
@@ -60,6 +61,7 @@ class ConformerConvBlock(nn.Module):
     self.batch_norm = nn.BatchNorm(update_sample_only_in_training=True, delay_sample_update=True, **batch_norm_opts)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
+    """forward"""
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.glu(x_conv1)
     x_depthwise_conv = self.depthwise_conv(x_act)
@@ -99,6 +101,7 @@ class ConformerConvSubsample(nn.Module):
         nn.Conv(filter_size=filter_size, n_out=channel_size, padding=padding))
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
+    """forward"""
     x = nn.split_dims(inp, axis='F', dims=(-1, 1))
     for i, conv_layer in enumerate(self.conv_layers):
       x = conv_layer(x)
@@ -147,6 +150,7 @@ class ConformerEncoderLayer(nn.Module):
     self.self_att = nn.SelfAttention(axis='T', key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
+    """forward"""
     # FFN
     x_ffn1_ln = nn.layer_norm(inp)
     x_ffn1 = self.ffn1(x_ffn1_ln)
@@ -195,6 +199,7 @@ class ConformerEncoder(nn.Module):
     self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
+    """forward"""
     x_subsample = self.conv_subsample_layer(inp)
     x_linear = self.linear(x_subsample)
     x = nn.dropout(x_linear, dropout=self.dropout)
