@@ -110,7 +110,9 @@ def test_rec_hidden():
       Forward
       """
       y, state = self.lstm(x)
-      return concat((y, "F"), (state.h, "F"), (state.c, "F"), allow_broadcast=True)
+      y_ = reduce(y, mode="mean", axis="T")  # TODO just because concat allow_broadcast=True does not work yet...
+      res = concat((y_, "F"), (state.h, "F"), (state.c, "F"))
+      return res
 
   net = _Net()
   net_dict = make_root_net_dict(net, "data")
