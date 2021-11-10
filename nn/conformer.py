@@ -148,7 +148,7 @@ class ConformerEncoderLayer(nn.Module):
       out_dim=out_dim, kernel_size=conv_kernel_size, batch_norm_opts=batch_norm_opts)
 
     self.self_att = nn.SelfAttention(
-      axis='T', key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
+      key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
 
   def forward(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
@@ -159,7 +159,7 @@ class ConformerEncoderLayer(nn.Module):
 
     # MHSA
     x_mhsa_ln = nn.layer_norm(x_ffn1_out)
-    x_mhsa = self.self_att(x_mhsa_ln)
+    x_mhsa = self.self_att(x_mhsa_ln, axis='T')
     x_mhsa_out = x_mhsa + x_ffn1_out
 
     # Conv
