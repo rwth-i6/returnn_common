@@ -539,11 +539,11 @@ def test_self_attention():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.self_att = nn.SelfAttention(axis=time_dim, key_dim_total=21, value_dim_total=33, num_heads=3)
+      self.self_att = nn.SelfAttention(key_dim_total=21, value_dim_total=33, num_heads=3)
 
     def forward(self, x: nn.LayerRef) -> nn.Layer:
       """forward"""
-      return self.self_att(x)
+      return self.self_att(x, axis=time_dim)
 
   net = _Net()
   net_dict = nn.make_root_net_dict(net, "data")
