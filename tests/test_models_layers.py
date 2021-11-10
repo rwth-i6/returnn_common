@@ -548,3 +548,17 @@ def test_self_attention():
   net = _Net()
   net_dict = make_root_net_dict(net, "data")
   pprint(net_dict)
+
+
+def test_deepcopy():
+  import copy
+
+  layers = nn.Sequential(copy.deepcopy(nn.Linear(1)) for _ in range(3))
+  net_dict = nn.make_root_net_dict(layers, "data")
+  pprint(net_dict)
+  assert_equal(
+    net_dict,
+    {'0': {'class': 'linear', 'from': 'data:data', 'n_out': 1},
+     '1': {'class': 'linear', 'from': '0', 'n_out': 1},
+     '2': {'class': 'linear', 'from': '1', 'n_out': 1},
+     'output': {'class': 'copy', 'from': '2'}})
