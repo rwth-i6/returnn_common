@@ -10,9 +10,8 @@ class SelfAttention(nn.Module):
   """
   Classic self attention
   """
-  def __init__(self, *, axis: nn.DimensionTag, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
+  def __init__(self, *, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
     super().__init__()
-    self.axis = axis
     self.key_dim_total = key_dim_total
     self.key_dim_per_head = key_dim_total // num_heads
     self.value_dim_total = value_dim_total
@@ -22,7 +21,7 @@ class SelfAttention(nn.Module):
     self.expand_dim = nn.DimensionTag(kind=nn.DimensionTag.Types.Spatial, description="self_att_expand_dim")
     self.att_dropout = att_dropout
 
-  def forward(self, source: nn.LayerRef) -> nn.Layer:
+  def forward(self, source: nn.LayerRef, *, axis: nn.DimensionTag) -> nn.Layer:
     """forward"""
     # noinspection DuplicatedCode
     qkv = self.qkv(source)
@@ -33,13 +32,13 @@ class SelfAttention(nn.Module):
       qkv, axis="F", size_splits=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
     q *= self.key_dim_per_head ** -0.5
-    k = nn.reinterpret_data(k, set_dim_tags={self.axis: self.expand_dim}, name="k_new_dim")
-    v = nn.reinterpret_data(v, set_dim_tags={self.axis: self.expand_dim}, name="v_new_dim")
-    energy = nn.dot([q, k], red1="static:-1", red2="static:-1", var1=self.axis, var2=self.expand_dim, name="energy")
+    k = nn.reinterpret_data(k, set_dim_tags={axis: self.expand_dim}, name="k_new_dim")
+    v = nn.reinterpret_data(v, set_dim_tags={axis: self.expand_dim}, name="v_new_dim")
+    energy = nn.dot([q, k], red1="static:-1", red2="static:-1", var1=axis, var2=self.expand_dim, name="energy")
     att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
     att_weights = nn.dropout(att_weights, self.att_dropout)
     att = nn.dot(
-      [att_weights, v], red1=self.expand_dim, red2=self.expand_dim, var1=self.axis, var2="static:-1", name="att")
+      [att_weights, v], red1=self.expand_dim, red2=self.expand_dim, var1=axis, var2="static:-1", name="att")
     output = nn.merge_dims(att, axes="static", name="output")
     return output
 
