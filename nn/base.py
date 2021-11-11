@@ -47,7 +47,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator, Iterable
 from returnn.util.basic import NotSpecified, OptionalNotImplementedError
 from returnn.tf.util.data import DimensionTag
 from tensorflow.python.util import nest
@@ -406,7 +406,10 @@ class LayerState(dict):
       super().__init__(**kwargs)
     elif args:
       assert len(args) == 1
-      super().__init__(state=args[0])
+      if isinstance(args[0], dict):
+        super().__init__(**args[0])
+      else:
+        super().__init__(state=args[0])
     else:
       super().__init__()
 
@@ -417,6 +420,9 @@ class LayerState(dict):
     if item in self:
       return self[item]
     raise AttributeError(f"{self}.{item}")
+
+  def __setattr__(self, key, value):
+    self[key] = value
 
 
 # noinspection PyAbstractClass
@@ -711,7 +717,9 @@ class Loop:
     self.name_ctx = NameCtx(maker=self.layer_maker, suggested_name=name, parent=NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
     self.name_ctx.extend_reserved_names({"output", "end"})
-    self.state = _StateHolder(loop=self)
+    self._entered_scope = False
+    self._exited_scope = False
+    self._state = _StateHolder(loop=self)
     self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
     self.end_ref = None  # type: Optional[LayerRef]
@@ -720,10 +728,14 @@ class Loop:
     return f"<{self.__class__.__name__} {self.name_ctx.get_abs_name_repr()}>"
 
   def __enter__(self) -> Loop:
+    assert not self._entered_scope, f"{self}: cannot enter twice"
+    self._entered_scope = True
     self.name_ctx.__enter__()
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
+    assert not self._exited_scope, f"{self}: cannot exit twice"
+    self._exited_scope = True
     try:
       if not exc_type:
         if not self.outputs:  # stack or last was called at least once, so we have some output
@@ -738,6 +750,20 @@ class Loop:
       self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
     if not exc_type:
       self.layer_maker(name=self.name_ctx)
+
+  @property
+  def state(self) -> Union[_StateHolder, LayerState]:
+    """state holder inside the loop"""
+    if not self._exited_scope:
+      return self._state
+    # noinspection PyProtectedMember
+    return self._state._get_last()
+
+  @state.setter
+  def state(self, initial_state: LayerState):
+    assert len(self._state) == 0, f"can only assign {self}.state once for the initial state"
+    for key, value in initial_state.items():
+      self._state[key] = value
 
   def unstack(self, source: LayerRef, *, axis: Union[str, DimensionTag], name: Optional[str] = None) -> LayerRef:
     """
@@ -855,18 +881,34 @@ class _StateHolder:
       return self._state[name]
     raise AttributeError(f"{self}: Unknown state attrib {name!r}. Assign the initial state first.")
 
-  def __getattr__(self, item):
+  def _get_last(self) -> LayerState:
+    return LayerState({key: value.get_last() for (key, value) in self._state.items()})
+
+  def __getitem__(self, item):
     return self._get_state(item).get()
 
-  def __setattr__(self, key, value):
-    if key in {"_state", "_loop"}:
-      return super().__setattr__(key, value)
+  def __setitem__(self, key, value):
     if isinstance(value, State):
       # noinspection PyProtectedMember
       value._set_name_and_loop(name=key, loop=self._loop)
       self._state[key] = value
       return
     self._get_state(key).assign(value)
+
+  def __getattr__(self, item):
+    return self[item]
+
+  def __setattr__(self, key, value):
+    if key in {"_state", "_loop"}:
+      return super().__setattr__(key, value)
+    self[key] = value
+
+  def keys(self) -> Iterable[str]:
+    """keys"""
+    return self._state.keys()
+
+  def __len__(self):
+    return len(self._state)
 
 
 class State:
@@ -966,6 +1008,20 @@ class State:
       # Return prev value
       return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx)
     return self.assigned_value
+
+  def _map_name_ctx_to_last_layer_ref(self, name_ctx: NameCtx) -> LayerRef:
+    assert isinstance(name_ctx, NameCtx)
+    assert name_ctx.layer_ref, f"{self.loop} state {name_ctx} not assigned?"
+    assert self.loop.name_ctx.layer_ref, f"{self.loop} not yet exited?"
+    return self.loop.last(name_ctx.layer_ref)
+
+  def get_last(self):
+    """
+    Outside the loop, get the last instance.
+    """
+    assert self.name_ctx is not None
+    assert self.assigned_value is not None
+    return nest.map_structure(self._map_name_ctx_to_last_layer_ref, self.name_ctx)
 
 
 def get_root_extern_data(data_key: str) -> LayerRef:
