@@ -14,7 +14,7 @@ from builtins import range as range_
 if typing.TYPE_CHECKING:
   from .. import nn
 else:
-  from returnn_common import nn
+  from returnn_common import nn  # noqa
 
 
 def test_rec_ff():

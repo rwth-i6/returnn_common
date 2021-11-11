@@ -15,8 +15,8 @@ if typing.TYPE_CHECKING:
   from .. import __init__ as rc
   from .. import nn
 else:
-  import returnn_common as rc
-  from returnn_common import nn
+  import returnn_common as rc  # noqa
+  from returnn_common import nn  # noqa
 
 
 def test_simple_net_linear():
