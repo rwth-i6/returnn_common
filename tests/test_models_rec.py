@@ -6,10 +6,15 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net
 
-from returnn_common import nn
+import typing
 from pprint import pprint
 from nose.tools import assert_equal
 from builtins import range as range_
+
+if typing.TYPE_CHECKING:
+  from .. import nn
+else:
+  from returnn_common import nn
 
 
 def test_rec_ff():

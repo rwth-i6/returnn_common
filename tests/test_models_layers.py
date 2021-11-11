@@ -6,11 +6,17 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net
 from builtins import range as range_
-import returnn_common as rc
-from returnn_common import nn
 from pprint import pprint
 from nose.tools import assert_equal
+import typing
 from typing import Tuple
+
+if typing.TYPE_CHECKING:
+  from .. import __init__ as rc
+  from .. import nn
+else:
+  import returnn_common as rc
+  from returnn_common import nn
 
 
 def test_simple_net_linear():
