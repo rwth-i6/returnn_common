@@ -702,7 +702,7 @@ class Loop:
                max_seq_len: Optional[Union[str, int, callable]] = NotSpecified,
                optimize_move_layers_out: Optional[bool] = NotSpecified,
                unroll: bool = NotSpecified,
-               axis: Optional[DimensionTag] = None,
+               axis: Optional[DimensionTag] = NotSpecified,
                debug: Optional[bool] = NotSpecified,
                name: str = "loop"
                ):
