@@ -805,8 +805,13 @@ class Loop:
     """
     Gets the last value from source.
     """
-    # TODO ...
-    raise NotImplementedError("Loop.last not implemented yet...")
+    assert isinstance(source, Layer)
+    source.layer_dict["need_last"] = True
+    sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
+    with self.name_ctx.parent:  # need to be outside of the loop
+      return make_layer(
+        {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
+        name=name or sub_layer_name.replace("/", "_"))
 
   def end(self, source: LayerRef, *, include_eos: bool) -> LayerRef:
     """
