@@ -36,7 +36,7 @@ class SelfAttention(nn.Module):
     v = nn.reinterpret_data(v, set_dim_tags={axis: self.expand_dim}, name="v_new_dim")
     energy = nn.dot([q, k], red1="static:-1", red2="static:-1", var1=axis, var2=self.expand_dim, name="energy")
     att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
-    att_weights = nn.dropout(att_weights, self.att_dropout)
+    att_weights = nn.dropout(att_weights, self.att_dropout)  # TODO wrong axis
     att = nn.dot(
       [att_weights, v], red1=self.expand_dim, red2=self.expand_dim, var1=axis, var2="static:-1", name="att")
     output = nn.merge_dims(att, axes="static", name="output")
