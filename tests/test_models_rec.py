@@ -29,7 +29,7 @@ def test_rec_ff():
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
       with nn.Loop() as loop:
-        x_ = loop.unstack(x)
+        x_ = loop.unstack(x, axis="T", declare_rec_time=True)
         loop.state.h = nn.State(initial=0)  # TODO proper initial...
         loop.state.h = self.rec_linear(nn.concat((x_, "F"), (loop.state.h, "F")))
         y = loop.stack(loop.state.h)
@@ -46,7 +46,7 @@ def test_rec_ff():
                                   'from': (('rec_unstack', 'F'),
                                            ('prev:state.h', 'F'))},
                        'output': {'class': 'copy', 'from': 'state.h'},
-                       'rec_unstack': {'axis': 'T',
+                       'rec_unstack': {'axis': 'T', 'declare_rec_time': True,
                                        'class': 'rec_unstack',
                                        'from': 'base:data:data'},
                        'state.h': {'class': 'linear',
@@ -72,7 +72,7 @@ def test_rec_inner_lstm():
       Forward
       """
       with nn.Loop() as loop:
-        x_ = loop.unstack(x)
+        x_ = loop.unstack(x, axis="T", declare_rec_time=True)
         loop.state.lstm = nn.State(initial=self.lstm.default_initial_state())
         y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm)
         y = loop.stack(y_)

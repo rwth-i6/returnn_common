@@ -763,13 +763,26 @@ class Loop:
     for key, value in initial_state.items():
       self._state[key] = value
 
-  def unstack(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
+  def unstack(self, source: LayerRef, *,
+              axis: Optional[Union[str, DimensionTag]] = None,
+              declare_rec_time: bool = False,
+              name: Optional[str] = None
+              ) -> LayerRef:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
+    The axis can be specified globally for the :class:`Loop` instance (recommended)
+    or locally here (not recommended).
     """
-    assert self.axis, f"{self}: `axis` should be specified when unstack() is used"
     from . import rec_unstack
-    res = rec_unstack(source, name=name)
+    opts = {}
+    if axis:
+      opts["axis"] = axis
+      if declare_rec_time:
+        opts["declare_rec_time"] = True
+    else:
+      assert self.axis and self.axis is not NotSpecified, f"{self}: `axis` should be specified when unstack() is used"
+      assert not declare_rec_time
+    res = rec_unstack(source, name=name, **opts)
     self.unstacked_refs.append(res)
     return res
 
