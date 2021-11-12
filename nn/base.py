@@ -763,12 +763,13 @@ class Loop:
     for key, value in initial_state.items():
       self._state[key] = value
 
-  def unstack(self, source: LayerRef, *, axis: Union[str, DimensionTag], name: Optional[str] = None) -> LayerRef:
+  def unstack(self, source: LayerRef, *, name: Optional[str] = None) -> LayerRef:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     """
+    assert self.axis, f"{self}: `axis` should be specified when unstack() is used"
     from . import rec_unstack
-    res = rec_unstack(source, axis=axis, name=name)
+    res = rec_unstack(source, name=name)
     self.unstacked_refs.append(res)
     return res
 
