@@ -795,7 +795,7 @@ class Loop:
     # TODO ...
     raise NotImplementedError("Loop.last not implemented yet...")
 
-  def end(self, source: LayerRef, include_eos: bool) -> LayerRef:
+  def end(self, source: LayerRef, *, include_eos: bool) -> LayerRef:
     """
     For loops with dynamic ending condition (which might not use unstack),
     this defines the ending condition.
