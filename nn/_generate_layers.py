@@ -44,6 +44,7 @@ BlacklistLayerClassNames = {
   "cond", "masked_computation", "subnetwork",
 
   "source",  # we have get_extern_data instead
+  "concat",  # we wrap that explicitly
   "activation",  # will be explicit. https://github.com/rwth-i6/returnn_common/issues/63
   "swap_axes",
   "gather_nd",  # -> gather
