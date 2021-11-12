@@ -699,13 +699,10 @@ class Loop:
   """
 
   def __init__(self, *,
-               max_seq_len: Optional[Union[str, int]] = NotSpecified,
+               max_seq_len: Optional[Union[str, int, callable]] = NotSpecified,
                optimize_move_layers_out: Optional[bool] = NotSpecified,
-               cheating: bool = NotSpecified,
                unroll: bool = NotSpecified,
-               back_prop: Optional[bool] = NotSpecified,
-               use_global_rec_step_offset: bool = NotSpecified,
-               include_eos: bool = NotSpecified,
+               axis: Optional[DimensionTag] = None,
                debug: Optional[bool] = NotSpecified,
                name: str = "loop"
                ):
@@ -722,6 +719,7 @@ class Loop:
     self._state = _StateHolder(loop=self)
     self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
+    self.axis = axis
     self.end_ref = None  # type: Optional[LayerRef]
 
   def __repr__(self):
@@ -796,12 +794,16 @@ class Loop:
     # TODO ...
     raise NotImplementedError("Loop.last not implemented yet...")
 
-  def end(self, source: LayerRef) -> LayerRef:
+  def end(self, source: LayerRef, include_eos: bool) -> LayerRef:
     """
     For loops with dynamic ending condition (which might not use unstack),
     this defines the ending condition.
+
+    :param source: the ending condition
+    :param include_eos: if True, the last() and stack() function include the current ending frame, otherwise not
     """
-    assert not self.end_ref  # do not call this multiple times
+    assert not self.end_ref, f"{self}.end() can only be called once"
+    self.extra_opts["include_eos"] = include_eos
     from . import copy
     self.end_ref = copy(source, name=self.name_ctx.get_child("end"))
     return self.end_ref
