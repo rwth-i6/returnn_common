@@ -1,6 +1,6 @@
 # `returnn_common`
 
-This repo provides common building blocks for RETURNN,
+This repo provides common building blocks for [RETURNN](https://github.com/rwth-i6/returnn/),
 such as models or networks, network creation code,
 datasets, etc.
 
