@@ -636,7 +636,7 @@ class LayerSignature:
     support_none = False
     if param.param_type_s:
       res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
-        param.param_type_s, replace_types={"int": "Dim", "str": "Dim"})
+        param.param_type_s, replace_types={"int": "Dim", "str": "Dim", "LayerRef": "Dim"})
       res_t = eval(res_t_s, {
         "Optional": Optional, "Union": Union, "List": List, "Tuple": Tuple, "Set": Set, "Dict": Dict,
         "Dim": "Dim", "LayerRef": "LayerRef"})
@@ -688,6 +688,9 @@ class LayerSignature:
         param.docstring += "\n"
         param.docstring += param_.docstring
       param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make sure not optional
+    if "size" in self.params:
+      if self.params["size"].param_type_s and "Dim" in self.params["size"].param_type_s:
+        self.params["size"].param_type_s = "Dim"
     for name, param in self.params.items():
       if name == "out_shape":
         continue
