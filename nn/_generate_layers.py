@@ -106,9 +106,10 @@ def setup():
   print('"""', file=f)
   print("", file=f)
   print("from __future__ import annotations", file=f)
-  print("from typing import Union, Optional, Tuple, List, Dict, Any", file=f)
+  print("from typing import Union, Optional, Tuple, List, Dict, Set, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
-  print("from returnn.tf.util.data import Dim", file=f)
+  print("# noinspection PyProtectedMember", file=f)
+  print("from returnn.tf.util.data import Dim, _ImplicitDim", file=f)
   print("from .base import NameCtx, ILayerMaker, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerDictRaw", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
@@ -331,6 +332,7 @@ class LayerSignature:
     self._defined_base_params = []  # type: List[str]
     self._init_args()
     self._parse_init_docstring()
+    self._post_proc()
     self._find_super_call_assignments()
 
   def has_source_param(self) -> bool:
@@ -616,12 +618,59 @@ class LayerSignature:
           param_type_s = re.sub(r"\bDimensionTag\b", "Dim", param_type_s)
           param_type_s = re.sub(r"\bDim\|str\b", "Dim", param_type_s)
           param_type_s = re.sub(r"\str\|Dim\b", "Dim", param_type_s)
+        if param.inspect_param.default != param.inspect_param.empty and param_name in {"axis", "axes"}:
+          if "None" not in param_type_s:
+            param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)
         param.param_type_s = param_type_s
       else:
         lines.append(line)
     if lines and lines[-1]:
       lines.append("")
     self.docstring = "\n".join(lines)
+
+  @classmethod
+  def _handle_axis_like_arg(cls, param: Param):
+    types = ["Dim"]
+    if param.param_type_s:
+      if "list" in param.param_type_s or "tuple" in param.param_type_s:
+        types.append("list[Dim]")
+    if param.inspect_param.default != inspect.Parameter.empty:
+      types.append("None")
+    param.param_type_s = "|".join(types)
+
+  def _post_proc(self):
+    if "axes" in self.params and "axis" in self.params:
+      param_ = self.params.pop("axes")
+      param = self.params["axis"]
+      param.param_type_s = "Dim|list[Dim]"
+      if param_.docstring:
+        param.docstring += "\n"
+        param.docstring += param_.docstring
+      param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make sure not optional
+    for name, param in self.params.items():
+      if name == "out_shape":
+        continue
+      if name in {"axis", "axes"} or (param.param_type_s and "Dim" in param.param_type_s):
+        self._handle_axis_like_arg(param)
+    if "window_size" in self.params and "window_dim" in self.params:
+      param_ = self.params.pop("window_size")
+      param = self.params["window_dim"]
+      if param_.docstring:
+        param.docstring += "\n"
+        param.docstring += param_.docstring
+    # keep dims should never be needed
+    self.params.pop("keepdims", None)
+    self.params.pop("keep_dims", None)
+    self.params.pop("add_var2_if_empty", None)
+    self.params.pop("add_time_axis", None)
+    self.params.pop("add_batch_axis", None)
+    self.params.pop("with_batch_dim", None)
+    # keep order should be correct by default (with new behavior version) and not needed otherwise
+    self.params.pop("keep_order", None)
+    # order of axes should never matter
+    self.params.pop("enforce_batch_dim_axis", None)
+    self.params.pop("enforce_batch_major", None)
+    self.params.pop("enforce_time_major", None)
 
   def __repr__(self):
     args = []
@@ -814,11 +863,8 @@ class LayerSignature:
         return "str"
       if self.returnn_name == "max_seq_len":
         return "Optional[Union[str, int]]"
-      if self.returnn_name == "axis":
-        t = "Dim"
-        if "None" in self.param_type_s:
-          return f"Optional[{t}]"
-        return t
+      if self.returnn_name == "axis" and not self.param_type_s:
+        return "Dim"
       if not self.param_type_s:
         return "Any"
       t = self.param_type_s
