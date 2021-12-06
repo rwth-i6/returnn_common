@@ -651,6 +651,8 @@ class LayerSignature:
         if isinstance(t, str):
           return t
         if isinstance(t, typing.ForwardRef):
+          if t.__forward_arg__ == "LayerRef":
+            return "LayerBase"
           return t.__forward_arg__
         if typing.get_origin(t) == Union:
           return "|".join(_convert(t_) for t_ in typing.get_args(t))
