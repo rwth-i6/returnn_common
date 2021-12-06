@@ -811,17 +811,12 @@ class _SliceNd(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               size: Dim,
                min_size: Optional[int] = NotSpecified,
                **kwargs):
     """
-    :param Dim size:
-      We assume that this is >=0. If this might not be the case, use ``min_size=0``.
-      If None, it uses the max possible size, and it becomes a dynamic axis.
     :param int|None min_size: if size is None, but we want to have a min-size
     """
     super().__init__(**kwargs)
-    self.size = size
     self.min_size = min_size
 
   def get_opts(self):
@@ -829,7 +824,6 @@ class _SliceNd(_Base):
     Return all options
     """
     opts = {
-      'size': self.size,
       'min_size': self.min_size,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -840,6 +834,7 @@ class _SliceNd(_Base):
                       source: LayerRef,
                       *,
                       start: LayerRef,
+                      size: Optional[Union[Dim, LayerRef]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -847,6 +842,7 @@ class _SliceNd(_Base):
     assert isinstance(source, LayerRef)
     args = {
       'start': start,
+      'size': size,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -861,7 +857,7 @@ def slice_nd(
              source: LayerRef,
              *,
              start: LayerRef,
-             size: Dim,
+             size: Optional[Union[Dim, LayerRef]],
              min_size: Optional[int] = NotSpecified,
              name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -878,19 +874,19 @@ def slice_nd(
 
   :param LayerRef source:
   :param LayerBase start: (B,...)
-  :param Dim size:
+  :param Dim|LayerBase|None size:
     We assume that this is >=0. If this might not be the case, use ``min_size=0``.
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
   :param str|None name:
   """
   mod = _SliceNd(
-    size=size,
     min_size=min_size,
     )
   return mod(
     source,
     start=start,
+    size=size,
     name=name)
 
 
