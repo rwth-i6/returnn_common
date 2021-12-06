@@ -49,7 +49,7 @@ Code conventions:
 from __future__ import annotations
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator, Iterable
 from returnn.util.basic import NotSpecified, OptionalNotImplementedError
-from returnn.tf.util.data import DimensionTag
+from returnn.tf.util.data import Dim
 from tensorflow.python.util import nest
 
 
@@ -445,13 +445,13 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
     # Note that this is actually layer specific.
     # We try to use a number of heuristics to get it right for the common cases.
     name = f"{layer.name_ctx.name}_state"
-    n_out = layer.layer_dict["n_out"]
+    out_dim = layer.layer_dict["out_dim"]
     if layer.layer_dict["class"] == "rec" and isinstance(layer.layer_dict["unit"], str):
       if "lstm" in layer.layer_dict["unit"].lower():
-        h = _get_last_hidden_state(layer, n_out=n_out, key="h", name=f"{name}_h")
-        c = _get_last_hidden_state(layer, n_out=n_out, key="c", name=f"{name}_c")
+        h = _get_last_hidden_state(layer, out_dim=out_dim, key="h", name=f"{name}_h")
+        c = _get_last_hidden_state(layer, out_dim=out_dim, key="c", name=f"{name}_c")
         return LayerState(h=h, c=c)
-    return LayerState(_get_last_hidden_state(layer, n_out=n_out, name=name))
+    return LayerState(_get_last_hidden_state(layer, out_dim=out_dim, name=name))
 
   def __call__(self, *args,
                name: Optional[Union[str, NameCtx]] = None,
@@ -702,7 +702,7 @@ class Loop:
                max_seq_len: Optional[Union[str, int, callable]] = NotSpecified,
                optimize_move_layers_out: Optional[bool] = NotSpecified,
                unroll: bool = NotSpecified,
-               axis: Optional[DimensionTag] = NotSpecified,
+               axis: Optional[Dim] = NotSpecified,
                debug: Optional[bool] = NotSpecified,
                name: str = "loop"
                ):
@@ -764,7 +764,7 @@ class Loop:
       self._state[key] = value
 
   def unstack(self, source: LayerRef, *,
-              axis: Optional[Union[str, DimensionTag]] = None,
+              axis: Optional[Dim] = None,
               declare_rec_time: bool = False,
               name: Optional[str] = None
               ) -> LayerRef:
