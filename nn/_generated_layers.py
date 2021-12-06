@@ -8,9 +8,10 @@ Please file an issue if you miss something.
 """
 
 from __future__ import annotations
-from typing import Union, Optional, Tuple, List, Dict, Any
+from typing import Union, Optional, Tuple, List, Dict, Set, Any
 from returnn.util.basic import NotSpecified
-from returnn.tf.util.data import Dim
+# noinspection PyProtectedMember
+from returnn.tf.util.data import Dim, _ImplicitDim
 from .base import NameCtx, ILayerMaker, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerDictRaw
 
 
@@ -53,7 +54,7 @@ class _Base(_ReturnnWrappedLayerBase):
   def __init__(self,
                *,
                out_dim: Optional[Dim] = NotSpecified,
-               out_shape: Any = NotSpecified,
+               out_shape: Optional[Union[Set[Union[Dim, _ImplicitDim]], Tuple, List]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
                param_device: Optional[str] = NotSpecified,
                only_on_eval: bool = NotSpecified,
@@ -488,7 +489,7 @@ class _Norm(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               param_shape: Any = NotSpecified,
+               param_shape: Union[str, List[str], Tuple[str, ...], int, List[int], Tuple[int, ...]] = NotSpecified,
                scale: bool = NotSpecified,
                bias: bool = NotSpecified,
                epsilon: float = NotSpecified,
@@ -524,7 +525,7 @@ class _Norm(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axes: Any,
+                      axes: Union[Dim, List[Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -545,8 +546,8 @@ class _Norm(_Base):
 def normalize(
               source: LayerRef,
               *,
-              axes: Any,
-              param_shape: Any = NotSpecified,
+              axes: Union[Dim, List[Dim]],
+              param_shape: Union[str, List[str], Tuple[str, ...], int, List[int], Tuple[int, ...]] = NotSpecified,
               scale: bool = NotSpecified,
               bias: bool = NotSpecified,
               epsilon: float = NotSpecified,
@@ -577,7 +578,7 @@ def normalize(
   and `here <https://github.com/tensorflow/addons/issues/2143>`__.
 
   :param LayerRef source:
-  :param str|list[str] axes: axes over which the mean and variance are computed, e.g. "F" or "TF"
+  :param Dim|list[Dim] axes: axes over which the mean and variance are computed, e.g. "F" or "TF"
   :param str|list[str]|tuple[str]|int|list[int]|tuple[int] param_shape: shape of the scale and bias parameters.
     You can also refer to (static) axes of the input, such as the feature-dim.
     This is also the default, i.e. a param-shape of [F], independent of the axes to normalize over.
@@ -610,15 +611,12 @@ class _MathNorm(_Base):
   def __init__(self,
                *,
                p: Union[int, float],
-               keep_dims: bool = NotSpecified,
                **kwargs):
     """
     :param int|float p:
-    :param bool keep_dims:
     """
     super().__init__(**kwargs)
     self.p = p
-    self.keep_dims = keep_dims
 
   def get_opts(self):
     """
@@ -626,7 +624,6 @@ class _MathNorm(_Base):
     """
     opts = {
       'p': self.p,
-      'keep_dims': self.keep_dims,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**opts, **super().get_opts()}
@@ -635,7 +632,7 @@ class _MathNorm(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axes: Any,
+                      axes: Union[Dim, List[Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -657,21 +654,18 @@ def math_norm(
               source: LayerRef,
               *,
               p: Union[int, float],
-              axes: Any,
-              keep_dims: bool = NotSpecified,
+              axes: Union[Dim, List[Dim]],
               name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Calculates sum(abs(x) ** p) ** (1./p).
 
   :param LayerRef source:
   :param int|float p:
-  :param str|list[str] axes:
-  :param bool keep_dims:
+  :param Dim|list[Dim] axes:
   :param str|None name:
   """
   mod = _MathNorm(
     p=p,
-    keep_dims=keep_dims,
     )
   return mod(
     source,
@@ -817,12 +811,17 @@ class _SliceNd(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
+               size: Optional[Union[Dim, LayerRef]],
                min_size: Optional[int] = NotSpecified,
                **kwargs):
     """
+    :param Dim|LayerRef|None size:
+      We assume that this is >=0. If this might not be the case, use ``min_size=0``.
+      If None, it uses the max possible size, and it becomes a dynamic axis.
     :param int|None min_size: if size is None, but we want to have a min-size
     """
     super().__init__(**kwargs)
+    self.size = size
     self.min_size = min_size
 
   def get_opts(self):
@@ -830,6 +829,7 @@ class _SliceNd(_Base):
     Return all options
     """
     opts = {
+      'size': self.size,
       'min_size': self.min_size,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -840,7 +840,6 @@ class _SliceNd(_Base):
                       source: LayerRef,
                       *,
                       start: LayerRef,
-                      size: Optional[Union[int, LayerRef, Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -848,7 +847,6 @@ class _SliceNd(_Base):
     assert isinstance(source, LayerRef)
     args = {
       'start': start,
-      'size': size,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
     return {
@@ -863,7 +861,7 @@ def slice_nd(
              source: LayerRef,
              *,
              start: LayerRef,
-             size: Optional[Union[int, LayerRef, Dim]],
+             size: Optional[Union[Dim, LayerRef]],
              min_size: Optional[int] = NotSpecified,
              name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -880,19 +878,19 @@ def slice_nd(
 
   :param LayerRef source:
   :param LayerBase start: (B,...)
-  :param int|LayerBase|Dim|None size:
+  :param Dim|LayerRef|None size:
     We assume that this is >=0. If this might not be the case, use ``min_size=0``.
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
   :param str|None name:
   """
   mod = _SliceNd(
+    size=size,
     min_size=min_size,
     )
   return mod(
     source,
     start=start,
-    size=size,
     name=name)
 
 
@@ -1212,17 +1210,14 @@ class _Length(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               add_time_axis: bool = NotSpecified,
                dtype: str = NotSpecified,
                sparse: bool = NotSpecified,
                **kwargs):
     """
-    :param bool add_time_axis:
     :param str dtype:
     :param bool sparse:
     """
     super().__init__(**kwargs)
-    self.add_time_axis = add_time_axis
     self.dtype = dtype
     self.sparse = sparse
 
@@ -1231,7 +1226,6 @@ class _Length(_Base):
     Return all options
     """
     opts = {
-      'add_time_axis': self.add_time_axis,
       'dtype': self.dtype,
       'sparse': self.sparse,
     }
@@ -1242,7 +1236,7 @@ class _Length(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -1263,8 +1257,7 @@ class _Length(_Base):
 def length(
            source: LayerRef,
            *,
-           axis: Dim = NotSpecified,
-           add_time_axis: bool = NotSpecified,
+           axis: Dim,
            dtype: str = NotSpecified,
            sparse: bool = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -1272,14 +1265,12 @@ def length(
   Returns the length of sources as (B,), via input size_placeholder.
 
   :param LayerRef source:
-  :param str|Dim axis:
-  :param bool add_time_axis:
+  :param Dim axis:
   :param str dtype:
   :param bool sparse:
   :param str|None name:
   """
   mod = _Length(
-    add_time_axis=add_time_axis,
     dtype=dtype,
     sparse=sparse,
     )
@@ -1443,7 +1434,7 @@ class _SeqLenMask(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       seq_len_source: Optional[LayerRef] = NotSpecified,
                       start: Optional[LayerRef] = NotSpecified,
                       window_start: Optional[LayerRef] = NotSpecified,
@@ -1473,7 +1464,7 @@ def seq_len_mask(
                  source: LayerRef,
                  *,
                  mask_value: float,
-                 axis: Dim = NotSpecified,
+                 axis: Dim,
                  seq_len_source: Optional[LayerRef] = NotSpecified,
                  start: Optional[LayerRef] = NotSpecified,
                  window_start: Optional[LayerRef] = NotSpecified,
@@ -1486,7 +1477,7 @@ def seq_len_mask(
 
   :param LayerRef source:
   :param float mask_value:
-  :param str|int axis:
+  :param Dim axis:
   :param LayerBase|None seq_len_source: if not given, uses source
   :param LayerBase|None start: Tensor of shape (B,) indicating the start frame
   :param LayerBase|None window_start: Tensor of shape (B,) indicating the window start
@@ -1517,7 +1508,7 @@ class _RandInt(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               shape: Any,
+               shape: Union[Tuple[Dim, ...], List[Dim]],
                maxval: int,
                minval: int = NotSpecified,
                dtype: str = NotSpecified,
@@ -1525,7 +1516,7 @@ class _RandInt(_Base):
                seed: Optional[int] = NotSpecified,
                **kwargs):
     """
-    :param tuple[Dim|int]|list[Dim|int] shape: desired shape of output tensor
+    :param tuple[Dim]|list[Dim] shape: desired shape of output tensor
     :param int maxval: upper bound (exclusive) on range of random values
     :param int minval: lower bound (inclusive) on range of random values
     :param str dtype: type of the output. For random ints, int32 and int64 make sense, but could also be floats
@@ -1573,7 +1564,7 @@ class _RandInt(_Base):
 def rand_int(
              source: LayerRef,
              *,
-             shape: Any,
+             shape: Union[Tuple[Dim, ...], List[Dim]],
              maxval: int,
              minval: int = NotSpecified,
              dtype: str = NotSpecified,
@@ -1584,7 +1575,7 @@ def rand_int(
   Generates random numbers using ``tf.random.uniform``
 
   :param LayerRef source:
-  :param tuple[Dim|int]|list[Dim|int] shape: desired shape of output tensor
+  :param tuple[Dim]|list[Dim] shape: desired shape of output tensor
   :param int maxval: upper bound (exclusive) on range of random values
   :param int minval: lower bound (inclusive) on range of random values
   :param str dtype: type of the output. For random ints, int32 and int64 make sense, but could also be floats
@@ -1772,7 +1763,7 @@ def range_in_axis(
   See also :class:`RangeLayer`.
 
   :param LayerRef source:
-  :param str axis:
+  :param Dim axis:
   :param str dtype:
   :param bool sparse:
   :param str|None name:
@@ -1938,21 +1929,18 @@ class _Constant(_Base):
   def __init__(self,
                *,
                value: Union[int, float, bool] = NotSpecified,
-               shape: Any = NotSpecified,
+               shape: Union[Tuple[Dim, ...], List[Dim]] = NotSpecified,
                dtype: Optional[str] = NotSpecified,
-               with_batch_dim: bool = NotSpecified,
                **kwargs):
     """
     :param int|float|bool value:
-    :param tuple[Dim|int]|list[Dim|int] shape: for verification, and defining dim tags
+    :param tuple[Dim]|list[Dim] shape: for verification, and defining dim tags
     :param str|None dtype:
-    :param bool with_batch_dim:
     """
     super().__init__(**kwargs)
     self.value = value
     self.shape = shape
     self.dtype = dtype
-    self.with_batch_dim = with_batch_dim
 
   def get_opts(self):
     """
@@ -1962,7 +1950,6 @@ class _Constant(_Base):
       'value': self.value,
       'shape': self.shape,
       'dtype': self.dtype,
-      'with_batch_dim': self.with_batch_dim,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return {**opts, **super().get_opts()}
@@ -1980,24 +1967,21 @@ class _Constant(_Base):
 def constant(
              *,
              value: Union[int, float, bool] = NotSpecified,
-             shape: Any = NotSpecified,
+             shape: Union[Tuple[Dim, ...], List[Dim]] = NotSpecified,
              dtype: Optional[str] = NotSpecified,
-             with_batch_dim: bool = NotSpecified,
              name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Output is a constant value.
 
   :param int|float|bool value:
-  :param tuple[Dim|int]|list[Dim|int] shape: for verification, and defining dim tags
+  :param tuple[Dim]|list[Dim] shape: for verification, and defining dim tags
   :param str|None dtype:
-  :param bool with_batch_dim:
   :param str|None name:
   """
   mod = _Constant(
     value=value,
     shape=shape,
     dtype=dtype,
-    with_batch_dim=with_batch_dim,
     )
   return mod(
     name=name)
@@ -2025,7 +2009,6 @@ class _Window(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               window_size: Optional[int] = NotSpecified,
                window_dim: Optional[Dim] = NotSpecified,
                window_left: Optional[int] = NotSpecified,
                window_right: Optional[int] = NotSpecified,
@@ -2034,7 +2017,6 @@ class _Window(_Base):
                stride: int = NotSpecified,
                **kwargs):
     """
-    :param int|None window_size:
     :param Dim|None window_dim:
     :param int|None window_left:
     :param int|None window_right:
@@ -2043,7 +2025,6 @@ class _Window(_Base):
     :param int stride: return only each Nth window
     """
     super().__init__(**kwargs)
-    self.window_size = window_size
     self.window_dim = window_dim
     self.window_left = window_left
     self.window_right = window_right
@@ -2056,7 +2037,6 @@ class _Window(_Base):
     Return all options
     """
     opts = {
-      'window_size': self.window_size,
       'window_dim': self.window_dim,
       'window_left': self.window_left,
       'window_right': self.window_right,
@@ -2073,7 +2053,7 @@ class _Window(_Base):
                       *,
                       state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2098,11 +2078,10 @@ def _window(
             *,
             state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-            window_size: Optional[int] = NotSpecified,
             window_dim: Optional[Dim] = NotSpecified,
             window_left: Optional[int] = NotSpecified,
             window_right: Optional[int] = NotSpecified,
-            axis: Dim = NotSpecified,
+            axis: Dim,
             out_spatial_dim: Optional[Dim] = NotSpecified,
             padding: str = NotSpecified,
             stride: int = NotSpecified,
@@ -2124,7 +2103,6 @@ def _window(
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
-  :param int|None window_size:
   :param Dim|None window_dim:
   :param int|None window_left:
   :param int|None window_right:
@@ -2135,7 +2113,6 @@ def _window(
   :param str|None name:
   """
   mod = _Window(
-    window_size=window_size,
     window_dim=window_dim,
     window_left=window_left,
     window_right=window_right,
@@ -2190,7 +2167,7 @@ class _Cumsum(_Base):
                       *,
                       state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2215,7 +2192,7 @@ def _cumsum(
             *,
             state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-            axis: Dim = NotSpecified,
+            axis: Dim,
             additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
             reverse: bool = NotSpecified,
             name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
@@ -2225,7 +2202,7 @@ def _cumsum(
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
-  :param str axis: see :func:`Data.get_axis_from_description`
+  :param Dim axis: see :func:`Data.get_axis_from_description`
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
   :param bool reverse:
   :param str|None name:
@@ -2254,8 +2231,8 @@ class _Pad(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               padding: Any,
-               out_dims: Any = NotSpecified,
+               padding: Union[List[int, int], int, int, int],
+               out_dims: Optional[Union[Dim, List[Dim]]] = NotSpecified,
                value: Union[int, float] = NotSpecified,
                mode: str = NotSpecified,
                **kwargs):
@@ -2288,7 +2265,7 @@ class _Pad(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axes: Any,
+                      axes: Union[Dim, List[Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2309,9 +2286,9 @@ class _Pad(_Base):
 def pad(
         source: LayerRef,
         *,
-        axes: Any,
-        padding: Any,
-        out_dims: Any = NotSpecified,
+        axes: Union[Dim, List[Dim]],
+        padding: Union[List[int, int], int, int, int],
+        out_dims: Optional[Union[Dim, List[Dim]]] = NotSpecified,
         value: Union[int, float] = NotSpecified,
         mode: str = NotSpecified,
         name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -2354,39 +2331,10 @@ class _MergeDims(_Base):
   has_variables = False
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               keep_order: Union[bool, NotSpecified] = NotSpecified,
-               **kwargs):
-    """
-    :param bool|NotSpecified keep_order: The old default was: the axes are sorted, and then merged.
-      Thus, the order of incoming axes will influence the result.
-      E.g. inputs [B,S,F] and [B,F,S], with ``axes=["S","F"]``, will get different results,
-      although the output shape is [B,S*F] in both cases.
-      This is bad: In general, other layers in RETURNN might reorder the axes for various reasons,
-      and all layers should behave in the same way, no matter the order.
-      It is recommended to set ``keep_order=True``, such that the order defined in ``axes`` defines the behavior,
-      and not the incoming axis order.
-      Since behavior version 6, this is already the case.
-    """
-    super().__init__(**kwargs)
-    self.keep_order = keep_order
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'keep_order': self.keep_order,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axes: Any,
+                      axes: Union[Dim, List[Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2407,8 +2355,7 @@ class _MergeDims(_Base):
 def merge_dims(
                source: LayerRef,
                *,
-               axes: Any,
-               keep_order: Union[bool, NotSpecified] = NotSpecified,
+               axes: Union[Dim, List[Dim]],
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Merges a list of axes into a single one. (Flatten the dims.)
@@ -2420,21 +2367,10 @@ def merge_dims(
   see :class:`FlattenBatchLayer`.
 
   :param LayerRef source:
-  :param str|list[Dim] axes: see :func:`Data.get_axis_from_description`
-  :param bool|NotSpecified keep_order: The old default was: the axes are sorted, and then merged.
-    Thus, the order of incoming axes will influence the result.
-    E.g. inputs [B,S,F] and [B,F,S], with ``axes=["S","F"]``, will get different results,
-    although the output shape is [B,S*F] in both cases.
-    This is bad: In general, other layers in RETURNN might reorder the axes for various reasons,
-    and all layers should behave in the same way, no matter the order.
-    It is recommended to set ``keep_order=True``, such that the order defined in ``axes`` defines the behavior,
-    and not the incoming axis order.
-    Since behavior version 6, this is already the case.
+  :param Dim|list[Dim] axes: see :func:`Data.get_axis_from_description`
   :param str|None name:
   """
-  mod = _MergeDims(
-    keep_order=keep_order,
-    )
+  mod = _MergeDims()
   return mod(
     source,
     axes=axes,
@@ -2454,18 +2390,12 @@ class _Split(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               num_splits: Optional[int] = NotSpecified,
-               size_splits: Optional[List[int]] = NotSpecified,
                out_dims: Optional[List[Dim]] = NotSpecified,
                **kwargs):
     """
-    :param int|None num_splits:
-    :param list[int]|None size_splits:
     :param list[Dim]|None out_dims:
     """
     super().__init__(**kwargs)
-    self.num_splits = num_splits
-    self.size_splits = size_splits
     self.out_dims = out_dims
 
   def get_opts(self):
@@ -2473,8 +2403,6 @@ class _Split(_Base):
     Return all options
     """
     opts = {
-      'num_splits': self.num_splits,
-      'size_splits': self.size_splits,
       'out_dims': self.out_dims,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -2506,8 +2434,6 @@ def _split(
            source: LayerRef,
            *,
            axis: Optional[Dim] = NotSpecified,
-           num_splits: Optional[int] = NotSpecified,
-           size_splits: Optional[List[int]] = NotSpecified,
            out_dims: Optional[List[Dim]] = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -2516,15 +2442,11 @@ def _split(
   Each part can be accessed via the sublayers "/%i".
 
   :param LayerRef source:
-  :param str|None axis: feature axis by default
-  :param int|None num_splits:
-  :param list[int]|None size_splits:
+  :param Dim|None axis: feature axis by default
   :param list[Dim]|None out_dims:
   :param str|None name:
   """
   mod = _Split(
-    num_splits=num_splits,
-    size_splits=size_splits,
     out_dims=out_dims,
     )
   return mod(
@@ -2560,12 +2482,12 @@ class _SplitDims(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               dims: Any,
+               dims: Union[Tuple[Dim, ...], List[Dim]],
                pad_to_multiples: Optional[bool] = NotSpecified,
                pad_value: Union[int, float] = NotSpecified,
                **kwargs):
     """
-    :param tuple[Dim|int]|list[Dim|int] dims: what the axis should be split into. e.g. (window, -1)
+    :param tuple[Dim]|list[Dim] dims: what the axis should be split into. e.g. (window, -1)
     :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
       static dims, such that splitting is actually possible.
       By default this is done iff the axis has a dynamic size
@@ -2614,7 +2536,7 @@ def split_dims(
                source: LayerRef,
                *,
                axis: Dim,
-               dims: Any,
+               dims: Union[Tuple[Dim, ...], List[Dim]],
                pad_to_multiples: Optional[bool] = NotSpecified,
                pad_value: Union[int, float] = NotSpecified,
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -2639,7 +2561,7 @@ def split_dims(
 
   :param LayerRef source:
   :param Dim axis: e.g. "F"
-  :param tuple[Dim|int]|list[Dim|int] dims: what the axis should be split into. e.g. (window, -1)
+  :param tuple[Dim]|list[Dim] dims: what the axis should be split into. e.g. (window, -1)
   :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
     static dims, such that splitting is actually possible.
     By default this is done iff the axis has a dynamic size
@@ -2748,7 +2670,7 @@ class _FlattenBatch(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2769,7 +2691,7 @@ class _FlattenBatch(_Base):
 def flatten_batch(
                   source: LayerRef,
                   *,
-                  axis: Dim = NotSpecified,
+                  axis: Dim,
                   batch_major: bool = NotSpecified,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -2781,7 +2703,7 @@ def flatten_batch(
   i.e. the size stays the same.
 
   :param LayerRef source:
-  :param str axis:
+  :param Dim axis:
   :param bool batch_major: if False, will flatten in time-major manner
   :param str|None name:
   """
@@ -2983,7 +2905,7 @@ class _Repeat(_Base):
                       source: LayerRef,
                       *,
                       repetitions: Union[LayerRef, int],
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3006,7 +2928,7 @@ def repeat(
            source: LayerRef,
            *,
            repetitions: Union[LayerRef, int],
-           axis: Dim = NotSpecified,
+           axis: Dim,
            out_dim: Optional[Dim] = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -3044,8 +2966,8 @@ class _Tile(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               multiples: Dict[Dim, int],
-               out_dims: Optional[Dict[Dim, Dim]] = NotSpecified,
+               multiples: Dict[Dim,  int],
+               out_dims: Optional[Dict[Dim,  Dim]] = NotSpecified,
                **kwargs):
     """
     :param dict[Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
@@ -3084,8 +3006,8 @@ class _Tile(_Base):
 def tile(
          source: LayerRef,
          *,
-         multiples: Dict[Dim, int],
-         out_dims: Optional[Dict[Dim, Dim]] = NotSpecified,
+         multiples: Dict[Dim,  int],
+         out_dims: Optional[Dict[Dim,  Dim]] = NotSpecified,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A wrapper around tf.tile
@@ -3181,13 +3103,11 @@ class _ReinterpretData(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               switch_axes: Any = NotSpecified,
-               set_axes: Any = NotSpecified,
-               set_dim_tags: Any = NotSpecified,
-               enforce_batch_major: bool = NotSpecified,
-               enforce_time_major: bool = NotSpecified,
+               switch_axes: Union[str, List[str]] = NotSpecified,
+               set_axes: Dict[str, Union[int, str]] = NotSpecified,
+               set_dim_tags: Optional[Dict[Dim,  Dim]] = NotSpecified,
                set_sparse: Optional[bool] = NotSpecified,
-               set_sparse_dim: Union[int, None, NotSpecified] = NotSpecified,
+               set_sparse_dim: Optional[Union[int, NotSpecified]] = NotSpecified,
                increase_sparse_dim: Optional[int] = NotSpecified,
                **kwargs):
     """
@@ -3195,12 +3115,10 @@ class _ReinterpretData(_Base):
     :param dict[str,int|str] set_axes:
       This can be used to overwrite the special axes like time_dim_axis or feature_dim_axis.
       For that, use keys "B","T" or "F", and a value via :func:`Data.get_axis_from_description`.
-    :param dict[str|Dim,Dim]|None set_dim_tags: axis -> new dim tag. assigns new dim tags.
+    :param dict[Dim, Dim]|None set_dim_tags: axis -> new dim tag. assigns new dim tags.
       If the passed dim tag is yet undefined, this will not use same_dim_tags_as (declare_same_as)
       but create a new dim tag.
       This option is useful for generalized self attention (https://github.com/rwth-i6/returnn/issues/391).
-    :param bool enforce_batch_major:
-    :param bool enforce_time_major:
     :param bool|None set_sparse: if bool, set sparse value to this
     :param int|None|NotSpecified set_sparse_dim: set sparse dim to this. assumes that it is sparse
     :param int|None increase_sparse_dim: add this to the dim. assumes that it is sparse
@@ -3209,8 +3127,6 @@ class _ReinterpretData(_Base):
     self.switch_axes = switch_axes
     self.set_axes = set_axes
     self.set_dim_tags = set_dim_tags
-    self.enforce_batch_major = enforce_batch_major
-    self.enforce_time_major = enforce_time_major
     self.set_sparse = set_sparse
     self.set_sparse_dim = set_sparse_dim
     self.increase_sparse_dim = increase_sparse_dim
@@ -3223,8 +3139,6 @@ class _ReinterpretData(_Base):
       'switch_axes': self.switch_axes,
       'set_axes': self.set_axes,
       'set_dim_tags': self.set_dim_tags,
-      'enforce_batch_major': self.enforce_batch_major,
-      'enforce_time_major': self.enforce_time_major,
       'set_sparse': self.set_sparse,
       'set_sparse_dim': self.set_sparse_dim,
       'increase_sparse_dim': self.increase_sparse_dim,
@@ -3257,14 +3171,12 @@ class _ReinterpretData(_Base):
 def reinterpret_data(
                      source: LayerRef,
                      *,
-                     switch_axes: Any = NotSpecified,
+                     switch_axes: Union[str, List[str]] = NotSpecified,
                      size_base: Optional[LayerRef] = NotSpecified,
-                     set_axes: Any = NotSpecified,
-                     set_dim_tags: Any = NotSpecified,
-                     enforce_batch_major: bool = NotSpecified,
-                     enforce_time_major: bool = NotSpecified,
+                     set_axes: Dict[str, Union[int, str]] = NotSpecified,
+                     set_dim_tags: Optional[Dict[Dim,  Dim]] = NotSpecified,
                      set_sparse: Optional[bool] = NotSpecified,
-                     set_sparse_dim: Union[int, None, NotSpecified] = NotSpecified,
+                     set_sparse_dim: Optional[Union[int, NotSpecified]] = NotSpecified,
                      increase_sparse_dim: Optional[int] = NotSpecified,
                      name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -3276,12 +3188,10 @@ def reinterpret_data(
   :param dict[str,int|str] set_axes:
     This can be used to overwrite the special axes like time_dim_axis or feature_dim_axis.
     For that, use keys "B","T" or "F", and a value via :func:`Data.get_axis_from_description`.
-  :param dict[str|Dim,Dim]|None set_dim_tags: axis -> new dim tag. assigns new dim tags.
+  :param dict[Dim, Dim]|None set_dim_tags: axis -> new dim tag. assigns new dim tags.
     If the passed dim tag is yet undefined, this will not use same_dim_tags_as (declare_same_as)
     but create a new dim tag.
     This option is useful for generalized self attention (https://github.com/rwth-i6/returnn/issues/391).
-  :param bool enforce_batch_major:
-  :param bool enforce_time_major:
   :param bool|None set_sparse: if bool, set sparse value to this
   :param int|None|NotSpecified set_sparse_dim: set sparse dim to this. assumes that it is sparse
   :param int|None increase_sparse_dim: add this to the dim. assumes that it is sparse
@@ -3291,8 +3201,6 @@ def reinterpret_data(
     switch_axes=switch_axes,
     set_axes=set_axes,
     set_dim_tags=set_dim_tags,
-    enforce_batch_major=enforce_batch_major,
-    enforce_time_major=enforce_time_major,
     set_sparse=set_sparse,
     set_sparse_dim=set_sparse_dim,
     increase_sparse_dim=increase_sparse_dim,
@@ -3316,10 +3224,10 @@ class Conv(_Base):
   def __init__(self,
                *,
                out_dim: Optional[Dim] = NotSpecified,
-               filter_size: Tuple[int],
+               filter_size: Tuple[int, ...],
                padding: str,
-               strides: Any = NotSpecified,
-               dilation_rate: Any = NotSpecified,
+               strides: Union[int, Tuple[int, ...]] = NotSpecified,
+               dilation_rate: Union[int, Tuple[int, ...]] = NotSpecified,
                groups: int = NotSpecified,
                input_expand_dims: int = NotSpecified,
                input_add_feature_dim: bool = NotSpecified,
@@ -3439,10 +3347,10 @@ class _Pool(_Base):
   def __init__(self,
                *,
                mode: str,
-               pool_size: Tuple[int],
+               pool_size: Tuple[int, ...],
                padding: str = NotSpecified,
-               dilation_rate: Any = NotSpecified,
-               strides: Any = NotSpecified,
+               dilation_rate: Union[Tuple[int, ...], int] = NotSpecified,
+               strides: Optional[Union[Tuple[int, ...], int]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
                in_spatial_dims: Optional[List[Dim]] = NotSpecified,
                out_dim: Optional[Dim] = NotSpecified,
@@ -3511,10 +3419,10 @@ def pool(
          source: LayerRef,
          *,
          mode: str,
-         pool_size: Tuple[int],
+         pool_size: Tuple[int, ...],
          padding: str = NotSpecified,
-         dilation_rate: Any = NotSpecified,
-         strides: Any = NotSpecified,
+         dilation_rate: Union[Tuple[int, ...], int] = NotSpecified,
+         strides: Optional[Union[Tuple[int, ...], int]] = NotSpecified,
          in_dim: Optional[Dim] = NotSpecified,
          in_spatial_dims: Optional[List[Dim]] = NotSpecified,
          out_dim: Optional[Dim] = NotSpecified,
@@ -3649,8 +3557,8 @@ class TransposedConv(_Base):
                filter_size: List[int],
                strides: Optional[List[int]] = NotSpecified,
                padding: str = NotSpecified,
-               remove_padding: Any = NotSpecified,
-               output_padding: Any = NotSpecified,
+               remove_padding: Union[List[int], int] = NotSpecified,
+               output_padding: Optional[Union[List[Optional[int]], int]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
                in_spatial_dims: Optional[List[Dim]] = NotSpecified,
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
@@ -3748,24 +3656,15 @@ class _Reduce(_Base):
   def __init__(self,
                *,
                mode: str,
-               keep_dims: bool = NotSpecified,
-               enforce_batch_dim_axis: int = NotSpecified,
                use_time_mask: bool = NotSpecified,
                **kwargs):
     """
     :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
-    :param bool keep_dims: if dimensions should be kept (will be 1)
-    :param int enforce_batch_dim_axis: will swap the batch-dim-axis of the input with the given axis.
-      e.g. 0: will convert the input into batch-major format if not already like that.
-      Note that this is still not enough in some cases, e.g. when the other axes are also not as expected.
-      The strong recommendation is to use a symbolic axis description.
     :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
       By default, in that case, it will be True.
     """
     super().__init__(**kwargs)
     self.mode = mode
-    self.keep_dims = keep_dims
-    self.enforce_batch_dim_axis = enforce_batch_dim_axis
     self.use_time_mask = use_time_mask
 
   def get_opts(self):
@@ -3774,8 +3673,6 @@ class _Reduce(_Base):
     """
     opts = {
       'mode': self.mode,
-      'keep_dims': self.keep_dims,
-      'enforce_batch_dim_axis': self.enforce_batch_dim_axis,
       'use_time_mask': self.use_time_mask,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -3785,15 +3682,13 @@ class _Reduce(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axes: Any = NotSpecified,
-                      axis: Dim = NotSpecified,
+                      axis: Union[Dim, List[Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'axes': axes,
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
@@ -3809,10 +3704,7 @@ def reduce(
            source: LayerRef,
            *,
            mode: str,
-           axes: Any = NotSpecified,
-           axis: Dim = NotSpecified,
-           keep_dims: bool = NotSpecified,
-           enforce_batch_dim_axis: int = NotSpecified,
+           axis: Union[Dim, List[Dim]],
            use_time_mask: bool = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -3821,29 +3713,21 @@ def reduce(
 
   :param LayerRef source:
   :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
-  :param int|list[int]|str axes: One axis or multiple axis to reduce.
+  :param Dim|list[Dim] axis: for compatibility, can be used instead of ``axes``
+    One axis or multiple axis to reduce.
     It accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature",
     and it is strongly recommended to use some of these symbolic names.
     See :func:`Data.get_axes_from_description`.
-  :param int|list[int]|str axis: for compatibility, can be used instead of ``axes``
-  :param bool keep_dims: if dimensions should be kept (will be 1)
-  :param int enforce_batch_dim_axis: will swap the batch-dim-axis of the input with the given axis.
-    e.g. 0: will convert the input into batch-major format if not already like that.
-    Note that this is still not enough in some cases, e.g. when the other axes are also not as expected.
-    The strong recommendation is to use a symbolic axis description.
   :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
     By default, in that case, it will be True.
   :param str|None name:
   """
   mod = _Reduce(
     mode=mode,
-    keep_dims=keep_dims,
-    enforce_batch_dim_axis=enforce_batch_dim_axis,
     use_time_mask=use_time_mask,
     )
   return mod(
     source,
-    axes=axes,
     axis=axis,
     name=name)
 
@@ -3940,15 +3824,12 @@ class _Squeeze(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               enforce_batch_dim_axis: Optional[int] = NotSpecified,
                allow_no_op: bool = NotSpecified,
                **kwargs):
     """
-    :param int|None enforce_batch_dim_axis:
     :param bool allow_no_op:
     """
     super().__init__(**kwargs)
-    self.enforce_batch_dim_axis = enforce_batch_dim_axis
     self.allow_no_op = allow_no_op
 
   def get_opts(self):
@@ -3956,7 +3837,6 @@ class _Squeeze(_Base):
     Return all options
     """
     opts = {
-      'enforce_batch_dim_axis': self.enforce_batch_dim_axis,
       'allow_no_op': self.allow_no_op,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -3966,7 +3846,7 @@ class _Squeeze(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim,
+                      axis: Union[Dim, List[Dim]],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3987,8 +3867,7 @@ class _Squeeze(_Base):
 def squeeze(
             source: LayerRef,
             *,
-            axis: Dim,
-            enforce_batch_dim_axis: Optional[int] = NotSpecified,
+            axis: Union[Dim, List[Dim]],
             allow_no_op: bool = NotSpecified,
             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -3996,15 +3875,13 @@ def squeeze(
   This is basically a wrapper around tf.squeeze.
 
   :param LayerRef source:
-  :param int|list[int]|str axis: one axis or multiple axis to squeeze.
+  :param Dim|list[Dim] axis: one axis or multiple axis to squeeze.
     this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
     it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
-  :param int|None enforce_batch_dim_axis:
   :param bool allow_no_op:
   :param str|None name:
   """
   mod = _Squeeze(
-    enforce_batch_dim_axis=enforce_batch_dim_axis,
     allow_no_op=allow_no_op,
     )
   return mod(
@@ -4080,7 +3957,7 @@ def stack(
   For concatenation (in feature dimension), see :class:`CopyLayer`.
 
   :param list[LayerRef]|tuple[LayerRef] source:
-  :param int|None axis: new axis.
+  :param Dim|None axis: new axis.
     If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
     i.e. some reasonable default for a new spatial axis.
   :param Dim|None out_spatial_dim:
@@ -4135,7 +4012,7 @@ class _PrefixInTime(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       repeat: Union[int, LayerRef] = NotSpecified,
                       size_base: Optional[LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
@@ -4160,7 +4037,7 @@ class _PrefixInTime(_Base):
 def prefix_in_time(
                    source: LayerRef,
                    *,
-                   axis: Dim = NotSpecified,
+                   axis: Dim,
                    out_dim: Optional[Dim] = NotSpecified,
                    prefix: Union[float, str] = NotSpecified,
                    repeat: Union[int, LayerRef] = NotSpecified,
@@ -4230,7 +4107,7 @@ class _PostfixInTime(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       postfix: Union[float, int, LayerRef] = NotSpecified,
                       ) -> LayerDictRaw:
     """
@@ -4253,7 +4130,7 @@ class _PostfixInTime(_Base):
 def postfix_in_time(
                     source: LayerRef,
                     *,
-                    axis: Dim = NotSpecified,
+                    axis: Dim,
                     out_dim: Optional[Dim] = NotSpecified,
                     postfix: Union[float, int, LayerRef] = NotSpecified,
                     repeat: int = NotSpecified,
@@ -4321,7 +4198,7 @@ class _TimeChunking(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -4344,7 +4221,7 @@ def time_chunking(
                   *,
                   chunk_size: int,
                   chunk_step: int,
-                  axis: Dim = NotSpecified,
+                  axis: Dim,
                   out_dim: Optional[Dim] = NotSpecified,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -4434,11 +4311,10 @@ class _Dot(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               red1: Any = NotSpecified,
-               red2: Any = NotSpecified,
-               var1: Any = NotSpecified,
-               var2: Any = NotSpecified,
-               add_var2_if_empty: bool = NotSpecified,
+               red1: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
+               red2: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
+               var1: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
+               var2: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
                debug: bool = NotSpecified,
                **kwargs):
     """
@@ -4447,11 +4323,10 @@ class _Dot(_Base):
     However, these are bad, for multiple reasons, like using integers, but also in general.
       See https://github.com/rwth-i6/returnn/issues/627 for details.
 
-    :param str|Dim|tuple[str|Dim]|list[str|Dim] red1: reduce axes of first source
-    :param str|Dim|tuple[str|Dim]|list[str|Dim] red2: reduce axes of second source
-    :param str|Dim|tuple[str|Dim]|list[str|Dim]|None var1: var axes of first source
-    :param str|Dim|tuple[str|Dim]|list[str|Dim]|None var2: var axes of second source
-    :param bool add_var2_if_empty: if var2=None, add dim=1 at the end
+    :param Dim|tuple[Dim]|list[Dim] red1: reduce axes of first source
+    :param Dim|tuple[Dim]|list[Dim] red2: reduce axes of second source
+    :param Dim|tuple[Dim]|list[Dim]|None var1: var axes of first source
+    :param Dim|tuple[Dim]|list[Dim]|None var2: var axes of second source
     :param bool debug: will print debug shapes, etc.
     """
     super().__init__(**kwargs)
@@ -4459,7 +4334,6 @@ class _Dot(_Base):
     self.red2 = red2
     self.var1 = var1
     self.var2 = var2
-    self.add_var2_if_empty = add_var2_if_empty
     self.debug = debug
 
   def get_opts(self):
@@ -4471,7 +4345,6 @@ class _Dot(_Base):
       'red2': self.red2,
       'var1': self.var1,
       'var2': self.var2,
-      'add_var2_if_empty': self.add_var2_if_empty,
       'debug': self.debug,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
@@ -4495,11 +4368,10 @@ class _Dot(_Base):
 def dot(
         source: Union[List[LayerRef], Tuple[LayerRef]],
         *,
-        red1: Any = NotSpecified,
-        red2: Any = NotSpecified,
-        var1: Any = NotSpecified,
-        var2: Any = NotSpecified,
-        add_var2_if_empty: bool = NotSpecified,
+        red1: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
+        red2: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
+        var1: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
+        var2: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
         debug: bool = NotSpecified,
         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -4517,11 +4389,10 @@ def dot(
     See https://github.com/rwth-i6/returnn/issues/627 for details.
 
   :param list[LayerRef]|tuple[LayerRef] source:
-  :param str|Dim|tuple[str|Dim]|list[str|Dim] red1: reduce axes of first source
-  :param str|Dim|tuple[str|Dim]|list[str|Dim] red2: reduce axes of second source
-  :param str|Dim|tuple[str|Dim]|list[str|Dim]|None var1: var axes of first source
-  :param str|Dim|tuple[str|Dim]|list[str|Dim]|None var2: var axes of second source
-  :param bool add_var2_if_empty: if var2=None, add dim=1 at the end
+  :param Dim|tuple[Dim]|list[Dim] red1: reduce axes of first source
+  :param Dim|tuple[Dim]|list[Dim] red2: reduce axes of second source
+  :param Dim|tuple[Dim]|list[Dim]|None var1: var axes of first source
+  :param Dim|tuple[Dim]|list[Dim]|None var2: var axes of second source
   :param bool debug: will print debug shapes, etc.
   :param str|None name:
   """
@@ -4530,7 +4401,6 @@ def dot(
     red2=red2,
     var1=var1,
     var2=var2,
-    add_var2_if_empty=add_var2_if_empty,
     debug=debug,
     )
   return mod(source, name=name)
@@ -4614,7 +4484,7 @@ def shift_axis(
   This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
 
   :param LayerRef source:
-  :param str|int axis: single axis to shift
+  :param Dim axis: single axis to shift
   :param int amount: number of elements to shift
                  (<0 for left-shift, >0 for right-shift)
   :param bool pad: preserve shape by padding
@@ -4776,7 +4646,7 @@ class _Remove(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -4798,7 +4668,7 @@ def remove(
            source: LayerRef,
            *,
            symbol: int,
-           axis: Dim = NotSpecified,
+           axis: Dim,
            out_dim: Optional[Dim] = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -5236,7 +5106,7 @@ class _SearchSorted(_Base):
                       *,
                       sorted_sequence: LayerRef,
                       values: LayerRef,
-                      axis: Dim = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -5261,7 +5131,7 @@ def search_sorted(
                   *,
                   sorted_sequence: LayerRef,
                   values: LayerRef,
-                  axis: Dim = NotSpecified,
+                  axis: Dim,
                   side: str = NotSpecified,
                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -5275,7 +5145,7 @@ def search_sorted(
   :param LayerRef source:
   :param LayerBase sorted_sequence:
   :param LayerBase values: search values
-  :param str axis: the axis along which `sorted_sequence` is sorted
+  :param Dim axis: the axis along which `sorted_sequence` is sorted
   :param str side: "left" or "right".
     When one of the `values` exactly matches an element of the `sorted_sequence`,
     whether to choose the lower or higher index.
@@ -5304,26 +5174,20 @@ class _Variable(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               shape: Any,
+               shape: Union[Tuple[Dim, ...], List[Dim]],
                dtype: str = NotSpecified,
-               add_batch_axis: bool = NotSpecified,
-               add_time_axis: bool = NotSpecified,
                trainable: bool = NotSpecified,
                init: Union[str, float, int] = NotSpecified,
                **kwargs):
     """
-    :param tuple[int|Dim]|list[int|Dim] shape:
+    :param tuple[Dim]|list[Dim] shape:
     :param str dtype:
-    :param bool add_batch_axis:
-    :param bool add_time_axis:
     :param bool trainable:
     :param str|float|int init: see :func:`returnn.tf.util.basic.get_initializer`
     """
     super().__init__(trainable=trainable, **kwargs)
     self.shape = shape
     self.dtype = dtype
-    self.add_batch_axis = add_batch_axis
-    self.add_time_axis = add_time_axis
     self.trainable = trainable
     self.init = init
 
@@ -5334,8 +5198,6 @@ class _Variable(_Base):
     opts = {
       'shape': self.shape,
       'dtype': self.dtype,
-      'add_batch_axis': self.add_batch_axis,
-      'add_time_axis': self.add_time_axis,
       'trainable': self.trainable,
       'init': self.init,
     }
@@ -5354,10 +5216,8 @@ class _Variable(_Base):
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def variable(
              *,
-             shape: Any,
+             shape: Union[Tuple[Dim, ...], List[Dim]],
              dtype: str = NotSpecified,
-             add_batch_axis: bool = NotSpecified,
-             add_time_axis: bool = NotSpecified,
              trainable: bool = NotSpecified,
              init: Union[str, float, int] = NotSpecified,
              name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -5365,10 +5225,8 @@ def variable(
   Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
   See defaults.
 
-  :param tuple[int|Dim]|list[int|Dim] shape:
+  :param tuple[Dim]|list[Dim] shape:
   :param str dtype:
-  :param bool add_batch_axis:
-  :param bool add_time_axis:
   :param bool trainable:
   :param str|float|int init: see :func:`returnn.tf.util.basic.get_initializer`
   :param str|None name:
@@ -5376,8 +5234,6 @@ def variable(
   mod = _Variable(
     shape=shape,
     dtype=dtype,
-    add_batch_axis=add_batch_axis,
-    add_time_axis=add_time_axis,
     trainable=trainable,
     init=init,
     )
@@ -5827,7 +5683,7 @@ class _HDFDump(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               filename: Any,
+               filename: Union[str, callable],
                dump_whole_batches: bool = NotSpecified,
                labels: Optional[List[str]] = NotSpecified,
                extend_existing_file: bool = NotSpecified,
@@ -5886,7 +5742,7 @@ class _HDFDump(_Base):
 def hdf_dump(
              source: LayerRef,
              *,
-             filename: Any,
+             filename: Union[str, callable],
              extra: Optional[Dict[str, LayerRef]] = NotSpecified,
              dump_whole_batches: bool = NotSpecified,
              labels: Optional[List[str]] = NotSpecified,
@@ -6274,7 +6130,7 @@ def rec_unstack(
   in case you assign `axis` to the rec layer, and the source here has the same axis (dim tag).
 
   :param LayerRef source:
-  :param str|Dim|None axis:
+  :param Dim|None axis:
   :param bool declare_rec_time:
   :param str|None name:
   """
@@ -6829,7 +6685,7 @@ class _KenLmState(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               lm_file: Any,
+               lm_file: callable,
                vocab_file: Optional[str] = NotSpecified,
                vocab_unknown_label: str = NotSpecified,
                bpe_merge_symbol: Optional[str] = NotSpecified,
@@ -6900,7 +6756,7 @@ def _ken_lm_state(
                   *,
                   state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                   initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                  lm_file: Any,
+                  lm_file: callable,
                   vocab_file: Optional[str] = NotSpecified,
                   vocab_unknown_label: str = NotSpecified,
                   bpe_merge_symbol: Optional[str] = NotSpecified,
