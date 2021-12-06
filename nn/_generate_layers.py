@@ -533,13 +533,13 @@ class LayerSignature:
   def _init_args(self):
     # n_out is handled specially
     if self._LayerClassesWithExplicitDim.intersection((self.layer_class, self.layer_class.layer_class)):
-      self.params["n_out"] = LayerSignature.Param(
+      self.params["out_dim"] = LayerSignature.Param(
         self,
         inspect.Parameter(
-          name="n_out",
+          name="out_dim",
           kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
-        param_type_s="int",
-        docstring="output dimension")
+        param_type_s="Dim",
+        docstring="output feature dimension")
     if self.layer_class in self._LayerClassesWithExplicitTarget:
       self.params["target"] = LayerSignature.Param(
         self,
