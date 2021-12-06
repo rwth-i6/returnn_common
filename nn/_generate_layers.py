@@ -11,10 +11,12 @@ from __future__ import annotations
 import os
 import inspect
 import re
-from typing import Type, Optional, Dict, List
+import typing
+from typing import Type, Optional, Union, Dict, List, Tuple, Set
 import returnn
 from returnn.util import better_exchook
 from returnn.util.basic import camel_case_to_snake_case
+from returnn.tf.util.data import Dim
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
@@ -630,11 +632,48 @@ class LayerSignature:
 
   @classmethod
   def _handle_axis_like_arg(cls, param: Param):
-    types = ["Dim"]
+    types = []
+    support_none = False
+    if param.param_type_s:
+      res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
+        param.param_type_s, replace_types={"int": "Dim", "str": "Dim"})
+      res_t = eval(res_t_s, {
+        "Optional": Optional, "Union": Union, "List": List, "Tuple": Tuple, "Set": Set, "Dict": Dict,
+        "Dim": "Dim", "LayerRef": "LayerRef"})
+
+      def _convert(t) -> str:
+        if t is None:
+          return "None"
+        if isinstance(t, type):
+          if issubclass(t, type(None)):
+            return "None"
+          return t.__name__
+        if isinstance(t, str):
+          return t
+        if isinstance(t, typing.ForwardRef):
+          return t.__forward_arg__
+        if typing.get_origin(t) == Union:
+          return "|".join(_convert(t_) for t_ in typing.get_args(t))
+        if typing.get_origin(t) == tuple:
+          if Ellipsis == typing.get_args(t)[-1]:
+            return "tuple[%s]" % ", ".join(_convert(t_) for t_ in typing.get_args(t)[:-1])
+          return "(%s)" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
+        if typing.get_origin(t) == list:
+          return "list[%s]" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
+        if typing.get_origin(t) == dict:
+          return "dict[%s]" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
+        raise TypeError(f"res {res_t}, t {t} for param {param}")
+      param.param_type_s = _convert(res_t)
+      return
+
+    if param.returnn_name not in {"shape", "dims", "axes", "out_dims"}:
+      if "Dim" not in types:
+        types.append("Dim")
     if param.param_type_s:
       if "list" in param.param_type_s or "tuple" in param.param_type_s:
-        types.append("list[Dim]")
-    if param.inspect_param.default != inspect.Parameter.empty:
+        if "list[Dim]" not in types:
+          types.append("list[Dim]")
+    if support_none or param.inspect_param.default != inspect.Parameter.empty:
       types.append("None")
     param.param_type_s = "|".join(types)
 
@@ -658,6 +697,8 @@ class LayerSignature:
       if param_.docstring:
         param.docstring += "\n"
         param.docstring += param_.docstring
+    self.params.pop("num_splits", None)
+    self.params.pop("size_splits", None)
     # keep dims should never be needed
     self.params.pop("keepdims", None)
     self.params.pop("keep_dims", None)
@@ -851,25 +892,13 @@ class LayerSignature:
         s += " = NotSpecified"
       return s
 
-    def get_module_param_type_code_str(self):
+    @classmethod
+    def translate_param_type_code_to_typing_code(cls, t: str, *,
+                                                 replace_types: Optional[Dict[str, Union[str, None]]] = None) -> str:
       """
-      Param type
+      Convert old-style param type code to new-style typing code.
       """
-      if self.returnn_name == "reuse_params":
-        return "Optional[Union[LayerRef, Dict[str, Any]]]"
-      if self.returnn_name == "chunking_layer":
-        return "LayerRef"
-      if self.returnn_name == "unit":
-        return "str"
-      if self.returnn_name == "max_seq_len":
-        return "Optional[Union[str, int]]"
-      if self.returnn_name == "axis" and not self.param_type_s:
-        return "Dim"
-      if not self.param_type_s:
-        return "Any"
-      t = self.param_type_s
-
-      def _translate(s: str, ) -> (str, int):
+      def _translate(s: str) -> (str, int):
         end = len(s)
         post_replacements = []
         start_ = 0
@@ -917,16 +946,25 @@ class LayerSignature:
             parts = s.split("|")
             parts = [p.strip() for p in parts]
             optional = False
+            if replace_types:
+              parts = [replace_types.get(p, p) for p in parts]
+              parts = [p for p in parts if p]
             if "None" in parts:
               parts.remove("None")
               optional = True
             if len(parts) >= 2:
               s = f'Union[{", ".join(parts)}]'
-            else:
-              assert len(parts) == 1
+            elif len(parts) == 1:
               s = parts[0]
+            else:
+              optional = False
+              s = "None"
             if optional:
               s = f"Optional[{s}]"
+          elif replace_types:
+            s = replace_types.get(s, s)
+            if not s:
+              s = "None"
 
         for rep in post_replacements:
           if rep[0] == "(" and rep[-1] == ")":
@@ -942,6 +980,24 @@ class LayerSignature:
 
       t, _ = _translate(t)
       return t
+
+    def get_module_param_type_code_str(self):
+      """
+      Param type
+      """
+      if self.returnn_name == "reuse_params":
+        return "Optional[Union[LayerRef, Dict[str, Any]]]"
+      if self.returnn_name == "chunking_layer":
+        return "LayerRef"
+      if self.returnn_name == "unit":
+        return "str"
+      if self.returnn_name == "max_seq_len":
+        return "Optional[Union[str, int]]"
+      if self.returnn_name == "axis" and not self.param_type_s:
+        return "Dim"
+      if not self.param_type_s:
+        return "Any"
+      return self.translate_param_type_code_to_typing_code(self.param_type_s)
 
     def get_module_param_docstring(self, indent="  "):
       """
