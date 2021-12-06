@@ -108,7 +108,7 @@ def setup():
   print("from __future__ import annotations", file=f)
   print("from typing import Union, Optional, Tuple, List, Dict, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
-  print("from returnn.tf.util.basic import DimensionTag", file=f)
+  print("from returnn.tf.util.data import Dim", file=f)
   print("from .base import NameCtx, ILayerMaker, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerDictRaw", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
@@ -611,6 +611,11 @@ class LayerSignature:
           assert doc_s.startswith(" ")
           doc_s = doc_s[1:]
         param.docstring = doc_s
+        if param_type_s:
+          param_type_s = re.sub(r"\breturnn\.tf\.util\.data\.", "", param_type_s)
+          param_type_s = re.sub(r"\bDimensionTag\b", "Dim", param_type_s)
+          param_type_s = re.sub(r"\bDim\|str\b", "Dim", param_type_s)
+          param_type_s = re.sub(r"\str\|Dim\b", "Dim", param_type_s)
         param.param_type_s = param_type_s
       else:
         lines.append(line)
@@ -810,7 +815,7 @@ class LayerSignature:
       if self.returnn_name == "max_seq_len":
         return "Optional[Union[str, int]]"
       if self.returnn_name == "axis":
-        t = "Union[str, DimensionTag]"
+        t = "Dim"
         if "None" in self.param_type_s:
           return f"Optional[{t}]"
         return t
