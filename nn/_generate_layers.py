@@ -868,26 +868,79 @@ class LayerSignature:
       if not self.param_type_s:
         return "Any"
       t = self.param_type_s
-      optional = False
-      if t.endswith("|None"):
-        t = t[:-len("|None")]
-        optional = True
-      if t.startswith("None|"):
-        t = t[len("None|"):]
-        optional = True
-      if "-" in t:
-        return "Any"
-      t = re.sub(r"\blist\b", "List", t)
-      t = re.sub(r"\btuple\b", "Tuple", t)
-      t = re.sub(r"\bdict\b", "Dict", t)
-      t = re.sub(r"\bLayerBase\b", "LayerRef", t)
-      t = re.sub(r",(?=\S)", ", ", t)
-      if "|" in t:
-        if "[" in t or "(" in t:
-          return "Any"
-        t = f'Union[{", ".join(t.split("|"))}]'
-      if optional:
-        return f"Optional[{t}]"
+
+      def _translate(s: str, ) -> (str, int):
+        end = len(s)
+        post_replacements = []
+        start_ = 0
+        while True:
+          m = re.search(r"[()\[\]]", s[start_:])
+          if not m:
+            break
+          m_ = m.group()
+          p = m.start() + start_
+          if m_ in ")]":
+            end = p
+            s = s[:end]
+            break
+          else:
+            res, end_ = _translate(s[p + 1:])
+            end_ += p + 1
+            post_replacements.append(s[p] + res + s[end_])
+            end_ += 1
+            while end_ < end and not s[end_].strip():
+              end_ += 1
+            if end_ < end and s[p] == "(" and s[end_:end_ + 2] == "->":
+              pass
+            s = s[:p] + "{" + "_" * (end_ - p - 2) + "}" + s[end_:]
+            start_ = end_
+
+        if "," in s:
+          parts = s.split(",")
+          parts = [_translate(p)[0] for p in parts]
+          s = ", ".join(parts)
+          if end < len(s) and s[end] == ")":
+            s = f'Tuple[{s}]'
+
+        else:
+          if "->" in s:
+            return "callable", end  # cannot really handle yet
+
+          s = re.sub(r"\blist\b", "List", s)
+          s = re.sub(r"\bset\b", "Set", s)
+          s = re.sub(r"\btuple\b", "Tuple", s)
+          s = re.sub(r"\bdict\b", "Dict", s)
+          s = re.sub(r"\bLayerBase\b", "LayerRef", s)
+          s = re.sub(r",(?=\S)", ", ", s)
+          if "|" in s:
+            assert "," not in s  # should be inside brackets and thus replaced above
+            parts = s.split("|")
+            parts = [p.strip() for p in parts]
+            optional = False
+            if "None" in parts:
+              parts.remove("None")
+              optional = True
+            if len(parts) >= 2:
+              s = f'Union[{", ".join(parts)}]'
+            else:
+              assert len(parts) == 1
+              s = parts[0]
+            if optional:
+              s = f"Optional[{s}]"
+
+        for rep in post_replacements:
+          if rep[0] == "(" and rep[-1] == ")":
+            rep = rep[1:-1]  # should never be needed
+          m = re.search(r"{_*}", s)
+          assert m
+          p = m.start()
+          if p >= len("Tuple") and s[p - len("Tuple"):p] == "Tuple" and rep[-1] == "]":
+            s = s[:p] + rep[:-1] + ", ...]" + s[m.end():]
+          else:
+            s = s[:p] + rep + s[m.end():]
+        return s, end
+
+      t, _ = _translate(t)
       return t
 
     def get_module_param_docstring(self, indent="  "):
