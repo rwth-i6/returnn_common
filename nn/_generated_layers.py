@@ -1148,7 +1148,7 @@ class Linear(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
-               n_out: int,
+               out_dim: Dim,
                *,
                with_bias: bool = NotSpecified,
                grad_filter: Optional[float] = NotSpecified,
@@ -1157,7 +1157,7 @@ class Linear(_Base):
                use_transposed_weights: bool = NotSpecified,
                **kwargs):
     """
-    :param int n_out: output dimension
+    :param Dim out_dim: output feature dimension
     :param bool with_bias:
     :param float|None grad_filter: if grad norm is higher than this threshold (before activation), the grad is removed
     :param str forward_weights_init: see :func:`returnn.tf.util.basic.get_initializer`
@@ -1165,7 +1165,7 @@ class Linear(_Base):
     :param bool use_transposed_weights: If True, define the weight matrix with transposed dimensions (n_out, n_in).
     """
     super().__init__(**kwargs)
-    self.n_out = n_out
+    self.out_dim = out_dim
     self.with_bias = with_bias
     self.grad_filter = grad_filter
     self.forward_weights_init = forward_weights_init
@@ -1177,7 +1177,7 @@ class Linear(_Base):
     Return all options
     """
     opts = {
-      'n_out': self.n_out,
+      'out_dim': self.out_dim,
       'with_bias': self.with_bias,
       'grad_filter': self.grad_filter,
       'forward_weights_init': self.forward_weights_init,
@@ -3314,8 +3314,8 @@ class Conv(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
-               n_out: Optional[int],
                *,
+               out_dim: Optional[Dim] = NotSpecified,
                filter_size: Tuple[int],
                padding: str,
                strides: Any = NotSpecified,
@@ -3326,7 +3326,6 @@ class Conv(_Base):
                input_split_feature_dim: Optional[int] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
                in_spatial_dims: Optional[List[Dim]] = NotSpecified,
-               out_dim: Optional[Dim] = NotSpecified,
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
                auto_use_channel_first: Union[bool, NotSpecified] = NotSpecified,
                with_bias: Union[bool, NotSpecified] = NotSpecified,
@@ -3335,7 +3334,7 @@ class Conv(_Base):
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
-    :param int|None n_out: number of outgoing features
+    :param Dim|None out_dim:
     :param tuple[int] filter_size: (width,), (height,width) or (depth,height,width) for 1D/2D/3D conv.
       the input data ndim must match, or you can add dimensions via input_expand_dims or input_add_feature_dim.
       it will automatically swap the batch-dim to the first axis of the input data.
@@ -3352,7 +3351,6 @@ class Conv(_Base):
       will be divided by input_split_feature_dim, thus it must be a multiple of that value.
     :param Dim|None in_dim:
     :param list[Dim]|None in_spatial_dims:
-    :param Dim|None out_dim:
     :param list[Dim]|None out_spatial_dims:
     :param bool|NotSpecified auto_use_channel_first: convert the input to NCHW or not
     :param bool|NotSpecified with_bias: if True, will add a bias to the output features. False by default
@@ -3361,7 +3359,7 @@ class Conv(_Base):
     :param dict[str,str]|None filter_perm: transposes the filter (input filter as layer)
     """
     super().__init__(**kwargs)
-    self.n_out = n_out
+    self.out_dim = out_dim
     self.filter_size = filter_size
     self.padding = padding
     self.strides = strides
@@ -3372,7 +3370,6 @@ class Conv(_Base):
     self.input_split_feature_dim = input_split_feature_dim
     self.in_dim = in_dim
     self.in_spatial_dims = in_spatial_dims
-    self.out_dim = out_dim
     self.out_spatial_dims = out_spatial_dims
     self.auto_use_channel_first = auto_use_channel_first
     self.with_bias = with_bias
@@ -3385,7 +3382,7 @@ class Conv(_Base):
     Return all options
     """
     opts = {
-      'n_out': self.n_out,
+      'out_dim': self.out_dim,
       'filter_size': self.filter_size,
       'padding': self.padding,
       'strides': self.strides,
@@ -3396,7 +3393,6 @@ class Conv(_Base):
       'input_split_feature_dim': self.input_split_feature_dim,
       'in_dim': self.in_dim,
       'in_spatial_dims': self.in_spatial_dims,
-      'out_dim': self.out_dim,
       'out_spatial_dims': self.out_spatial_dims,
       'auto_use_channel_first': self.auto_use_channel_first,
       'with_bias': self.with_bias,
@@ -3648,8 +3644,8 @@ class TransposedConv(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
-               n_out: int,
                *,
+               out_dim: Optional[Dim] = NotSpecified,
                filter_size: List[int],
                strides: Optional[List[int]] = NotSpecified,
                padding: str = NotSpecified,
@@ -3657,7 +3653,6 @@ class TransposedConv(_Base):
                output_padding: Any = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
                in_spatial_dims: Optional[List[Dim]] = NotSpecified,
-               out_dim: Optional[Dim] = NotSpecified,
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
                with_bias: bool = NotSpecified,
                forward_weights_init: Any = NotSpecified,
@@ -3665,7 +3660,7 @@ class TransposedConv(_Base):
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
-    :param int n_out: output dimension
+    :param Dim|None out_dim:
     :param list[int] filter_size:
     :param list[int]|None strides: specifies the upscaling. by default, same as filter_size
     :param str padding: "same" or "valid"
@@ -3673,7 +3668,6 @@ class TransposedConv(_Base):
     :param list[int|None]|int|None output_padding:
     :param Dim|None in_dim:
     :param list[Dim]|None in_spatial_dims:
-    :param Dim|None out_dim:
     :param list[Dim]|None out_spatial_dims:
     :param bool with_bias: whether to add a bias. enabled by default.
       Note that the default is different from ConvLayer!
@@ -3682,7 +3676,7 @@ class TransposedConv(_Base):
     :param dict[str,str]|None filter_perm: transposes the filter (input filter as layer)
     """
     super().__init__(**kwargs)
-    self.n_out = n_out
+    self.out_dim = out_dim
     self.filter_size = filter_size
     self.strides = strides
     self.padding = padding
@@ -3690,7 +3684,6 @@ class TransposedConv(_Base):
     self.output_padding = output_padding
     self.in_dim = in_dim
     self.in_spatial_dims = in_spatial_dims
-    self.out_dim = out_dim
     self.out_spatial_dims = out_spatial_dims
     self.with_bias = with_bias
     self.forward_weights_init = forward_weights_init
@@ -3702,7 +3695,7 @@ class TransposedConv(_Base):
     Return all options
     """
     opts = {
-      'n_out': self.n_out,
+      'out_dim': self.out_dim,
       'filter_size': self.filter_size,
       'strides': self.strides,
       'padding': self.padding,
@@ -3710,7 +3703,6 @@ class TransposedConv(_Base):
       'output_padding': self.output_padding,
       'in_dim': self.in_dim,
       'in_spatial_dims': self.in_spatial_dims,
-      'out_dim': self.out_dim,
       'out_spatial_dims': self.out_spatial_dims,
       'with_bias': self.with_bias,
       'forward_weights_init': self.forward_weights_init,
@@ -6002,7 +5994,7 @@ class _Rec(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
-               n_out: int,
+               out_dim: Dim,
                *,
                unit: str = NotSpecified,
                unit_opts: Optional[Dict[str]] = NotSpecified,
@@ -6021,7 +6013,7 @@ class _Rec(_Base):
                debug: Optional[bool] = NotSpecified,
                **kwargs):
     """
-    :param int n_out: output dimension
+    :param Dim out_dim: output feature dimension
     :param str|_SubnetworkRecCell unit: the RNNCell/etc name, e.g. "nativelstm". see comment below.
       alternatively a whole subnetwork, which will be executed step by step,
       and which can include "prev" in addition to "from" to refer to previous steps.
@@ -6042,7 +6034,7 @@ class _Rec(_Base):
     :param bool|None debug:
     """
     super().__init__(**kwargs)
-    self.n_out = n_out
+    self.out_dim = out_dim
     self.unit = unit
     self.unit_opts = unit_opts
     self.direction = direction
@@ -6064,7 +6056,7 @@ class _Rec(_Base):
     Return all options
     """
     opts = {
-      'n_out': self.n_out,
+      'out_dim': self.out_dim,
       'unit': self.unit,
       'unit_opts': self.unit_opts,
       'direction': self.direction,
@@ -6119,18 +6111,18 @@ class _GetLastHiddenState(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
-               n_out: int,
+               out_dim: Dim,
                *,
                combine: str = NotSpecified,
                key: Optional[Union[str, int]] = NotSpecified,
                **kwargs):
     """
-    :param int n_out: dimension. output will be of shape (batch, n_out)
+    :param Dim out_dim: output feature dimension
     :param str combine: "concat" or "add"
     :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
     """
     super().__init__(**kwargs)
-    self.n_out = n_out
+    self.out_dim = out_dim
     self.combine = combine
     self.key = key
 
@@ -6139,7 +6131,7 @@ class _GetLastHiddenState(_Base):
     Return all options
     """
     opts = {
-      'n_out': self.n_out,
+      'out_dim': self.out_dim,
       'combine': self.combine,
       'key': self.key,
     }
@@ -6164,7 +6156,7 @@ class _GetLastHiddenState(_Base):
 def _get_last_hidden_state(
                            source: LayerRef,
                            *,
-                           n_out: int,
+                           out_dim: Dim,
                            combine: str = NotSpecified,
                            key: Optional[Union[str, int]] = NotSpecified,
                            name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -6172,13 +6164,13 @@ def _get_last_hidden_state(
   Will combine (concat or add or so) all the last hidden states from all sources.
 
   :param LayerRef source:
-  :param int n_out: dimension. output will be of shape (batch, n_out)
+  :param Dim out_dim: output feature dimension
   :param str combine: "concat" or "add"
   :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
   :param str|None name:
   """
   mod = _GetLastHiddenState(
-    n_out=n_out,
+    out_dim=out_dim,
     combine=combine,
     key=key,
     )
@@ -6734,18 +6726,18 @@ class _PositionalEncoding(_Base):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
-               n_out: int,
+               out_dim: Dim,
                *,
                add_to_input: bool = NotSpecified,
                constant: int = NotSpecified,
                **kwargs):
     """
-    :param int n_out: output dimension
+    :param Dim out_dim: output feature dimension
     :param bool add_to_input: will add the signal to the input
     :param int constant: if positive, always output the corresponding positional encoding.
     """
     super().__init__(**kwargs)
-    self.n_out = n_out
+    self.out_dim = out_dim
     self.add_to_input = add_to_input
     self.constant = constant
 
@@ -6754,7 +6746,7 @@ class _PositionalEncoding(_Base):
     Return all options
     """
     opts = {
-      'n_out': self.n_out,
+      'out_dim': self.out_dim,
       'add_to_input': self.add_to_input,
       'constant': self.constant,
     }
@@ -6786,7 +6778,7 @@ class _PositionalEncoding(_Base):
 def positional_encoding(
                         source: LayerRef,
                         *,
-                        n_out: int,
+                        out_dim: Dim,
                         add_to_input: bool = NotSpecified,
                         constant: int = NotSpecified,
                         offset: Optional[LayerRef] = NotSpecified,
@@ -6804,14 +6796,14 @@ def positional_encoding(
   See :func:`returnn.tf.util.basic.get_positional_encoding`.
 
   :param LayerRef source:
-  :param int n_out: output dimension
+  :param Dim out_dim: output feature dimension
   :param bool add_to_input: will add the signal to the input
   :param int constant: if positive, always output the corresponding positional encoding.
   :param None|LayerBase offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
   :param str|None name:
   """
   mod = _PositionalEncoding(
-    n_out=n_out,
+    out_dim=out_dim,
     add_to_input=add_to_input,
     constant=constant,
     )
