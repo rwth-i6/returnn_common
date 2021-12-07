@@ -782,6 +782,7 @@ class Loop:
         opts["declare_rec_time"] = True
     else:
       assert self.axis and self.axis is not NotSpecified, f"{self}: `axis` should be specified when unstack() is used"
+      opts["axis"] = self.axis
       assert not declare_rec_time
     res = rec_unstack(source, name=name, **opts)
     self.unstacked_refs.append(res)
