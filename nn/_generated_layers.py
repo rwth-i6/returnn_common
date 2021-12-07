@@ -853,7 +853,7 @@ class _SliceNd(_Base):
                       source: LayerRef,
                       *,
                       start: LayerRef,
-                      size: Optional[Union[Dim, LayerRef]],
+                      size: Union[Dim, LayerRef],
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -876,7 +876,7 @@ def slice_nd(
              source: LayerRef,
              *,
              start: LayerRef,
-             size: Optional[Union[Dim, LayerRef]],
+             size: Union[Dim, LayerRef],
              min_size: Optional[int] = NotSpecified,
              out_spatial_dim: Optional[Dim] = NotSpecified,
              name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -894,7 +894,7 @@ def slice_nd(
 
   :param LayerRef source:
   :param LayerBase start: (B,...)
-  :param Dim|LayerBase|None size:
+  :param Dim|LayerBase size:
     We assume that this is >=0. If this might not be the case, use ``min_size=0``.
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
@@ -1346,7 +1346,7 @@ class _SoftmaxOverSpatial(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Optional[Dim] = NotSpecified,
+                      axis: Dim,
                       start: Optional[LayerRef] = NotSpecified,
                       window_start: Optional[Union[LayerRef, int]] = NotSpecified,
                       window_size: Optional[Union[LayerRef, int]] = NotSpecified,
@@ -1373,7 +1373,7 @@ class _SoftmaxOverSpatial(_Base):
 def softmax(
             source: LayerRef,
             *,
-            axis: Optional[Dim] = NotSpecified,
+            axis: Dim,
             energy_factor: Optional[float] = NotSpecified,
             start: Optional[LayerRef] = NotSpecified,
             window_start: Optional[Union[LayerRef, int]] = NotSpecified,
@@ -1389,7 +1389,7 @@ def softmax(
   See :class:`SeqLenMaskLayer` if you just want to apply a masking.
 
   :param LayerRef source:
-  :param Dim|None axis: which axis to do the softmax over. "T" by default
+  :param Dim axis: which axis to do the softmax over. "T" by default
   :param float|None energy_factor: the energy will be scaled by this factor.
     This is like a temperature for the softmax.
     In Attention-is-all-you-need, this is set to 1/sqrt(base_ctx.dim).
@@ -2430,7 +2430,7 @@ class _Split(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Optional[Dim] = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -2451,7 +2451,7 @@ class _Split(_Base):
 def _split(
            source: LayerRef,
            *,
-           axis: Optional[Dim] = NotSpecified,
+           axis: Dim,
            out_dims: Optional[List[Dim]] = NotSpecified,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -2460,7 +2460,7 @@ def _split(
   Each part can be accessed via the sublayers "/%i".
 
   :param LayerRef source:
-  :param Dim|None axis: feature axis by default
+  :param Dim axis: feature axis by default
   :param list[Dim]|None out_dims:
   :param str|None name:
   """
@@ -3944,7 +3944,7 @@ class _Stack(_Base):
   def make_layer_dict(self,
                       source: Union[List[LayerRef], Tuple[LayerRef]],
                       *,
-                      axis: Optional[Dim] = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -3965,7 +3965,7 @@ class _Stack(_Base):
 def stack(
           source: Union[List[LayerRef], Tuple[LayerRef]],
           *,
-          axis: Optional[Dim] = NotSpecified,
+          axis: Dim,
           out_spatial_dim: Optional[Dim] = NotSpecified,
           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -3975,7 +3975,7 @@ def stack(
   For concatenation (in feature dimension), see :class:`CopyLayer`.
 
   :param list[LayerRef]|tuple[LayerRef] source:
-  :param Dim|None axis: new axis.
+  :param Dim axis: new axis.
     If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
     i.e. some reasonable default for a new spatial axis.
   :param Dim|None out_spatial_dim:
@@ -5963,7 +5963,7 @@ class _Rec(_Base):
                       *,
                       state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                       initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: Optional[Dim] = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -6109,7 +6109,7 @@ class _RecUnstack(_Base):
   def make_layer_dict(self,
                       source: LayerRef,
                       *,
-                      axis: Optional[Dim] = NotSpecified,
+                      axis: Dim,
                       ) -> LayerDictRaw:
     """
     Make layer dict
@@ -6130,7 +6130,7 @@ class _RecUnstack(_Base):
 def rec_unstack(
                 source: LayerRef,
                 *,
-                axis: Optional[Dim] = NotSpecified,
+                axis: Dim,
                 declare_rec_time: bool = NotSpecified,
                 name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -6155,7 +6155,7 @@ def rec_unstack(
   in case you assign `axis` to the rec layer, and the source here has the same axis (dim tag).
 
   :param LayerRef source:
-  :param Dim|None axis:
+  :param Dim axis:
   :param bool declare_rec_time:
   :param str|None name:
   """

@@ -16,7 +16,6 @@ from typing import Type, Optional, Union, Dict, List, Tuple, Set
 import returnn
 from returnn.util import better_exchook
 from returnn.util.basic import camel_case_to_snake_case
-from returnn.tf.util.data import Dim
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
@@ -632,11 +631,12 @@ class LayerSignature:
 
   @classmethod
   def _handle_axis_like_arg(cls, param: Param):
-    types = []
-    support_none = False
     if param.param_type_s:
+      replace_types = {"int": "Dim", "str": "Dim"}  # they get merged by typing.Union, so duplicates are no problem
+      if param.inspect_param.default == inspect.Parameter.empty:
+        replace_types["None"] = "Dim"
       res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
-        param.param_type_s, replace_types={"int": "Dim", "str": "Dim"})
+        param.param_type_s, replace_types=replace_types)
       res_t = eval(res_t_s, {
         "Optional": Optional, "Union": Union, "List": List, "Tuple": Tuple, "Set": Set, "Dict": Dict,
         "Dim": "Dim", "LayerRef": "LayerRef"})
@@ -668,14 +668,14 @@ class LayerSignature:
       param.param_type_s = _convert(res_t)
       return
 
+    # Simpler fallback
+    types = []
     if param.returnn_name not in {"shape", "dims", "axes", "out_dims"}:
-      if "Dim" not in types:
-        types.append("Dim")
+      types.append("Dim")
     if param.param_type_s:
       if "list" in param.param_type_s or "tuple" in param.param_type_s:
-        if "list[Dim]" not in types:
-          types.append("list[Dim]")
-    if support_none or param.inspect_param.default != inspect.Parameter.empty:
+        types.append("list[Dim]")
+    if param.inspect_param.default != inspect.Parameter.empty:
       types.append("None")
     param.param_type_s = "|".join(types)
 
@@ -687,6 +687,9 @@ class LayerSignature:
       if param_.docstring:
         param.docstring += "\n"
         param.docstring += param_.docstring
+      param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make sure not optional
+    if "axis" in self.params:
+      param = self.params["axis"]
       param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make sure not optional
     for name, param in self.params.items():
       if name == "out_shape":
