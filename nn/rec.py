@@ -11,14 +11,14 @@ class LSTM(_Rec):
   """
   LSTM operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
   """
-  def __init__(self, n_out: int, **kwargs):
-    super().__init__(n_out=n_out, unit="nativelstm2", **kwargs)
+  def __init__(self, out_dim: nn.Dim, **kwargs):
+    super().__init__(out_dim=out_dim, unit="nativelstm2", **kwargs)
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
-        self, source: nn.LayerRef, *, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
+        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
     """make layer"""
-    return super().make_layer_dict(source, initial_state=initial_state)
+    return super().make_layer_dict(source, axis=axis, initial_state=initial_state)
 
 
 class LSTMStep(_Rec):
@@ -27,11 +27,12 @@ class LSTMStep(_Rec):
   """
   default_name = "lstm"  # make consistent to LSTM
 
-  def __init__(self, n_out: int, **kwargs):
-    super().__init__(n_out=n_out, unit="nativelstm2", **kwargs)
+  def __init__(self, out_dim: nn.Dim, **kwargs):
+    super().__init__(out_dim=out_dim, unit="nativelstm2", **kwargs)
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
         self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.LayerDictRaw:
     """make layer"""
-    return super().make_layer_dict(source, state=state)
+    # TODO specify per-step, how? this should also work without rec loop, when there is no time dim.
+    return super().make_layer_dict(source, state=state, axis=None)
