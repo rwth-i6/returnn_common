@@ -540,7 +540,7 @@ def test_split_glu():
 
 
 def test_self_attention():
-  time_dim = nn.DimensionTag(nn.DimensionTag.Types.Spatial, description="time")
+  time_dim = nn.SpatialDim("time")
 
   class _Net(nn.Module):
     def __init__(self):

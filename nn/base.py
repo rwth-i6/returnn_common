@@ -49,7 +49,8 @@ Code conventions:
 from __future__ import annotations
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator, Iterable
 from returnn.util.basic import NotSpecified, OptionalNotImplementedError
-from returnn.tf.util.data import Dim
+# noinspection PyUnresolvedReferences
+from returnn.tf.util.data import Dim, SpatialDim, FeatureDim
 from tensorflow.python.util import nest
 
 

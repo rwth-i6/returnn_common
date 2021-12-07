@@ -7,7 +7,7 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-def concat(*sources: Tuple[nn.LayerRef, Union[str, nn.DimensionTag]],
+def concat(*sources: Tuple[nn.LayerRef, nn.Dim],
            allow_broadcast=False,
            name: Optional[str] = None) -> nn.Layer:
   """
@@ -21,20 +21,19 @@ def concat(*sources: Tuple[nn.LayerRef, Union[str, nn.DimensionTag]],
 
 def cum_concat_step(
       source: nn.LayerRef, *, state: nn.LayerState,
-      new_dim: nn.DimensionTag,
+      out_spatial_dim: nn.Dim,
       name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   See RETURNN :class:`CumConcatLayer` for details.
   """
   from ._generated_layers import _cum_concat
-  return _cum_concat(source=source, state=state, new_dim=new_dim, name=name)
+  return _cum_concat(source=source, state=state, out_spatial_dim=out_spatial_dim, name=name)
 
 
 def split(source: nn.LayerRef, *,
-          axis: Optional[str] = NotSpecified,
-          num_splits: Optional[int] = NotSpecified,
-          size_splits: Optional[Union[List[int], Tuple[int, ...]]] = NotSpecified,
+          axis: nn.Dim,
+          out_dims: Union[List[nn.Dim], Tuple[nn.Dim, ...]],
           name: Optional[str] = None) -> Tuple[nn.LayerRef, ...]:
   """
   Split the input on the specified axis (by default feature).
@@ -42,19 +41,16 @@ def split(source: nn.LayerRef, *,
   """
   from ._generated_layers import _split
   from .base import get_sub_layer
-  res = _split(source, axis=axis, num_splits=num_splits, size_splits=size_splits, name=name)
-  if num_splits is None or num_splits is NotSpecified:
-    assert isinstance(size_splits, (tuple, list))
-    num_splits = len(size_splits)
-  return tuple(get_sub_layer(res, str(i)) for i in range(num_splits))
+  res = _split(source, axis=axis, out_dims=out_dims, name=name)
+  return tuple(get_sub_layer(res, str(i)) for i in range(len(out_dims)))
 
 
 def window(
       source: nn.LayerRef, *,
-      window_size: int,
+      axis: nn.Dim,
+      window_dim: nn.Dim,
       window_left: Optional[int] = NotSpecified,
       window_right: Optional[int] = NotSpecified,
-      axis: str = NotSpecified,
       padding: str = NotSpecified,
       stride: int = NotSpecified,
       name: Optional[str] = None) -> nn.Layer:
@@ -64,7 +60,7 @@ def window(
   from ._generated_layers import _window
   layer, state = _window(
     source,
-    window_size=window_size, window_left=window_left, window_right=window_right,
+    window_dim=window_dim, window_left=window_left, window_right=window_right,
     axis=axis, padding=padding, stride=stride,
     name=name)
   del state
@@ -73,8 +69,8 @@ def window(
 
 def window_step(
       source: nn.LayerRef, *, state: nn.LayerState,
-      window_size: int,
-      axis: str = NotSpecified,
+      axis: nn.Dim,
+      window_dim: nn.Dim,
       padding: str = NotSpecified,
       stride: int = NotSpecified,
       name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
@@ -85,6 +81,6 @@ def window_step(
   from ._generated_layers import _window
   return _window(
     source, state=state,
-    window_size=window_size, window_left=window_size - 1, window_right=0,
+    window_dim=window_dim, window_left=window_dim.dimension - 1, window_right=0,
     axis=axis, padding=padding, stride=stride,
     name=name)
