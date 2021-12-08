@@ -45,12 +45,12 @@ class ZoneoutLSTM(_Rec):
   """
   def __init__(self, n_out: int, zoneout_factor_cell: int = 0., zoneout_factor_output: int = 0., **kwargs):
     super().__init__(
-      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
-      n_out=n_out, unit="zoneoutlstm", **kwargs)
+      n_out=n_out, unit="zoneoutlstm",
+      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output}, **kwargs)
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
-        self, source: nn.LayerRef, *, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
+      self, source: nn.LayerRef, *, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
     """make layer"""
     return super().make_layer_dict(source, initial_state=initial_state)
 
@@ -63,8 +63,8 @@ class ZoneoutLSTMStep(_Rec):
 
   def __init__(self, n_out: int, zoneout_factor_cell: int = 0., zoneout_factor_output: int = 0., **kwargs):
     super().__init__(
-      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
-      n_out=n_out, unit="zoneoutlstm", **kwargs)
+      n_out=n_out, unit="zoneoutlstm",
+      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output}, **kwargs)
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
