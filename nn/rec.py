@@ -43,8 +43,10 @@ class ZoneoutLSTM(_Rec):
   """
   LSTM with zoneout operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
   """
-  def __init__(self, n_out: int, **kwargs):
-    super().__init__(n_out=n_out, unit="zoneoutlstm", **kwargs)
+  def __init__(self, n_out: int, zoneout_factor_cell: int = 0., zoneout_factor_output: int = 0., **kwargs):
+    super().__init__(
+      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
+      n_out=n_out, unit="zoneoutlstm", **kwargs)
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
@@ -59,8 +61,10 @@ class ZoneoutLSTMStep(_Rec):
   """
   default_name = "zoneoutlstm"  # make consistent to ZoneoutLSTM
 
-  def __init__(self, n_out: int, **kwargs):
-    super().__init__(n_out=n_out, unit="zoneoutlstm", **kwargs)
+  def __init__(self, n_out: int, zoneout_factor_cell: int = 0., zoneout_factor_output: int = 0., **kwargs):
+    super().__init__(
+      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
+      n_out=n_out, unit="zoneoutlstm", **kwargs)
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
