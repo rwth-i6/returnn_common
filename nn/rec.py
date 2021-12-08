@@ -34,9 +34,7 @@ class LSTMStep(_Rec):
   def make_layer_dict(
         self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.LayerDictRaw:
     """make layer"""
-    # TODO specify per-step, how? this should also work without rec loop, when there is no time dim.
-    #  https://github.com/rwth-i6/returnn/issues/847
-    return super().make_layer_dict(source, state=state, axis=None)
+    return super().make_layer_dict(source, state=state, axis=nn.single_step_dim)
 
 
 class ZoneoutLSTM(_Rec):
