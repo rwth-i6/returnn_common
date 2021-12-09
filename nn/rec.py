@@ -48,9 +48,9 @@ class ZoneoutLSTM(_Rec):
 
   # noinspection PyMethodOverriding
   def make_layer_dict(
-      self, source: nn.LayerRef, *, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
+        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
     """make layer"""
-    return super().make_layer_dict(source, initial_state=initial_state)
+    return super().make_layer_dict(source, axis=axis, initial_state=initial_state)
 
 
 class ZoneoutLSTMStep(_Rec):
@@ -68,4 +68,4 @@ class ZoneoutLSTMStep(_Rec):
   def make_layer_dict(
         self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.LayerDictRaw:
     """make layer"""
-    return super().make_layer_dict(source, state=state)
+    return super().make_layer_dict(source, state=state, axis=nn.single_step_dim)
