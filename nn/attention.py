@@ -40,12 +40,13 @@ class SelfAttention(nn.Module):
     q *= self.key_dim_per_head.dimension ** -0.5
     k = nn.reinterpret_data(k, set_dim_tags={axis: self.expand_dim}, name="k_new_dim")
     v = nn.reinterpret_data(v, set_dim_tags={axis: self.expand_dim}, name="v_new_dim")
-    energy = nn.dot([q, k], red1="static:-1", red2="static:-1", var1=axis, var2=self.expand_dim, name="energy")
+    energy = nn.dot([q, k], reduce=self.key_dim_per_head, var1=axis, var2=self.expand_dim, name="energy")
     att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
     att_weights = nn.dropout(att_weights, self.att_dropout)  # TODO wrong axis
     att = nn.dot(
-      [att_weights, v], red1=self.expand_dim, red2=self.expand_dim, var1=axis, var2="static:-1", name="att")
-    output = nn.merge_dims(att, axes="static", name="output")
+      [att_weights, v], reduce=self.expand_dim, var1=axis, var2=self.value_dim_per_head, name="att")
+    output = nn.merge_dims(
+      att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output
 
 
@@ -53,7 +54,8 @@ class SelfAttentionStep(nn.Module):
   """
   Auto-regressive self-attention
   """
-  def __init__(self, *, key_dim_total, value_dim_total, num_heads: int, att_dropout: float = 0.):
+  def __init__(self, *, key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
+               att_dropout: float = 0.):
     super().__init__()
     self.key_dim_total = key_dim_total
     self.key_dim_per_head = key_dim_total // num_heads
@@ -76,14 +78,15 @@ class SelfAttentionStep(nn.Module):
       qkv, axis="F", size_splits=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
     q *= self.key_dim_per_head ** -0.5
-    k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, new_dim=self.expand_dim)
-    v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, new_dim=self.expand_dim)
+    k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=self.expand_dim)
+    v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=self.expand_dim)
     energy = nn.dot(
-      [q, k_accum], red1="static:-1", red2="static:-1", var1=None, var2=self.expand_dim, name="energy")
+      [q, k_accum], reduce=self.key_dim_per_head, var1=None, var2=self.expand_dim, name="energy")
     att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
     att_weights = nn.dropout(att_weights, self.att_dropout)
     att = nn.dot(
       [att_weights, v_accum],
-      red1=self.expand_dim, red2=self.expand_dim, var1=None, var2="static:-1", name="att")
-    output = nn.merge_dims(att, axes="static", name="output")
+      reduce=self.expand_dim, var1=None, var2=self.value_dim_per_head, name="att")
+    output = nn.merge_dims(
+      att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output, new_state
