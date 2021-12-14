@@ -14,6 +14,7 @@ def attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
   This can be used for multi-head or single head.
   The query can have other dimensions or not.
   """
+  query *= key_dim.dimension ** -0.5
   energy = nn.dot(query, keys, reduce=key_dim, name="energy")
   att_weights = nn.softmax(energy, axis=axis, name="att_weights")
   att_weights = nn.dropout(att_weights, att_dropout, axis=axis)
@@ -60,7 +61,6 @@ class SelfAttention(SelfAttentionBase):
       qkv, axis=self.qkv_dim_per_head,
       out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
-    q *= self.key_dim_per_head.dimension ** -0.5
     k = nn.reinterpret_data(k, set_dim_tags={axis: expand_dim}, name="k_new_dim")
     v = nn.reinterpret_data(v, set_dim_tags={axis: expand_dim}, name="v_new_dim")
     att = attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
@@ -93,7 +93,6 @@ class CausalSelfAttentionStep(SelfAttentionBase):
     q, k, v = nn.split(
       qkv, axis=self.qkv_dim_per_head, out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
-    q *= self.key_dim_per_head.dimension ** -0.5
     k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
     v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
     att = attention(q, k_accum, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
