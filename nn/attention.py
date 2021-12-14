@@ -6,6 +6,21 @@ from typing import Tuple, Union
 from .. import nn
 
 
+def attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
+              key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.) -> nn.LayerRef:
+  """
+  Calculates attention over the given axis, for given key dim.
+  Any other unrelated axes do not matter here.
+  This can be used for multi-head or single head.
+  The query can have other dimensions or not.
+  """
+  energy = nn.dot(query, keys, reduce=key_dim, name="energy")
+  att_weights = nn.softmax(energy, axis=axis, name="att_weights")
+  att_weights = nn.dropout(att_weights, att_dropout, axis=axis)
+  att = nn.dot(att_weights, values, reduce=axis, name="att")
+  return att
+
+
 # noinspection PyAbstractClass
 class SelfAttentionBase(nn.Module):
   """
@@ -15,12 +30,12 @@ class SelfAttentionBase(nn.Module):
                att_dropout: float = 0.):
     super().__init__()
     self.key_dim_total = key_dim_total
-    self.key_dim_per_head = key_dim_total // num_heads
+    self.key_dim_per_head = key_dim_total.div_left(num_heads)
     self.value_dim_total = value_dim_total
-    self.value_dim_per_head = value_dim_total // num_heads
+    self.value_dim_per_head = value_dim_total.div_left(num_heads)
     self.num_heads = num_heads
-    self.qkv_dim_total = key_dim_total * 2 + value_dim_total
-    self.qkv_dim_per_head = self.key_dim_per_head * 2 + self.value_dim_per_head
+    self.qkv_dim_total = 2 * key_dim_total + value_dim_total
+    self.qkv_dim_per_head = 2 * self.key_dim_per_head + self.value_dim_per_head
     self.qkv = nn.Linear(self.qkv_dim_total)
     self.expand_dim = nn.SpatialDim("self_att_expand_dim")
     self.att_dropout = att_dropout
@@ -37,7 +52,7 @@ class SelfAttention(SelfAttentionBase):
 
   def forward(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
     """forward"""
-    # noinspection DuplicatedCode
+    expand_dim = nn.SpatialDim("self_att_expand_dim")
     qkv = self.qkv(source)
     qkv = nn.split_dims(
       qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head), name="qkv_split_dims")
@@ -46,13 +61,9 @@ class SelfAttention(SelfAttentionBase):
       out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
     q *= self.key_dim_per_head.dimension ** -0.5
-    k = nn.reinterpret_data(k, set_dim_tags={axis: self.expand_dim}, name="k_new_dim")
-    v = nn.reinterpret_data(v, set_dim_tags={axis: self.expand_dim}, name="v_new_dim")
-    energy = nn.dot([q, k], reduce=self.key_dim_per_head, var1=axis, var2=self.expand_dim, name="energy")
-    att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
-    att_weights = nn.dropout(att_weights, self.att_dropout, axis=self.expand_dim)
-    att = nn.dot(
-      [att_weights, v], reduce=self.expand_dim, var1=axis, var2=self.value_dim_per_head, name="att")
+    k = nn.reinterpret_data(k, set_dim_tags={axis: expand_dim}, name="k_new_dim")
+    v = nn.reinterpret_data(v, set_dim_tags={axis: expand_dim}, name="v_new_dim")
+    att = attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output
@@ -73,25 +84,19 @@ class CausalSelfAttentionStep(SelfAttentionBase):
 
   def forward(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
     """forward"""
+    expand_dim = nn.SpatialDim("self_att_expand_dim")
     new_state = nn.LayerState()
-    # noinspection DuplicatedCode
     qkv = self.qkv(source)
     qkv = nn.split_dims(
-      qkv, axis="F", dims=(self.num_heads, self.key_dim_per_head * 2 + self.value_dim_per_head),
+      qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head),
       name="qkv_split_dims")
     q, k, v = nn.split(
-      qkv, axis="F", size_splits=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
+      qkv, axis=self.qkv_dim_per_head, out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
-    q *= self.key_dim_per_head ** -0.5
-    k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=self.expand_dim)
-    v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=self.expand_dim)
-    energy = nn.dot(
-      [q, k_accum], reduce=self.key_dim_per_head, var1=None, var2=self.expand_dim, name="energy")
-    att_weights = nn.softmax(energy, axis=self.expand_dim, name="att_weights")
-    att_weights = nn.dropout(att_weights, self.att_dropout, axis=self.expand_dim)
-    att = nn.dot(
-      [att_weights, v_accum],
-      reduce=self.expand_dim, var1=None, var2=self.value_dim_per_head, name="att")
+    q *= self.key_dim_per_head.dimension ** -0.5
+    k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
+    v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
+    att = attention(q, k_accum, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output, new_state
