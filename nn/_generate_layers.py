@@ -185,11 +185,18 @@ def setup():
 
     if layer_class.layer_class:
       print("", file=f)
-      if sig.has_source_param() or sig.has_recurrent_state() or sig.has_module_call_args():
+      if any([
+            sig.has_source_param(),
+            sig.explicit_source_list(),
+            sig.has_recurrent_state(),
+            sig.has_module_call_args()]):
         print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
         print("  def make_layer_dict(self,", file=f)
         if sig.has_source_param():
           print(f"                      {sig.get_module_call_source_param_code_str()},", file=f)
+        elif sig.explicit_source_list():
+          for i in range(sig.explicit_source_list()):
+            print(f"                      {sig.get_module_call_source_param_code_str(explicit_idx=i)},", file=f)
         if sig.has_module_call_args() or sig.has_recurrent_state():
           print("                      *,", file=f)
           if sig.has_recurrent_state():
@@ -214,6 +221,9 @@ def setup():
             file=f)
         else:
           print("    assert isinstance(source, LayerRef)", file=f)
+      elif sig.explicit_source_list():
+        for i in range(sig.explicit_source_list()):
+          print(f"    assert isinstance(source{i + 1}, LayerRef)", file=f)
       if sig.has_module_call_args() or sig.has_recurrent_state():
         print("    args = {", file=f)
         if sig.has_recurrent_state():
@@ -227,6 +237,8 @@ def setup():
       print(f"      'class': {layer_class.layer_class!r},", file=f)
       if sig.has_source_param():
         print("      'from': source,", file=f)
+      elif sig.explicit_source_list():
+        print(f"      'from': [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],", file=f)
       if sig.has_module_call_args() or sig.has_recurrent_state():
         print("      **args,", file=f)
       print("      **self.get_opts()}", file=f)
@@ -253,6 +265,10 @@ def setup():
       if sig.has_source_param():
         print(f"{prefix}{sig.get_module_call_source_param_code_str()},", file=f)
         args.append("source")
+      elif sig.explicit_source_list():
+        for i in range(sig.explicit_source_list()):
+          print(f"{prefix}{sig.get_module_call_source_param_code_str(explicit_idx=i)},", file=f)
+          args.append(f"source{i + 1}")
       print(f"{prefix}*,", file=f)
       if sig.has_recurrent_state():
         print(f"{prefix}{sig.get_module_call_state_param_code_str('state')},", file=f)
@@ -280,6 +296,9 @@ def setup():
         print("", file=f)
       if sig.has_source_param():
         print(f"  {sig.get_module_call_source_docstring()}", file=f)
+      elif sig.explicit_source_list():
+        for i in range(sig.explicit_source_list()):
+          print(f"  {sig.get_module_call_source_docstring(explicit_idx=i)}", file=f)
       if sig.has_recurrent_state():
         print(f"  {sig.get_module_call_state_docstring('state')}", file=f)
         print(f"  {sig.get_module_call_state_docstring('initial_state')}", file=f)
@@ -308,6 +327,9 @@ def setup():
         print(f"  return mod(", file=f)
         if sig.has_source_param():
           print("    source,", file=f)
+        elif sig.explicit_source_list():
+          for i in range(sig.explicit_source_list()):
+            print(f"    source{i + 1},", file=f)
         if sig.has_recurrent_state():
           print("    state=state,", file=f)
           print("    initial_state=initial_state,", file=f)
@@ -344,6 +366,8 @@ class LayerSignature:
           self.layer_class,
           (SourceLayer, ConstantLayer, VariableLayer, CondLayer, SwitchLayer, GenericAttentionLayer)):
       return False
+    if self.explicit_source_list():
+      return False
     return True
 
   def support_multiple_sources(self) -> bool:
@@ -364,9 +388,16 @@ class LayerSignature:
       return False
     if issubclass(self.layer_class, (CombineLayer, CompareLayer, StackLayer)):
       return True
-    if self.layer_class.layer_class in {"dot"}:
-      return True
     return False
+
+  def explicit_source_list(self) -> Optional[int]:
+    """
+    If returned value is given, it means that instead of source: list[Layers],
+    we have source1, source2 etc, the number returned here.
+    """
+    if self.layer_class.layer_class == "dot":
+      return 2
+    return None
 
   # noinspection PyMethodMayBeStatic
   def default_source(self) -> Optional[str]:
@@ -377,10 +408,12 @@ class LayerSignature:
       return "()"
     return None
 
-  def get_module_call_source_param_code_str(self):
+  def get_module_call_source_param_code_str(self, explicit_idx: Optional[int] = None):
     """
     Code for `source` param
     """
+    if explicit_idx is not None:
+      return f"source{explicit_idx + 1}: LayerRef"
     assert self.has_source_param()
     s = "source: "
     if self.need_multiple_sources():
@@ -394,10 +427,12 @@ class LayerSignature:
       s += " = " + default
     return s
 
-  def get_module_call_source_docstring(self):
+  def get_module_call_source_docstring(self, explicit_idx: Optional[int] = None):
     """
     Code for docstring of `source` param
     """
+    if explicit_idx is not None:
+      return f":param LayerRef source{explicit_idx + 1}:"
     s = ":param "
     if self.need_multiple_sources():
       s += "list[LayerRef]|tuple[LayerRef]"
@@ -722,6 +757,9 @@ class LayerSignature:
     args = []
     if self.has_source_param():
       args.append("source")
+    elif self.explicit_source_list():
+      for i in range(self.explicit_source_list()):
+        args.append(f"source{i + 1}")
     if self.has_recurrent_state():
       args.append("state")
     args += [arg.get_module_param_name() for arg in self.get_all_derived_args()]
