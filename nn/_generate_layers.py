@@ -12,10 +12,11 @@ import os
 import inspect
 import re
 import typing
+import collections
 from typing import Type, Optional, Union, Dict, List, Tuple, Set
 import returnn
 from returnn.util import better_exchook
-from returnn.util.basic import camel_case_to_snake_case
+from returnn.util.basic import camel_case_to_snake_case, NotSpecified
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
 from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer
@@ -107,7 +108,7 @@ def setup():
   print('"""', file=f)
   print("", file=f)
   print("from __future__ import annotations", file=f)
-  print("from typing import Union, Optional, Tuple, List, Dict, Set, Any", file=f)
+  print("from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("# noinspection PyProtectedMember", file=f)
   print("from returnn.tf.util.data import Dim, _ImplicitDim", file=f)
@@ -673,8 +674,9 @@ class LayerSignature:
       res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
         param.param_type_s, replace_types=replace_types)
       res_t = eval(res_t_s, {
+        "typing": typing,
         "Optional": Optional, "Union": Union, "List": List, "Tuple": Tuple, "Set": Set, "Dict": Dict,
-        "Dim": "Dim", "LayerRef": "LayerRef"})
+        "Dim": "Dim", "LayerRef": "LayerRef", "NotSpecified": NotSpecified})
 
       def _convert(t) -> str:
         if t is None:
@@ -697,9 +699,11 @@ class LayerSignature:
           return "(%s)" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
         if typing.get_origin(t) == list:
           return "list[%s]" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
+        if typing.get_origin(t) == collections.abc.Sequence:
+          return "Sequence[%s]" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
         if typing.get_origin(t) == dict:
           return "dict[%s]" % ", ".join(_convert(t_) for t_ in typing.get_args(t))
-        raise TypeError(f"res {res_t}, t {t} for param {param}")
+        raise TypeError(f"res {res_t}, t {t}, origin {typing.get_origin(t)} for param {param}")
       param.param_type_s = _convert(res_t)
       return
 
