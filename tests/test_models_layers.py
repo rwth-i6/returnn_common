@@ -19,13 +19,34 @@ else:
   from returnn_common import nn  # noqa
 
 
+def test_simple_net_linear_simple():
+  class _Net(nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.linear = nn.Linear(13)
+
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+      """
+      Forward
+      """
+      return self.linear(x)
+
+  net = _Net()
+  net_dict = nn.make_root_net_dict(net, "data")
+  pprint(net_dict)
+  assert "linear" in net_dict
+  dummy_run_net(net_dict)
+
+
 def test_simple_net_linear():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -44,7 +65,8 @@ def test_simple_net_module_explicit_root_ctx():
       super().__init__()
       self.linear = nn.Linear(n_out=13)
 
-    def forward(self, x) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x) -> nn.LayerRef:
       """
       Forward
       """
@@ -72,7 +94,7 @@ def test_simple_net_rc():
       super().__init__()
       self.linear = rc.nn.Linear(n_out=13)
 
-    def forward(self, x: rc.nn.LayerRef) -> rc.nn.LayerRef:
+    def __call__(self, x: rc.nn.LayerRef) -> rc.nn.LayerRef:
       """
       Forward
       """
@@ -88,7 +110,8 @@ def test_simple_net_rc():
 
 def test_simple_net_arithmetic():
   class _Net(nn.Module):
-    def forward(self, x) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x) -> nn.LayerRef:
       """
       Forward
       """
@@ -103,7 +126,8 @@ def test_simple_net_arithmetic():
 
 def test_eval():
   class _Net(nn.Module):
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -122,7 +146,8 @@ def test_simple_net_lstm():
       super().__init__()
       self.lstm = nn.LSTM(n_out=13)
 
-    def forward(self, x) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x) -> nn.LayerRef:
       """
       Forward
       """
@@ -143,7 +168,8 @@ def test_simple_net_share_params():
       self.linear = nn.Linear(n_out=13)
       self.lstm = nn.LSTM(n_out=13)
 
-    def forward(self, x) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x) -> nn.LayerRef:
       """
       Forward
       """
@@ -169,7 +195,8 @@ def test_explicit_root_ctx_sub():
       self.linear = nn.Linear(n_out=n_out, l2=l2)
       self.dropout = dropout
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       forward
       """
@@ -208,7 +235,8 @@ def test_root_mod_call_twice():
       self.linear = nn.Linear(n_out=n_out, l2=l2)
       self.dropout = dropout
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       forward
       """
@@ -239,7 +267,8 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.linear = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
       """
@@ -251,7 +280,8 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.sub = _SubNet()
 
-    def forward(self, x) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x) -> nn.LayerRef:
       """
       Forward
       """
@@ -271,7 +301,8 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.linear = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
       """
@@ -283,7 +314,8 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubSubNet()
 
-    def forward(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
       """
@@ -295,7 +327,8 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubNet()
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -317,7 +350,8 @@ def test_from_call_variations():
       self.linear = nn.Linear(n_out=13)
       self.linear2 = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
       """
@@ -331,7 +365,8 @@ def test_from_call_variations():
       self.sub = _SubNet()
       self.sub2 = _SubNet()
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -356,7 +391,8 @@ def test_from_call_variations2():
       self.linear = nn.Linear(n_out=13)
       self.linear2 = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
       """
@@ -370,7 +406,8 @@ def test_from_call_variations2():
       self.linear = nn.Linear(n_out=13)
       self.linear2 = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef, y: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef, y: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
       """
@@ -387,7 +424,8 @@ def test_from_call_variations2():
       self.sub2 = _SubNet2()
       self.linear = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -440,7 +478,8 @@ def test_module_list():
       super().__init__()
       self.ls = nn.ModuleList([nn.Linear(i + 3) for i in range_(4)])
 
-    def forward(self, out: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, out: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -473,7 +512,8 @@ def test_sequential_base_case():
       super().__init__()
       self.seq = nn.Sequential(nn.Linear(1), nn.Linear(2), nn.Linear(3))
 
-    def forward(self, data: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, data: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -502,7 +542,8 @@ def test_sequential_named_case():
       x["three"] = nn.Linear(3)
       self.seq = nn.Sequential(x)
 
-    def forward(self, data: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, data: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -522,7 +563,8 @@ def test_sequential_named_case():
 
 def test_split_glu():
   class _Net(nn.Module):
-    def forward(self, x: nn.LayerRef) -> nn.Layer:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.Layer:
       """forward"""
       a, b = nn.split(x, axis="F", num_splits=2)
       return a * nn.sigmoid(b)
@@ -547,7 +589,8 @@ def test_self_attention():
       super().__init__()
       self.self_att = nn.SelfAttention(key_dim_total=21, value_dim_total=33, num_heads=3)
 
-    def forward(self, x: nn.LayerRef) -> nn.Layer:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.Layer:
       """forward"""
       return self.self_att(x, axis=time_dim)
 

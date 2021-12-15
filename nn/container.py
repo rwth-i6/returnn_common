@@ -3,6 +3,7 @@ container functions
 """
 
 from __future__ import annotations
+from . import nn
 from .base import Module, ILayerMaker, LayerRef, Layer
 from typing import Iterable, Iterator, Union, Dict, Callable
 
@@ -65,14 +66,15 @@ class ModuleList(Module):
     key = list(self._get_makers().keys())[idx]
     return setattr(self, key, _convert_to_maker(module))
 
-  forward = Module.forward  # stays abstract
+  __call__ = Module.__call__  # stays abstract
 
 
 class Sequential(ModuleList):
   """
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
-  def forward(self, inp) -> LayerRef:
+  @nn.scoped_method
+  def __call__(self, inp) -> LayerRef:
     """
     Forward
     """
@@ -106,7 +108,8 @@ class WrappedFunction(Module):
     assert callable(func)
     self.func = func
 
-  def forward(self, *args, **kwargs) -> LayerRef:
+  @nn.scoped_method
+  def __call__(self, *args, **kwargs) -> LayerRef:
     """
     Forward
     """

@@ -13,6 +13,7 @@ So, for most purpose, e.g. for a decoder (see :mod:`..decoder.base`),
 you only care about some encoded vector of type :class:`LayerRef`.
 """
 
+from .. import nn
 from ..base import Module, LayerRef
 
 
@@ -21,7 +22,8 @@ class IEncoder(Module):
   Generic encoder interface
   """
 
-  def forward(self, source: LayerRef) -> LayerRef:
+  @nn.scoped_method
+  def __call__(self, source: LayerRef) -> LayerRef:
     """
     Encode the input
     """

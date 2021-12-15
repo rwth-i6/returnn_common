@@ -556,40 +556,19 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
   return constant(value=x)
 
 
-class Module(ILayerMaker):
+def scoped_method(func):
   """
-  This represents a subnetwork in RETURNN, or the root network.
-
-  You can write PyTorch-like code here, like::
-
-      class MyModule(Module):
-
-       def __init__(self, dim: int, activation=tanh):
-         super().__init__()
-         self.linear = Linear(dim)
-         self.activation = activation
-
-       def forward(self, x: LayerRef) -> LayerRef:
-         x_ = x
-         x = layer_norm(x)
-         x = self.linear(x)
-         x = self.activation(x)
-         return x_ + x
-
+  Decorator to create a new scope (subnetwork) for the function.
+  This would be used for modules.
   """
+  assert callable(func)
 
-  def forward(self, *args, **kwargs) -> LayerRef:
-    """
-    Constructs the output.
-    You can write PyTorch-style code here.
-    """
-    raise NotImplementedError
-
-  def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Union[Layer, Any]:
+  def _wrapper(self: ILayerMaker, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs):
+    assert isinstance(self, ILayerMaker)  # scoped_method used correctly?
     from . import copy
     with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
       name_ctx.is_subnet_ctx = True
-      res = self.forward(*args, **kwargs)
+      res = func(self, *args, **kwargs)
       if name_ctx.parent is None:  # root
         # special logic, no output layers, no subnetwork layer needed
         self.calls.append(name_ctx)
@@ -601,10 +580,48 @@ class Module(ILayerMaker):
         # by convention: first layer is the output layer
         res_flat = nest.flatten(res)
         copy(res_flat[0], name=name_ctx.get_child("output"))
-      subnet_layer = self._make_layer()
+      # Now create the subnetwork layer itself.
+      subnet_layer = make_layer(
+        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
+        name_ctx=name_ctx)
     if isinstance(res, LayerRef):
       return subnet_layer  # maybe nicer to return subnet layer
     return res
+
+  _wrapper.__name__ = func.__name__
+  _wrapper.__qualname__ = func.__qualname__
+  return _wrapper
+
+
+class Module(ILayerMaker):
+  """
+  This represents a subnetwork in RETURNN, or the root network.
+
+  You can write PyTorch-like code here, like::
+
+      class MyModule(nn.Module):
+
+       def __init__(self, dim: int, activation=tanh):
+         super().__init__()
+         self.linear = Linear(dim)
+         self.activation = activation
+
+       @nn.scoped_method
+       def __call__(self, x: LayerRef) -> LayerRef:
+         x_ = x
+         x = layer_norm(x)
+         x = self.linear(x)
+         x = self.activation(x)
+         return x_ + x
+
+  """
+
+  def __call__(self, *args, **kwargs) -> LayerRef:
+    """
+    Constructs the output.
+    You can write PyTorch-style code here.
+    """
+    raise NotImplementedError
 
   def make_layer_dict(self) -> LayerDictRaw:
     """
@@ -646,7 +663,7 @@ def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
     name_ctx.is_subnet_ctx = True
     args = tuple(get_extern_data(arg) for arg in args)
     kwargs = {key: get_extern_data(value) for (key, value) in kwargs.items()}
-    res = model.forward(*args, **kwargs)
+    res = model(*args, **kwargs, name=name_ctx)
     if "output" not in name_ctx.children:
       if isinstance(res, LayerRef):
         copy(res, name=name_ctx.get_child("output"))

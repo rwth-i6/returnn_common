@@ -6,6 +6,7 @@ from typing import Tuple, Union
 from .. import nn
 
 
+@nn.scoped_method
 def dot_attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
                   key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.) -> nn.LayerRef:
   """
@@ -38,7 +39,6 @@ class SelfAttentionBase(nn.Module):
     self.qkv_dim_total = 2 * key_dim_total + value_dim_total
     self.qkv_dim_per_head = 2 * self.key_dim_per_head + self.value_dim_per_head
     self.qkv = nn.Linear(self.qkv_dim_total)
-    self.expand_dim = nn.SpatialDim("self_att_expand_dim")
     self.att_dropout = att_dropout
 
 
@@ -51,7 +51,8 @@ class SelfAttention(SelfAttentionBase):
     super().__init__(
       key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads, att_dropout=att_dropout)
 
-  def forward(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
+  @nn.scoped_method
+  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
     """forward"""
     expand_dim = nn.SpatialDim("self_att_expand_dim")
     qkv = self.qkv(source)
@@ -82,7 +83,8 @@ class CausalSelfAttentionStep(SelfAttentionBase):
     super().__init__(
       key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads, att_dropout=att_dropout)
 
-  def forward(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
+  @nn.scoped_method
+  def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
     """forward"""
     expand_dim = nn.SpatialDim("self_att_expand_dim")
     new_state = nn.LayerState()

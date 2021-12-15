@@ -23,7 +23,8 @@ def test_rec_ff():
       super().__init__()
       self.rec_linear = nn.Linear(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -67,7 +68,8 @@ def test_rec_inner_lstm():
       super().__init__()
       self.lstm = nn.LSTMStep(13)
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -86,7 +88,8 @@ def test_rec_inner_lstm():
 
 def test_rec_simple_iter():
   class _Net(nn.Module):
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -110,7 +113,8 @@ def test_rec_hidden():
       super().__init__()
       self.lstm = nn.LSTM(n_out=13)
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
@@ -132,7 +136,8 @@ def test_rec_hidden_initial():
       self.linear = nn.Linear(13)
       self.lstm = nn.LSTM(13)
 
-    def forward(self, x: nn.LayerRef) -> nn.LayerRef:
+    @nn.scoped_method
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
