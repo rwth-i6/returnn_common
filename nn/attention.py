@@ -6,8 +6,8 @@ from typing import Tuple, Union
 from .. import nn
 
 
-def attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
-              key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.) -> nn.LayerRef:
+def dot_attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
+                  key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.) -> nn.LayerRef:
   """
   Calculates attention over the given axis, for given key dim.
   Any other unrelated axes do not matter here.
@@ -63,7 +63,7 @@ class SelfAttention(SelfAttentionBase):
       name="qkv_split")
     k = nn.reinterpret_data(k, set_dim_tags={axis: expand_dim}, name="k_new_dim")
     v = nn.reinterpret_data(v, set_dim_tags={axis: expand_dim}, name="v_new_dim")
-    att = attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
+    att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output
@@ -95,7 +95,7 @@ class CausalSelfAttentionStep(SelfAttentionBase):
       name="qkv_split")
     k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
     v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
-    att = attention(q, k_accum, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
+    att = dot_attention(q, k_accum, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output, new_state
