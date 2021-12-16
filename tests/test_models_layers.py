@@ -491,7 +491,10 @@ def test_sequential_base_case():
   class _TestSequential(nn.Module):
     def __init__(self):
       super().__init__()
-      self.seq = nn.Sequential(nn.Linear(1), nn.Linear(2), nn.Linear(3))
+      self.seq = nn.Sequential(
+        nn.Linear(nn.FeatureDim("feat1", 1)),
+        nn.Linear(nn.FeatureDim("feat2", 2)),
+        nn.Linear(nn.FeatureDim("feat3", 3)))
 
     @nn.scoped
     def __call__(self, data: nn.LayerRef) -> nn.LayerRef:

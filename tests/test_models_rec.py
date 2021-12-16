@@ -68,7 +68,7 @@ def test_rec_inner_lstm():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.lstm = nn.LSTMStep(nn.FeatureDim("out", 13))
+      self.lstm = nn.LSTM(nn.FeatureDim("out", 13))
 
     @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
@@ -78,7 +78,7 @@ def test_rec_inner_lstm():
       with nn.Loop() as loop:
         x_ = loop.unstack(x, axis="T", declare_rec_time=True)  # TODO how to get axis?
         loop.state.lstm = nn.State(initial=self.lstm.default_initial_state())
-        y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm)
+        y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, axis=nn.single_step_dim)
         y = loop.stack(y_)
       return y
 
