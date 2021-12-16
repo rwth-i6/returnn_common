@@ -367,8 +367,6 @@ class ILayerMaker:
   def _make_layer(self, *args, **kwargs) -> Layer:
     name_ctx = NameCtx.top()
     assert name_ctx.maker is self
-    if self.calls:
-      name_ctx.is_repeated_call = True
     layer_dict = self.make_layer_dict(*args, **kwargs)
     return make_layer(layer_dict, name_ctx=name_ctx)
 
@@ -578,8 +576,6 @@ def make_layer(layer_dict: LayerDictRaw, *,
           layer_dict["name_scope"] = "/" + name_ctx.layer_abs_name_scope
 
   name_ctx.is_subnet_ctx = False
-  if name_ctx.maker and name_ctx.maker.calls:
-    name_ctx.is_repeated_call = True
   layer = Layer(layer_dict=layer_dict, name_ctx=name_ctx)
   if name_ctx.maker:
     name_ctx.maker.calls.append(name_ctx)
@@ -1194,7 +1190,6 @@ class NameCtx:
     self.layer = None  # type: Optional[Layer]
     self._layer_abs_name_scope = None  # type: Optional[str]
     self.is_subnet_ctx = False
-    self.is_repeated_call = False
     self.children = {}  # type: Dict[str, NameCtx]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name  # early assign such that debug repr works later
