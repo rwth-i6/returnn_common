@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any
 from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
-from returnn.tf.util.data import Dim, _ImplicitDim
+from returnn.tf.util.data import Dim, _ImplicitDim, single_step_dim
 from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer
 
 
@@ -2784,11 +2784,17 @@ class _Rec(_Base):
     """
     assert isinstance(source, LayerRef)
     args = {
-      'state': state,
-      'initial_state': initial_state,
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    if axis == single_step_dim:
+      assert state is not NotSpecified
+      assert initial_state is NotSpecified
+      args['state'] = state
+    else:
+      assert state is NotSpecified
+      if initial_state is not NotSpecified:
+        args['initial_state'] = initial_state
     layer = make_layer({
       'class': 'rec',
       'from': source,
@@ -3119,6 +3125,7 @@ def _ken_lm_state(
                   input_step_offset: int = NotSpecified,
                   dense_output: bool = NotSpecified,
                   debug: bool = NotSpecified,
+                  axis: Dim,
                   name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Get next word (or subword) each frame,
@@ -3138,6 +3145,7 @@ def _ken_lm_state(
   :param int input_step_offset: if provided, will consider the input only from this step onwards
   :param bool dense_output: whether we output the score for all possible succeeding tokens
   :param bool debug: prints debug info
+  :param Dim axis: axis to operate over, or nn.single_step_dim
   :param str|NameCtx|None name:
   """
   args = {
@@ -3149,6 +3157,7 @@ def _ken_lm_state(
     'input_step_offset': input_step_offset,
     'dense_output': dense_output,
     'debug': debug,
+    'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   layer = make_layer({
@@ -3168,6 +3177,7 @@ def _edit_distance_table(
                          debug: bool = NotSpecified,
                          blank_idx: Optional[int] = NotSpecified,
                          out_dim: Optional[Dim] = NotSpecified,
+                         axis: Dim,
                          name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Given a source and a target, calculates the edit distance table between them.
@@ -3186,6 +3196,7 @@ def _edit_distance_table(
   :param bool debug:
   :param int|None blank_idx: if given, will keep the same row for this source label
   :param Dim|None out_dim:
+  :param Dim axis: axis to operate over, or nn.single_step_dim
   :param str|NameCtx|None name:
   """
   args = {
@@ -3193,6 +3204,7 @@ def _edit_distance_table(
     'debug': debug,
     'blank_idx': blank_idx,
     'out_dim': out_dim,
+    'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   layer = make_layer({
@@ -3246,6 +3258,7 @@ def _unmask(
             state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             mask: LayerRef,
+            axis: Dim,
             name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   This is meant to be used together with :class:`MaskedComputationLayer`,
@@ -3264,11 +3277,13 @@ def _unmask(
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param LayerBase mask: the same as as used for :class:`MaskedComputationLayer`.
     Outside loop: [B,T] or [T,B], original T. Inside loop, just [B].
+  :param Dim axis: axis to operate over, or nn.single_step_dim
   :param str|NameCtx|None name:
   """
   args = {
     'state': state, 'initial_state': initial_state,
     'mask': mask,
+    'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   layer = make_layer({
@@ -3333,16 +3348,24 @@ class _TwoDLSTM(_Base):
                *,
                state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               axis: Dim,
                ) -> Tuple[Layer, LayerState]:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
     args = {
-      'state': state,
-      'initial_state': initial_state,
+      'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    if axis == single_step_dim:
+      assert state is not NotSpecified
+      assert initial_state is NotSpecified
+      args['state'] = state
+    else:
+      assert state is NotSpecified
+      if initial_state is not NotSpecified:
+        args['initial_state'] = initial_state
     layer = make_layer({
       'class': 'twod_lstm',
       'from': source,
@@ -3359,6 +3382,7 @@ def _cum_concat(
                 state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                 initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                 out_spatial_dim: Dim,
+                axis: Dim,
                 name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Concatenates all previous frames of a time-axis.
@@ -3407,11 +3431,13 @@ def _cum_concat(
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param Dim out_spatial_dim:
+  :param Dim axis: axis to operate over, or nn.single_step_dim
   :param str|NameCtx|None name:
   """
   args = {
     'state': state, 'initial_state': initial_state,
     'out_spatial_dim': out_spatial_dim,
+    'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   layer = make_layer({

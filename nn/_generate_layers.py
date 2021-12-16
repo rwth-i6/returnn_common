@@ -111,7 +111,7 @@ def setup():
   print("from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("# noinspection PyProtectedMember", file=f)
-  print("from returnn.tf.util.data import Dim, _ImplicitDim", file=f)
+  print("from returnn.tf.util.data import Dim, _ImplicitDim, single_step_dim", file=f)
   print(
     "from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
   layer_classes = collect_layers()
@@ -231,14 +231,25 @@ def setup():
           for i in range(sig.explicit_source_list()):
             print(f"    assert isinstance(source{i + 1}, LayerRef)", file=f)
         if sig.has_module_call_args() or sig.has_recurrent_state():
-          print("    args = {", file=f)
+          if sig.has_module_call_args():
+            print("    args = {", file=f)
+            for param in sig.get_module_call_args():
+              print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
+            print("    }", file=f)
+            print("    args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
+          else:
+            print("    args = {}", file=f)
           if sig.has_recurrent_state():
-            print(f"      'state': state,", file=f)
-            print(f"      'initial_state': initial_state,", file=f)
-          for param in sig.get_module_call_args():
-            print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
-          print("    }", file=f)
-          print("    args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
+            # There must be an axis argument.
+            assert "axis" in sig.params
+            print("    if axis == single_step_dim:", file=f)
+            print("      assert state is not NotSpecified", file=f)
+            print("      assert initial_state is NotSpecified", file=f)
+            print("      args['state'] = state", file=f)
+            print("    else:", file=f)
+            print("      assert state is NotSpecified", file=f)
+            print("      if initial_state is not NotSpecified:", file=f)
+            print("        args['initial_state'] = initial_state", file=f)
         if sig.has_recurrent_state():
           print("    layer = make_layer({", file=f)
         else:
@@ -718,6 +729,15 @@ class LayerSignature:
     param.param_type_s = "|".join(types)
 
   def _post_proc(self):
+    if self.has_recurrent_state() and "axis" not in self.params:
+      # Might need to fix the layer. But anyway just add this now.
+      self.params["axis"] = LayerSignature.Param(
+        parent=self,
+        param=inspect.Parameter(
+          name="axis", kind=inspect.Parameter.KEYWORD_ONLY,
+          default=None, annotation=None),
+        param_type_s="Dim",
+        docstring="axis to operate over, or nn.single_step_dim")
     if "axes" in self.params and "axis" in self.params:
       param_ = self.params.pop("axes")
       param = self.params["axis"]
