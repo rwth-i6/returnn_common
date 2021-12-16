@@ -30,9 +30,9 @@ def test_rec_ff():
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
       with nn.Loop() as loop:
-        x_ = loop.unstack(x, axis="T", declare_rec_time=True)
+        x_ = loop.unstack(x, axis="T", declare_rec_time=True)  # TODO how to get axis?
         loop.state.h = nn.State(initial=0)  # TODO proper initial...
-        loop.state.h = self.rec_linear(nn.concat((x_, "F"), (loop.state.h, "F")))
+        loop.state.h = self.rec_linear(nn.concat((x_, "F"), (loop.state.h, self.rec_linear.out_dim)))  # TODO dim?
         y = loop.stack(loop.state.h)
       return y
 
@@ -59,7 +59,9 @@ def test_rec_ff():
 
 def test_lstm_default_name():
   assert_equal(nn.LSTM(nn.FeatureDim("out", 3)).get_default_name(), "lstm")
-  assert_equal(nn.LSTMStep(nn.FeatureDim("out", 3)).get_default_name(), "lstm")
+  # no LSTMStep anymore, so nothing really to test here.
+  # https://github.com/rwth-i6/returnn_common/issues/81
+  # assert_equal(nn.LSTMStep(nn.FeatureDim("out", 3)).get_default_name(), "lstm")
 
 
 def test_rec_inner_lstm():
@@ -74,7 +76,7 @@ def test_rec_inner_lstm():
       Forward
       """
       with nn.Loop() as loop:
-        x_ = loop.unstack(x, axis="T", declare_rec_time=True)
+        x_ = loop.unstack(x, axis="T", declare_rec_time=True)  # TODO how to get axis?
         loop.state.lstm = nn.State(initial=self.lstm.default_initial_state())
         y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm)
         y = loop.stack(y_)
@@ -98,7 +100,7 @@ def test_rec_simple_iter():
         loop.state.i = nn.State(initial=0.)
         loop.state.i = loop.state.i + 1.
         loop.end(loop.state.i >= 5., include_eos=True)
-        y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis="T"))
+        y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis="T"))  # TODO axis
       return y
 
   net = _Net()
@@ -118,9 +120,9 @@ def test_rec_hidden():
       """
       Forward
       """
-      y, state = self.lstm(x)
-      y_ = nn.reduce(y, mode="mean", axis="T")  # TODO just because concat allow_broadcast=True does not work yet...
-      res = nn.concat((y_, "F"), (state.h, "F"), (state.c, "F"))
+      y, state = self.lstm(x)  # TODO axis
+      res = nn.concat(
+        (y, self.lstm.out_dim), (state.h, self.lstm.out_dim), (state.c, self.lstm.out_dim), allow_broadcast=True)
       return res
 
   net = _Net()
@@ -144,7 +146,7 @@ def test_rec_hidden_initial():
       y = self.linear(x)
       state = None
       for _ in range_(3):
-        y, state = self.lstm(y, initial_state=state)
+        y, state = self.lstm(y, initial_state=state)  # TODO axis?
       return y
 
   net = _Net()

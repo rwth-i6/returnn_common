@@ -2,7 +2,6 @@
 Basic RNNs.
 """
 
-from typing import Optional
 from .. import nn
 from ._generated_layers import _Rec
 
@@ -14,52 +13,13 @@ class LSTM(_Rec):
   def __init__(self, out_dim: nn.Dim, **kwargs):
     super().__init__(out_dim=out_dim, unit="nativelstm2", **kwargs)
 
-  def __call__(
-        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.Layer:
-    """make layer"""
-    return super()(source, axis=axis, initial_state=initial_state)
-
-
-class LSTMStep(_Rec):
-  """
-  LSTM operating one step. returns (output, state) tuple, where state is (h,c).
-  """
-  default_name = "lstm"  # make consistent to LSTM
-
-  def __init__(self, out_dim: nn.Dim, **kwargs):
-    super().__init__(out_dim=out_dim, unit="nativelstm2", **kwargs)
-
-  def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.Layer:
-    """make layer"""
-    return super()(source, state=state, axis=nn.single_step_dim)
-
 
 class ZoneoutLSTM(_Rec):
   """
   LSTM with zoneout operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
   """
-  def __init__(self, n_out: int, zoneout_factor_cell: int = 0., zoneout_factor_output: int = 0., **kwargs):
+  def __init__(self, n_out: int, zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0., **kwargs):
     super().__init__(
       n_out=n_out, unit="zoneoutlstm",
-      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output}, **kwargs)
-
-  def __call__(
-        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.Layer:
-    """make layer"""
-    return super()(source, axis=axis, initial_state=initial_state)
-
-
-class ZoneoutLSTMStep(_Rec):
-  """
-  LSTM with zoneout operating one step. returns (output, state) tuple, where state is (h,c).
-  """
-  default_name = "zoneoutlstm"  # make consistent to ZoneoutLSTM
-
-  def __init__(self, n_out: int, zoneout_factor_cell: int = 0., zoneout_factor_output: int = 0., **kwargs):
-    super().__init__(
-      n_out=n_out, unit="zoneoutlstm",
-      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output}, **kwargs)
-
-  def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.Layer:
-    """make layer"""
-    return super()(source, state=state, axis=nn.single_step_dim)
+      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
+      **kwargs)
