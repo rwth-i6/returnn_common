@@ -21,7 +21,7 @@ def test_rec_ff():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.rec_linear = nn.Linear(n_out=13)
+      self.rec_linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
@@ -111,7 +111,7 @@ def test_rec_hidden():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.lstm = nn.LSTM(n_out=13)
+      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:

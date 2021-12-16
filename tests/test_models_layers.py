@@ -43,7 +43,7 @@ def test_simple_net_module_explicit_root_ctx():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x) -> nn.LayerRef:
@@ -72,7 +72,7 @@ def test_simple_net_rc():
   class _Net(rc.nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = rc.nn.Linear(n_out=13)
+      self.linear = rc.nn.Linear(nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: rc.nn.LayerRef) -> rc.nn.LayerRef:
       """
@@ -124,7 +124,7 @@ def test_simple_net_lstm():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.lstm = nn.LSTM(n_out=13)
+      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped_method
     def __call__(self, x) -> nn.LayerRef:
@@ -145,8 +145,8 @@ def test_simple_net_share_params():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
-      self.lstm = nn.LSTM(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped_method
     def __call__(self, x) -> nn.LayerRef:
@@ -170,9 +170,9 @@ def test_simple_net_share_params():
 def test_explicit_root_ctx_sub():
   class _Net(nn.Module):
     # noinspection PyShadowingNames
-    def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
+    def __init__(self, out_dim: nn.Dim, dropout=0.1):
       super().__init__()
-      self.linear = nn.Linear(n_out=n_out, l2=l2)
+      self.linear = nn.Linear(out_dim)
       self.dropout = dropout
 
     @nn.scoped_method
@@ -185,7 +185,7 @@ def test_explicit_root_ctx_sub():
       return x
 
   with nn.NameCtx.new_root() as name_ctx:
-    net = _Net()
+    net = _Net(out_dim=nn.FeatureDim("linear-out", 13))
     out = net(nn.get_extern_data("data"), name=name_ctx)
     assert isinstance(out, nn.Layer)
 
@@ -210,9 +210,9 @@ def test_root_mod_call_twice():
     Test block
     """
     # noinspection PyShadowingNames
-    def __init__(self, l2=1e-07, dropout=0.1, n_out=13):
+    def __init__(self, out_dim: nn.Dim, dropout=0.1):
       super().__init__()
-      self.linear = nn.Linear(n_out=n_out, l2=l2)
+      self.linear = nn.Linear(out_dim)
       self.dropout = dropout
 
     @nn.scoped_method
@@ -225,7 +225,7 @@ def test_root_mod_call_twice():
       return x
 
   with nn.NameCtx.new_root() as name_ctx:
-    test_block = TestBlock()
+    test_block = TestBlock(nn.FeatureDim("linear-out", 13))
     y = test_block(nn.get_extern_data("input1"), name=name_ctx)
     z = test_block(nn.get_extern_data("input2"))
 
@@ -245,7 +245,7 @@ def test_multiple_returns_depth_1():
   class _SubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
@@ -279,7 +279,7 @@ def test_multiple_returns_depth_2():
   class _SubSubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
@@ -327,8 +327,8 @@ def test_from_call_variations():
   class _SubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
-      self.linear2 = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
@@ -368,8 +368,8 @@ def test_from_call_variations2():
   class _SubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
-      self.linear2 = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
@@ -383,8 +383,8 @@ def test_from_call_variations2():
   class _SubNet2(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(n_out=13)
-      self.linear2 = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef, y: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
@@ -402,7 +402,7 @@ def test_from_call_variations2():
       super().__init__()
       self.sub = _SubNet()
       self.sub2 = _SubNet2()
-      self.linear = nn.Linear(n_out=13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped_method
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
@@ -456,7 +456,8 @@ def test_module_list():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.ls = nn.ModuleList([nn.Linear(i + 3) for i in range_(4)])
+      base_dim = nn.FeatureDim("linear-out", 3)
+      self.ls = nn.ModuleList([nn.Linear(base_dim + i) for i in range_(4)])
 
     @nn.scoped_method
     def __call__(self, out: nn.LayerRef) -> nn.LayerRef:
@@ -517,9 +518,9 @@ def test_sequential_named_case():
       super().__init__()
       from collections import OrderedDict
       x = OrderedDict()
-      x["one"] = nn.Linear(1)
-      x["two"] = nn.Linear(2)
-      x["three"] = nn.Linear(3)
+      x["one"] = nn.Linear(nn.FeatureDim("linear1-out", 1))
+      x["two"] = nn.Linear(nn.FeatureDim("linear2-out", 2))
+      x["three"] = nn.Linear(nn.FeatureDim("linear3-out", 3))
       self.seq = nn.Sequential(x)
 
     @nn.scoped_method
@@ -544,12 +545,13 @@ def test_sequential_named_case():
 def test_split_glu():
   class _Net(nn.Module):
     @nn.scoped_method
-    def __call__(self, x: nn.LayerRef) -> nn.Layer:
+    def __call__(self, x: nn.LayerRef, axis: nn.Dim) -> nn.Layer:
       """forward"""
-      a, b = nn.split(x, axis="F", num_splits=2)
+      a, b = nn.split(x, axis=axis, out_dims=[axis // 2, axis // 2])
       return a * nn.sigmoid(b)
 
   net = _Net()
+  # TODO how to get extern data dims?
   net_dict = nn.make_root_net_dict(net, "data")
   pprint(net_dict)
 
@@ -582,12 +584,13 @@ def test_self_attention():
 def test_deepcopy():
   import copy
 
-  layers = nn.Sequential(copy.deepcopy(nn.Linear(1)) for _ in range(3))
+  dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
+  layers = nn.Sequential(copy.deepcopy(nn.Linear(dim)) for dim in dims)
   net_dict = nn.make_root_net_dict(layers, "data")
   pprint(net_dict)
   assert_equal(
     net_dict,
-    {'0': {'class': 'linear', 'from': 'data:data', 'n_out': 1},
-     '1': {'class': 'linear', 'from': '0', 'n_out': 1},
-     '2': {'class': 'linear', 'from': '1', 'n_out': 1},
+    {'0': {'class': 'linear', 'from': 'data:data', 'out_dim': dims[0]},
+     '1': {'class': 'linear', 'from': '0', 'out_dim': dims[1]},
+     '2': {'class': 'linear', 'from': '1', 'out_dim': dims[2]},
      'output': {'class': 'copy', 'from': '2'}})
