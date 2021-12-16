@@ -20,25 +20,25 @@ class ModuleList(Module):
     super().__init__()
     if len(modules) == 1 and isinstance(modules[0], dict):
       for key, module in modules[0].items():
-        setattr(self, key, _convert_to_maker(module))
+        setattr(self, key, _convert_to_module(module))
     elif len(modules) == 1 and isinstance(modules[0], ModuleList):
-      for key, module in modules[0]._get_makers().items():
-        setattr(self, key, _convert_to_maker(module))
+      for key, module in modules[0]._get_modules().items():
+        setattr(self, key, _convert_to_module(module))
     elif len(modules) == 1 and _is_iterable(modules[0]):
       for idx, module in enumerate(modules[0]):
-        setattr(self, str(idx), _convert_to_maker(module))
+        setattr(self, str(idx), _convert_to_module(module))
     else:
       for idx, module in enumerate(modules):
-        setattr(self, str(idx), _convert_to_maker(module))
+        setattr(self, str(idx), _convert_to_module(module))
 
-  def _get_makers(self) -> Dict[str, Module]:
+  def _get_modules(self) -> Dict[str, Module]:
     return {key: value for (key, value) in vars(self).items() if isinstance(value, Module)}
 
   def append(self, module: _ModT) -> ModuleList:
     """
     appends one module to the list
     """
-    setattr(self, str(len(self)), _convert_to_maker(module))
+    setattr(self, str(len(self)), _convert_to_module(module))
     return self
 
   def extend(self, modules: Iterable[_ModT]) -> ModuleList:
@@ -50,21 +50,21 @@ class ModuleList(Module):
     return self
 
   def __len__(self) -> int:
-    return len(self._get_makers())
+    return len(self._get_modules())
 
   def __iter__(self) -> Iterator[_ModT]:
-    return iter(self._get_makers().values())
+    return iter(self._get_modules().values())
 
   def __getitem__(self, idx) -> Union[ModuleList, Module]:
     from builtins import slice
     if isinstance(idx, slice):
-      return self.__class__(dict(list(self._get_makers().items())[idx]))
+      return self.__class__(dict(list(self._get_modules().items())[idx]))
     else:
-      return list(self._get_makers().values())[idx]
+      return list(self._get_modules().values())[idx]
 
   def __setitem__(self, idx: int, module: _ModT) -> None:
-    key = list(self._get_makers().keys())[idx]
-    return setattr(self, key, _convert_to_maker(module))
+    key = list(self._get_modules().keys())[idx]
+    return setattr(self, key, _convert_to_module(module))
 
   __call__ = Module.__call__  # stays abstract
 
@@ -90,7 +90,7 @@ def sequential(source: LayerRef, *modules) -> LayerRef:
   return Sequential(*modules)(source)
 
 
-def _convert_to_maker(obj: _ModT) -> Module:
+def _convert_to_module(obj: _ModT) -> Module:
   if isinstance(obj, Module):
     return obj
   elif callable(obj):

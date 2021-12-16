@@ -251,7 +251,7 @@ def setup():
             f"      'from': [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],", file=f)
         if sig.has_module_call_args() or sig.has_recurrent_state():
           print("      **args,", file=f)
-        print("      **self.get_opts()}, maker=self)", file=f)
+        print("      **self.get_opts()}, module=self)", file=f)
         if sig.has_recurrent_state():
           print("    state = self.returnn_layer_get_recurrent_state(layer)", file=f)
           print("    return layer, state", file=f)
@@ -1092,7 +1092,7 @@ def get_module_class_name_for_layer_class(sig: LayerSignature) -> str:
     return name
   # LayersHidden is our explicit list.
   # When some layer is purely functional (is_functional), then we just make the function public
-  # but keep the wrapped layer maker hidden.
+  # but keep the wrapped module hidden.
   # When it has recurrent state, we anyway better use explicit public wrappers.
   # https://github.com/rwth-i6/returnn_common/issues/31
   if layer_class.layer_class in LayersHidden or sig.is_functional() or sig.has_recurrent_state():

@@ -243,7 +243,7 @@ def scoped(func):
     else:
       self = _Functional(func)
     from . import copy
-    with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
+    with NameCtx.get_from_call(module=self, name=name) as name_ctx:
       name_ctx.is_subnet_ctx = True
       res = func(*args, **kwargs)
       if name_ctx.parent is None:  # root
@@ -315,7 +315,7 @@ class Module:
   The naming logic of created layers
   is handled via :class:`NameCtx`.
 
-  A developer which wants to derive its own layer maker
+  A developer which wants to derive its own module
   would overwrite :func:`__call__` and use :func:`make_layer`.
   Usually :func:`make_layer` is never needed though,
   as all standard RETURNN layers are already wrapped,
@@ -332,7 +332,7 @@ class Module:
 
   def __init__(self):
     """
-    By convention, any options to the layer maker or module are passed to the constructor,
+    By convention, any options to the module or module are passed to the constructor,
     and potential changing inputs (other layers)
     are passed to :func:`__call__` (:func:`make_layer_dict`).
     """
@@ -380,7 +380,7 @@ class Module:
 
   def parents_with_attr(self) -> Iterator[Tuple[Module, str]]:
     """
-    Get all (immediate) parent makers, and the attrib name which points to us
+    Get all (immediate) parent modules, and the attrib name which points to us
     """
     # We rely on deterministic order of dict.
     for parent, attr in self._parents.keys():
@@ -391,14 +391,14 @@ class Module:
 
   def children(self) -> Iterator[Module]:
     """
-    Get all (immediate) children makers
+    Get all (immediate) children modules
     """
     for name, child in self.named_children():
       yield child
 
   def named_children(self) -> Iterator[Tuple[str, Module]]:
     """
-    Get all (immediate) children makers
+    Get all (immediate) children modules
     """
     # We rely on deterministic order of dict and vars.
     for key, value in vars(self).items():
@@ -421,11 +421,11 @@ class Module:
     if self not in memo:
       memo.add(self)
       yield prefix, self
-      for name, maker in self.named_children():
-        if maker is None:
+      for name, module in self.named_children():
+        if module is None:
           continue
         sub_prefix = prefix + ('.' if prefix else '') + name
-        for m in maker.named_children_deep(memo, sub_prefix):
+        for m in module.named_children_deep(memo, sub_prefix):
           yield m
 
   @property
@@ -433,8 +433,8 @@ class Module:
     """
     Whether this module has variables
     """
-    for maker in self.children():
-      if maker.has_variables:
+    for module in self.children():
+      if module.has_variables:
         return True
     return False
 
@@ -460,7 +460,7 @@ class _Functional(Module):
 class LayerState(dict):
   """
   Covers all the state of a layer,
-  i.e. exactly what needs to be stored and passed into the module or layer maker
+  i.e. exactly what needs to be stored and passed into the module or module
   next time you call it as initial state.
 
   This behaves somewhat like a namedtuple, although we derive from dict.
@@ -535,10 +535,10 @@ class _ReturnnWrappedLayerBase(Module):
 
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, NameCtx]] = None,
-               maker: Optional[Module] = None) -> Layer:
+               module: Optional[Module] = None) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
-  When no name is given, this assumes that the top name ctx corresponds to this layer maker.
+  When no name is given, this assumes that the top name ctx corresponds to this module.
 
   If a layer has params, and you want the param sharing logic,
   you should instead derive a new class from :class:`Module`.
@@ -552,11 +552,11 @@ def make_layer(layer_dict: LayerDictRaw, *,
   :param str|NameCtx|None name:
     if str: (suggested) layer name. if given, will create a new :class:`NameCtx`
     if NameCtx, will use this.
-  :param Module|None maker: if given, will create new name scope with this maker
+  :param Module|None module: if given, will create new name scope with this module
   """
-  if isinstance(name, str) or maker:
+  if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
-    name_ctx = NameCtx.get_from_call(maker=maker, name=name)
+    name_ctx = NameCtx.get_from_call(module=module, name=name)
     return make_layer(layer_dict=layer_dict, name=name_ctx)
   elif isinstance(name, NameCtx):
     name_ctx = name
@@ -570,7 +570,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
-  if name_ctx.maker and name_ctx.maker.has_variables:
+  if name_ctx.module and name_ctx.module.has_variables:
     # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
     # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
     if name_ctx.is_root:
@@ -593,8 +593,8 @@ def make_layer(layer_dict: LayerDictRaw, *,
 
   name_ctx.is_subnet_ctx = False
   layer = Layer(layer_dict=layer_dict, name_ctx=name_ctx)
-  if name_ctx.maker:
-    name_ctx.maker.calls.append(name_ctx)
+  if name_ctx.module:
+    name_ctx.module.calls.append(name_ctx)
   return layer
 
 
@@ -616,7 +616,7 @@ def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
   """
   assert isinstance(model, Module)
   from . import copy
-  with NameCtx(maker=model, parent=None) as name_ctx:
+  with NameCtx(module=model, parent=None) as name_ctx:
     name_ctx.is_subnet_ctx = True
     args = tuple(get_extern_data(arg) for arg in args)
     kwargs = {key: get_extern_data(value) for (key, value) in kwargs.items()}
@@ -684,8 +684,8 @@ class Loop:
     self.extra_opts = {
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__", "name"}}
-    self.layer_maker = _LoopLayerMaker(loop=self)
-    self.name_ctx = NameCtx(maker=self.layer_maker, suggested_name=name, parent=NameCtx.current_ctx())
+    self.layer_module = _LoopLayerModule(loop=self)
+    self.name_ctx = NameCtx(module=self.layer_module, suggested_name=name, parent=NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
     self.name_ctx.extend_reserved_names({"output", "end"})
     self._entered_scope = False
@@ -721,7 +721,7 @@ class Loop:
     finally:
       self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
     if not exc_type:
-      self.layer_maker()  # create the rec layer itself
+      self.layer_module()  # create the rec layer itself
 
   @property
   def state(self) -> Union[_StateHolder, LayerState]:
@@ -803,11 +803,11 @@ class Loop:
     return self.end_ref
 
 
-class _LoopLayerMaker(Module):
+class _LoopLayerModule(Module):
   layer_name_scope = ""
 
   def __init__(self, loop: Loop):
-    super(_LoopLayerMaker, self).__init__()
+    super(_LoopLayerModule, self).__init__()
     self.loop = loop
 
   def __call__(self) -> Layer:
@@ -824,8 +824,8 @@ class _LoopLayerMaker(Module):
     """
     # We rely on deterministic order of dict.
     for name, sub_name_ctx in self.loop.name_ctx.children.items():
-      if sub_name_ctx.maker:
-        yield name, sub_name_ctx.maker
+      if sub_name_ctx.module:
+        yield name, sub_name_ctx.module
 
 
 class PrevLayerRef(LayerRef):
@@ -1115,11 +1115,11 @@ class NameCtx:
     return ctx
 
   def __init__(self, *,
-               maker: Optional[Module] = None,
+               module: Optional[Module] = None,
                suggested_name: Optional[str] = None,
                name: Optional[str] = None,
                parent: Optional[NameCtx] = NotSpecified):
-    self.maker = maker
+    self.module = module
     self.layer_ref = None  # type: Optional[LayerRef]
     self.layer = None  # type: Optional[Layer]
     self._layer_abs_name_scope = None  # type: Optional[str]
@@ -1137,22 +1137,22 @@ class NameCtx:
       self.parent._add_child(self)
 
   @classmethod
-  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], maker: Module) -> NameCtx:
+  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: Module) -> NameCtx:
     """
-    This is used e.g. for user module or maker calls.
+    This is used e.g. for user module or module calls.
     The name argument can either be a predefined name ctx, or a suggested name.
     """
     if isinstance(name, NameCtx):
-      if name.maker is None:
-        name.maker = maker
+      if name.module is None:
+        name.module = module
       else:
-        assert name.maker is maker
+        assert name.module is module
       return name
     assert not name or isinstance(name, str)
-    return NameCtx(maker=maker, suggested_name=name)
+    return NameCtx(module=module, suggested_name=name)
 
   def __repr__(self):
-    return f"<{self.__class__.__name__} maker:{self.maker} name:{self.get_abs_name_repr()}>"
+    return f"<{self.__class__.__name__} module:{self.module} name:{self.get_abs_name_repr()}>"
 
   @property
   def root(self) -> NameCtx:
@@ -1232,16 +1232,16 @@ class NameCtx:
     """
     if self._layer_abs_name_scope is not None:
       return self._layer_abs_name_scope
-    assert self.maker
-    if self.maker.layer_name_scope is not NotSpecified:
-      assert isinstance(self.maker.layer_name_scope, str)
-      if self.maker.layer_name_scope == "":
+    assert self.module
+    if self.module.layer_name_scope is not NotSpecified:
+      assert isinstance(self.module.layer_name_scope, str)
+      if self.module.layer_name_scope == "":
         self._layer_abs_name_scope = self.parent.layer_abs_name_scope
       else:
         parent_prefix = self.parent.layer_abs_name_scope
         if parent_prefix:
           parent_prefix += "/"
-        self._layer_abs_name_scope = parent_prefix + self.maker.layer_name_scope
+        self._layer_abs_name_scope = parent_prefix + self.module.layer_name_scope
     else:
       self._layer_abs_name_scope = self._get_abs_canonical_name()
     return self._layer_abs_name_scope
@@ -1250,24 +1250,24 @@ class NameCtx:
     """
     :param str join_str: maybe "." is more common for attrib chains.
       however, we use "/" as default, to make this consistent to :func:`get_abs_name`.
-    :return: unique absolute layer name for the maker (module) hierarchy.
+    :return: unique absolute layer name for the module (module) hierarchy.
       https://github.com/rwth-i6/returnn_common/issues/25
     """
-    assert self.maker, f"{self} is not assigned to a maker (module)"
+    assert self.module, f"{self} is not assigned to a module (module)"
     root = self.root
-    root_maker = root.maker  # might be None
-    assert root_maker, f"root name ctx {self.root} is not assigned to a maker (module)"
-    if root_maker is self.maker:
+    root_module = root.module  # might be None
+    assert root_module, f"root name ctx {self.root} is not assigned to a module (module)"
+    if root_module is self.module:
       return ""  # special case
-    # Do a depth-first search through the parents, starting from self.maker, until we find root_maker.
+    # Do a depth-first search through the parents, starting from self.module, until we find root_module.
     # Use depth-first instead of breadth-first to prefer the first parent when there are multiple.
-    queue = [self.maker]
-    cache = {}  # maker -> full name
+    queue = [self.module]
+    cache = {}  # module -> full name
     while queue:
-      maker = queue.pop(-1)  # depth-first
-      postfix = (join_str + cache[maker]) if maker in cache else ""
+      module = queue.pop(-1)  # depth-first
+      postfix = (join_str + cache[module]) if module in cache else ""
       queue_ext = []
-      for parent, attr in maker.parents_with_attr():
+      for parent, attr in module.parents_with_attr():
         if parent in cache:
           continue
         for call in parent.calls:
@@ -1280,19 +1280,19 @@ class NameCtx:
         cache[parent] = attr + postfix
         queue_ext.append(parent)
       queue.extend(reversed(queue_ext))
-      if root_maker in cache:
+      if root_module in cache:
         break
-    if root_maker not in cache:
+    if root_module not in cache:
       err_msgs = []
-      for maker, name in cache.items():
-        err_msgs.append(f"  {maker}: {name}\n")
+      for module, name in cache.items():
+        err_msgs.append(f"  {module}: {name}\n")
       if not err_msgs:
-        err_msgs.append(f"  (None, {self.maker} has no parent modules)\n")
+        err_msgs.append(f"  (None, {self.module} has no parent modules)\n")
       raise Exception(
         f"{self}: no abs canonical name found."
         f" Found partial names:\n{''.join(err_msgs)}"
-        f"There must be a path of attribs from the root {root_maker} to {self.maker}.")
-    return cache[root_maker]
+        f"There must be a path of attribs from the root {root_module} to {self.module}.")
+    return cache[root_module]
 
   def get_name_in_ctx(self, ctx: NameCtx) -> str:
     """
@@ -1358,20 +1358,20 @@ class NameCtx:
     self.stack.pop(-1)
 
   def _get_suggested_name(self) -> str:
-    assert self.maker
+    assert self.module
     reserved_names = set(self.parent.children.keys()) | self._ReservedNames
-    if self.parent.maker:
-      # Check parent name scope maker, any attrib from there to self.maker.
-      # Do a depth-first search through the parents, starting from self.maker,
-      # until we find self.parent.maker.
+    if self.parent.module:
+      # Check parent name scope module, any attrib from there to self.module.
+      # Do a depth-first search through the parents, starting from self.module,
+      # until we find self.parent.module.
       # Somewhat consistent to _get_abs_canonical_name.
-      queue = [self.maker]
+      queue = [self.module]
       cache = {}  # parent -> full attrib
       while queue:
-        maker = queue.pop(-1)  # depth-first
-        postfix = f".{cache[maker]}" if maker in cache else ""
+        module = queue.pop(-1)  # depth-first
+        postfix = f".{cache[module]}" if module in cache else ""
         queue_ext = []
-        for parent, attr in maker.parents_with_attr():
+        for parent, attr in module.parents_with_attr():
           if parent in cache:
             if cache[parent] in reserved_names:
               cache[parent] = attr + postfix  # anyway overwrite
@@ -1379,36 +1379,36 @@ class NameCtx:
           cache[parent] = attr + postfix
           queue_ext.append(parent)
         queue.extend(reversed(queue_ext))
-        if self.parent.maker in cache:
+        if self.parent.module in cache:
           break
-      if self.parent.maker in cache:
-        return cache[self.parent.maker]
-    # Check parent maker (or module), and use this attrib name.
+      if self.parent.module in cache:
+        return cache[self.parent.module]
+    # Check parent module (or module), and use this attrib name.
     # First check if we can find any attr which is not yet reserved.
-    for parent, attr in self.maker.parents_with_attr():
+    for parent, attr in self.module.parents_with_attr():
       if attr not in reserved_names:
         return attr
     # Now again, to just use any.
-    for parent, attr in self.maker.parents_with_attr():
+    for parent, attr in self.module.parents_with_attr():
       return attr
     # Check potential previous calls, and reuse their name.
-    for call in self.maker.calls:
+    for call in self.module.calls:
       if call is self:
         continue  # ignore this
       if call.parent is self.parent:
         return call.name
     # Fallback to the canonical name.
-    return self.maker.get_default_name()
+    return self.module.get_default_name()
 
   def _get_unique_name(self, suggested_name: Optional[str] = None) -> str:
     name = suggested_name or self._get_suggested_name()
     reserved_names = set(self.parent.children.keys()) | self._ReservedNames
-    if self.parent.maker:
-      # Also reserve all attrib names of the parent maker.
+    if self.parent.module:
+      # Also reserve all attrib names of the parent module.
       # However, we allow to use the name if it is the attrib itself.
-      if self.maker and name not in reserved_names and getattr(self.parent.maker, name, None) is self.maker:
+      if self.module and name not in reserved_names and getattr(self.parent.module, name, None) is self.module:
         return name
-      reserved_names |= set(vars(self.parent.maker).keys())
+      reserved_names |= set(vars(self.parent.module).keys())
     if name not in reserved_names:
       return name
     i = 0

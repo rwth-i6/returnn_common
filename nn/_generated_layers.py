@@ -283,7 +283,7 @@ class BatchNorm(_Base):
     return make_layer({
       'class': 'batch_norm',
       'from': source,
-      **self.get_opts()}, maker=self)
+      **self.get_opts()}, module=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -670,7 +670,7 @@ class Linear(_Base):
     return make_layer({
       'class': 'linear',
       'from': source,
-      **self.get_opts()}, maker=self)
+      **self.get_opts()}, module=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1594,7 +1594,7 @@ class Conv(_Base):
       'class': 'conv',
       'from': source,
       **args,
-      **self.get_opts()}, maker=self)
+      **self.get_opts()}, module=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1778,7 +1778,7 @@ class TransposedConv(_Base):
       'class': 'transposed_conv',
       'from': source,
       **args,
-      **self.get_opts()}, maker=self)
+      **self.get_opts()}, module=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2793,7 +2793,7 @@ class _Rec(_Base):
       'class': 'rec',
       'from': source,
       **args,
-      **self.get_opts()}, maker=self)
+      **self.get_opts()}, module=self)
     state = self.returnn_layer_get_recurrent_state(layer)
     return layer, state
 
@@ -3347,7 +3347,7 @@ class _TwoDLSTM(_Base):
       'class': 'twod_lstm',
       'from': source,
       **args,
-      **self.get_opts()}, maker=self)
+      **self.get_opts()}, module=self)
     state = self.returnn_layer_get_recurrent_state(layer)
     return layer, state
 
