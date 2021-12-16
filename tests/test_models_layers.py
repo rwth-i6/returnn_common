@@ -74,6 +74,7 @@ def test_simple_net_rc():
       super().__init__()
       self.linear = rc.nn.Linear(nn.FeatureDim("linear-out", 13))
 
+    @nn.scoped
     def __call__(self, x: rc.nn.LayerRef) -> rc.nn.LayerRef:
       """
       Forward
@@ -440,8 +441,8 @@ def test_module_list():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      base_dim = nn.FeatureDim("linear-out", 3)
-      self.ls = nn.ModuleList([nn.Linear(base_dim + i) for i in range_(4)])
+      self.base_dim = nn.FeatureDim("linear-out", 3)
+      self.ls = nn.ModuleList([nn.Linear(self.base_dim + i) for i in range_(4)])
 
     @nn.scoped
     def __call__(self, out: nn.LayerRef) -> nn.LayerRef:
@@ -462,12 +463,14 @@ def test_module_list():
   assert net_dict["ls.3"]["from"] == "ls.2"
   assert net_dict["output"]["from"] == "ls.3"
 
+  assert net_dict["ls.0"]["out_dim"] == net.base_dim
+  assert net_dict["ls.1"]["out_dim"] == net.base_dim + 1
   assert_equal(
     net_dict,
-    {'ls.0': {'class': 'linear', 'from': 'data:data', 'n_out': 3, 'name_scope': 'ls/0'},
-     'ls.1': {'class': 'linear', 'from': 'ls.0', 'n_out': 4, 'name_scope': 'ls/1'},
-     'ls.2': {'class': 'linear', 'from': 'ls.1', 'n_out': 5, 'name_scope': 'ls/2'},
-     'ls.3': {'class': 'linear', 'from': 'ls.2', 'n_out': 6, 'name_scope': 'ls/3'},
+    {'ls.0': {'class': 'linear', 'from': 'data:data', 'out_dim': net.base_dim, 'name_scope': 'ls/0'},
+     'ls.1': {'class': 'linear', 'from': 'ls.0', 'out_dim': net.base_dim + 1, 'name_scope': 'ls/1'},
+     'ls.2': {'class': 'linear', 'from': 'ls.1', 'out_dim': net.base_dim + 2, 'name_scope': 'ls/2'},
+     'ls.3': {'class': 'linear', 'from': 'ls.2', 'out_dim': net.base_dim + 3, 'name_scope': 'ls/3'},
      'output': {'class': 'copy', 'from': 'ls.3'}})
 
 
