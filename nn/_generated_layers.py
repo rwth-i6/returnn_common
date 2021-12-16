@@ -159,7 +159,7 @@ def copy(
   return make_layer({
     'class': 'copy',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'copy')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -185,7 +185,7 @@ def scaled_gradient(
   return make_layer({
     'class': 'scaled_grad',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'scaled_gradient')
 
 
 class BatchNorm(_Base):
@@ -320,7 +320,7 @@ def layer_norm(
   return make_layer({
     'class': 'layer_norm',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'layer_norm')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -380,7 +380,7 @@ def normalize(
   return make_layer({
     'class': 'norm',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'normalize')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -406,7 +406,7 @@ def math_norm(
   return make_layer({
     'class': 'math_norm',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'math_norm')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -453,7 +453,7 @@ def slice(
   return make_layer({
     'class': 'slice',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'slice')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -496,7 +496,7 @@ def slice_nd(
   return make_layer({
     'class': 'slice_nd',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'slice_nd')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -538,7 +538,7 @@ def gather(
   return make_layer({
     'class': 'gather',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'gather')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -604,7 +604,7 @@ def scatter_nd(
   return make_layer({
     'class': 'scatter_nd',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'scatter_nd')
 
 
 class Linear(_Base):
@@ -699,7 +699,7 @@ def length(
   return make_layer({
     'class': 'length',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'length')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -749,7 +749,7 @@ def softmax(
   return make_layer({
     'class': 'softmax_over_spatial',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'softmax')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -789,7 +789,7 @@ def seq_len_mask(
   return make_layer({
     'class': 'seq_len_mask',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'seq_len_mask')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -827,7 +827,7 @@ def rand_int(
   return make_layer({
     'class': 'rand_int',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'rand_int')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -866,7 +866,7 @@ def range(
   return make_layer({
     'class': 'range',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'range')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -897,7 +897,7 @@ def range_in_axis(
   return make_layer({
     'class': 'range_in_axis',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'range_in_axis')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -939,7 +939,7 @@ def range_from_length(
   return make_layer({
     'class': 'range_from_length',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'range_from_length')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -956,7 +956,7 @@ def batch_softmax(
   return make_layer({
     'class': 'batch_softmax',
     'from': source,
-    }, name=name)
+    }, name=name or 'batch_softmax')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -982,7 +982,7 @@ def constant(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
     'class': 'constant',
-    **args}, name=name)
+    **args}, name=name or 'constant')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1039,7 +1039,7 @@ def _window(
   layer = make_layer({
     'class': 'window',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'window')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
@@ -1075,7 +1075,7 @@ def _cumsum(
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'cumsum')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
@@ -1113,7 +1113,7 @@ def pad(
   return make_layer({
     'class': 'pad',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'pad')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1145,7 +1145,7 @@ def merge_dims(
   return make_layer({
     'class': 'merge_dims',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'merge_dims')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1173,7 +1173,7 @@ def _split(
   return make_layer({
     'class': 'split',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'split')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1223,7 +1223,7 @@ def split_dims(
   return make_layer({
     'class': 'split_dims',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'split_dims')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1248,7 +1248,7 @@ def split_batch_time(
   return make_layer({
     'class': 'split_batch_time',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'split_batch_time')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1279,7 +1279,7 @@ def flatten_batch(
   return make_layer({
     'class': 'flatten_batch',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'flatten_batch')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1298,7 +1298,7 @@ def unflatten_batch(
   return make_layer({
     'class': 'unflatten_batch',
     'from': source,
-    }, name=name)
+    }, name=name or 'unflatten_batch')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1342,7 +1342,7 @@ def unflatten_nd(
   return make_layer({
     'class': 'unflatten_nd',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'unflatten_nd')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1376,7 +1376,7 @@ def repeat(
   return make_layer({
     'class': 'repeat',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'repeat')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1402,7 +1402,7 @@ def tile(
   return make_layer({
     'class': 'tile',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'tile')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1425,7 +1425,7 @@ def cast(
   return make_layer({
     'class': 'cast',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'cast')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1471,7 +1471,7 @@ def reinterpret_data(
   return make_layer({
     'class': 'reinterpret_data',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'reinterpret_data')
 
 
 class Conv(_Base):
@@ -1645,7 +1645,7 @@ def pool(
   return make_layer({
     'class': 'pool',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'pool')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1676,7 +1676,7 @@ def dct(
   return make_layer({
     'class': 'dct',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'dct')
 
 
 class TransposedConv(_Base):
@@ -1813,7 +1813,7 @@ def reduce(
   return make_layer({
     'class': 'reduce',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'reduce')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1844,7 +1844,7 @@ def reduce_out(
   return make_layer({
     'class': 'reduce_out',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'reduce_out')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1873,7 +1873,7 @@ def squeeze(
   return make_layer({
     'class': 'squeeze',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'squeeze')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1904,7 +1904,7 @@ def stack(
   return make_layer({
     'class': 'stack',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'stack')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1942,7 +1942,7 @@ def prefix_in_time(
   return make_layer({
     'class': 'prefix_in_time',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'prefix_in_time')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1975,7 +1975,7 @@ def postfix_in_time(
   return make_layer({
     'class': 'postfix_in_time',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'postfix_in_time')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2007,7 +2007,7 @@ def time_chunking(
   return make_layer({
     'class': 'time_chunking',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'time_chunking')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2030,7 +2030,7 @@ def time_un_chunking(
   return make_layer({
     'class': 'time_unchunking',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'time_un_chunking')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2081,7 +2081,7 @@ def dot(
   return make_layer({
     'class': 'dot',
     'from': [source1, source2],
-    **args}, name=name)
+    **args}, name=name or 'dot')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2117,7 +2117,7 @@ def shift_axis(
   return make_layer({
     'class': 'shift_axis',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'shift_axis')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2156,7 +2156,7 @@ def resize(
   return make_layer({
     'class': 'resize',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'resize')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2188,7 +2188,7 @@ def remove(
   return make_layer({
     'class': 'remove',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'remove')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2229,7 +2229,7 @@ def _combine(
   return make_layer({
     'class': 'combine',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'combine')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2267,7 +2267,7 @@ def _eval(
   return make_layer({
     'class': 'eval',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'eval')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2313,7 +2313,7 @@ def compare(
   return make_layer({
     'class': 'compare',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'compare')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2349,7 +2349,7 @@ def switch(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
     'class': 'switch',
-    **args}, name=name)
+    **args}, name=name or 'switch')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2388,7 +2388,7 @@ def search_sorted(
   return make_layer({
     'class': 'search_sorted',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'search_sorted')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2418,7 +2418,7 @@ def variable(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
     'class': 'variable',
-    **args}, name=name)
+    **args}, name=name or 'variable')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2447,7 +2447,7 @@ def forced_alignment(
   return make_layer({
     'class': 'forced_align',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'forced_alignment')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2495,7 +2495,7 @@ def fast_baum_welch(
   return make_layer({
     'class': 'fast_bw',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'fast_baum_welch')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2523,7 +2523,7 @@ def synthetic_gradient(
   return make_layer({
     'class': 'synthetic_gradient',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'synthetic_gradient')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2546,7 +2546,7 @@ def tikhonov_regularization(
   return make_layer({
     'class': 'tikhonov_regularization',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'tikhonov_regularization')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2572,7 +2572,7 @@ def print(
   return make_layer({
     'class': 'print',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'print')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2620,7 +2620,7 @@ def hdf_dump(
   return make_layer({
     'class': 'hdf_dump',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'hdf_dump')
 
 
 class _Rec(_Base):
@@ -2830,7 +2830,7 @@ def _get_last_hidden_state(
   return make_layer({
     'class': 'get_last_hidden_state',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'get_last_hidden_state')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2874,7 +2874,7 @@ def rec_unstack(
   return make_layer({
     'class': 'rec_unstack',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'rec_unstack')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2965,7 +2965,7 @@ def choice(
   return make_layer({
     'class': 'choice',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'choice')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2998,7 +2998,7 @@ def decide(
   return make_layer({
     'class': 'decide',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'decide')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3021,7 +3021,7 @@ def choice_get_beam_scores(
   return make_layer({
     'class': 'choice_get_beam_scores',
     'from': source,
-    }, name=name)
+    }, name=name or 'choice_get_beam_scores')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3039,7 +3039,7 @@ def choice_get_src_beams(
   return make_layer({
     'class': 'choice_get_src_beams',
     'from': source,
-    }, name=name)
+    }, name=name or 'choice_get_src_beams')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3068,7 +3068,7 @@ def split_batch_beam(
   return make_layer({
     'class': 'split_batch_beam',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'split_batch_beam')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3109,7 +3109,7 @@ def positional_encoding(
   return make_layer({
     'class': 'positional_encoding',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'positional_encoding')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3163,7 +3163,7 @@ def _ken_lm_state(
   layer = make_layer({
     'class': 'kenlm',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'ken_lm_state')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
@@ -3210,7 +3210,7 @@ def _edit_distance_table(
   layer = make_layer({
     'class': 'edit_distance_table',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'edit_distance_table')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
@@ -3248,7 +3248,7 @@ def optimal_completions(
   return make_layer({
     'class': 'optimal_completions',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'optimal_completions')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3289,7 +3289,7 @@ def _unmask(
   layer = make_layer({
     'class': 'unmask',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'unmask')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
@@ -3443,6 +3443,6 @@ def _cum_concat(
   layer = make_layer({
     'class': 'cum_concat',
     'from': source,
-    **args}, name=name)
+    **args}, name=name or 'cum_concat')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state

@@ -342,9 +342,9 @@ def setup():
       elif sig.explicit_source_list():
         print(f"    'from': [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],", file=f)
       if sig.has_recurrent_state() or mod_args:
-        print("    **args}, name=name)", file=f)
+        print(f"    **args}}, name=name or {name.lstrip('_')!r})", file=f)
       else:
-        print("    }, name=name)", file=f)
+        print(f"    }}, name=name or {name.lstrip('_')!r})", file=f)
       if sig.has_recurrent_state():
         print("  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
         print("  return layer, out_state", file=f)
