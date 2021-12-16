@@ -30,7 +30,7 @@ Code example::
         super().__init__()
         self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 1024))
 
-      @scoped
+      @nn.scoped
       def __call__(self, x: nn.LayerRef) -> nn.Layer:
         y = self.lstm(x)
         return y
