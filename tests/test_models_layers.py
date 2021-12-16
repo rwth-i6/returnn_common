@@ -62,9 +62,9 @@ def test_simple_net_module_explicit_root_ctx():
     pprint(net_dict)
 
   assert "linear" in net_dict
-  lstm_layer_dict = net_dict["linear"]
-  assert_equal(lstm_layer_dict["class"], "linear")
-  assert_equal(lstm_layer_dict["from"], "data:data")
+  linear_layer_dict = net_dict["linear"]
+  assert_equal(linear_layer_dict["class"], "linear")
+  assert_equal(linear_layer_dict["from"], "data:data")
   dummy_run_net(net_dict)
 
 
@@ -146,7 +146,7 @@ def test_simple_net_share_params():
     def __init__(self):
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
-      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
+      self.linear2 = nn.Linear(nn.FeatureDim("linear2-out", 13))
 
     @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
@@ -154,16 +154,16 @@ def test_simple_net_share_params():
       Forward
       """
       x = self.linear(x)
-      x, _ = self.lstm(x)
-      x, _ = self.lstm(x)
+      x = self.linear2(x)
+      x = self.linear2(x)
       return x
 
   net = _Net()
   net_dict = nn.make_root_net_dict(net, x="data")
   pprint(net_dict)
-  assert "lstm" in net_dict
-  assert "lstm_0" in net_dict
-  assert_equal(net_dict["lstm_0"]["name_scope"], "lstm")
+  assert "linear2" in net_dict
+  assert "linear2_0" in net_dict
+  assert_equal(net_dict["linear2_0"]["name_scope"], "linear2")
   dummy_run_net(net_dict)
 
 
