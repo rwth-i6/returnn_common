@@ -58,15 +58,15 @@ def test_rec_ff():
 
 
 def test_lstm_default_name():
-  assert_equal(nn.LSTM(3).get_default_name(), "lstm")
-  assert_equal(nn.LSTMStep(3).get_default_name(), "lstm")
+  assert_equal(nn.LSTM(nn.FeatureDim("out", 3)).get_default_name(), "lstm")
+  assert_equal(nn.LSTMStep(nn.FeatureDim("out", 3)).get_default_name(), "lstm")
 
 
 def test_rec_inner_lstm():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.lstm = nn.LSTMStep(13)
+      self.lstm = nn.LSTMStep(nn.FeatureDim("out", 13))
 
     @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
@@ -133,8 +133,8 @@ def test_rec_hidden_initial():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(13)
-      self.lstm = nn.LSTM(13)
+      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:

@@ -46,11 +46,6 @@ class SelfAttention(SelfAttentionBase):
   """
   Classic self attention
   """
-  def __init__(self, *, key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
-               att_dropout: float = 0.):
-    super().__init__(
-      key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads, att_dropout=att_dropout)
-
   @nn.scoped
   def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
     """forward"""
@@ -78,11 +73,6 @@ class CausalSelfAttentionStep(SelfAttentionBase):
   """
   Causal auto-regressive self-attention
   """
-  def __init__(self, *, key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
-               att_dropout: float = 0.):
-    super().__init__(
-      key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads, att_dropout=att_dropout)
-
   @nn.scoped
   def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
     """forward"""

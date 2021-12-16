@@ -561,6 +561,10 @@ class _FunctionalMaker(ILayerMaker):
     super().__init__()
     self.func = func
 
+  def get_default_name(self) -> str:
+    """default name"""
+    return self.func.__qualname__
+
   def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
     """make_layer_dict, not allowed"""
     raise Exception("Functional layer maker does not allow make_layer_dict")
