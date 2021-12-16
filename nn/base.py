@@ -3,7 +3,7 @@ Base interfaces.
 
 The core interfaces for the user are:
 
-* :class:`ILayerMaker`, to directly create a layer dict.
+* :class:`Module` and using :func:`make_layer` to directly create a RETURNN layer via dict.
   We recommend using this only for directly wrapping RETURNN layers
   and not for any higher-level logic,
   which should be done as a :class:`Module`.
@@ -12,6 +12,7 @@ The core interfaces for the user are:
   We recommend using this as the base interface
   for any higher-level interfaces
   (such as a generic decoder interface).
+  Use :func:`scoped` as a decorator for the ``__call__`` method.
 
 Instances of both objects can be called directly,
 and return instances of type :class:`LayerRef`,
@@ -203,7 +204,7 @@ class LayerRef:
 
 class Layer(LayerRef):
   """
-  Represents a layer and its output, created by :class:`ILayerMaker` or :func:`make_layer`.
+  Represents a layer and its output, created by :func:`make_layer`.
   You would not create an instance of this explicitly.
   """
 
@@ -236,7 +237,7 @@ def scoped(func):
   assert callable(func)
 
   def _wrapper(*args, name: Optional[Union[str, NameCtx]] = None, **kwargs):
-    if args and isinstance(args[0], ILayerMaker):
+    if args and isinstance(args[0], Module):
       self = args[0]
     else:
       self = _FunctionalMaker(func)
@@ -268,11 +269,29 @@ def scoped(func):
   return _wrapper
 
 
-class ILayerMaker:
+class Module:
   """
-  Makes a RETURNN layer.
+  This can represent a subnetwork in RETURNN.
 
-  Also see :func:`make_layer` and :class:`Module`.
+  You can write PyTorch-like code here, like::
+
+      class MyModule(nn.Module):
+
+        def __init__(self, dim: int, activation=tanh):
+          super().__init__()
+          self.linear = Linear(dim)
+          self.activation = activation
+
+        @nn.scoped_method
+        def __call__(self, x: LayerRef) -> LayerRef:
+          x_ = x
+          x = layer_norm(x)
+          x = self.linear(x)
+          x = self.activation(x)
+          return x_ + x
+
+  It is also used to wrap existing RETURNN layers
+  by using :func:`make_layer`.
 
   A RETURNN layer also has some specific input and output,
   and usually its own parameters.
@@ -283,7 +302,7 @@ class ILayerMaker:
   which can be called multiple times.
   Every such call would then share the same module parameters.
 
-  :class:`ILayerMaker` is similar to PyTorch/Keras
+  :class:`Module` is similar to PyTorch/Keras
   in that it can be called multiple times.
   Every call would create a RETURNN layer,
   where every call after the first would share the params
@@ -301,13 +320,12 @@ class ILayerMaker:
   as all standard RETURNN layers are already wrapped,
   and any potential operation should be possible to be defined
   using the standard RETURNN layers.
-  For one-time usages, you might not need an own :class:`ILayerMaker`
-  and you can use :func:`make_layer` directly instead.
+  For one-time usages to wrap RETURNN layers, you might not need an own :class:`Module`
+  and you could use :func:`make_layer` directly instead.
   For defining own modules (subnetworks)
   based on existing modules or layers,
   see :class:`Module`.
   """
-  has_variables: bool = True
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
   default_name: Optional[str] = None
 
@@ -320,7 +338,7 @@ class ILayerMaker:
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
     # Also note that the current code does not clean this up when you do delattr later or so.
-    self._parents = {}  # type: Dict[Tuple[ILayerMaker, str], None]  # (parent,attrib) -> None
+    self._parents = {}  # type: Dict[Tuple[Module, str], None]  # (parent,attrib) -> None
     self.calls = []  # type: List[NameCtx]
 
   def __repr__(self):
@@ -356,10 +374,10 @@ class ILayerMaker:
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
-    if isinstance(value, ILayerMaker):
+    if isinstance(value, Module):
       value._parents[(self, key)] = None
 
-  def parents_with_attr(self) -> Iterator[Tuple[ILayerMaker, str]]:
+  def parents_with_attr(self) -> Iterator[Tuple[Module, str]]:
     """
     Get all (immediate) parent makers, and the attrib name which points to us
     """
@@ -370,27 +388,30 @@ class ILayerMaker:
       if getattr(parent, attr, None) is self:
         yield parent, attr
 
-  def children(self) -> Iterator[ILayerMaker]:
+  def children(self) -> Iterator[Module]:
     """
     Get all (immediate) children makers
     """
     for name, child in self.named_children():
       yield child
 
-  def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
+  def named_children(self) -> Iterator[Tuple[str, Module]]:
     """
     Get all (immediate) children makers
     """
-    return iter([])
+    # We rely on deterministic order of dict and vars.
+    for key, value in vars(self).items():
+      if isinstance(value, Module):
+        yield key, value
 
-  def children_deep(self) -> Iterator[ILayerMaker]:
+  def children_deep(self) -> Iterator[Module]:
     """
     Get all children (deeply)
     """
     for name, child in self.named_children_deep():
       yield child
 
-  def named_children_deep(self, memo: Optional[Set[ILayerMaker]] = None, prefix: str = ''):
+  def named_children_deep(self, memo: Optional[Set[Module]] = None, prefix: str = ''):
     """
     Get all children (deeply)
     """
@@ -405,6 +426,34 @@ class ILayerMaker:
         sub_prefix = prefix + ('.' if prefix else '') + name
         for m in maker.named_children_deep(memo, sub_prefix):
           yield m
+
+  @property
+  def has_variables(self):
+    """
+    Whether this module has variables
+    """
+    for maker in self.children():
+      if maker.has_variables:
+        return True
+    return False
+
+
+class _FunctionalMaker(Module):
+  """
+  Used via :func:`scoped`.
+  """
+
+  def __init__(self, func):
+    super().__init__()
+    self.func = func
+
+  def get_default_name(self) -> str:
+    """default name"""
+    return self.func.__qualname__
+
+  @scoped
+  def __call__(self, *args, **kwargs):  # not really needed but nicer to define it
+    return self.func(*args, **kwargs)
 
 
 class LayerState(dict):
@@ -441,7 +490,7 @@ class LayerState(dict):
 
 
 # noinspection PyAbstractClass
-class _ReturnnWrappedLayerBase(ILayerMaker):
+class _ReturnnWrappedLayerBase(Module):
   """
   Base class for all automatically wrapped layers.
   """
@@ -485,15 +534,13 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
 
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, NameCtx]] = None,
-               maker: Optional[ILayerMaker] = None) -> Layer:
+               maker: Optional[Module] = None) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   When no name is given, this assumes that the top name ctx corresponds to this layer maker.
 
-  This is used internally via :class:`ILayerMaker`
-  but might also be used to wrap simple RETURNN layers.
-  If a layer has params and you want the param sharing logic,
-  you should instead derive a new class from :class:`ILayerMaker`.
+  If a layer has params, and you want the param sharing logic,
+  you should instead derive a new class from :class:`Module`.
   Usually, you do not need either of these,
   as all standard layers should already be wrapped,
   and it should be possible to define any possible logic
@@ -504,7 +551,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   :param str|NameCtx|None name:
     if str: (suggested) layer name. if given, will create a new :class:`NameCtx`
     if NameCtx, will use this.
-  :param ILayerMaker|None maker: if given, will create new name scope with this maker
+  :param Module|None maker: if given, will create new name scope with this maker
   """
   if isinstance(name, str) or maker:
     assert not name or isinstance(name, str)
@@ -558,70 +605,6 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
     return x
   from . import constant
   return constant(value=x)
-
-
-class _FunctionalMaker(ILayerMaker):
-  def __init__(self, func):
-    super().__init__()
-    self.func = func
-
-  def get_default_name(self) -> str:
-    """default name"""
-    return self.func.__qualname__
-
-  @scoped
-  def __call__(self, *args, **kwargs):  # not really needed but nicer to define it
-    return self.func(*args, **kwargs)
-
-
-class Module(ILayerMaker):
-  """
-  This represents a subnetwork in RETURNN, or the root network.
-
-  You can write PyTorch-like code here, like::
-
-      class MyModule(nn.Module):
-
-       def __init__(self, dim: int, activation=tanh):
-         super().__init__()
-         self.linear = Linear(dim)
-         self.activation = activation
-
-       @nn.scoped_method
-       def __call__(self, x: LayerRef) -> LayerRef:
-         x_ = x
-         x = layer_norm(x)
-         x = self.linear(x)
-         x = self.activation(x)
-         return x_ + x
-
-  """
-
-  def __call__(self, *args, **kwargs) -> LayerRef:
-    """
-    Constructs the output.
-    You can write PyTorch-style code here.
-    """
-    raise NotImplementedError
-
-  def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
-    """
-    Get all (immediate) children makers
-    """
-    # We rely on deterministic order of dict and vars.
-    for key, value in vars(self).items():
-      if isinstance(value, ILayerMaker):
-        yield key, value
-
-  @property
-  def has_variables(self):
-    """
-    Whether this module has variables
-    """
-    for maker in self.children():
-      if maker.has_variables:
-        return True
-    return False
 
 
 def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
@@ -819,7 +802,7 @@ class Loop:
     return self.end_ref
 
 
-class _LoopLayerMaker(ILayerMaker):
+class _LoopLayerMaker(Module):
   layer_name_scope = ""
 
   def __init__(self, loop: Loop):
@@ -834,7 +817,7 @@ class _LoopLayerMaker(ILayerMaker):
     return make_layer(
       {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts}, name=name_ctx)
 
-  def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
+  def named_children(self) -> Iterator[Tuple[str, Module]]:
     """
     Children
     """
@@ -842,16 +825,6 @@ class _LoopLayerMaker(ILayerMaker):
     for name, sub_name_ctx in self.loop.name_ctx.children.items():
       if sub_name_ctx.maker:
         yield name, sub_name_ctx.maker
-
-  @property
-  def has_variables(self):
-    """
-    Whether this module has variables
-    """
-    for maker in self.children():
-      if maker.has_variables:
-        return True
-    return False
 
 
 class PrevLayerRef(LayerRef):
@@ -1141,7 +1114,7 @@ class NameCtx:
     return ctx
 
   def __init__(self, *,
-               maker: Optional[ILayerMaker] = None,
+               maker: Optional[Module] = None,
                suggested_name: Optional[str] = None,
                name: Optional[str] = None,
                parent: Optional[NameCtx] = NotSpecified):
@@ -1163,7 +1136,7 @@ class NameCtx:
       self.parent._add_child(self)
 
   @classmethod
-  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], maker: ILayerMaker) -> NameCtx:
+  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], maker: Module) -> NameCtx:
     """
     This is used e.g. for user module or maker calls.
     The name argument can either be a predefined name ctx, or a suggested name.

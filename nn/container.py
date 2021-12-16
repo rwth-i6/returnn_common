@@ -4,12 +4,12 @@ container functions
 
 from __future__ import annotations
 from . import nn
-from .base import Module, ILayerMaker, LayerRef, Layer
+from .base import Module, LayerRef
 from typing import Iterable, Iterator, Union, Dict, Callable
 
 
 _UnaryFuncT = Callable[[LayerRef], LayerRef]
-_ModT = Union[ILayerMaker, _UnaryFuncT]
+_ModT = Union[Module, _UnaryFuncT]
 
 
 class ModuleList(Module):
@@ -31,8 +31,8 @@ class ModuleList(Module):
       for idx, module in enumerate(modules):
         setattr(self, str(idx), _convert_to_maker(module))
 
-  def _get_makers(self) -> Dict[str, ILayerMaker]:
-    return {key: value for (key, value) in vars(self).items() if isinstance(value, ILayerMaker)}
+  def _get_makers(self) -> Dict[str, Module]:
+    return {key: value for (key, value) in vars(self).items() if isinstance(value, Module)}
 
   def append(self, module: _ModT) -> ModuleList:
     """
@@ -55,7 +55,7 @@ class ModuleList(Module):
   def __iter__(self) -> Iterator[_ModT]:
     return iter(self._get_makers().values())
 
-  def __getitem__(self, idx) -> ModuleList:
+  def __getitem__(self, idx) -> Union[ModuleList, Module]:
     from builtins import slice
     if isinstance(idx, slice):
       return self.__class__(dict(list(self._get_makers().items())[idx]))
@@ -83,15 +83,15 @@ class Sequential(ModuleList):
     return inp
 
 
-def sequential(source: LayerRef, *modules) -> Layer:
+def sequential(source: LayerRef, *modules) -> LayerRef:
   """
   Wraps ``Sequential(*modules)(source)``
   """
   return Sequential(*modules)(source)
 
 
-def _convert_to_maker(obj: _ModT) -> ILayerMaker:
-  if isinstance(obj, ILayerMaker):
+def _convert_to_maker(obj: _ModT) -> Module:
+  if isinstance(obj, Module):
     return obj
   elif callable(obj):
     return WrappedFunction(obj)
