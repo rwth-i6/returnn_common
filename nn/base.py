@@ -25,12 +25,13 @@ and then you can use ``make_root_net_dict()``
 to get the network dict.
 Code example::
 
-    class Network(Module):
+    class Network(nn.Module):
       def __init__(self):
         super().__init__()
-        self.lstm = Lstm(n_out=1024)
+        self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 1024))
 
-      def forward(self, x):
+      @scoped
+      def __call__(self, x: nn.LayerRef) -> nn.Layer:
         y = self.lstm(x)
         return y
 
