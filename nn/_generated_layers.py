@@ -2794,8 +2794,8 @@ class _Rec(_Base):
       'from': source,
       **args,
       **self.get_opts()}, module=self)
-    state = self.returnn_layer_get_recurrent_state(layer)
-    return layer, state
+    out_state = self.returnn_layer_get_recurrent_state(layer)
+    return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3348,8 +3348,8 @@ class _TwoDLSTM(_Base):
       'from': source,
       **args,
       **self.get_opts()}, module=self)
-    state = self.returnn_layer_get_recurrent_state(layer)
-    return layer, state
+    out_state = self.returnn_layer_get_recurrent_state(layer)
+    return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames

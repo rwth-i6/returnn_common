@@ -253,8 +253,8 @@ def setup():
           print("      **args,", file=f)
         print("      **self.get_opts()}, module=self)", file=f)
         if sig.has_recurrent_state():
-          print("    state = self.returnn_layer_get_recurrent_state(layer)", file=f)
-          print("    return layer, state", file=f)
+          print("    out_state = self.returnn_layer_get_recurrent_state(layer)", file=f)
+          print("    return layer, out_state", file=f)
       else:
         print("", file=f)
         print("  __call__ = _ReturnnWrappedLayerBase.__call__  # abstract", file=f)
