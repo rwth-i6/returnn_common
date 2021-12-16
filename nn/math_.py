@@ -35,10 +35,10 @@ def gelu(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="gelu")
 
 
-def glu(x: nn.LayerRef, axis: Optional[str] = "F") -> nn.Layer:
+def glu(x: nn.LayerRef, axis: nn.Dim) -> nn.Layer:
   """GLU https://arxiv.org/abs/1612.08083"""
   from . import split
-  a, b = split(x, axis=axis, num_splits=2)
+  a, b = split(x, axis=axis, out_dims=[axis // 2, axis // 2])
   return a * sigmoid(b)
 
 
@@ -75,11 +75,11 @@ def swish(x: nn.LayerRef) -> nn.Layer:
 # softmax already provided via generated layers
 
 
-def log_softmax(x: nn.LayerRef, **kwargs) -> nn.Layer:
+def log_softmax(x: nn.LayerRef, *, axis: nn.Dim, **kwargs) -> nn.Layer:
   """
   Wraps :func:`nn.softmax` with log_space=True.
   """
-  return nn.softmax(x, log_space=True, **kwargs)
+  return nn.softmax(x, axis=axis, log_space=True, **kwargs)
 
 
 def _activation(x: nn.LayerRef, activation: str) -> nn.Layer:
@@ -93,7 +93,7 @@ def _activation(x: nn.LayerRef, activation: str) -> nn.Layer:
 
 def cumsum(
       x: nn.LayerRef, *,
-      axis: str = nn.NotSpecified,
+      axis: nn.Dim,
       additional_left_summand_per_element: Optional[Union[str, int, float]] = nn.NotSpecified,
       reverse: bool = nn.NotSpecified,
       name: Optional[str] = None) -> nn.Layer:
