@@ -559,7 +559,10 @@ def test_self_attention():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.self_att = nn.SelfAttention(key_dim_total=21, value_dim_total=33, num_heads=3)
+      self.self_att = nn.SelfAttention(
+        key_dim_total=nn.FeatureDim("key-dim-total", 21),
+        value_dim_total=nn.FeatureDim("value-dim-total", 33),
+        num_heads=3)
 
     @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.Layer:
