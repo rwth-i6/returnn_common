@@ -104,22 +104,6 @@ def test_simple_net_arithmetic():
   dummy_run_net(net_dict)
 
 
-def test_eval():
-  class _Net(nn.Module):
-    @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
-      """
-      Forward
-      """
-      x = nn.eval(x, eval="source(0) * 2.5")
-      return x
-
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
-  pprint(net_dict)
-  dummy_run_net(net_dict)
-
-
 def test_simple_net_lstm():
   class _Net(nn.Module):
     def __init__(self):
@@ -131,7 +115,7 @@ def test_simple_net_lstm():
       """
       Forward
       """
-      x, _ = self.lstm(x)
+      x, _ = self.lstm(x)  # TODO axis
       return x
 
   net = _Net()

@@ -2233,14 +2233,14 @@ def _combine(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def eval(
-         source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-         *,
-         eval: str,
-         with_bias: bool = NotSpecified,
-         eval_locals: Optional[Dict[str]] = NotSpecified,
-         eval_for_output_loss: bool = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> Layer:
+def _eval(
+          source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
+          *,
+          eval: str,
+          with_bias: bool = NotSpecified,
+          eval_locals: Optional[Dict[str]] = NotSpecified,
+          eval_for_output_loss: bool = NotSpecified,
+          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Evaluates some string.
   The :class:`CombineLayer` provides this functionality, thus this is just a special case of it.

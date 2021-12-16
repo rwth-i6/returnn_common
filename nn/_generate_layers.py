@@ -77,6 +77,7 @@ BlacklistLayerClassNames = {
 
 LayersHidden = {
   "combine",  # only needed as base
+  "eval",
   "split",
   "get_last_hidden_state",  # we handle all state explicitly, there is no hidden state. this is only needed internally
 }

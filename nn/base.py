@@ -137,22 +137,22 @@ class LayerRef:
     return _combine([convert_to_layer_ref(other), self], kind="truediv", name="truediv")
 
   def __neg__(self) -> LayerRef:
-    from . import eval
-    return eval(self, eval="-source(0)", name="neg")
+    from ._generated_layers import _eval
+    return _eval(self, eval="-source(0)", name="neg")
 
   def __invert__(self) -> LayerRef:
-    from . import eval
-    return eval(self, eval="tf.logical_not(source(0))", name="invert")
+    from ._generated_layers import _eval
+    return _eval(self, eval="tf.logical_not(source(0))", name="invert")
 
   def __pow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> LayerRef:
     assert modulo is None
-    from . import eval
-    return eval([self, convert_to_layer_ref(other)], eval="tf.math.pow(source(0), source(1))", name="pow")
+    from ._generated_layers import _eval
+    return _eval([self, convert_to_layer_ref(other)], eval="tf.math.pow(source(0), source(1))", name="pow")
 
   def __rpow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> LayerRef:
     assert modulo is None
-    from . import eval
-    return eval([convert_to_layer_ref(other), self], eval="tf.math.pow(source(0), source(1))", name="pow")
+    from ._generated_layers import _eval
+    return _eval([convert_to_layer_ref(other), self], eval="tf.math.pow(source(0), source(1))", name="pow")
 
   def __and__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
     from ._generated_layers import _combine
@@ -163,20 +163,20 @@ class LayerRef:
     return _combine([self, convert_to_layer_ref(other)], kind="logical_or", name="logical_or")
 
   def __abs__(self) -> LayerRef:
-    from . import eval
-    return eval(self, eval="tf.abs(source(0))", name="abs")
+    from ._generated_layers import _eval
+    return _eval(self, eval="tf.abs(source(0))", name="abs")
 
   def __ceil__(self) -> LayerRef:
-    from . import eval
-    return eval(self, eval="tf.math.ceil(source(0))", name="ceil")
+    from ._generated_layers import _eval
+    return _eval(self, eval="tf.math.ceil(source(0))", name="ceil")
 
   def __floor__(self) -> LayerRef:
-    from . import eval
-    return eval(self, eval="tf.math.floor(source(0))", name="floor")
+    from ._generated_layers import _eval
+    return _eval(self, eval="tf.math.floor(source(0))", name="floor")
 
   def __floordiv__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import eval
-    return eval([self, convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
+    from ._generated_layers import _eval
+    return _eval([self, convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
 
   def __eq__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
     from . import compare
