@@ -258,7 +258,7 @@ def scoped(func):
       # Now create the subnetwork layer itself.
       subnet_layer = make_layer(
         {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
-        name_ctx=name_ctx)
+        name=name_ctx)
     if isinstance(res, LayerRef):
       return subnet_layer  # maybe nicer to return subnet layer
     return res
@@ -279,7 +279,7 @@ class ILayerMaker:
 
   This is in contrast to PyTorch or Keras, where a module or layer
   has params, but getting some output for some input
-  requires an additional `forward` call,
+  requires an additional `forward` or `__call__` call,
   which can be called multiple times.
   Every such call would then share the same module parameters.
 
@@ -296,12 +296,13 @@ class ILayerMaker:
   is handled via :class:`NameCtx`.
 
   A developer which wants to derive its own layer maker
-  would overwrite the :func:`make_layer_dict`.
-  Usually this is never needed though,
+  would overwrite :func:`__call__` and use :func:`make_layer`.
+  Usually :func:`make_layer` is never needed though,
   as all standard RETURNN layers are already wrapped,
   and any potential operation should be possible to be defined
   using the standard RETURNN layers.
-  For one-time usages, :func:`make_layer` is probably easier.
+  For one-time usages, you might not need an own :class:`ILayerMaker`
+  and you can use :func:`make_layer` directly instead.
   For defining own modules (subnetworks)
   based on existing modules or layers,
   see :class:`Module`.
@@ -324,21 +325,6 @@ class ILayerMaker:
 
   def __repr__(self):
     return f"<{self.__class__.__name__}>"
-
-  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
-    """
-    :return: layer dict.
-
-    The arguments are usually other layers, via :class:`LayerRef` instances.
-    The returned :class:`LayerDictRaw` can reference other layers by using :class:`LayerRef` instances.
-    It can further contain subnetworks via :class:`Net` instances,
-    although you mostly would not use this in custom implementations
-    but use :class:`Module` or :class:`Loop` instead.
-
-    This function is implemented by derived classes.
-    This function will be called by :func:`__call__` with all arguments forwarded.
-    """
-    raise OptionalNotImplementedError
 
   def default_initial_state(self) -> LayerState:
     """
@@ -365,12 +351,8 @@ class ILayerMaker:
     return name
 
   @scoped
-  def __call__(self, *args, **kwargs) -> Layer:
-    """
-    This calls :func:`make_layer_dict` internally and creates a corresponding :class:`Layer` instance.
-    """
-    layer_dict = self.make_layer_dict(*args, **kwargs)
-    return make_layer(layer_dict)
+  def __call__(self, *args, **kwargs) -> Union[Layer, Tuple[Layer, LayerState], Any]:
+    raise NotImplementedError
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
@@ -465,15 +447,16 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
   """
   returnn_layer_class: Optional[str] = None
   has_recurrent_state: bool = False
+  has_variables: bool = False
 
-  def _get_recurrent_state(self, layer: Layer) -> LayerState:
+  @staticmethod
+  def returnn_layer_get_recurrent_state(layer: Layer) -> LayerState:
     """
     :returns: the recurrent state
 
     You might override this in case the state is more complex,
     and return some named tuple or any other hierarchical structure.
     """
-    assert self.has_recurrent_state
     from ._generated_layers import _get_last_hidden_state
     # Note that this is actually layer specific.
     # We try to use a number of heuristics to get it right for the common cases.
@@ -485,18 +468,6 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
         c = _get_last_hidden_state(layer, out_dim=out_dim, key="c", name=f"{name}_c")
         return LayerState(h=h, c=c)
     return LayerState(_get_last_hidden_state(layer, out_dim=out_dim, name=name))
-
-  def __call__(self, *args,
-               name: Optional[Union[str, NameCtx]] = None,
-               **kwargs
-               ) -> Union[Layer, Tuple[Layer, LayerState]]:
-    with NameCtx.get_from_call(maker=self, name=name):
-      layer_dict = self.make_layer_dict(*args, **kwargs)
-      layer = make_layer(layer_dict)
-      if not self.has_recurrent_state:
-        return layer
-    state = self._get_recurrent_state(layer)
-    return layer, state
 
   def default_initial_state(self) -> LayerState:
     """
@@ -513,7 +484,8 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
 
 
 def make_layer(layer_dict: LayerDictRaw, *,
-               name: Optional[str] = None, name_ctx: Optional[NameCtx] = None) -> Layer:
+               name: Optional[Union[str, NameCtx]] = None,
+               maker: Optional[ILayerMaker] = None) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   When no name is given, this assumes that the top name ctx corresponds to this layer maker.
@@ -529,18 +501,18 @@ def make_layer(layer_dict: LayerDictRaw, *,
   (If this is not the case, please report an issue.)
 
   :param LayerDictRaw layer_dict: can contain :class:`LayerRef` instances
-  :param str|None name: (suggested) layer name. if given, will create a new :class:`NameCtx`
-  :param NameCtx|None name_ctx: if given, will use this name ctx.
-    You can either pass ``name_ctx`` or ``name`` but not both.
+  :param str|NameCtx|None name:
+    if str: (suggested) layer name. if given, will create a new :class:`NameCtx`
+    if NameCtx, will use this.
+  :param ILayerMaker|None maker: if given, will create new name scope with this maker
   """
-  if name:
-    assert not name_ctx
-    assert isinstance(name, str)
-    name_ctx = NameCtx(suggested_name=name)
-    return make_layer(layer_dict=layer_dict, name_ctx=name_ctx)
-  if name_ctx:
-    assert isinstance(name_ctx, NameCtx)
-    if NameCtx.top() is name_ctx:
+  if isinstance(name, str) or maker:
+    assert not name or isinstance(name, str)
+    name_ctx = NameCtx.get_from_call(maker=maker, name=name)
+    return make_layer(layer_dict=layer_dict, name=name_ctx)
+  elif isinstance(name, NameCtx):
+    name_ctx = name
+    if NameCtx.top() is name:
       pass  # go on
     else:
       with name_ctx:
@@ -597,9 +569,9 @@ class _FunctionalMaker(ILayerMaker):
     """default name"""
     return self.func.__qualname__
 
-  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
-    """make_layer_dict, not allowed"""
-    raise Exception("Functional layer maker does not allow make_layer_dict")
+  @scoped
+  def __call__(self, *args, **kwargs):  # not really needed but nicer to define it
+    return self.func(*args, **kwargs)
 
 
 class Module(ILayerMaker):
@@ -765,7 +737,7 @@ class Loop:
     finally:
       self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
     if not exc_type:
-      self.layer_maker(name=self.name_ctx)
+      self.layer_maker()  # create the rec layer itself
 
   @property
   def state(self) -> Union[_StateHolder, LayerState]:
@@ -854,13 +826,13 @@ class _LoopLayerMaker(ILayerMaker):
     super(_LoopLayerMaker, self).__init__()
     self.loop = loop
 
-  def make_layer_dict(self) -> LayerDictRaw:
+  def __call__(self) -> Layer:
     """
     Makes layer dict for this loop, i.e. a RecLayer.
     """
-    name_ctx = NameCtx.top()
-    assert name_ctx.maker is self
-    return {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts}
+    name_ctx = self.loop.name_ctx
+    return make_layer(
+      {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts}, name=name_ctx)
 
   def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
     """

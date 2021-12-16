@@ -14,11 +14,10 @@ class LSTM(_Rec):
   def __init__(self, out_dim: nn.Dim, **kwargs):
     super().__init__(out_dim=out_dim, unit="nativelstm2", **kwargs)
 
-  # noinspection PyMethodOverriding
-  def make_layer_dict(
-        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
+  def __call__(
+        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.Layer:
     """make layer"""
-    return super().make_layer_dict(source, axis=axis, initial_state=initial_state)
+    return super()(source, axis=axis, initial_state=initial_state)
 
 
 class LSTMStep(_Rec):
@@ -30,11 +29,9 @@ class LSTMStep(_Rec):
   def __init__(self, out_dim: nn.Dim, **kwargs):
     super().__init__(out_dim=out_dim, unit="nativelstm2", **kwargs)
 
-  # noinspection PyMethodOverriding
-  def make_layer_dict(
-        self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.LayerDictRaw:
+  def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.Layer:
     """make layer"""
-    return super().make_layer_dict(source, state=state, axis=nn.single_step_dim)
+    return super()(source, state=state, axis=nn.single_step_dim)
 
 
 class ZoneoutLSTM(_Rec):
@@ -46,11 +43,10 @@ class ZoneoutLSTM(_Rec):
       n_out=n_out, unit="zoneoutlstm",
       unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output}, **kwargs)
 
-  # noinspection PyMethodOverriding
-  def make_layer_dict(
-        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.LayerDictRaw:
+  def __call__(
+        self, source: nn.LayerRef, *, axis: nn.Dim, initial_state: Optional[nn.LayerState] = None) -> nn.Layer:
     """make layer"""
-    return super().make_layer_dict(source, axis=axis, initial_state=initial_state)
+    return super()(source, axis=axis, initial_state=initial_state)
 
 
 class ZoneoutLSTMStep(_Rec):
@@ -64,8 +60,6 @@ class ZoneoutLSTMStep(_Rec):
       n_out=n_out, unit="zoneoutlstm",
       unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output}, **kwargs)
 
-  # noinspection PyMethodOverriding
-  def make_layer_dict(
-        self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.LayerDictRaw:
+  def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> nn.Layer:
     """make layer"""
-    return super().make_layer_dict(source, state=state, axis=nn.single_step_dim)
+    return super()(source, state=state, axis=nn.single_step_dim)

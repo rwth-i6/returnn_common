@@ -12,7 +12,7 @@ from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any
 from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
 from returnn.tf.util.data import Dim, _ImplicitDim
-from .base import NameCtx, ILayerMaker, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerDictRaw
+from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer
 
 
 class _Base(_ReturnnWrappedLayerBase):
@@ -132,55 +132,7 @@ class _Base(_ReturnnWrappedLayerBase):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return opts
 
-  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
-
-
-class _Copy(_Base):
-  """
-  This layer does nothing, it copies its input.
-  If multiple sources are provided, they are concatenated in the feature-dim.
-  """
-  returnn_layer_class = 'copy'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               in_dim: Optional[Dim] = NotSpecified,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None in_dim:
-    :param Dim|None out_dim:
-    """
-    super().__init__(in_dim=in_dim, out_dim=out_dim, **kwargs)
-    self.in_dim = in_dim
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'in_dim': self.in_dim,
-      'out_dim': self.out_dim,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'copy',
-      'from': source,
-      **self.get_opts()}
+  __call__ = _ReturnnWrappedLayerBase.__call__  # abstract
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -197,59 +149,17 @@ def copy(
   :param LayerRef source:
   :param Dim|None in_dim:
   :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Copy(
-    in_dim=in_dim,
-    out_dim=out_dim,
-    )
-  return mod(source, name=name)
-
-
-class _ScaledGradient(_Copy):
-  """
-  Just tf.identity in the forward pass.
-  Scales the gradient by some factor in backprop.
-  Can be used as gradient reversal layer (with negative factor).
-  Uses :func:`returnn.tf.util.basic.scaled_gradient`, or :func:`tf.stop_gradient`
-  """
-  returnn_layer_class = 'scaled_grad'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               scale: float,
-               **kwargs):
-    """
-    :param float scale: if 0., will use tf.stop_gradient
-    """
-    super().__init__(**kwargs)
-    self.scale = scale
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'scale': self.scale,
+  args = {
+    'in_dim': in_dim,
+    'out_dim': out_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'scaled_grad',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'copy',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -257,8 +167,6 @@ def scaled_gradient(
                     source: LayerRef,
                     *,
                     scale: float,
-                    in_dim: Optional[Dim] = NotSpecified,
-                    out_dim: Optional[Dim] = NotSpecified,
                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Just tf.identity in the forward pass.
@@ -268,19 +176,19 @@ def scaled_gradient(
 
   :param LayerRef source:
   :param float scale: if 0., will use tf.stop_gradient
-  :param Dim|None in_dim:
-  :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ScaledGradient(
-    scale=scale,
-    in_dim=in_dim,
-    out_dim=out_dim,
-    )
-  return mod(source, name=name)
+  args = {
+    'scale': scale,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'scaled_grad',
+    'from': source,
+    **args}, name=name)
 
 
-class BatchNorm(_Copy):
+class BatchNorm(_Base):
   """
   Implements batch-normalization (https://arxiv.org/abs/1502.03167) as a separate layer.
 
@@ -365,76 +273,17 @@ class BatchNorm(_Copy):
     return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
+  def __call__(self,
+               source: LayerRef,
+               ) -> Layer:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
-    return {
+    return make_layer({
       'class': 'batch_norm',
       'from': source,
-      **self.get_opts()}
-
-
-class _LayerNorm(_Base):
-  """
-  Applies `layer-normalization <https://arxiv.org/abs/1607.06450>`__.
-
-  Note that we *just* normalize over the feature-dim axis here.
-  This is consistent to the default behavior of :class:`tf.keras.layers.LayerNormalization`
-  and also how it is commonly used in many models, including Transformer.
-
-  However, there are cases where it would be common to normalize over all axes except batch-dim,
-  or all axes except batch and time.
-  For a more generic variant, see :class:`NormLayer`.
-  """
-  returnn_layer_class = 'layer_norm'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               in_dim: Optional[Dim] = NotSpecified,
-               out_dim: Optional[Dim] = NotSpecified,
-               epsilon: float = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None in_dim:
-    :param Dim|None out_dim:
-    :param float epsilon:
-    """
-    super().__init__(**kwargs)
-    self.in_dim = in_dim
-    self.out_dim = out_dim
-    self.epsilon = epsilon
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'in_dim': self.in_dim,
-      'out_dim': self.out_dim,
-      'epsilon': self.epsilon,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'layer_norm',
-      'from': source,
-      **self.get_opts()}
+      **self.get_opts()}, maker=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -460,100 +309,18 @@ def layer_norm(
   :param Dim|None in_dim:
   :param Dim|None out_dim:
   :param float epsilon:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _LayerNorm(
-    in_dim=in_dim,
-    out_dim=out_dim,
-    epsilon=epsilon,
-    )
-  return mod(source, name=name)
-
-
-class _Norm(_Base):
-  """
-  Normalize over specified axes, e.g. time and/or feature axis.
-
-  Note: For calculating a norm, see :class:`MathNormLayer` instead.
-
-  In case of just feature (``axes="F"``),
-  this corresponds to `layer normalization <https://arxiv.org/abs/1607.06450>`__ (see :class:`LayerNormLayer`).
-  In case of time and feature (``axes="TF"``) for a 3D input,
-  or more general all except batch (``axes="except_batch"``),
-  this corresponds to `group normalization <https://arxiv.org/abs/1803.08494>`__ with G=1,
-  or non-standard layer normalization.
-  (The definition of layer-normalization is not clear on what axes should be normalized over.
-  In many other frameworks, the default axis is just the last axis,
-  which is usually the feature axis.
-  However, in certain implementations and models,
-  it is also common to normalize over all axes except batch.)
-
-  The statistics are calculated just on the input.
-  There are no running statistics (in contrast to batch normalization, see :class:`BatchNormLayer`).
-
-  For some discussion on the definition of layer-norm vs group-norm,
-  also see
-  `here <https://stats.stackexchange.com/questions/485550/is-group-norm-with-g-1-equiv-to-layer-norm>`__
-  and `here <https://github.com/tensorflow/addons/issues/2143>`__.
-  """
-  returnn_layer_class = 'norm'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               param_shape: Union[Dim, List[Dim], Tuple[Dim, ...]] = NotSpecified,
-               scale: bool = NotSpecified,
-               bias: bool = NotSpecified,
-               epsilon: float = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|list[Dim]|tuple[Dim] param_shape: shape of the scale and bias parameters.
-      You can also refer to (static) axes of the input, such as the feature-dim.
-      This is also the default, i.e. a param-shape of [F], independent of the axes to normalize over.
-    :param bool scale: add trainable scale parameters
-    :param bool bias: add trainable bias parameters
-    :param float epsilon: epsilon for numerical stability
-    """
-    super().__init__(**kwargs)
-    self.param_shape = param_shape
-    self.scale = scale
-    self.bias = bias
-    self.epsilon = epsilon
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'param_shape': self.param_shape,
-      'scale': self.scale,
-      'bias': self.bias,
-      'epsilon': self.epsilon,
+  args = {
+    'in_dim': in_dim,
+    'out_dim': out_dim,
+    'epsilon': epsilon,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Union[Dim, List[Dim]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'norm',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'layer_norm',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -600,68 +367,20 @@ def normalize(
   :param bool scale: add trainable scale parameters
   :param bool bias: add trainable bias parameters
   :param float epsilon: epsilon for numerical stability
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Norm(
-    param_shape=param_shape,
-    scale=scale,
-    bias=bias,
-    epsilon=epsilon,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _MathNorm(_Base):
-  """
-  Calculates sum(abs(x) ** p) ** (1./p).
-  """
-  returnn_layer_class = 'math_norm'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               p: Union[int, float],
-               **kwargs):
-    """
-    :param int|float p:
-    """
-    super().__init__(**kwargs)
-    self.p = p
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'p': self.p,
+  args = {
+    'axis': axis,
+    'param_shape': param_shape,
+    'scale': scale,
+    'bias': bias,
+    'epsilon': epsilon,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Union[Dim, List[Dim]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'math_norm',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'norm',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -677,88 +396,17 @@ def math_norm(
   :param LayerRef source:
   :param int|float p:
   :param Dim|list[Dim] axis:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _MathNorm(
-    p=p,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _Slice(_Base):
-  """
-  Slicing on the input, i.e. x[start:end:step] in some axis.
-  See also :class:`SliceNdLayer`, for variable start.
-  See also :class:`GatherLayer`, for one single position.
-
-  Note that __getitem__ on a TF tensor (or also Numpy ND array) is more generic,
-  and supports slices in multiple axes, as well as adding new dimensions, etc.
-  It even allows to get boolean values, and then applies a boolean mask.
-  See TF _slice_helper (== tf.Tensor.__getitem__) for a generic implementation,
-  which calls tf.strided_slice.
-  If we ever need such more generic support, we might consider adding a new layer,
-  like ``GenericSliceLayer``, which gets a ``splice_spec``,
-  just like ``_slice_helper`` (argument to ``__getitem__``).
-  But any such a slice can already be constructed with multiple individual layers,
-  which perform individual slices (per axis).
-
-  We just support slicing in a single axis here, with optional striding (slice_step).
-  """
-  returnn_layer_class = 'slice'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               slice_start: Optional[int] = NotSpecified,
-               slice_end: Optional[int] = NotSpecified,
-               slice_step: Optional[int] = NotSpecified,
-               **kwargs):
-    """
-    :param int|None slice_start:
-    :param int|None slice_end:
-    :param int|None slice_step:
-    """
-    super().__init__(**kwargs)
-    self.slice_start = slice_start
-    self.slice_end = slice_end
-    self.slice_step = slice_step
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'slice_start': self.slice_start,
-      'slice_end': self.slice_end,
-      'slice_step': self.slice_step,
+  args = {
+    'p': p,
+    'axis': axis,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'slice',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'math_norm',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -793,82 +441,19 @@ def slice(
   :param int|None slice_start:
   :param int|None slice_end:
   :param int|None slice_step:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Slice(
-    slice_start=slice_start,
-    slice_end=slice_end,
-    slice_step=slice_step,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _SliceNd(_Base):
-  """
-  This takes out a slice-range from the time axis,
-  e.g. ``x[start:start + size]``.
-  If the input is of shape (B,T,F) and start is of shape (B,),
-  then the output will be of shape (B,size,F).
-  If the input is of shape (B,T,F) and start is of shape (B,T),
-  then the output will be of shape (B,T,size,F).
-  This layer allows a different start slice point for each batch,
-  in contrast to :class:`SliceLayer`, and the start is variable.
-  See also :class:`GatherNdLayer`.
-  :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
-  """
-  returnn_layer_class = 'slice_nd'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               min_size: Optional[int] = NotSpecified,
-               out_spatial_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param int|None min_size: if size is None, but we want to have a min-size
-    :param Dim|None out_spatial_dim:
-    """
-    super().__init__(**kwargs)
-    self.min_size = min_size
-    self.out_spatial_dim = out_spatial_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'min_size': self.min_size,
-      'out_spatial_dim': self.out_spatial_dim,
+  args = {
+    'axis': axis,
+    'slice_start': slice_start,
+    'slice_end': slice_end,
+    'slice_step': slice_step,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      start: LayerRef,
-                      size: Union[Dim, LayerRef],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'start': start,
-      'size': size,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'slice_nd',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'slice',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -899,62 +484,19 @@ def slice_nd(
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
   :param Dim|None out_spatial_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SliceNd(
-    min_size=min_size,
-    out_spatial_dim=out_spatial_dim,
-    )
-  return mod(
-    source,
-    start=start,
-    size=size,
-    name=name)
-
-
-class _Gather(_Base):
-  """
-  Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
-  If the input is a layer of the shape ``[B,D,F1]``, and position of shape ``[B,F2]``, this will yield output of the
-  shape ``[B,F2,F1]`` where
-
-  ``output[b,f2,f1] = input[b,position[b,f2],f1]``
-
-  (if ``D`` is the axis to gather from).
-  In general, all shared axes of the input and the positions will be considered as batch-axes.
-
-  The ``position`` argument can also be an ``int``.
-  In this case, this simply gives ``input[position]`` one the specified ``axis``.
-
-  It's basically a wrapper around ``tf.gather``.
-  It provides the same functionality as the deprecated ``GatherNdLayer``, but is more generic.
-  See also :class:`GatherNdLayer`.
-  """
-  returnn_layer_class = 'gather'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      position: Union[LayerRef, int],
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'position': position,
-      'axis': axis,
+  args = {
+    'start': start,
+    'size': size,
+    'min_size': min_size,
+    'out_spatial_dim': out_spatial_dim,
     }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'gather',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'slice_nd',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -986,105 +528,17 @@ def gather(
     If another layer, must be of type ``int32`` or ``int64``.
     Can also specify a constant ``int``.
   :param Dim axis: The axis into which we gather the indices into
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Gather()
-  return mod(
-    source,
-    position=position,
-    axis=axis,
-    name=name)
-
-
-class _ScatterNd(_Base):
-  """
-  The inverse of :class:`GatherNdLayer`.
-  Mostly a wrapper for ``tf.scatter_nd``.
-
-  Note that "nd" is maybe a bit misleading.
-  While we operate on N-D tensors, the indices (``position``)
-  are into a single new dimension.
-
-  The input to the layer are the ``updates``, the ``indices`` are via the ``position`` argument.
-  The indices are into the newly constructed output dimension.
-  The output shape is constructed via the common shape of the input, the position,
-  and the unique common axis (if not unique, we would need to introduce an option to specify it)
-  is replaced by the given output dimension (currently via ``output_dim_via_time_from``).
-
-  Examples::
-
-    position (indices): (B,eTs)
-    input (updates): (eTs,D) or (B,eTs,D) -> expanded to (B,eTs,D)
-    output shape: (B,eT,D)
-
-    position (indices): (B,dT,eTs)
-    input (updates): (eTs,D) -> expanded to (B,dT,eTs,D)
-    output shape: (B,dT,eT,D)
-
-    position (indices): (dT,eTs)
-    input (updates): (eTs,D) -> expanded to (dT,eTs,D)
-    output shape: (dT,eTs,D)
-
-    position (indices): (dT,eTs)
-    input (updates): (B,eTs,D) -> expanded to (dT,eTs,B,D)
-    output shape: (dT,eT,B,D)
-
-  In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
-  """
-  returnn_layer_class = 'scatter_nd'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               position_axis: Union[str, int],
-               out_spatial_dim: Optional[Dim] = NotSpecified,
-               filter_invalid_indices: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str|int position_axis: axis in `position` to replace by the output-dim
-    :param Dim|None out_spatial_dim:
-    :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
-    """
-    super().__init__(**kwargs)
-    self.position_axis = position_axis
-    self.out_spatial_dim = out_spatial_dim
-    self.filter_invalid_indices = filter_invalid_indices
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'position_axis': self.position_axis,
-      'out_spatial_dim': self.out_spatial_dim,
-      'filter_invalid_indices': self.filter_invalid_indices,
+  args = {
+    'position': position,
+    'axis': axis,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      position: LayerRef,
-                      output_dim_via_time_from: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'position': position,
-      'output_dim_via_time_from': output_dim_via_time_from,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'scatter_nd',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'gather',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1137,18 +591,20 @@ def scatter_nd(
   :param LayerBase|None output_dim_via_time_from: use the time-dim from this layer as the output-dim
   :param Dim|None out_spatial_dim:
   :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ScatterNd(
-    position_axis=position_axis,
-    out_spatial_dim=out_spatial_dim,
-    filter_invalid_indices=filter_invalid_indices,
-    )
-  return mod(
-    source,
-    position=position,
-    output_dim_via_time_from=output_dim_via_time_from,
-    name=name)
+  args = {
+    'position': position,
+    'position_axis': position_axis,
+    'output_dim_via_time_from': output_dim_via_time_from,
+    'out_spatial_dim': out_spatial_dim,
+    'filter_invalid_indices': filter_invalid_indices,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'scatter_nd',
+    'from': source,
+    **args}, name=name)
 
 
 class Linear(_Base):
@@ -1204,71 +660,17 @@ class Linear(_Base):
     return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
+  def __call__(self,
+               source: LayerRef,
+               ) -> Layer:
     """
     Make layer dict
     """
     assert isinstance(source, LayerRef)
-    return {
+    return make_layer({
       'class': 'linear',
       'from': source,
-      **self.get_opts()}
-
-
-class _Length(_Base):
-  """
-  Returns the length of sources as (B,), via input size_placeholder.
-  """
-  returnn_layer_class = 'length'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dtype: str = NotSpecified,
-               sparse: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str dtype:
-    :param bool sparse:
-    """
-    super().__init__(**kwargs)
-    self.dtype = dtype
-    self.sparse = sparse
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dtype': self.dtype,
-      'sparse': self.sparse,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'length',
-      'from': source,
-      **args,
-      **self.get_opts()}
+      **self.get_opts()}, maker=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1286,87 +688,18 @@ def length(
   :param Dim axis:
   :param str dtype:
   :param bool sparse:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Length(
-    dtype=dtype,
-    sparse=sparse,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _SoftmaxOverSpatial(_Base):
-  """
-  This applies a softmax over spatial axis/axes (currently only time axis supported).
-  E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
-  It automatically masks the frames outside the seq defined by the seq-len.
-  In contrast to :class:`SoftmaxLayer`, this will not do a linear transformation.
-  See :class:`SeqLenMaskLayer` if you just want to apply a masking.
-  """
-  returnn_layer_class = 'softmax_over_spatial'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               energy_factor: Optional[float] = NotSpecified,
-               use_time_mask: bool = NotSpecified,
-               log_space: bool = NotSpecified,
-               **kwargs):
-    """
-    :param float|None energy_factor: the energy will be scaled by this factor.
-      This is like a temperature for the softmax.
-      In Attention-is-all-you-need, this is set to 1/sqrt(base_ctx.dim).
-    :param bool use_time_mask: if True, assumes dyn seq len, and use it for masking.
-      By default, if dyn seq len exists, it uses it.
-    :param bool log_space: if True, returns in log space (i.e. uses log_softmax)
-    """
-    super().__init__(**kwargs)
-    self.energy_factor = energy_factor
-    self.use_time_mask = use_time_mask
-    self.log_space = log_space
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'energy_factor': self.energy_factor,
-      'use_time_mask': self.use_time_mask,
-      'log_space': self.log_space,
+  args = {
+    'axis': axis,
+    'dtype': dtype,
+    'sparse': sparse,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      start: Optional[LayerRef] = NotSpecified,
-                      window_start: Optional[Union[LayerRef, int]] = NotSpecified,
-                      window_size: Optional[Union[LayerRef, int]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-      'start': start,
-      'window_start': window_start,
-      'window_size': window_size,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'softmax_over_spatial',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'length',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1401,80 +734,22 @@ def softmax(
   :param bool use_time_mask: if True, assumes dyn seq len, and use it for masking.
     By default, if dyn seq len exists, it uses it.
   :param bool log_space: if True, returns in log space (i.e. uses log_softmax)
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SoftmaxOverSpatial(
-    energy_factor=energy_factor,
-    use_time_mask=use_time_mask,
-    log_space=log_space,
-    )
-  return mod(
-    source,
-    axis=axis,
-    start=start,
-    window_start=window_start,
-    window_size=window_size,
-    name=name)
-
-
-class _SeqLenMask(_Base):
-  """
-  Masks some values away given the seq_len_source with mask_value.
-  Also see :class:`SoftmaxOverSpatialLayer`.
-  Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
-  """
-  returnn_layer_class = 'seq_len_mask'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               mask_value: float,
-               **kwargs):
-    """
-    :param float mask_value:
-    """
-    super().__init__(**kwargs)
-    self.mask_value = mask_value
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'mask_value': self.mask_value,
+  args = {
+    'axis': axis,
+    'energy_factor': energy_factor,
+    'start': start,
+    'window_start': window_start,
+    'window_size': window_size,
+    'use_time_mask': use_time_mask,
+    'log_space': log_space,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      seq_len_source: Optional[LayerRef] = NotSpecified,
-                      start: Optional[LayerRef] = NotSpecified,
-                      window_start: Optional[LayerRef] = NotSpecified,
-                      window_size: Optional[Union[LayerRef, int]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-      'seq_len_source': seq_len_source,
-      'start': start,
-      'window_start': window_start,
-      'window_size': window_size,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'seq_len_mask',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'softmax_over_spatial',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1500,82 +775,21 @@ def seq_len_mask(
   :param LayerBase|None start: Tensor of shape (B,) indicating the start frame
   :param LayerBase|None window_start: Tensor of shape (B,) indicating the window start
   :param LayerBase|int|None window_size:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SeqLenMask(
-    mask_value=mask_value,
-    )
-  return mod(
-    source,
-    axis=axis,
-    seq_len_source=seq_len_source,
-    start=start,
-    window_start=window_start,
-    window_size=window_size,
-    name=name)
-
-
-class _RandInt(_Base):
-  """
-  Generates random numbers using ``tf.random.uniform``
-  """
-  returnn_layer_class = 'rand_int'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               shape: Union[Tuple[Dim, ...], List[Dim]],
-               maxval: int,
-               minval: int = NotSpecified,
-               dtype: str = NotSpecified,
-               sparse_dim: Optional[Dim] = NotSpecified,
-               seed: Optional[int] = NotSpecified,
-               **kwargs):
-    """
-    :param tuple[Dim]|list[Dim] shape: desired shape of output tensor
-    :param int maxval: upper bound (exclusive) on range of random values
-    :param int minval: lower bound (inclusive) on range of random values
-    :param str dtype: type of the output. For random ints, int32 and int64 make sense, but could also be floats
-    :param Dim|None sparse_dim:
-    :param int|None seed: random seed
-    """
-    super().__init__(**kwargs)
-    self.shape = shape
-    self.maxval = maxval
-    self.minval = minval
-    self.dtype = dtype
-    self.sparse_dim = sparse_dim
-    self.seed = seed
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'shape': self.shape,
-      'maxval': self.maxval,
-      'minval': self.minval,
-      'dtype': self.dtype,
-      'sparse_dim': self.sparse_dim,
-      'seed': self.seed,
+  args = {
+    'mask_value': mask_value,
+    'axis': axis,
+    'seq_len_source': seq_len_source,
+    'start': start,
+    'window_start': window_start,
+    'window_size': window_size,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'rand_int',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'seq_len_mask',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1599,81 +813,21 @@ def rand_int(
   :param str dtype: type of the output. For random ints, int32 and int64 make sense, but could also be floats
   :param Dim|None sparse_dim:
   :param int|None seed: random seed
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _RandInt(
-    shape=shape,
-    maxval=maxval,
-    minval=minval,
-    dtype=dtype,
-    sparse_dim=sparse_dim,
-    seed=seed,
-    )
-  return mod(source, name=name)
-
-
-class _Range(_Base):
-  """
-  Generic wrapper around ``tf.range``.
-  See also :class:`RangeInAxisLayer`.
-  """
-  returnn_layer_class = 'range'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               limit: Union[int, float],
-               start: Union[int, float] = NotSpecified,
-               delta: Union[int, float] = NotSpecified,
-               dtype: Optional[str] = NotSpecified,
-               sparse: bool = NotSpecified,
-               out_spatial_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param int|float limit:
-    :param int|float start:
-    :param int|float delta:
-    :param str|None dtype:
-    :param bool sparse:
-    :param Dim|None out_spatial_dim:
-    """
-    super().__init__(**kwargs)
-    self.limit = limit
-    self.start = start
-    self.delta = delta
-    self.dtype = dtype
-    self.sparse = sparse
-    self.out_spatial_dim = out_spatial_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'limit': self.limit,
-      'start': self.start,
-      'delta': self.delta,
-      'dtype': self.dtype,
-      'sparse': self.sparse,
-      'out_spatial_dim': self.out_spatial_dim,
+  args = {
+    'shape': shape,
+    'maxval': maxval,
+    'minval': minval,
+    'dtype': dtype,
+    'sparse_dim': sparse_dim,
+    'seed': seed,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'range',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'rand_int',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1698,73 +852,21 @@ def range(
   :param str|None dtype:
   :param bool sparse:
   :param Dim|None out_spatial_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Range(
-    limit=limit,
-    start=start,
-    delta=delta,
-    dtype=dtype,
-    sparse=sparse,
-    out_spatial_dim=out_spatial_dim,
-    )
-  return mod(source, name=name)
-
-
-class _RangeInAxis(_Base):
-  """
-  Assume that the input is e.g. (B,T,D), and you specify axis="T", you will get (B=1,T,D=1),
-  where the specified axis is filled with ``tf.range``.
-  See also :class:`RangeLayer`.
-  """
-  returnn_layer_class = 'range_in_axis'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dtype: str = NotSpecified,
-               sparse: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str dtype:
-    :param bool sparse:
-    """
-    super().__init__(**kwargs)
-    self.dtype = dtype
-    self.sparse = sparse
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dtype': self.dtype,
-      'sparse': self.sparse,
+  args = {
+    'limit': limit,
+    'start': start,
+    'delta': delta,
+    'dtype': dtype,
+    'sparse': sparse,
+    'out_spatial_dim': out_spatial_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'range_in_axis',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'range',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1784,80 +886,18 @@ def range_in_axis(
   :param Dim axis:
   :param str dtype:
   :param bool sparse:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _RangeInAxis(
-    dtype=dtype,
-    sparse=sparse,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _RangeFromLength(_Base):
-  """
-  Given some dynamic sequence lengths as input, this creates a tf.range over the implied dimension.
-  As a side effect, this can create a new dyn dim tag for the given sequence lengths.
-  This side effect can be the main functionality in certain use cases.
-  See also :class:`RangeInAxisLayer`.
-
-  Consider the example::
-
-    y: {class: range_in_axis, from: x, axis: T}
-
-  This is basically equivalent to::
-
-    x_len: {class: length, from: x}
-    y: {class: range_from_length, from: x_len}
-
-  """
-  returnn_layer_class = 'range_from_length'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dtype: str = NotSpecified,
-               sparse: bool = NotSpecified,
-               out_spatial_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param str dtype:
-    :param bool sparse:
-    :param Dim|None out_spatial_dim:
-    """
-    super().__init__(**kwargs)
-    self.dtype = dtype
-    self.sparse = sparse
-    self.out_spatial_dim = out_spatial_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dtype': self.dtype,
-      'sparse': self.sparse,
-      'out_spatial_dim': self.out_spatial_dim,
+  args = {
+    'axis': axis,
+    'dtype': dtype,
+    'sparse': sparse,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'range_from_length',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'range_in_axis',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1888,36 +928,18 @@ def range_from_length(
   :param str dtype:
   :param bool sparse:
   :param Dim|None out_spatial_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _RangeFromLength(
-    dtype=dtype,
-    sparse=sparse,
-    out_spatial_dim=out_spatial_dim,
-    )
-  return mod(source, name=name)
-
-
-class _BatchSoftmax(_Base):
-  """
-  Softmax over spacial and feature axis
-  """
-  returnn_layer_class = 'batch_softmax'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'batch_softmax',
-      'from': source,
-      **self.get_opts()}
+  args = {
+    'dtype': dtype,
+    'sparse': sparse,
+    'out_spatial_dim': out_spatial_dim,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'range_from_length',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1929,56 +951,12 @@ def batch_softmax(
   Softmax over spacial and feature axis
 
   :param LayerRef source:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _BatchSoftmax()
-  return mod(source, name=name)
-
-
-class _Constant(_Base):
-  """
-  Output is a constant value.
-  """
-  returnn_layer_class = 'constant'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               value: Union[int, float, bool] = NotSpecified,
-               shape: Union[Tuple[Dim, ...], List[Dim]] = NotSpecified,
-               dtype: Optional[str] = NotSpecified,
-               **kwargs):
-    """
-    :param int|float|bool value:
-    :param tuple[Dim]|list[Dim] shape: for verification, and defining dim tags
-    :param str|None dtype:
-    """
-    super().__init__(**kwargs)
-    self.value = value
-    self.shape = shape
-    self.dtype = dtype
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'value': self.value,
-      'shape': self.shape,
-      'dtype': self.dtype,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  def make_layer_dict(self) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'constant',
-      **self.get_opts()}
+  return make_layer({
+    'class': 'batch_softmax',
+    'from': source,
+    }, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1994,100 +972,17 @@ def constant(
   :param int|float|bool value:
   :param tuple[Dim]|list[Dim] shape: for verification, and defining dim tags
   :param str|None dtype:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Constant(
-    value=value,
-    shape=shape,
-    dtype=dtype,
-    )
-  return mod(
-    name=name)
-
-
-class _Window(_Base):
-  """
-  Adds a window dimension.
-  By default, uses the time axis and goes over it with a sliding window.
-  The new axis for the window is created right after the time axis.
-  Will always return as batch major mode.
-  E.g. if the input is (batch, time, dim), the output is (batch, time, window_size, dim).
-  If you want to merge the (window_size, dim) together to (window_size * dim,),
-  you can use the MergeDimsLayer, e.g. {"class": "merge_dims", "axes": "except_time"}.
-  Use stride==window_size and window_right=window_size - 1 in combination with a
-  MergeDimsLayer to achieve feature stacking with right-hand zero padding.
-
-  This is not to take out a window from the time-dimension.
-  See :class:`SliceLayer` or :class:`SliceNdLayer`.
-  """
-  returnn_layer_class = 'window'
-  has_recurrent_state = True
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               window_dim: Optional[Dim] = NotSpecified,
-               window_left: Optional[int] = NotSpecified,
-               window_right: Optional[int] = NotSpecified,
-               out_spatial_dim: Optional[Dim] = NotSpecified,
-               padding: str = NotSpecified,
-               stride: int = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None window_dim:
-    :param int|None window_left:
-    :param int|None window_right:
-    :param Dim|None out_spatial_dim:
-    :param str padding: "same" or "valid"
-    :param int stride: return only each Nth window
-    """
-    super().__init__(**kwargs)
-    self.window_dim = window_dim
-    self.window_left = window_left
-    self.window_right = window_right
-    self.out_spatial_dim = out_spatial_dim
-    self.padding = padding
-    self.stride = stride
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'window_dim': self.window_dim,
-      'window_left': self.window_left,
-      'window_right': self.window_right,
-      'out_spatial_dim': self.out_spatial_dim,
-      'padding': self.padding,
-      'stride': self.stride,
+  args = {
+    'value': value,
+    'shape': shape,
+    'dtype': dtype,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'state': state,
-      'initial_state': initial_state,
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'window',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'constant',
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2103,7 +998,7 @@ def _window(
             out_spatial_dim: Optional[Dim] = NotSpecified,
             padding: str = NotSpecified,
             stride: int = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -2128,80 +1023,25 @@ def _window(
   :param Dim|None out_spatial_dim:
   :param str padding: "same" or "valid"
   :param int stride: return only each Nth window
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Window(
-    window_dim=window_dim,
-    window_left=window_left,
-    window_right=window_right,
-    out_spatial_dim=out_spatial_dim,
-    padding=padding,
-    stride=stride,
-    )
-  return mod(
-    source,
-    state=state,
-    initial_state=initial_state,
-    axis=axis,
-    name=name)
-
-
-class _Cumsum(_Base):
-  """
-  Basically wraps tf.cumsum. Also supports that in the RecLayer.
-  """
-  returnn_layer_class = 'cumsum'
-  has_recurrent_state = True
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
-               reverse: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
-    :param bool reverse:
-    """
-    super().__init__(**kwargs)
-    self.additional_left_summand_per_element = additional_left_summand_per_element
-    self.reverse = reverse
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'additional_left_summand_per_element': self.additional_left_summand_per_element,
-      'reverse': self.reverse,
+  args = {
+    'state': state, 'initial_state': initial_state,
+    'window_dim': window_dim,
+    'window_left': window_left,
+    'window_right': window_right,
+    'axis': axis,
+    'out_spatial_dim': out_spatial_dim,
+    'padding': padding,
+    'stride': stride,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'state': state,
-      'initial_state': initial_state,
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'cumsum',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  layer = make_layer({
+    'class': 'window',
+    'from': source,
+    **args}, name=name)
+  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2213,7 +1053,7 @@ def _cumsum(
             axis: Dim,
             additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
             reverse: bool = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
@@ -2223,81 +1063,21 @@ def _cumsum(
   :param Dim axis: see :func:`Data.get_axis_from_description`
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
   :param bool reverse:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Cumsum(
-    additional_left_summand_per_element=additional_left_summand_per_element,
-    reverse=reverse,
-    )
-  return mod(
-    source,
-    state=state,
-    initial_state=initial_state,
-    axis=axis,
-    name=name)
-
-
-class _Pad(_Base):
-  """
-  Adds (e.g. zero) padding in some axis or axes.
-  Also see :class:`PrefixInTimeLayer` for dynamic dims.
-  """
-  returnn_layer_class = 'pad'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               padding: Union[List[int, int], int, int, int],
-               out_dims: Optional[Union[Dim, List[Dim]]] = NotSpecified,
-               value: Union[int, float] = NotSpecified,
-               mode: str = NotSpecified,
-               **kwargs):
-    """
-    :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
-    :param Dim|list[Dim]|None out_dims:
-    :param int|float value: what constant value to pad, with mode=="constant"
-    :param str mode: "constant", "reflect", "symmetric" and "replication"
-    """
-    super().__init__(**kwargs)
-    self.padding = padding
-    self.out_dims = out_dims
-    self.value = value
-    self.mode = mode
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'padding': self.padding,
-      'out_dims': self.out_dims,
-      'value': self.value,
-      'mode': self.mode,
+  args = {
+    'state': state, 'initial_state': initial_state,
+    'axis': axis,
+    'additional_left_summand_per_element': additional_left_summand_per_element,
+    'reverse': reverse,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axes: Union[Dim, List[Dim]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axes': axes,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'pad',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  layer = make_layer({
+    'class': 'cumsum',
+    'from': source,
+    **args}, name=name)
+  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2320,74 +1100,20 @@ def pad(
   :param Dim|list[Dim]|None out_dims:
   :param int|float value: what constant value to pad, with mode=="constant"
   :param str mode: "constant", "reflect", "symmetric" and "replication"
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Pad(
-    padding=padding,
-    out_dims=out_dims,
-    value=value,
-    mode=mode,
-    )
-  return mod(
-    source,
-    axes=axes,
-    name=name)
-
-
-class _MergeDims(_Base):
-  """
-  Merges a list of axes into a single one. (Flatten the dims.)
-  E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
-  Or input is (batch, time, height, dim) and axes="except_time", then we get (batch, time, height*dim).
-  See also :class:`CombineDimsLayer`.
-  When batch and time got merged, :class:`SplitBatchTimeLayer` can undo this.
-  When you want to merge batch and time, but remove the padding efficiently, i.e. flatten it,
-  see :class:`FlattenBatchLayer`.
-  """
-  returnn_layer_class = 'merge_dims'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None out_dim:
-    """
-    super().__init__(**kwargs)
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dim': self.out_dim,
+  args = {
+    'axes': axes,
+    'padding': padding,
+    'out_dims': out_dims,
+    'value': value,
+    'mode': mode,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axes: Sequence[Dim],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axes': axes,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'merge_dims',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'pad',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2409,67 +1135,17 @@ def merge_dims(
   :param LayerRef source:
   :param Sequence[Dim] axes: see :func:`Data.get_axis_from_description`
   :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _MergeDims(
-    out_dim=out_dim,
-    )
-  return mod(
-    source,
-    axes=axes,
-    name=name)
-
-
-class _Split(_Base):
-  """
-  Splits one axis into multiple parts, via tf.split.
-  self.output is simply the input copied.
-  Each part can be accessed via the sublayers "/%i".
-  """
-  returnn_layer_class = 'split'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_dims: Optional[List[Dim]] = NotSpecified,
-               **kwargs):
-    """
-    :param list[Dim]|None out_dims:
-    """
-    super().__init__(**kwargs)
-    self.out_dims = out_dims
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dims': self.out_dims,
+  args = {
+    'axes': axes,
+    'out_dim': out_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'split',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'merge_dims',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2487,91 +1163,17 @@ def _split(
   :param LayerRef source:
   :param Dim axis: feature axis by default
   :param list[Dim]|None out_dims:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Split(
-    out_dims=out_dims,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _SplitDims(_Base):
-  """
-  Splits one axis into multiple axes.
-  E.g. if you know that your feature-dim is composed by a window,
-  i.e. the input is (batch, time, window * feature),
-  you can set axis="F", dims=(window, -1),
-  and you will get the output (batch, time, window, feature).
-
-  If the split axis has a dynamic length,
-  exactly one of the axes that we split into need to also have a dynamic length.
-  You can e.g. use this to split the input dimension into smaller "chunks" of a fixed window size.
-  E.g. you could have input (batch, time, feature) and set axis="T", dims=(-1, window),
-  to get output (batch, split_time, window, feature).
-  In this case, the exact sequence lengths are lost and everything is padded to multiples of the window size using
-  the given padding value.
-  Use :class:`ReinterpretDataLayer` to receive back the original sequence lengths after merging.
-
-  Also see :class:`SplitBatchTimeLayer`.
-  Also see :class:`MergeDimsLayer` which can undo this operation.
-  """
-  returnn_layer_class = 'split_dims'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dims: Union[Tuple[Dim, ...], List[Dim]],
-               pad_to_multiples: Optional[bool] = NotSpecified,
-               pad_value: Union[int, float] = NotSpecified,
-               **kwargs):
-    """
-    :param tuple[Dim]|list[Dim] dims: what the axis should be split into. e.g. (window, -1)
-    :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
-      static dims, such that splitting is actually possible.
-      By default this is done iff the axis has a dynamic size
-    :param int|float pad_value: What pad value to use for pad_to_multiples
-    """
-    super().__init__(**kwargs)
-    self.dims = dims
-    self.pad_to_multiples = pad_to_multiples
-    self.pad_value = pad_value
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dims': self.dims,
-      'pad_to_multiples': self.pad_to_multiples,
-      'pad_value': self.pad_value,
+  args = {
+    'axis': axis,
+    'out_dims': out_dims,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'split_dims',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'split',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2609,48 +1211,19 @@ def split_dims(
     static dims, such that splitting is actually possible.
     By default this is done iff the axis has a dynamic size
   :param int|float pad_value: What pad value to use for pad_to_multiples
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SplitDims(
-    dims=dims,
-    pad_to_multiples=pad_to_multiples,
-    pad_value=pad_value,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _SplitBatchTime(_Base):
-  """
-  A very specific layer which expects to get input of shape (batch * time, ...)
-  and converts it into (batch, time, ...), where it recovers the seq-lens from some other layer.
-  See :class:`SplitDimsLayer` for a more generic layer.
-  """
-  returnn_layer_class = 'split_batch_time'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      base: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'base': base,
+  args = {
+    'axis': axis,
+    'dims': dims,
+    'pad_to_multiples': pad_to_multiples,
+    'pad_value': pad_value,
     }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'split_batch_time',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'split_dims',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2666,68 +1239,16 @@ def split_batch_time(
 
   :param LayerRef source:
   :param LayerBase base: used to recover the seq-lens
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SplitBatchTime()
-  return mod(
-    source,
-    base=base,
-    name=name)
-
-
-class _FlattenBatch(_Base):
-  """
-  Merges one axis into the batch axis.
-  If the axis has dynamic lengths, this would use flattening,
-  i.e. recalculate the padding, i.e. the size changes.
-  This basically wraps :func:`flatten_with_seq_len_mask` or :func:`flatten_with_seq_len_mask_time_major`.
-  See also :class:`MergeDimsLayer`, which does not do flattening,
-  i.e. the size stays the same.
-  """
-  returnn_layer_class = 'flatten_batch'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               batch_major: bool = NotSpecified,
-               **kwargs):
-    """
-    :param bool batch_major: if False, will flatten in time-major manner
-    """
-    super().__init__(**kwargs)
-    self.batch_major = batch_major
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'batch_major': self.batch_major,
+  args = {
+    'base': base,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'flatten_batch',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'split_batch_time',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2748,39 +1269,17 @@ def flatten_batch(
   :param LayerRef source:
   :param Dim axis:
   :param bool batch_major: if False, will flatten in time-major manner
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _FlattenBatch(
-    batch_major=batch_major,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _UnflattenBatch(_Base):
-  """
-  Inverse of :class:`FlattenBatchLayer`, so recovers an axis previously merged into the batch axis
-
-  This basically wraps :func:`unflatten_with_seq_len_mask`.
-  """
-  returnn_layer_class = 'unflatten_batch'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'unflatten_batch',
-      'from': source,
-      **self.get_opts()}
+  args = {
+    'axis': axis,
+    'batch_major': batch_major,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'flatten_batch',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2794,79 +1293,12 @@ def unflatten_batch(
   This basically wraps :func:`unflatten_with_seq_len_mask`.
 
   :param LayerRef source:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _UnflattenBatch()
-  return mod(source, name=name)
-
-
-class _UnflattenNd(_Base):
-  """
-  This keeps the batch axis as-is, i.e. the flattening/unflattening did not happen on the batch axis.
-
-  Example:
-
-    Assumes that the input is of shape (B,T,<Ds>) which represents flattened images,
-    where each image is of size width * height.
-    We additionally provide these image sizes (shape (B,2)), i.e. (width,height) tuples.
-    We return the unflattened images of shape (B,W,H,<Ds>), where W/H are the max width/height.
-
-  This basically wraps :func:`returnn.tf.util.basic.unflatten_nd`.
-  """
-  returnn_layer_class = 'unflatten_nd'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               num_axes: int,
-               in_dim: Optional[Dim] = NotSpecified,
-               out_dims: Optional[List[Dim]] = NotSpecified,
-               **kwargs):
-    """
-    :param int num_axes:
-    :param Dim|None in_dim:
-    :param list[Dim]|None out_dims:
-    """
-    super().__init__(**kwargs)
-    self.num_axes = num_axes
-    self.in_dim = in_dim
-    self.out_dims = out_dims
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'num_axes': self.num_axes,
-      'in_dim': self.in_dim,
-      'out_dims': self.out_dims,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      sizes: LayerRef,
-                      declare_same_sizes_as: Optional[Dict[int, LayerRef]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'sizes': sizes,
-      'declare_same_sizes_as': declare_same_sizes_as,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'unflatten_nd',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  return make_layer({
+    'class': 'unflatten_batch',
+    'from': source,
+    }, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2897,73 +1329,20 @@ def unflatten_nd(
   :param Dim|None in_dim:
   :param list[Dim]|None out_dims:
   :param dict[int,LayerBase]|None declare_same_sizes_as:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _UnflattenNd(
-    num_axes=num_axes,
-    in_dim=in_dim,
-    out_dims=out_dims,
-    )
-  return mod(
-    source,
-    sizes=sizes,
-    declare_same_sizes_as=declare_same_sizes_as,
-    name=name)
-
-
-class _Repeat(_Base):
-  """
-  A wrapper around tf.repeat, but supports an additional batch axis for the durations
-  The sum of the repetitions has to be non-zero for each sequence in the batch.
-
-  This layer can only be used with Tensorflow 1.15.0 or newer.
-  """
-  returnn_layer_class = 'repeat'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None out_dim:
-    """
-    super().__init__(out_dim=out_dim, **kwargs)
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dim': self.out_dim,
+  args = {
+    'sizes': sizes,
+    'num_axes': num_axes,
+    'in_dim': in_dim,
+    'out_dims': out_dims,
+    'declare_same_sizes_as': declare_same_sizes_as,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      repetitions: Union[LayerRef, int],
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'repetitions': repetitions,
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'repeat',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'unflatten_nd',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2986,63 +1365,18 @@ def repeat(
     Can be [B,T] or [T,B] or some subset of that shape
   :param Dim axis: (dynamic) axis for repetition (currently only time axis is supported)
   :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Repeat(
-    out_dim=out_dim,
-    )
-  return mod(
-    source,
-    repetitions=repetitions,
-    axis=axis,
-    name=name)
-
-
-class _Tile(_Base):
-  """
-  A wrapper around tf.tile
-  """
-  returnn_layer_class = 'tile'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               multiples: Dict[Dim,  int],
-               out_dims: Optional[Dict[Dim,  Dim]] = NotSpecified,
-               **kwargs):
-    """
-    :param dict[Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
-    :param dict[Dim, Dim]|None out_dims:
-    """
-    super().__init__(**kwargs)
-    self.multiples = multiples
-    self.out_dims = out_dims
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'multiples': self.multiples,
-      'out_dims': self.out_dims,
+  args = {
+    'repetitions': repetitions,
+    'axis': axis,
+    'out_dim': out_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'tile',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'repeat',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3058,56 +1392,17 @@ def tile(
   :param LayerRef source:
   :param dict[Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
   :param dict[Dim, Dim]|None out_dims:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Tile(
-    multiples=multiples,
-    out_dims=out_dims,
-    )
-  return mod(source, name=name)
-
-
-class _Cast(_Copy):
-  """
-  Cast to some other dtype.
-  """
-  returnn_layer_class = 'cast'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               dtype: str,
-               **kwargs):
-    """
-    :param str dtype:
-    """
-    super().__init__(**kwargs)
-    self.dtype = dtype
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'dtype': self.dtype,
+  args = {
+    'multiples': multiples,
+    'out_dims': out_dims,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'cast',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'tile',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3115,99 +1410,22 @@ def cast(
          source: LayerRef,
          *,
          dtype: str,
-         in_dim: Optional[Dim] = NotSpecified,
-         out_dim: Optional[Dim] = NotSpecified,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Cast to some other dtype.
 
   :param LayerRef source:
   :param str dtype:
-  :param Dim|None in_dim:
-  :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Cast(
-    dtype=dtype,
-    in_dim=in_dim,
-    out_dim=out_dim,
-    )
-  return mod(source, name=name)
-
-
-class _ReinterpretData(_Base):
-  """
-  Acts like the :class:`CopyLayer` but reinterprets the role of some axes or data.
-  """
-  returnn_layer_class = 'reinterpret_data'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               switch_axes: Union[str, List[str]] = NotSpecified,
-               set_axes: Dict[str, Union[int, str]] = NotSpecified,
-               set_dim_tags: Optional[Dict[Dim,  Dim]] = NotSpecified,
-               set_sparse: Optional[bool] = NotSpecified,
-               set_sparse_dim: Optional[Union[Dim, NotSpecified]] = NotSpecified,
-               increase_sparse_dim: Optional[int] = NotSpecified,
-               **kwargs):
-    """
-    :param str|list[str] switch_axes: e.g. "bt" to switch batch and time axes
-    :param dict[str,int|str] set_axes:
-      This can be used to overwrite the special axes like time_dim_axis or feature_dim_axis.
-      For that, use keys "B","T" or "F", and a value via :func:`Data.get_axis_from_description`.
-    :param dict[Dim, Dim]|None set_dim_tags: axis -> new dim tag. assigns new dim tags.
-      If the passed dim tag is yet undefined, this will not use same_dim_tags_as (declare_same_as)
-      but create a new dim tag.
-      This option is useful for generalized self attention (https://github.com/rwth-i6/returnn/issues/391).
-    :param bool|None set_sparse: if bool, set sparse value to this
-    :param Dim|NotSpecified|None set_sparse_dim: set sparse dim to this. assumes that it is sparse
-    :param int|None increase_sparse_dim: add this to the dim. assumes that it is sparse
-    """
-    super().__init__(**kwargs)
-    self.switch_axes = switch_axes
-    self.set_axes = set_axes
-    self.set_dim_tags = set_dim_tags
-    self.set_sparse = set_sparse
-    self.set_sparse_dim = set_sparse_dim
-    self.increase_sparse_dim = increase_sparse_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'switch_axes': self.switch_axes,
-      'set_axes': self.set_axes,
-      'set_dim_tags': self.set_dim_tags,
-      'set_sparse': self.set_sparse,
-      'set_sparse_dim': self.set_sparse_dim,
-      'increase_sparse_dim': self.increase_sparse_dim,
+  args = {
+    'dtype': dtype,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      size_base: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'size_base': size_base,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'reinterpret_data',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'cast',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3238,20 +1456,22 @@ def reinterpret_data(
   :param bool|None set_sparse: if bool, set sparse value to this
   :param Dim|NotSpecified|None set_sparse_dim: set sparse dim to this. assumes that it is sparse
   :param int|None increase_sparse_dim: add this to the dim. assumes that it is sparse
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ReinterpretData(
-    switch_axes=switch_axes,
-    set_axes=set_axes,
-    set_dim_tags=set_dim_tags,
-    set_sparse=set_sparse,
-    set_sparse_dim=set_sparse_dim,
-    increase_sparse_dim=increase_sparse_dim,
-    )
-  return mod(
-    source,
-    size_base=size_base,
-    name=name)
+  args = {
+    'switch_axes': switch_axes,
+    'size_base': size_base,
+    'set_axes': set_axes,
+    'set_dim_tags': set_dim_tags,
+    'set_sparse': set_sparse,
+    'set_sparse_dim': set_sparse_dim,
+    'increase_sparse_dim': increase_sparse_dim,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'reinterpret_data',
+    'from': source,
+    **args}, name=name)
 
 
 class Conv(_Base):
@@ -3355,12 +1575,12 @@ class Conv(_Base):
     return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      filter: Optional[LayerRef] = NotSpecified,
-                      bias: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
+  def __call__(self,
+               source: LayerRef,
+               *,
+               filter: Optional[LayerRef] = NotSpecified,
+               bias: Optional[LayerRef] = NotSpecified,
+               ) -> Layer:
     """
     Make layer dict
     """
@@ -3370,91 +1590,11 @@ class Conv(_Base):
       'bias': bias,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
+    return make_layer({
       'class': 'conv',
       'from': source,
       **args,
-      **self.get_opts()}
-
-
-class _Pool(_Base):
-  """
-  A generic N-D pooling layer.
-  This would usually be done after a convolution for down-sampling.
-  """
-  returnn_layer_class = 'pool'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               mode: str,
-               pool_size: Tuple[int, ...],
-               padding: str = NotSpecified,
-               dilation_rate: Union[Tuple[int, ...], int] = NotSpecified,
-               strides: Optional[Union[Tuple[int, ...], int]] = NotSpecified,
-               in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Optional[List[Dim]] = NotSpecified,
-               out_dim: Optional[Dim] = NotSpecified,
-               out_spatial_dims: Optional[List[Dim]] = NotSpecified,
-               use_channel_first: Union[bool, NotSpecified] = NotSpecified,
-               **kwargs):
-    """
-    :param str mode: "max" or "avg"
-    :param tuple[int] pool_size: shape of the window of each reduce
-    :param str padding: "valid" or "same"
-    :param tuple[int]|int dilation_rate:
-    :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
-    :param Dim|None in_dim:
-    :param list[Dim]|None in_spatial_dims:
-    :param Dim|None out_dim:
-    :param list[Dim]|None out_spatial_dims:
-    :param bool|NotSpecified use_channel_first: if set, will transform input to NCHW format
-    """
-    super().__init__(**kwargs)
-    self.mode = mode
-    self.pool_size = pool_size
-    self.padding = padding
-    self.dilation_rate = dilation_rate
-    self.strides = strides
-    self.in_dim = in_dim
-    self.in_spatial_dims = in_spatial_dims
-    self.out_dim = out_dim
-    self.out_spatial_dims = out_spatial_dims
-    self.use_channel_first = use_channel_first
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'mode': self.mode,
-      'pool_size': self.pool_size,
-      'padding': self.padding,
-      'dilation_rate': self.dilation_rate,
-      'strides': self.strides,
-      'in_dim': self.in_dim,
-      'in_spatial_dims': self.in_spatial_dims,
-      'out_dim': self.out_dim,
-      'out_spatial_dims': self.out_spatial_dims,
-      'use_channel_first': self.use_channel_first,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'pool',
-      'from': source,
-      **self.get_opts()}
+      **self.get_opts()}, maker=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3487,74 +1627,25 @@ def pool(
   :param Dim|None out_dim:
   :param list[Dim]|None out_spatial_dims:
   :param bool|NotSpecified use_channel_first: if set, will transform input to NCHW format
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Pool(
-    mode=mode,
-    pool_size=pool_size,
-    padding=padding,
-    dilation_rate=dilation_rate,
-    strides=strides,
-    in_dim=in_dim,
-    in_spatial_dims=in_spatial_dims,
-    out_dim=out_dim,
-    out_spatial_dims=out_spatial_dims,
-    use_channel_first=use_channel_first,
-    )
-  return mod(source, name=name)
-
-
-class _Dct(_Base):
-  """
-  Layer to perform DCT
-  Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
-  https://www.tensorflow.org/api_docs/python/tf/signal/dct
-  """
-  returnn_layer_class = 'dct'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               type: int = NotSpecified,
-               n: Optional[int] = NotSpecified,
-               norm: Optional[str] = NotSpecified,
-               **kwargs):
-    """
-    :param int type: DCT type to perform. Must be 1, 2, 3, or 4
-    :param int|None n: length of the transform
-    :param str|None norm: normalization to apply. Must be None or "ortho"
-    """
-    super().__init__(**kwargs)
-    self.type = type
-    self.n = n
-    self.norm = norm
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'type': self.type,
-      'n': self.n,
-      'norm': self.norm,
+  args = {
+    'mode': mode,
+    'pool_size': pool_size,
+    'padding': padding,
+    'dilation_rate': dilation_rate,
+    'strides': strides,
+    'in_dim': in_dim,
+    'in_spatial_dims': in_spatial_dims,
+    'out_dim': out_dim,
+    'out_spatial_dims': out_spatial_dims,
+    'use_channel_first': use_channel_first,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'dct',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'pool',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3574,14 +1665,18 @@ def dct(
   :param int type: DCT type to perform. Must be 1, 2, 3, or 4
   :param int|None n: length of the transform
   :param str|None norm: normalization to apply. Must be None or "ortho"
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Dct(
-    type=type,
-    n=n,
-    norm=norm,
-    )
-  return mod(source, name=name)
+  args = {
+    'type': type,
+    'n': n,
+    'norm': norm,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'dct',
+    'from': source,
+    **args}, name=name)
 
 
 class TransposedConv(_Base):
@@ -3664,12 +1759,12 @@ class TransposedConv(_Base):
     return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      filter: Optional[LayerRef] = NotSpecified,
-                      bias: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
+  def __call__(self,
+               source: LayerRef,
+               *,
+               filter: Optional[LayerRef] = NotSpecified,
+               bias: Optional[LayerRef] = NotSpecified,
+               ) -> Layer:
     """
     Make layer dict
     """
@@ -3679,67 +1774,11 @@ class TransposedConv(_Base):
       'bias': bias,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
+    return make_layer({
       'class': 'transposed_conv',
       'from': source,
       **args,
-      **self.get_opts()}
-
-
-class _Reduce(_Base):
-  """
-  This reduces some axis by using "sum" or "max".
-  It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
-  """
-  returnn_layer_class = 'reduce'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               mode: str,
-               use_time_mask: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
-    :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
-      By default, in that case, it will be True.
-    """
-    super().__init__(**kwargs)
-    self.mode = mode
-    self.use_time_mask = use_time_mask
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'mode': self.mode,
-      'use_time_mask': self.use_time_mask,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Union[Dim, List[Dim]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'reduce',
-      'from': source,
-      **args,
-      **self.get_opts()}
+      **self.get_opts()}, maker=self)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3763,69 +1802,18 @@ def reduce(
     See :func:`Data.get_axes_from_description`.
   :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
     By default, in that case, it will be True.
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Reduce(
-    mode=mode,
-    use_time_mask=use_time_mask,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _ReduceOut(_Base):
-  """
-  Combination of :class:`SplitDimsLayer` applied to the feature dim
-  and :class:`ReduceLayer` applied to the resulting feature dim.
-  This can e.g. be used to do maxout.
-  """
-  returnn_layer_class = 'reduce_out'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               mode: str,
-               num_pieces: int,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param str mode: "sum" or "max" or "mean"
-    :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
-    :param Dim|None out_dim:
-    """
-    super().__init__(out_dim=out_dim, **kwargs)
-    self.mode = mode
-    self.num_pieces = num_pieces
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'mode': self.mode,
-      'num_pieces': self.num_pieces,
-      'out_dim': self.out_dim,
+  args = {
+    'mode': mode,
+    'axis': axis,
+    'use_time_mask': use_time_mask,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'reduce_out',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'reduce',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3845,65 +1833,18 @@ def reduce_out(
   :param str mode: "sum" or "max" or "mean"
   :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
   :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ReduceOut(
-    mode=mode,
-    num_pieces=num_pieces,
-    out_dim=out_dim,
-    )
-  return mod(source, name=name)
-
-
-class _Squeeze(_Base):
-  """
-  Removes an axis with dimension 1.
-  This is basically a wrapper around tf.squeeze.
-  """
-  returnn_layer_class = 'squeeze'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               allow_no_op: bool = NotSpecified,
-               **kwargs):
-    """
-    :param bool allow_no_op:
-    """
-    super().__init__(**kwargs)
-    self.allow_no_op = allow_no_op
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'allow_no_op': self.allow_no_op,
+  args = {
+    'mode': mode,
+    'num_pieces': num_pieces,
+    'out_dim': out_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Union[Dim, List[Dim]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'squeeze',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'reduce_out',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -3922,68 +1863,17 @@ def squeeze(
     this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
     it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
   :param bool allow_no_op:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Squeeze(
-    allow_no_op=allow_no_op,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _Stack(_Base):
-  """
-  Stacks multiple inputs together using :func:`tf.stack`.
-  This creates a new dimension for the stack.
-
-  For concatenation (in feature dimension), see :class:`CopyLayer`.
-  """
-  returnn_layer_class = 'stack'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_spatial_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None out_spatial_dim:
-    """
-    super().__init__(**kwargs)
-    self.out_spatial_dim = out_spatial_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_spatial_dim': self.out_spatial_dim,
+  args = {
+    'axis': axis,
+    'allow_no_op': allow_no_op,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: Union[List[LayerRef], Tuple[LayerRef]],
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'stack',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'squeeze',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4004,76 +1894,17 @@ def stack(
     If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
     i.e. some reasonable default for a new spatial axis.
   :param Dim|None out_spatial_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Stack(
-    out_spatial_dim=out_spatial_dim,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _PrefixInTime(_Base):
-  """
-  Adds some prefix in time dimension.
-  This is kind of the reverse of :class:`SliceNdLayer` does.
-  Also see :class:`PadLayer` for static dimensions.
-  Also see :class:`PostfixInTimeLayer`.
-  """
-  returnn_layer_class = 'prefix_in_time'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_dim: Optional[Dim] = NotSpecified,
-               prefix: Union[float, str] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None out_dim:
-    :param float|str prefix: either some constant or another layer
-    """
-    super().__init__(**kwargs)
-    self.out_dim = out_dim
-    self.prefix = prefix
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dim': self.out_dim,
-      'prefix': self.prefix,
+  args = {
+    'axis': axis,
+    'out_spatial_dim': out_spatial_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      repeat: Union[int, LayerRef] = NotSpecified,
-                      size_base: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-      'repeat': repeat,
-      'size_base': size_base,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'prefix_in_time',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'stack',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4098,75 +1929,20 @@ def prefix_in_time(
   :param float|str prefix: either some constant or another layer
   :param int|LayerBase repeat: how often to repeat the prefix
   :param LayerBase|None size_base: copy seq-lens from here
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _PrefixInTime(
-    out_dim=out_dim,
-    prefix=prefix,
-    )
-  return mod(
-    source,
-    axis=axis,
-    repeat=repeat,
-    size_base=size_base,
-    name=name)
-
-
-class _PostfixInTime(_Base):
-  """
-  Adds some postfix in time dimension.
-  Also see :class:`PrefixInTimeLayer`.
-  """
-  returnn_layer_class = 'postfix_in_time'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_dim: Optional[Dim] = NotSpecified,
-               repeat: int = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None out_dim:
-    :param int repeat: how often to repeat the postfix
-    """
-    super().__init__(**kwargs)
-    self.out_dim = out_dim
-    self.repeat = repeat
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dim': self.out_dim,
-      'repeat': self.repeat,
+  args = {
+    'axis': axis,
+    'out_dim': out_dim,
+    'prefix': prefix,
+    'repeat': repeat,
+    'size_base': size_base,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      postfix: Union[float, int, LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-      'postfix': postfix,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'postfix_in_time',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'prefix_in_time',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4187,75 +1963,19 @@ def postfix_in_time(
   :param Dim|None out_dim:
   :param float|int|LayerBase postfix: constant or other layer without time axis to use as postfix
   :param int repeat: how often to repeat the postfix
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _PostfixInTime(
-    out_dim=out_dim,
-    repeat=repeat,
-    )
-  return mod(
-    source,
-    axis=axis,
-    postfix=postfix,
-    name=name)
-
-
-class _TimeChunking(_Base):
-  """
-  Performs chunking in time. See :func:`returnn.tf.native_op.chunk`.
-  """
-  returnn_layer_class = 'time_chunking'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               chunk_size: int,
-               chunk_step: int,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param int chunk_size:
-    :param int chunk_step:
-    :param Dim|None out_dim:
-    """
-    super().__init__(out_dim=out_dim, **kwargs)
-    self.chunk_size = chunk_size
-    self.chunk_step = chunk_step
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'chunk_size': self.chunk_size,
-      'chunk_step': self.chunk_step,
-      'out_dim': self.out_dim,
+  args = {
+    'axis': axis,
+    'out_dim': out_dim,
+    'postfix': postfix,
+    'repeat': repeat,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'time_chunking',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'postfix_in_time',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4275,46 +1995,19 @@ def time_chunking(
   :param int chunk_step:
   :param Dim axis:
   :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _TimeChunking(
-    chunk_size=chunk_size,
-    chunk_step=chunk_step,
-    out_dim=out_dim,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _TimeUnChunking(_Base):
-  """
-  Performs chunking in time. See :func:`TFNativeOp.chunk`.
-  """
-  returnn_layer_class = 'time_unchunking'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      chunking_layer: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'chunking_layer': chunking_layer,
+  args = {
+    'chunk_size': chunk_size,
+    'chunk_step': chunk_step,
+    'axis': axis,
+    'out_dim': out_dim,
     }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'time_unchunking',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'time_chunking',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4328,89 +2021,16 @@ def time_un_chunking(
 
   :param LayerRef source:
   :param TimeChunkingLayer chunking_layer:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _TimeUnChunking()
-  return mod(
-    source,
-    chunking_layer=chunking_layer,
-    name=name)
-
-
-class _Dot(_Base):
-  """
-  This performs a dot-product of two sources.
-  The underlying matmul expects shapes (shared..., I, J) * (shared..., J, K) -> (shared..., I, K).
-  We say that J is the axis to be reduced,
-  I is the var-dim of source 1, and K is the var-dim of source 2.
-  I, J, K can also be multiple axes from the sources.
-  The var-dims don't need to exist.
-  All other axes (shared...) are expected to match.
-  """
-  returnn_layer_class = 'dot'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               reduce: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
-               red1: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
-               red2: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
-               var1: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
-               var2: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
-               debug: bool = NotSpecified,
-               **kwargs):
-    """
-    Earlier defaults:
-      red1=-1, red2=-2, var1=-2, var2=-1, add_var2_if_empty=True.
-    However, these are bad, for multiple reasons, like using integers, but also in general.
-      See https://github.com/rwth-i6/returnn/issues/627 for details.
-
-    :param Dim|tuple[Dim]|list[Dim] reduce: reduce axes of both sources
-    :param Dim|tuple[Dim]|list[Dim] red1: reduce axes of first source
-    :param Dim|tuple[Dim]|list[Dim] red2: reduce axes of second source
-    :param Dim|tuple[Dim]|list[Dim]|None var1: var axes of first source
-    :param Dim|tuple[Dim]|list[Dim]|None var2: var axes of second source
-    :param bool debug: will print debug shapes, etc.
-    """
-    super().__init__(**kwargs)
-    self.reduce = reduce
-    self.red1 = red1
-    self.red2 = red2
-    self.var1 = var1
-    self.var2 = var2
-    self.debug = debug
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'reduce': self.reduce,
-      'red1': self.red1,
-      'red2': self.red2,
-      'var1': self.var1,
-      'var2': self.var2,
-      'debug': self.debug,
+  args = {
+    'chunking_layer': chunking_layer,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source1: LayerRef,
-                      source2: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source1, LayerRef)
-    assert isinstance(source2, LayerRef)
-    return {
-      'class': 'dot',
-      'from': [source1, source2],
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'time_unchunking',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4447,82 +2067,21 @@ def dot(
   :param Dim|tuple[Dim]|list[Dim]|None var1: var axes of first source
   :param Dim|tuple[Dim]|list[Dim]|None var2: var axes of second source
   :param bool debug: will print debug shapes, etc.
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Dot(
-    reduce=reduce,
-    red1=red1,
-    red2=red2,
-    var1=var1,
-    var2=var2,
-    debug=debug,
-    )
-  return mod(
-    source1,
-    source2,
-    name=name)
-
-
-class _ShiftAxis(_Base):
-  """
-  Shifts the dimensions in an axis around by slicing and optional padding.
-  This layer may change the axis-dimension.
-
-  This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
-  """
-  returnn_layer_class = 'shift_axis'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               amount: int,
-               pad: bool = NotSpecified,
-               adjust_size_info: bool = NotSpecified,
-               **kwargs):
-    """
-    :param int amount: number of elements to shift
-                   (<0 for left-shift, >0 for right-shift)
-    :param bool pad: preserve shape by padding
-    :param bool adjust_size_info: whether to adjust the size_placeholder
-    """
-    super().__init__(**kwargs)
-    self.amount = amount
-    self.pad = pad
-    self.adjust_size_info = adjust_size_info
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'amount': self.amount,
-      'pad': self.pad,
-      'adjust_size_info': self.adjust_size_info,
+  args = {
+    'reduce': reduce,
+    'red1': red1,
+    'red2': red2,
+    'var1': var1,
+    'var2': var2,
+    'debug': debug,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'shift_axis',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'dot',
+    'from': [source1, source2],
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4546,84 +2105,19 @@ def shift_axis(
                  (<0 for left-shift, >0 for right-shift)
   :param bool pad: preserve shape by padding
   :param bool adjust_size_info: whether to adjust the size_placeholder
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ShiftAxis(
-    amount=amount,
-    pad=pad,
-    adjust_size_info=adjust_size_info,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _Resize(_Base):
-  """
-  Resizes the input, i.e. upsampling or downsampling.
-  Supports different kinds, such as linear interpolation or nearest-neighbor.
-  """
-  returnn_layer_class = 'resize'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               factor: int,
-               out_dim: Optional[Dim] = NotSpecified,
-               kind: str = NotSpecified,
-               fill_value: Optional[Union[int, float]] = NotSpecified,
-               fill_dropout: float = NotSpecified,
-               **kwargs):
-    """
-    :param int factor:
-    :param Dim|None out_dim:
-    :param str kind: "linear", "nn"/"nearest_neighbor", "cubic", "fill"
-    :param None|int|float fill_value: if kind=="fill"
-    :param float fill_dropout: if set, will dropout in the same axis
-    """
-    super().__init__(**kwargs)
-    self.factor = factor
-    self.out_dim = out_dim
-    self.kind = kind
-    self.fill_value = fill_value
-    self.fill_dropout = fill_dropout
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'factor': self.factor,
-      'out_dim': self.out_dim,
-      'kind': self.kind,
-      'fill_value': self.fill_value,
-      'fill_dropout': self.fill_dropout,
+  args = {
+    'axis': axis,
+    'amount': amount,
+    'pad': pad,
+    'adjust_size_info': adjust_size_info,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'resize',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'shift_axis',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4648,76 +2142,21 @@ def resize(
   :param str kind: "linear", "nn"/"nearest_neighbor", "cubic", "fill"
   :param None|int|float fill_value: if kind=="fill"
   :param float fill_dropout: if set, will dropout in the same axis
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Resize(
-    factor=factor,
-    out_dim=out_dim,
-    kind=kind,
-    fill_value=fill_value,
-    fill_dropout=fill_dropout,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _Remove(_Base):
-  """
-  Currently, assumes sparse data, and removes a specific symbol from the data.
-
-  It is recommended to use :class:`MaskedComputationLayer` in combination with e.g.
-  a :class:CompareLayer` instead, as this provides more flexibility.
-  """
-  returnn_layer_class = 'remove'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               symbol: int,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param int symbol:
-    :param Dim|None out_dim: derived from the dim of axis, the reduced new dim
-    """
-    super().__init__(out_dim=out_dim, **kwargs)
-    self.symbol = symbol
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'symbol': self.symbol,
-      'out_dim': self.out_dim,
+  args = {
+    'factor': factor,
+    'axis': axis,
+    'out_dim': out_dim,
+    'kind': kind,
+    'fill_value': fill_value,
+    'fill_dropout': fill_dropout,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'remove',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'resize',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4738,81 +2177,18 @@ def remove(
   :param int symbol:
   :param Dim axis: the axis to operate over, to potentially remove frames
   :param Dim|None out_dim: derived from the dim of axis, the reduced new dim
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Remove(
-    symbol=symbol,
-    out_dim=out_dim,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _Combine(_Base):
-  """
-  Applies a binary operation, such as addition, to all sources while accumulating the partial results.
-  In the first step, the binary operation is performed on the first two sources.
-  After the first step, the previous results is always the left-hand operator.
-
-  Its basic working is similar to the `reduce` function used in functional programming.
-  Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
-  """
-  returnn_layer_class = 'combine'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               kind: str,
-               with_bias: bool = NotSpecified,
-               eval: Union[str, callable] = NotSpecified,
-               eval_locals: Optional[Dict[str]] = NotSpecified,
-               eval_for_output_loss: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str kind:
-      currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `logical_and`, `logical_or`, or `eval`
-    :param bool with_bias: if given, will add a trainable bias tensor
-    :param str|callable eval: for kind="eval", will eval this string. or function. see :func:`_op_kind_eval`
-    :param dict[str]|None eval_locals: locals for eval
-    :param bool eval_for_output_loss: will do the same eval on layer.output_loss
-    """
-    super().__init__(**kwargs)
-    self.kind = kind
-    self.with_bias = with_bias
-    self.eval = eval
-    self.eval_locals = eval_locals
-    self.eval_for_output_loss = eval_for_output_loss
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'kind': self.kind,
-      'with_bias': self.with_bias,
-      'eval': self.eval,
-      'eval_locals': self.eval_locals,
-      'eval_for_output_loss': self.eval_for_output_loss,
+  args = {
+    'symbol': symbol,
+    'axis': axis,
+    'out_dim': out_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: Union[List[LayerRef], Tuple[LayerRef]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
-    return {
-      'class': 'combine',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'remove',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4840,69 +2216,20 @@ def _combine(
   :param str|callable eval: for kind="eval", will eval this string. or function. see :func:`_op_kind_eval`
   :param dict[str]|None eval_locals: locals for eval
   :param bool eval_for_output_loss: will do the same eval on layer.output_loss
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Combine(
-    kind=kind,
-    with_bias=with_bias,
-    eval=eval,
-    eval_locals=eval_locals,
-    eval_for_output_loss=eval_for_output_loss,
-    )
-  return mod(source, name=name)
-
-
-class _Eval(_Combine):
-  """
-  Evaluates some string.
-  The :class:`CombineLayer` provides this functionality, thus this is just a special case of it.
-  Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
-
-  The output type is defined as a broadcasted extension of all sources.
-  You can overwrite it by (partially) specifying `out_type`.
-  `out_type` can also be a generic Python function, returning a `Data` instance.
-  """
-  returnn_layer_class = 'eval'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               eval: str,
-               **kwargs):
-    """
-    :param str eval: will eval this string. see :func:`_op_kind_eval`
-    """
-    super().__init__(kind="eval", eval=eval, **kwargs)
-    self.eval = eval
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'eval': self.eval,
+  args = {
+    'kind': kind,
+    'with_bias': with_bias,
+    'eval': eval,
+    'eval_locals': eval_locals,
+    'eval_for_output_loss': eval_for_output_loss,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    opts.update(super().get_opts())
-    opts.pop('kind')
-    return opts
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: Union[LayerRef, List[LayerRef], Tuple[LayerRef]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert (
-      isinstance(source, LayerRef) or
-      (isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)))
-    return {
-      'class': 'eval',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'combine',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -4928,82 +2255,19 @@ def eval(
   :param bool with_bias: if given, will add a trainable bias tensor
   :param dict[str]|None eval_locals: locals for eval
   :param bool eval_for_output_loss: will do the same eval on layer.output_loss
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Eval(
-    eval=eval,
-    with_bias=with_bias,
-    eval_locals=eval_locals,
-    eval_for_output_loss=eval_for_output_loss,
-    )
-  return mod(source, name=name)
-
-
-class _Compare(_Base):
-  """
-  Compares element-wise the tokens of all input sequences among themselves and/or with a specified given value.
-  The comparisons are performed in a chain according to the order in which they are listed.
-
-  Example::
-
-      {"class": "compare", "from": ["i1", "i2"], "value": val, "kind": "less"}
-
-  computes i1 < i2 < val and it is true only if the whole chain of operations is true.
-  The final result is the logical "and" of all comparisons. Note that `value` is the last element to be compared to.
-
-  A common example usage is the `end` layer in a rec subnetwork to specify the stopping criterion,
-  e.g. the last generated token is equal to the end-of-sentence token::
-
-      "output": {"class": "rec", "from": [], "unit": {
-          .
-          .
-          .
-          "end": {"class": "compare", "from": "output", "value": end_of_sentence_id}
-      }, "target": "classes0"}
-
-  """
-  returnn_layer_class = 'compare'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               kind: str = NotSpecified,
-               value: Optional[Union[float, int]] = NotSpecified,
-               **kwargs):
-    """
-    :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
-      or other supported TF comparison ops
-    :param float|int|None value: if specified, will also compare to this
-    """
-    super().__init__(**kwargs)
-    self.kind = kind
-    self.value = value
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'kind': self.kind,
-      'value': self.value,
+  args = {
+    'eval': eval,
+    'with_bias': with_bias,
+    'eval_locals': eval_locals,
+    'eval_for_output_loss': eval_for_output_loss,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: Union[List[LayerRef], Tuple[LayerRef]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)
-    return {
-      'class': 'compare',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'eval',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5039,53 +2303,17 @@ def compare(
   :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
     or other supported TF comparison ops
   :param float|int|None value: if specified, will also compare to this
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Compare(
-    kind=kind,
-    value=value,
-    )
-  return mod(source, name=name)
-
-
-class _Switch(_Base):
-  """
-  Wrapper around ``tf.where()`` (or more generically :func:`returnn.tf.util.basic.where_bc`),
-  or statically choose a single source if the condition is a callable (...)->bool.
-  (``tf.cond`` is not useful here, as the sources would have been already constructed and computed.)
-
-  This layer is also useful for applying any kind of generic masking to the frames.
-  E.g. one could have a layer called "mask" computing a boolean mask for the values stored in another layer "input".
-  Then use this layer with condition="mask", true_from="input", false_from=mask_value,
-  to mask out all frames where the mask is false with the mask_value.
-
-  See also :class:`CondLayer`.
-  See also :class:`SeqLenMaskLayer` if you just want to mask using the sequence lengths.
-  """
-  returnn_layer_class = 'switch'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      *,
-                      condition: Union[LayerRef, bool],
-                      true_from: Optional[Union[LayerRef, float, int]],
-                      false_from: Optional[Union[LayerRef, float, int]],
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    args = {
-      'condition': condition,
-      'true_from': true_from,
-      'false_from': false_from,
+  args = {
+    'kind': kind,
+    'value': value,
     }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'switch',
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'compare',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5111,75 +2339,17 @@ def switch(
   :param LayerBase|bool condition: if callable, expected to be (...)->bool, and called in transform_config_dict
   :param LayerBase|float|int|None true_from:
   :param LayerBase|float|int|None false_from:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Switch()
-  return mod(
-    condition=condition,
-    true_from=true_from,
-    false_from=false_from,
-    name=name)
-
-
-class _SearchSorted(_Base):
-  """
-  Basically wraps :func:`tf.searchsorted`.
-
-  Takes a tensor `sorted_sequence` that is sorted along one axis, and a tensor `values`.
-  Will compute an output tensor with the same axes as `values`,
-  where each entry is the index of the value within the sorted sequence.
-  All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
-  """
-  returnn_layer_class = 'search_sorted'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               side: str = NotSpecified,
-               **kwargs):
-    """
-    :param str side: "left" or "right".
-      When one of the `values` exactly matches an element of the `sorted_sequence`,
-      whether to choose the lower or higher index.
-    """
-    super().__init__(**kwargs)
-    self.side = side
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'side': self.side,
+  args = {
+    'condition': condition,
+    'true_from': true_from,
+    'false_from': false_from,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      sorted_sequence: LayerRef,
-                      values: LayerRef,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'sorted_sequence': sorted_sequence,
-      'values': values,
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'search_sorted',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'switch',
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5206,68 +2376,19 @@ def search_sorted(
   :param str side: "left" or "right".
     When one of the `values` exactly matches an element of the `sorted_sequence`,
     whether to choose the lower or higher index.
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SearchSorted(
-    side=side,
-    )
-  return mod(
-    source,
-    sorted_sequence=sorted_sequence,
-    values=values,
-    axis=axis,
-    name=name)
-
-
-class _Variable(_Base):
-  """
-  Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
-  See defaults.
-  """
-  returnn_layer_class = 'variable'
-  has_recurrent_state = False
-  has_variables = True
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               shape: Union[Tuple[Dim, ...], List[Dim]],
-               dtype: str = NotSpecified,
-               trainable: bool = NotSpecified,
-               init: Union[str, float, int] = NotSpecified,
-               **kwargs):
-    """
-    :param tuple[Dim]|list[Dim] shape:
-    :param str dtype:
-    :param bool trainable:
-    :param str|float|int init: see :func:`returnn.tf.util.basic.get_initializer`
-    """
-    super().__init__(trainable=trainable, **kwargs)
-    self.shape = shape
-    self.dtype = dtype
-    self.trainable = trainable
-    self.init = init
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'shape': self.shape,
-      'dtype': self.dtype,
-      'trainable': self.trainable,
-      'init': self.init,
+  args = {
+    'sorted_sequence': sorted_sequence,
+    'values': values,
+    'axis': axis,
+    'side': side,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  def make_layer_dict(self) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    return {
-      'class': 'variable',
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'search_sorted',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5286,70 +2407,18 @@ def variable(
   :param str dtype:
   :param bool trainable:
   :param str|float|int init: see :func:`returnn.tf.util.basic.get_initializer`
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Variable(
-    shape=shape,
-    dtype=dtype,
-    trainable=trainable,
-    init=init,
-    )
-  return mod(
-    name=name)
-
-
-class _ForcedAlignment(_Base):
-  """
-  Calculates a forced alignment, via Viterbi algorithm.
-  """
-  returnn_layer_class = 'forced_align'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               topology: str,
-               input_type: str,
-               **kwargs):
-    """
-    :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
-    :param str input_type: "log_prob" or "prob"
-    """
-    super().__init__(**kwargs)
-    self.topology = topology
-    self.input_type = input_type
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'topology': self.topology,
-      'input_type': self.input_type,
+  args = {
+    'shape': shape,
+    'dtype': dtype,
+    'trainable': trainable,
+    'init': init,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      align_target: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'align_target': align_target,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'forced_align',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'variable',
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5367,95 +2436,18 @@ def forced_alignment(
   :param LayerBase align_target:
   :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
   :param str input_type: "log_prob" or "prob"
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ForcedAlignment(
-    topology=topology,
-    input_type=input_type,
-    )
-  return mod(
-    source,
-    align_target=align_target,
-    name=name)
-
-
-class _FastBaumWelch(_Base):
-  """
-  Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
-  We expect that our input are +log scores, e.g. use log-softmax.
-  """
-  returnn_layer_class = 'fast_bw'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               align_target: str,
-               align_target_key: Optional[str] = NotSpecified,
-               ctc_opts: Dict[str] = NotSpecified,
-               sprint_opts: Dict[str] = NotSpecified,
-               input_type: str = NotSpecified,
-               tdp_scale: float = NotSpecified,
-               am_scale: float = NotSpecified,
-               min_prob: float = NotSpecified,
-               **kwargs):
-    """
-    :param str align_target: e.g. "sprint" or "staircase"
-    :param str|None align_target_key: e.g. "classes", used for e.g. align_target "ctc"
-    :param dict[str] ctc_opts: used for align_target "ctc"
-    :param dict[str] sprint_opts: used for Sprint (RASR) for align_target "sprint"
-    :param str input_type: "log_prob" or "prob"
-    :param float tdp_scale:
-    :param float am_scale:
-    :param float min_prob: clips the minimum prob (value in [0,1])
-    """
-    super().__init__(**kwargs)
-    self.align_target = align_target
-    self.align_target_key = align_target_key
-    self.ctc_opts = ctc_opts
-    self.sprint_opts = sprint_opts
-    self.input_type = input_type
-    self.tdp_scale = tdp_scale
-    self.am_scale = am_scale
-    self.min_prob = min_prob
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'align_target': self.align_target,
-      'align_target_key': self.align_target_key,
-      'ctc_opts': self.ctc_opts,
-      'sprint_opts': self.sprint_opts,
-      'input_type': self.input_type,
-      'tdp_scale': self.tdp_scale,
-      'am_scale': self.am_scale,
-      'min_prob': self.min_prob,
+  args = {
+    'align_target': align_target,
+    'topology': topology,
+    'input_type': input_type,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      staircase_seq_len_source: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'staircase_seq_len_source': staircase_seq_len_source,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'fast_bw',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'forced_align',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5486,74 +2478,24 @@ def fast_baum_welch(
   :param float am_scale:
   :param float min_prob: clips the minimum prob (value in [0,1])
   :param LayerBase|None staircase_seq_len_source:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _FastBaumWelch(
-    align_target=align_target,
-    align_target_key=align_target_key,
-    ctc_opts=ctc_opts,
-    sprint_opts=sprint_opts,
-    input_type=input_type,
-    tdp_scale=tdp_scale,
-    am_scale=am_scale,
-    min_prob=min_prob,
-    )
-  return mod(
-    source,
-    staircase_seq_len_source=staircase_seq_len_source,
-    name=name)
-
-
-class _SyntheticGradient(_Base):
-  """
-  This is a generalized way to be able to replace the true gradient with any kind of predicted gradient.
-  This enabled to implement the idea from here:
-    Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
-  """
-  returnn_layer_class = 'synthetic_gradient'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               meta_loss_scale: float = NotSpecified,
-               **kwargs):
-    """
-    :param float meta_loss_scale:
-    """
-    super().__init__(**kwargs)
-    self.meta_loss_scale = meta_loss_scale
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'meta_loss_scale': self.meta_loss_scale,
+  args = {
+    'align_target': align_target,
+    'align_target_key': align_target_key,
+    'ctc_opts': ctc_opts,
+    'sprint_opts': sprint_opts,
+    'input_type': input_type,
+    'tdp_scale': tdp_scale,
+    'am_scale': am_scale,
+    'min_prob': min_prob,
+    'staircase_seq_len_source': staircase_seq_len_source,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      gradient: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'gradient': gradient,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'synthetic_gradient',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'fast_bw',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5571,58 +2513,17 @@ def synthetic_gradient(
   :param LayerRef source:
   :param LayerBase gradient:
   :param float meta_loss_scale:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SyntheticGradient(
-    meta_loss_scale=meta_loss_scale,
-    )
-  return mod(
-    source,
-    gradient=gradient,
-    name=name)
-
-
-class _TikhonovRegularization(_Copy):
-  """
-  Adds the Tikhonov regularization as a meta-loss (see :class:`returnn.tf.util.basic.MetaLosses`).
-  """
-  returnn_layer_class = 'tikhonov_regularization'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               meta_loss_scale: float = NotSpecified,
-               **kwargs):
-    """
-    :param float meta_loss_scale:
-    """
-    super().__init__(**kwargs)
-    self.meta_loss_scale = meta_loss_scale
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'meta_loss_scale': self.meta_loss_scale,
+  args = {
+    'gradient': gradient,
+    'meta_loss_scale': meta_loss_scale,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'tikhonov_regularization',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'synthetic_gradient',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5630,71 +2531,22 @@ def tikhonov_regularization(
                             source: LayerRef,
                             *,
                             meta_loss_scale: float = NotSpecified,
-                            in_dim: Optional[Dim] = NotSpecified,
-                            out_dim: Optional[Dim] = NotSpecified,
                             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Adds the Tikhonov regularization as a meta-loss (see :class:`returnn.tf.util.basic.MetaLosses`).
 
   :param LayerRef source:
   :param float meta_loss_scale:
-  :param Dim|None in_dim:
-  :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _TikhonovRegularization(
-    meta_loss_scale=meta_loss_scale,
-    in_dim=in_dim,
-    out_dim=out_dim,
-    )
-  return mod(source, name=name)
-
-
-class _Print(_Base):
-  """
-  Prints the sources to console/log, via :func:`returnn.tf.util.basic.py_print`.
-  """
-  returnn_layer_class = 'print'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               summarize: Optional[int] = NotSpecified,
-               extra_print_args: Union[List, Tuple] = NotSpecified,
-               **kwargs):
-    """
-    :param int|None summarize: passed to :func:`py_print`
-    :param list|tuple extra_print_args:
-    """
-    super().__init__(**kwargs)
-    self.summarize = summarize
-    self.extra_print_args = extra_print_args
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'summarize': self.summarize,
-      'extra_print_args': self.extra_print_args,
+  args = {
+    'meta_loss_scale': meta_loss_scale,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'print',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'tikhonov_regularization',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5710,89 +2562,17 @@ def print(
   :param LayerRef source:
   :param int|None summarize: passed to :func:`py_print`
   :param list|tuple extra_print_args:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Print(
-    summarize=summarize,
-    extra_print_args=extra_print_args,
-    )
-  return mod(source, name=name)
-
-
-class _HDFDump(_Base):
-  """
-  Dumps into HDF file, compatible to :class:`HDFDataset`.
-
-  The HDF will be written to disk under the specified filename, if there was no error,
-  by default at graph reset, via :func:`TFNetwork.register_graph_reset_callback`.
-  Or after the dataset iteration run loop, with dump_per_run,
-  via :func:`TFNetwork.register_run_finished_callback`.
-
-  Common usage would be to add this to your network with "is_output_layer": True,
-  such that you don't need to make other layers depend on it.
-
-  It currently uses :class:`SimpleHDFWriter` internally.
-  """
-  returnn_layer_class = 'hdf_dump'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               filename: Union[str, callable],
-               dump_whole_batches: bool = NotSpecified,
-               labels: Optional[List[str]] = NotSpecified,
-               extend_existing_file: bool = NotSpecified,
-               dump_per_run: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str|(()->str) filename:
-    :param bool dump_whole_batches: dumps the whole batch as a single sequence into the HDF
-    :param list[str]|None labels:
-    :param bool extend_existing_file: True also means we expect that it exists
-    :param bool dump_per_run: write via :func:`TFNetwork.register_run_finished_callback`
-    """
-    super().__init__(**kwargs)
-    self.filename = filename
-    self.dump_whole_batches = dump_whole_batches
-    self.labels = labels
-    self.extend_existing_file = extend_existing_file
-    self.dump_per_run = dump_per_run
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'filename': self.filename,
-      'dump_whole_batches': self.dump_whole_batches,
-      'labels': self.labels,
-      'extend_existing_file': self.extend_existing_file,
-      'dump_per_run': self.dump_per_run,
+  args = {
+    'summarize': summarize,
+    'extra_print_args': extra_print_args,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      extra: Optional[Dict[str, LayerRef]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'extra': extra,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'hdf_dump',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'print',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -5826,19 +2606,21 @@ def hdf_dump(
   :param list[str]|None labels:
   :param bool extend_existing_file: True also means we expect that it exists
   :param bool dump_per_run: write via :func:`TFNetwork.register_run_finished_callback`
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _HDFDump(
-    filename=filename,
-    dump_whole_batches=dump_whole_batches,
-    labels=labels,
-    extend_existing_file=extend_existing_file,
-    dump_per_run=dump_per_run,
-    )
-  return mod(
-    source,
-    extra=extra,
-    name=name)
+  args = {
+    'filename': filename,
+    'extra': extra,
+    'dump_whole_batches': dump_whole_batches,
+    'labels': labels,
+    'extend_existing_file': extend_existing_file,
+    'dump_per_run': dump_per_run,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'hdf_dump',
+    'from': source,
+    **args}, name=name)
 
 
 class _Rec(_Base):
@@ -5990,13 +2772,13 @@ class _Rec(_Base):
     return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef = (),
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
+  def __call__(self,
+               source: LayerRef = (),
+               *,
+               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               axis: Dim,
+               ) -> Tuple[Layer, LayerState]:
     """
     Make layer dict
     """
@@ -6007,62 +2789,13 @@ class _Rec(_Base):
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
+    layer = make_layer({
       'class': 'rec',
       'from': source,
       **args,
-      **self.get_opts()}
-
-
-class _GetLastHiddenState(_Base):
-  """
-  Will combine (concat or add or so) all the last hidden states from all sources.
-  """
-  returnn_layer_class = 'get_last_hidden_state'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               out_dim: Dim,
-               *,
-               combine: str = NotSpecified,
-               key: Optional[Union[str, int]] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim out_dim: output feature dimension
-    :param str combine: "concat" or "add"
-    :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
-    """
-    super().__init__(**kwargs)
-    self.out_dim = out_dim
-    self.combine = combine
-    self.key = key
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dim': self.out_dim,
-      'combine': self.combine,
-      'key': self.key,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'get_last_hidden_state',
-      'from': source,
-      **self.get_opts()}
+      **self.get_opts()}, maker=self)
+    state = self.returnn_layer_get_recurrent_state(layer)
+    return layer, state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6080,82 +2813,18 @@ def _get_last_hidden_state(
   :param Dim out_dim: output feature dimension
   :param str combine: "concat" or "add"
   :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _GetLastHiddenState(
-    out_dim=out_dim,
-    combine=combine,
-    key=key,
-    )
-  return mod(source, name=name)
-
-
-class _RecUnstack(_Base):
-  """
-  This is supposed to be used inside a :class:`RecLayer`.
-  The input is supposed to be outside the rec layer (i.e. via ``base:``).
-  Uses tf.TensorArray and then unstack on the inputs to make it available per-frame.
-  This is an alternative to making some input to the rec layer,
-  such that the rec layer can have multiple inputs (as long as they have the same time dim).
-
-  Note that due to automatic optimization, this layer will be optimized out of the rec loop anyway,
-  and then the tf.TensorArray logic happens internally in RecLayer,
-  thus we do not need to care about this here.
-  (See get_input_moved_out for some internal handling.)
-
-  Effectively, this layer is very similar to :class:`CopyLayer`,
-  with the only special behavior that it checks (or even assigns) the loop dimension of RecLayer.
-  """
-  returnn_layer_class = 'rec_unstack'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               declare_rec_time: bool = NotSpecified,
-               **kwargs):
-    """
-    Due to automatic optimization, not much happens here.
-    The real logic happens in :func:`get_out_data_from_opts`.
-
-    Note that it is allowed to leave both `axis` and `declare_rec_time` unset,
-    in case you assign `axis` to the rec layer, and the source here has the same axis (dim tag).
-
-    :param bool declare_rec_time:
-    """
-    super().__init__(**kwargs)
-    self.declare_rec_time = declare_rec_time
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'declare_rec_time': self.declare_rec_time,
+  args = {
+    'out_dim': out_dim,
+    'combine': combine,
+    'key': key,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      axis: Dim,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'axis': axis,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'rec_unstack',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'get_last_hidden_state',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6189,178 +2858,17 @@ def rec_unstack(
   :param LayerRef source:
   :param Dim axis:
   :param bool declare_rec_time:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _RecUnstack(
-    declare_rec_time=declare_rec_time,
-    )
-  return mod(
-    source,
-    axis=axis,
-    name=name)
-
-
-class _BaseChoice(_Base):
-  """
-  This is a base-class for any layer which defines a new search choice,
-  i.e. which defines ``self.search_choices``.
-  """
-  returnn_layer_class = None
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               beam_size: Optional[int],
-               search: Union[NotSpecified, bool] = NotSpecified,
-               **kwargs):
-    """
-    :param int|None beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
-    :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
-      If not specified, it will depend on `network.search_flag`.
-    """
-    super().__init__(**kwargs)
-    self.beam_size = beam_size
-    self.search = search
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'beam_size': self.beam_size,
-      'search': self.search,
+  args = {
+    'axis': axis,
+    'declare_rec_time': declare_rec_time,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  make_layer_dict = ILayerMaker.make_layer_dict  # abstract
-
-
-class _Choice(_BaseChoice):
-  """
-  This layer represents a choice to be made in search during inference,
-  such as choosing the top-k outputs from a log-softmax for beam search.
-  During training, this layer can return the true label.
-  This is supposed to be used inside the rec layer.
-  This can be extended in various ways.
-
-  We present the scores in +log space, and we will add them up along the path.
-  Assume that we get input (batch,dim) from a (log-)softmax.
-  Assume that each batch is already a choice via search.
-  In search with a beam size of N, we would output
-  sparse (batch=N,) and scores for each.
-
-  In case of multiple sources, this layer computes the top-k combinations of choices. The score of such a combination
-  is determined by adding up the (log-space) scores of the choices for the individual sources. In this case, the
-  'target' parameter of the layer has to be set to a list of targets corresponding to the sources respectively. Because
-  computing all possible combinations of source scores is costly, the sources are pruned beforehand using the beam
-  sizes set by the 'source_beam_sizes' parameter. The choices made for the different sources can be accessed via the
-  sublayers '<choice layer name>/out_0', '<choice layer name>/out_1' and so on.
-  Note, that the way scores are combined assumes the sources to be independent. If you want to model a dependency,
-  use separate ChoiceLayers and let the input of one depend on the output of the other.
-  """
-  returnn_layer_class = 'choice'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               beam_size: int,
-               keep_beams: bool = NotSpecified,
-               search: Union[NotSpecified, bool] = NotSpecified,
-               input_type: str = NotSpecified,
-               prob_scale: float = NotSpecified,
-               base_beam_score_scale: float = NotSpecified,
-               random_sample_scale: float = NotSpecified,
-               length_normalization: bool = NotSpecified,
-               length_normalization_exponent: Any = NotSpecified,
-               custom_score_combine: Optional[callable] = NotSpecified,
-               source_beam_sizes: Optional[List[int]] = NotSpecified,
-               scheduled_sampling: Optional[Dict] = NotSpecified,
-               cheating: Union[bool, str] = NotSpecified,
-               **kwargs):
-    """
-    :param int beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
-    :param bool keep_beams: specifies that we keep the beam_in entries,
-      i.e. we just expand, i.e. we just search on the dim. beam_size must be a multiple of beam_in.
-    :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
-      If not specified, it will depend on `network.search_flag`.
-    :param str input_type: "prob" or "log_prob", whether the input is in probability space, log-space, etc.
-      or "regression", if it is a prediction of the data as-is. If there are several inputs, same format
-      for all is assumed.
-    :param float prob_scale: factor for prob (score in +log space from source)
-    :param float base_beam_score_scale: factor for beam base score (i.e. prev prob scores)
-    :param float random_sample_scale: if >0, will add Gumbel scores. you might want to set base_beam_score_scale=0
-    :param bool length_normalization: evaluates score_t/len in search
-    :param length_normalization_exponent:
-    :param callable|None custom_score_combine:
-    :param list[int]|None source_beam_sizes: If there are several sources, they are pruned with these beam sizes
-       before combination. If None, 'beam_size' is used for all sources. Has to have same length as number of sources.
-    :param dict|None scheduled_sampling:
-    :param bool|str cheating: if True, will always add the true target in the beam.
-      if "exclusive", enables cheating_exclusive. see :func:`returnn.tf.util.basic.beam_search`.
-    """
-    super().__init__(beam_size=beam_size, search=search, **kwargs)
-    self.beam_size = beam_size
-    self.keep_beams = keep_beams
-    self.search = search
-    self.input_type = input_type
-    self.prob_scale = prob_scale
-    self.base_beam_score_scale = base_beam_score_scale
-    self.random_sample_scale = random_sample_scale
-    self.length_normalization = length_normalization
-    self.length_normalization_exponent = length_normalization_exponent
-    self.custom_score_combine = custom_score_combine
-    self.source_beam_sizes = source_beam_sizes
-    self.scheduled_sampling = scheduled_sampling
-    self.cheating = cheating
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'beam_size': self.beam_size,
-      'keep_beams': self.keep_beams,
-      'search': self.search,
-      'input_type': self.input_type,
-      'prob_scale': self.prob_scale,
-      'base_beam_score_scale': self.base_beam_score_scale,
-      'random_sample_scale': self.random_sample_scale,
-      'length_normalization': self.length_normalization,
-      'length_normalization_exponent': self.length_normalization_exponent,
-      'custom_score_combine': self.custom_score_combine,
-      'source_beam_sizes': self.source_beam_sizes,
-      'scheduled_sampling': self.scheduled_sampling,
-      'cheating': self.cheating,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      target: LayerRef,
-                      explicit_search_sources: Optional[List[LayerRef]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'target': target,
-      'explicit_search_sources': explicit_search_sources,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'choice',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'rec_unstack',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6428,79 +2936,30 @@ def choice(
     if "exclusive", enables cheating_exclusive. see :func:`returnn.tf.util.basic.beam_search`.
   :param list[LayerBase]|None explicit_search_sources: will mark it as an additional dependency.
     You might use these also in custom_score_combine.
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Choice(
-    beam_size=beam_size,
-    keep_beams=keep_beams,
-    search=search,
-    input_type=input_type,
-    prob_scale=prob_scale,
-    base_beam_score_scale=base_beam_score_scale,
-    random_sample_scale=random_sample_scale,
-    length_normalization=length_normalization,
-    length_normalization_exponent=length_normalization_exponent,
-    custom_score_combine=custom_score_combine,
-    source_beam_sizes=source_beam_sizes,
-    scheduled_sampling=scheduled_sampling,
-    cheating=cheating,
-    )
-  return mod(
-    source,
-    target=target,
-    explicit_search_sources=explicit_search_sources,
-    name=name)
-
-
-class _Decide(_BaseChoice):
-  """
-  This is kind of the counter-part to the choice layer.
-  This only has an effect in search mode.
-  E.g. assume that the input is of shape (batch * beam, time, dim)
-  and has search_sources set.
-  Then this will output (batch, time, dim) where the beam with the highest score is selected.
-  Thus, this will do a decision based on the scores.
-  In will convert the data to batch-major mode.
-  """
-  returnn_layer_class = 'decide'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               length_normalization: bool = NotSpecified,
-               **kwargs):
-    """
-    :param bool length_normalization: performed on the beam scores
-    """
-    super().__init__(beam_size=1, **kwargs)
-    self.length_normalization = length_normalization
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'length_normalization': self.length_normalization,
+  args = {
+    'target': target,
+    'beam_size': beam_size,
+    'keep_beams': keep_beams,
+    'search': search,
+    'input_type': input_type,
+    'prob_scale': prob_scale,
+    'base_beam_score_scale': base_beam_score_scale,
+    'random_sample_scale': random_sample_scale,
+    'length_normalization': length_normalization,
+    'length_normalization_exponent': length_normalization_exponent,
+    'custom_score_combine': custom_score_combine,
+    'source_beam_sizes': source_beam_sizes,
+    'scheduled_sampling': scheduled_sampling,
+    'cheating': cheating,
+    'explicit_search_sources': explicit_search_sources,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    opts.update(super().get_opts())
-    opts.pop('beam_size')
-    return opts
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'decide',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'choice',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6523,41 +2982,17 @@ def decide(
   :param bool length_normalization: performed on the beam scores
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Decide(
-    length_normalization=length_normalization,
-    search=search,
-    )
-  return mod(source, name=name)
-
-
-class _ChoiceGetBeamScores(_Base):
-  """
-  Gets beam scores from :class:`SearchChoices`.
-  This requires that the source has search choices.
-
-  .. note::
-
-    This layer might be deprecated in the future.
-
-  """
-  returnn_layer_class = 'choice_get_beam_scores'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'choice_get_beam_scores',
-      'from': source,
-      **self.get_opts()}
+  args = {
+    'length_normalization': length_normalization,
+    'search': search,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'decide',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6575,33 +3010,12 @@ def choice_get_beam_scores(
 
 
   :param LayerRef source:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ChoiceGetBeamScores()
-  return mod(source, name=name)
-
-
-class _ChoiceGetSrcBeams(_Base):
-  """
-  Gets source beam indices from :class:`SearchChoices`.
-  This requires that the source has search choices.
-  """
-  returnn_layer_class = 'choice_get_src_beams'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'choice_get_src_beams',
-      'from': source,
-      **self.get_opts()}
+  return make_layer({
+    'class': 'choice_get_beam_scores',
+    'from': source,
+    }, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6614,57 +3028,12 @@ def choice_get_src_beams(
   This requires that the source has search choices.
 
   :param LayerRef source:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _ChoiceGetSrcBeams()
-  return mod(source, name=name)
-
-
-class _SplitBatchBeam(_BaseChoice):
-  """
-  Splits the batch dimension of the input, which includes a beam, into (batch,beam).
-
-  Like :class:`DecideLayer`, this removes the beam.
-  """
-  returnn_layer_class = 'split_batch_beam'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               beam_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param Dim|None beam_dim:
-    """
-    super().__init__(beam_size=1, **kwargs)
-    self.beam_dim = beam_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'beam_dim': self.beam_dim,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    opts.update(super().get_opts())
-    opts.pop('beam_size')
-    return opts
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'split_batch_beam',
-      'from': source,
-      **self.get_opts()}
+  return make_layer({
+    'class': 'choice_get_src_beams',
+    'from': source,
+    }, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6683,80 +3052,17 @@ def split_batch_beam(
   :param Dim|None beam_dim:
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _SplitBatchBeam(
-    beam_dim=beam_dim,
-    search=search,
-    )
-  return mod(source, name=name)
-
-
-class _PositionalEncoding(_Base):
-  """
-  Provides positional encoding in the form of (batch, time, n_out) or (time, batch, n_out)
-  where n_out is the number of channels, if it is run outside a :class:`RecLayer`,
-  and (batch, n_out) or (n_out, batch)
-  if run inside a :class:`RecLayer`, where it will depend on the current time frame.
-
-  Assumes one source input with a time dimension if outside a :class:`RecLayer`.
-  With `add_to_input`, it will calculate `x + input`, and the output shape is the same as the input
-
-  The positional encoding is the same as in Tensor2Tensor.
-  See :func:`returnn.tf.util.basic.get_positional_encoding`.
-  """
-  returnn_layer_class = 'positional_encoding'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               out_dim: Dim,
-               *,
-               add_to_input: bool = NotSpecified,
-               constant: int = NotSpecified,
-               **kwargs):
-    """
-    :param Dim out_dim: output feature dimension
-    :param bool add_to_input: will add the signal to the input
-    :param int constant: if positive, always output the corresponding positional encoding.
-    """
-    super().__init__(**kwargs)
-    self.out_dim = out_dim
-    self.add_to_input = add_to_input
-    self.constant = constant
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_dim': self.out_dim,
-      'add_to_input': self.add_to_input,
-      'constant': self.constant,
+  args = {
+    'beam_dim': beam_dim,
+    'search': search,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      offset: Optional[LayerRef] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'offset': offset,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'positional_encoding',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'split_batch_beam',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6785,98 +3091,19 @@ def positional_encoding(
   :param bool add_to_input: will add the signal to the input
   :param int constant: if positive, always output the corresponding positional encoding.
   :param None|LayerBase offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _PositionalEncoding(
-    out_dim=out_dim,
-    add_to_input=add_to_input,
-    constant=constant,
-    )
-  return mod(
-    source,
-    offset=offset,
-    name=name)
-
-
-class _KenLmState(_Base):
-  """
-  Get next word (or subword) each frame,
-  accumulates string,
-  keeps state of seen string so far,
-  returns score (+log space, natural base e) of sequence,
-  using KenLM (https://kheafield.com/code/kenlm/) (see :mod:`TFKenLM`).
-  EOS (</s>) token must be used explicitly.
-  """
-  returnn_layer_class = 'kenlm'
-  has_recurrent_state = True
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               lm_file: callable,
-               vocab_file: Optional[str] = NotSpecified,
-               vocab_unknown_label: str = NotSpecified,
-               bpe_merge_symbol: Optional[str] = NotSpecified,
-               input_step_offset: int = NotSpecified,
-               dense_output: bool = NotSpecified,
-               debug: bool = NotSpecified,
-               **kwargs):
-    """
-    :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
-    :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
-    :param str vocab_unknown_label: for the vocabulary
-    :param str|None bpe_merge_symbol: e.g. "@@" if you want to apply BPE merging
-    :param int input_step_offset: if provided, will consider the input only from this step onwards
-    :param bool dense_output: whether we output the score for all possible succeeding tokens
-    :param bool debug: prints debug info
-    """
-    super().__init__(**kwargs)
-    self.lm_file = lm_file
-    self.vocab_file = vocab_file
-    self.vocab_unknown_label = vocab_unknown_label
-    self.bpe_merge_symbol = bpe_merge_symbol
-    self.input_step_offset = input_step_offset
-    self.dense_output = dense_output
-    self.debug = debug
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'lm_file': self.lm_file,
-      'vocab_file': self.vocab_file,
-      'vocab_unknown_label': self.vocab_unknown_label,
-      'bpe_merge_symbol': self.bpe_merge_symbol,
-      'input_step_offset': self.input_step_offset,
-      'dense_output': self.dense_output,
-      'debug': self.debug,
+  args = {
+    'out_dim': out_dim,
+    'add_to_input': add_to_input,
+    'constant': constant,
+    'offset': offset,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'state': state,
-      'initial_state': initial_state,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'kenlm',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'positional_encoding',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -6892,7 +3119,7 @@ def _ken_lm_state(
                   input_step_offset: int = NotSpecified,
                   dense_output: bool = NotSpecified,
                   debug: bool = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+                  name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Get next word (or subword) each frame,
   accumulates string,
@@ -6911,86 +3138,25 @@ def _ken_lm_state(
   :param int input_step_offset: if provided, will consider the input only from this step onwards
   :param bool dense_output: whether we output the score for all possible succeeding tokens
   :param bool debug: prints debug info
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _KenLmState(
-    lm_file=lm_file,
-    vocab_file=vocab_file,
-    vocab_unknown_label=vocab_unknown_label,
-    bpe_merge_symbol=bpe_merge_symbol,
-    input_step_offset=input_step_offset,
-    dense_output=dense_output,
-    debug=debug,
-    )
-  return mod(source, state=state, initial_state=initial_state, name=name)
-
-
-class _EditDistanceTable(_Base):
-  """
-  Given a source and a target, calculates the edit distance table between them.
-  Source can be inside a recurrent loop.
-  It uses :func:`TFNativeOp.next_edit_distance_row`.
-
-  Usually, if you are inside a rec layer, and "output" is the :class:`ChoiceLayer`,
-  you would use "from": "output"
-  and "target": "layer:base:data:target" (make sure it has the time dimension).
-
-  See also :class:`OptimalCompletionsLayer`.
-  """
-  returnn_layer_class = 'edit_distance_table'
-  has_recurrent_state = True
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               debug: bool = NotSpecified,
-               blank_idx: Optional[int] = NotSpecified,
-               out_dim: Optional[Dim] = NotSpecified,
-               **kwargs):
-    """
-    :param bool debug:
-    :param int|None blank_idx: if given, will keep the same row for this source label
-    :param Dim|None out_dim:
-    """
-    super().__init__(out_dim=out_dim, **kwargs)
-    self.debug = debug
-    self.blank_idx = blank_idx
-    self.out_dim = out_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'debug': self.debug,
-      'blank_idx': self.blank_idx,
-      'out_dim': self.out_dim,
+  args = {
+    'state': state, 'initial_state': initial_state,
+    'lm_file': lm_file,
+    'vocab_file': vocab_file,
+    'vocab_unknown_label': vocab_unknown_label,
+    'bpe_merge_symbol': bpe_merge_symbol,
+    'input_step_offset': input_step_offset,
+    'dense_output': dense_output,
+    'debug': debug,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'state': state,
-      'initial_state': initial_state,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'edit_distance_table',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  layer = make_layer({
+    'class': 'kenlm',
+    'from': source,
+    **args}, name=name)
+  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -7002,7 +3168,7 @@ def _edit_distance_table(
                          debug: bool = NotSpecified,
                          blank_idx: Optional[int] = NotSpecified,
                          out_dim: Optional[Dim] = NotSpecified,
-                         name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+                         name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Given a source and a target, calculates the edit distance table between them.
   Source can be inside a recurrent loop.
@@ -7020,71 +3186,21 @@ def _edit_distance_table(
   :param bool debug:
   :param int|None blank_idx: if given, will keep the same row for this source label
   :param Dim|None out_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _EditDistanceTable(
-    debug=debug,
-    blank_idx=blank_idx,
-    out_dim=out_dim,
-    )
-  return mod(source, state=state, initial_state=initial_state, name=name)
-
-
-class _OptimalCompletions(_Base):
-  """
-  We expect to get the inputs from :class:`EditDistanceTableLayer`, esp from the prev frame, like this:
-  "opt_completions": {"class": "optimal_completions", "from": "prev:edit_dist_table"}.
-
-  You can also then define this further layer:
-  "opt_completion_soft_targets": {
-    "class": "eval", "eval": "tf.nn.softmax(tf.cast(source(0), tf.float32))",
-    "from": "opt_completions", "out_type": {"dtype": "float32"}},
-  and use that as the :class:`CrossEntropyLoss` soft targets
-  for the input of the "output" :class:`ChoiceLayer`, e.g. "output_prob".
-  This makes most sense when you enable beam search (even, or esp, during training).
-  Note that you probably want to have this all before the last choice, where you still have more beams open.
-  """
-  returnn_layer_class = 'optimal_completions'
-  has_recurrent_state = False
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               debug: bool = NotSpecified,
-               blank_idx: Optional[int] = NotSpecified,
-               **kwargs):
-    """
-    :param bool debug:
-    :param int|None blank_idx:
-    """
-    super().__init__(**kwargs)
-    self.debug = debug
-    self.blank_idx = blank_idx
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'debug': self.debug,
-      'blank_idx': self.blank_idx,
+  args = {
+    'state': state, 'initial_state': initial_state,
+    'debug': debug,
+    'blank_idx': blank_idx,
+    'out_dim': out_dim,
     }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    return {
-      'class': 'optimal_completions',
-      'from': source,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  layer = make_layer({
+    'class': 'edit_distance_table',
+    'from': source,
+    **args}, name=name)
+  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -7110,55 +3226,17 @@ def optimal_completions(
   :param LayerRef source:
   :param bool debug:
   :param int|None blank_idx:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _OptimalCompletions(
-    debug=debug,
-    blank_idx=blank_idx,
-    )
-  return mod(source, name=name)
-
-
-class _Unmask(_Base):
-  """
-  This is meant to be used together with :class:`MaskedComputationLayer`,
-  which operates on input [B,T,D], and given a mask, returns [B,T',D'].
-  This layer :class:`UnmaskLayer` is supposed to undo the masking,
-  i.e. to recover the original time dimension, i.e. given [B,T',D'], we output [B,T,D'].
-  This is done by repeating the output for the non-masked frames,
-  via the last masked frame.
-
-  If this layer is inside a recurrent loop, i.e. we get [B,D'] as input,
-  this is a no-op, and we just return the input as is.
-  In that case, the repetition logic is handled via :class:`MaskedComputationLayer`.
-  """
-  returnn_layer_class = 'unmask'
-  has_recurrent_state = True
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      mask: LayerRef,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'state': state,
-      'initial_state': initial_state,
-      'mask': mask,
+  args = {
+    'debug': debug,
+    'blank_idx': blank_idx,
     }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'unmask',
-      'from': source,
-      **args,
-      **self.get_opts()}
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  return make_layer({
+    'class': 'optimal_completions',
+    'from': source,
+    **args}, name=name)
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -7168,7 +3246,7 @@ def _unmask(
             state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
             mask: LayerRef,
-            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+            name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   This is meant to be used together with :class:`MaskedComputationLayer`,
   which operates on input [B,T,D], and given a mask, returns [B,T',D'].
@@ -7186,15 +3264,19 @@ def _unmask(
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param LayerBase mask: the same as as used for :class:`MaskedComputationLayer`.
     Outside loop: [B,T] or [T,B], original T. Inside loop, just [B].
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _Unmask()
-  return mod(
-    source,
-    state=state,
-    initial_state=initial_state,
-    mask=mask,
-    name=name)
+  args = {
+    'state': state, 'initial_state': initial_state,
+    'mask': mask,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  layer = make_layer({
+    'class': 'unmask',
+    'from': source,
+    **args}, name=name)
+  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  return layer, out_state
 
 
 class _TwoDLSTM(_Base):
@@ -7246,12 +3328,12 @@ class _TwoDLSTM(_Base):
     return {**opts, **super().get_opts()}
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      ) -> LayerDictRaw:
+  def __call__(self,
+               source: LayerRef,
+               *,
+               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               ) -> Tuple[Layer, LayerState]:
     """
     Make layer dict
     """
@@ -7261,103 +3343,13 @@ class _TwoDLSTM(_Base):
       'initial_state': initial_state,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
+    layer = make_layer({
       'class': 'twod_lstm',
       'from': source,
       **args,
-      **self.get_opts()}
-
-
-class _CumConcat(_Base):
-  """
-  Concatenates all previous frames of a time-axis.
-  Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
-
-  This layer can be used as a base for auto-regressive self-attention.
-
-  This layer expects to be inside a :class:`RecLayer`.
-
-  Inside a rec loop (not optimized out),
-  this will concatenate the current input
-  to the previous accumulated inputs.
-  For an input of shape `input_shape`,
-  it will output a tensor of shape `[new_dim] + input_shape`.
-  `new_dim` (``out_spatial_dim``) is a special dimension, usually of length `i`,
-  where `i` is the current loop frame,
-  i.e. the length increases in every loop frame.
-  `new_dim` is specified by a separate own dim tag.
-  For example, in the first frame,
-  this will be of shape `[1] + input_shape`,
-  in the second frame shape `[2] + input_shape`,
-  and so on,
-  and in the last frame shape `[T] + input_shape`.
-
-  Outside the rec loop (optimized out),
-  this layer expects an input with the time dim of the rec layer,
-  and returns the input as-is,
-  but replacing the time dim tag with the dim tag `new_dim`
-  converted as outside the loop.
-
-  Normally the optimization should not matter for the user,
-  i.e. for the user, the logical behavior is always as being inside the rec loop.
-  Outside the loop,
-  the output represents a tensor of shape `[T, new_dim] + input_shape`,
-  although we actually have another `new_dim` outside the loop,
-  and `T` is not actually there,
-  but we still have all the information,
-  because the last frame has all information.
-  This `new_dim` outside the loop stores all the dynamic seq lengths
-  per frame of the loop, i.e. the dyn seq len are extended of shape [B,T] or [T]
-  (unlike usually just [B]).
-  This way following layers use different seq lengths of `new_dim` for different loop frames,
-  just like if the `T` dim would actually exist.
-  """
-  returnn_layer_class = 'cum_concat'
-  has_recurrent_state = True
-  has_variables = False
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def __init__(self,
-               *,
-               out_spatial_dim: Dim,
-               **kwargs):
-    """
-    :param Dim out_spatial_dim:
-    """
-    super().__init__(**kwargs)
-    self.out_spatial_dim = out_spatial_dim
-
-  def get_opts(self):
-    """
-    Return all options
-    """
-    opts = {
-      'out_spatial_dim': self.out_spatial_dim,
-    }
-    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
-    return {**opts, **super().get_opts()}
-
-  # noinspection PyShadowingBuiltins,PyShadowingNames
-  def make_layer_dict(self,
-                      source: LayerRef,
-                      *,
-                      state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                      ) -> LayerDictRaw:
-    """
-    Make layer dict
-    """
-    assert isinstance(source, LayerRef)
-    args = {
-      'state': state,
-      'initial_state': initial_state,
-    }
-    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    return {
-      'class': 'cum_concat',
-      'from': source,
-      **args,
-      **self.get_opts()}
+      **self.get_opts()}, maker=self)
+    state = self.returnn_layer_get_recurrent_state(layer)
+    return layer, state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -7367,7 +3359,7 @@ def _cum_concat(
                 state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                 initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                 out_spatial_dim: Dim,
-                name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Union[LayerRef, Any]]:
+                name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
@@ -7415,9 +3407,16 @@ def _cum_concat(
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param Dim out_spatial_dim:
-  :param str|None name:
+  :param str|NameCtx|None name:
   """
-  mod = _CumConcat(
-    out_spatial_dim=out_spatial_dim,
-    )
-  return mod(source, state=state, initial_state=initial_state, name=name)
+  args = {
+    'state': state, 'initial_state': initial_state,
+    'out_spatial_dim': out_spatial_dim,
+    }
+  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  layer = make_layer({
+    'class': 'cum_concat',
+    'from': source,
+    **args}, name=name)
+  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  return layer, out_state
