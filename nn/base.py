@@ -228,6 +228,46 @@ class Layer(LayerRef):
     return sis_hash_helper(self.layer_dict)
 
 
+def scoped(func):
+  """
+  Decorator to create a new scope (subnetwork) for the function.
+  This would be used for modules.
+  """
+  assert callable(func)
+
+  def _wrapper(*args, name: Optional[Union[str, NameCtx]] = None, **kwargs):
+    if args and isinstance(args[0], ILayerMaker):
+      self = args[0]
+    else:
+      self = _FunctionalMaker(func)
+    from . import copy
+    with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
+      name_ctx.is_subnet_ctx = True
+      res = func(*args, **kwargs)
+      if name_ctx.parent is None:  # root
+        # special logic, no output layers, no subnetwork layer needed
+        self.calls.append(name_ctx)
+        return res
+      if isinstance(res, LayerRef):
+        copy(res, name=name_ctx.get_child("output"))
+      else:
+        # we return more than one layer (thus also working on other layers of the subnet, that are not output)
+        # by convention: first layer is the output layer
+        res_flat = nest.flatten(res)
+        copy(res_flat[0], name=name_ctx.get_child("output"))
+      # Now create the subnetwork layer itself.
+      subnet_layer = make_layer(
+        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
+        name_ctx=name_ctx)
+    if isinstance(res, LayerRef):
+      return subnet_layer  # maybe nicer to return subnet layer
+    return res
+
+  _wrapper.__name__ = func.__name__
+  _wrapper.__qualname__ = func.__qualname__
+  return _wrapper
+
+
 class ILayerMaker:
   """
   Makes a RETURNN layer.
@@ -332,12 +372,12 @@ class ILayerMaker:
     layer_dict = self.make_layer_dict(*args, **kwargs)
     return make_layer(layer_dict, name_ctx=name_ctx)
 
-  def __call__(self, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs) -> Layer:
+  @scoped
+  def __call__(self, *args, **kwargs) -> Layer:
     """
     This calls :func:`make_layer_dict` internally and creates a corresponding :class:`Layer` instance.
     """
-    with NameCtx.get_from_call(maker=self, name=name):
-      return self._make_layer(*args, **kwargs)
+    return self._make_layer(*args, **kwargs)
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
@@ -568,46 +608,6 @@ class _FunctionalMaker(ILayerMaker):
   def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
     """make_layer_dict, not allowed"""
     raise Exception("Functional layer maker does not allow make_layer_dict")
-
-
-def scoped(func):
-  """
-  Decorator to create a new scope (subnetwork) for the function.
-  This would be used for modules.
-  """
-  assert callable(func)
-
-  def _wrapper(*args, name: Optional[Union[str, NameCtx]] = None, **kwargs):
-    if args and isinstance(args[0], ILayerMaker):
-      self = args[0]
-    else:
-      self = _FunctionalMaker(func)
-    from . import copy
-    with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
-      name_ctx.is_subnet_ctx = True
-      res = func(*args, **kwargs)
-      if name_ctx.parent is None:  # root
-        # special logic, no output layers, no subnetwork layer needed
-        self.calls.append(name_ctx)
-        return res
-      if isinstance(res, LayerRef):
-        copy(res, name=name_ctx.get_child("output"))
-      else:
-        # we return more than one layer (thus also working on other layers of the subnet, that are not output)
-        # by convention: first layer is the output layer
-        res_flat = nest.flatten(res)
-        copy(res_flat[0], name=name_ctx.get_child("output"))
-      # Now create the subnetwork layer itself.
-      subnet_layer = make_layer(
-        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
-        name_ctx=name_ctx)
-    if isinstance(res, LayerRef):
-      return subnet_layer  # maybe nicer to return subnet layer
-    return res
-
-  _wrapper.__name__ = func.__name__
-  _wrapper.__qualname__ = func.__qualname__
-  return _wrapper
 
 
 class Module(ILayerMaker):
