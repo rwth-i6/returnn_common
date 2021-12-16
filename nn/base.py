@@ -556,19 +556,32 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
   return constant(value=x)
 
 
-def scoped_method(func):
+class _FunctionalMaker(ILayerMaker):
+  def __init__(self, func):
+    super().__init__()
+    self.func = func
+
+  def make_layer_dict(self, *args, **kwargs) -> LayerDictRaw:
+    """make_layer_dict, not allowed"""
+    raise Exception("Functional layer maker does not allow make_layer_dict")
+
+
+def scoped(func):
   """
   Decorator to create a new scope (subnetwork) for the function.
   This would be used for modules.
   """
   assert callable(func)
 
-  def _wrapper(self: ILayerMaker, *args, name: Optional[Union[str, NameCtx]] = None, **kwargs):
-    assert isinstance(self, ILayerMaker)  # scoped_method used correctly?
+  def _wrapper(*args, name: Optional[Union[str, NameCtx]] = None, **kwargs):
+    if args and isinstance(args[0], ILayerMaker):
+      self = args[0]
+    else:
+      self = _FunctionalMaker(func)
     from . import copy
     with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
       name_ctx.is_subnet_ctx = True
-      res = func(self, *args, **kwargs)
+      res = func(*args, **kwargs)
       if name_ctx.parent is None:  # root
         # special logic, no output layers, no subnetwork layer needed
         self.calls.append(name_ctx)

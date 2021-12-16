@@ -25,7 +25,7 @@ def test_simple_net_linear():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -45,7 +45,7 @@ def test_simple_net_module_explicit_root_ctx():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
       """
       Forward
@@ -90,7 +90,7 @@ def test_simple_net_rc():
 
 def test_simple_net_arithmetic():
   class _Net(nn.Module):
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
       """
       Forward
@@ -106,7 +106,7 @@ def test_simple_net_arithmetic():
 
 def test_eval():
   class _Net(nn.Module):
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -126,7 +126,7 @@ def test_simple_net_lstm():
       super().__init__()
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
       """
       Forward
@@ -148,7 +148,7 @@ def test_simple_net_share_params():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
       """
       Forward
@@ -175,7 +175,7 @@ def test_explicit_root_ctx_sub():
       self.linear = nn.Linear(out_dim)
       self.dropout = dropout
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       forward
@@ -215,7 +215,7 @@ def test_root_mod_call_twice():
       self.linear = nn.Linear(out_dim)
       self.dropout = dropout
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       forward
@@ -247,7 +247,7 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
@@ -260,7 +260,7 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.sub = _SubNet()
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
       """
       Forward
@@ -281,7 +281,7 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
@@ -294,7 +294,7 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubSubNet()
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
@@ -307,7 +307,7 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubNet()
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -330,7 +330,7 @@ def test_from_call_variations():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
@@ -345,7 +345,7 @@ def test_from_call_variations():
       self.sub = _SubNet()
       self.sub2 = _SubNet()
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -371,7 +371,7 @@ def test_from_call_variations2():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
@@ -386,7 +386,7 @@ def test_from_call_variations2():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef, y: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
       """
       Forward
@@ -404,7 +404,7 @@ def test_from_call_variations2():
       self.sub2 = _SubNet2()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -459,7 +459,7 @@ def test_module_list():
       base_dim = nn.FeatureDim("linear-out", 3)
       self.ls = nn.ModuleList([nn.Linear(base_dim + i) for i in range_(4)])
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, out: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -493,7 +493,7 @@ def test_sequential_base_case():
       super().__init__()
       self.seq = nn.Sequential(nn.Linear(1), nn.Linear(2), nn.Linear(3))
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, data: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -523,7 +523,7 @@ def test_sequential_named_case():
       x["three"] = nn.Linear(nn.FeatureDim("linear3-out", 3))
       self.seq = nn.Sequential(x)
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, data: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
@@ -544,7 +544,7 @@ def test_sequential_named_case():
 
 def test_split_glu():
   class _Net(nn.Module):
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef, axis: nn.Dim) -> nn.Layer:
       """forward"""
       a, b = nn.split(x, axis=axis, out_dims=[axis // 2, axis // 2])
@@ -571,7 +571,7 @@ def test_self_attention():
       super().__init__()
       self.self_att = nn.SelfAttention(key_dim_total=21, value_dim_total=33, num_heads=3)
 
-    @nn.scoped_method
+    @nn.scoped
     def __call__(self, x: nn.LayerRef) -> nn.Layer:
       """forward"""
       return self.self_att(x, axis=time_dim)

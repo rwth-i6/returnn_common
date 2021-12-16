@@ -6,7 +6,7 @@ from typing import Tuple, Union
 from .. import nn
 
 
-@nn.scoped_method
+@nn.scoped
 def dot_attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
                   key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.) -> nn.LayerRef:
   """
@@ -51,7 +51,7 @@ class SelfAttention(SelfAttentionBase):
     super().__init__(
       key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads, att_dropout=att_dropout)
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
     """forward"""
     expand_dim = nn.SpatialDim("self_att_expand_dim")
@@ -83,7 +83,7 @@ class CausalSelfAttentionStep(SelfAttentionBase):
     super().__init__(
       key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads, att_dropout=att_dropout)
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
     """forward"""
     expand_dim = nn.SpatialDim("self_att_expand_dim")

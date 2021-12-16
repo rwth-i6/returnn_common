@@ -73,7 +73,7 @@ class Sequential(ModuleList):
   """
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, inp) -> LayerRef:
     """
     Forward
@@ -108,7 +108,7 @@ class WrappedFunction(Module):
     assert callable(func)
     self.func = func
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, *args, **kwargs) -> LayerRef:
     """
     Forward

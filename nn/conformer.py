@@ -29,7 +29,7 @@ class ConformerPositionwiseFeedForward(nn.Module):
     self.linear_ff = nn.Linear(n_out=dim_ff)
     self.linear_out = nn.Linear(n_out=out_dim)
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
     x_ff1 = self.linear_ff(inp)
@@ -61,7 +61,7 @@ class ConformerConvBlock(nn.Module):
       batch_norm_opts = {}
     self.batch_norm = nn.BatchNorm(update_sample_only_in_training=True, delay_sample_update=True, **batch_norm_opts)
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
@@ -102,7 +102,7 @@ class ConformerConvSubsample(nn.Module):
       self.conv_layers.append(
         nn.Conv(filter_size=filter_size, n_out=channel_size, padding=padding))
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
     x = nn.split_dims(inp, axis='F', dims=(-1, 1))
@@ -153,7 +153,7 @@ class ConformerEncoderLayer(nn.Module):
     self.self_att = nn.SelfAttention(
       key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
     # FFN
@@ -203,7 +203,7 @@ class ConformerEncoder(nn.Module):
 
     self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
     """forward"""
     x_subsample = self.conv_subsample_layer(inp)

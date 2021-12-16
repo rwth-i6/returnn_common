@@ -22,7 +22,7 @@ class IEncoder(Module):
   Generic encoder interface
   """
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, source: LayerRef) -> LayerRef:
     """
     Encode the input

@@ -78,7 +78,7 @@ class Decoder(Module):
     self.log_prob_separate_nb = log_prob_separate_nb
     self.log_prob_separate_wb = log_prob_separate_wb
 
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, encoder: LayerRef) -> LayerRef:
     """
     Make one decoder step (train and/or recognition).
@@ -94,7 +94,7 @@ class IDecoderLabelSyncRnn(Module):
   """
   Represents SlowRNN in Transducer.
   """
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, *,
                prev_sparse_label_nb: LayerRef,
                prev_emit: LayerRef,
@@ -115,7 +115,7 @@ class IDecoderStepSyncRnn(Module):
   which is alignment-synchronous or time-synchronous for RNN-T/RNA/CTC,
   or label-synchronous for att-enc-dec.
   """
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, *,
                prev_label_wb: LayerRef,
                encoder: LayerRef,  # TODO enc ctx. or not? need full encoder for full-sum case...
@@ -146,7 +146,7 @@ class IDecoderLogProbSeparateWb(Module):
   """
   Log prob with blank.
   """
-  @nn.scoped_method
+  @nn.scoped
   def __call__(self, step_sync_rnn: LayerRef, log_prob_nb: LayerRef) -> LayerRef:
     """
     Make layer dict.
