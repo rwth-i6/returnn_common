@@ -364,18 +364,13 @@ class ILayerMaker:
       name = camel_case_to_snake_case(name)
     return name
 
-  def _make_layer(self, *args, **kwargs) -> Layer:
-    name_ctx = NameCtx.top()
-    assert name_ctx.maker is self
-    layer_dict = self.make_layer_dict(*args, **kwargs)
-    return make_layer(layer_dict, name_ctx=name_ctx)
-
   @scoped
   def __call__(self, *args, **kwargs) -> Layer:
     """
     This calls :func:`make_layer_dict` internally and creates a corresponding :class:`Layer` instance.
     """
-    return self._make_layer(*args, **kwargs)
+    layer_dict = self.make_layer_dict(*args, **kwargs)
+    return make_layer(layer_dict)
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
@@ -496,7 +491,8 @@ class _ReturnnWrappedLayerBase(ILayerMaker):
                **kwargs
                ) -> Union[Layer, Tuple[Layer, LayerState]]:
     with NameCtx.get_from_call(maker=self, name=name):
-      layer = self._make_layer(*args, **kwargs)
+      layer_dict = self.make_layer_dict(*args, **kwargs)
+      layer = make_layer(layer_dict)
       if not self.has_recurrent_state:
         return layer
     state = self._get_recurrent_state(layer)
