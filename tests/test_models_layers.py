@@ -19,26 +19,6 @@ else:
   from returnn_common import nn  # noqa
 
 
-def test_simple_net_linear_simple():
-  class _Net(nn.Module):
-    def __init__(self):
-      super().__init__()
-      self.linear = nn.Linear(13)
-
-    @nn.scoped_method
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
-      """
-      Forward
-      """
-      return self.linear(x)
-
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
-  pprint(net_dict)
-  assert "linear" in net_dict
-  dummy_run_net(net_dict)
-
-
 def test_simple_net_linear():
   class _Net(nn.Module):
     def __init__(self):
