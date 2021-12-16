@@ -75,7 +75,7 @@ class LayerRef:
 
   You do not create instances of this object explicitly
   but they are created via :func:`get_special_layer` or :class:`NameCtx.get_child_layer_ref`,
-  or layers (:class:`Layer`) via any of the layer makers, modules or other functions.
+  or layers (:class:`Layer`) via :func:`make_layer`.
   """
 
   def __init__(self, *, name_ctx: NameCtx):
@@ -241,7 +241,7 @@ def scoped(func):
     if args and isinstance(args[0], Module):
       self = args[0]
     else:
-      self = _FunctionalMaker(func)
+      self = _Functional(func)
     from . import copy
     with NameCtx.get_from_call(maker=self, name=name) as name_ctx:
       name_ctx.is_subnet_ctx = True
@@ -439,7 +439,7 @@ class Module:
     return False
 
 
-class _FunctionalMaker(Module):
+class _Functional(Module):
   """
   Used via :func:`scoped`.
   """
