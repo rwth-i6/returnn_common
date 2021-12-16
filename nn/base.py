@@ -338,7 +338,7 @@ class ILayerMaker:
     This function is implemented by derived classes.
     This function will be called by :func:`__call__` with all arguments forwarded.
     """
-    raise NotImplementedError
+    raise OptionalNotImplementedError
 
   def default_initial_state(self) -> LayerState:
     """
@@ -631,14 +631,6 @@ class Module(ILayerMaker):
     You can write PyTorch-style code here.
     """
     raise NotImplementedError
-
-  def make_layer_dict(self) -> LayerDictRaw:
-    """
-    Make subnet layer dict.
-    """
-    name_ctx = NameCtx.top()
-    assert name_ctx.maker is self
-    return {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()}
 
   def named_children(self) -> Iterator[Tuple[str, ILayerMaker]]:
     """
