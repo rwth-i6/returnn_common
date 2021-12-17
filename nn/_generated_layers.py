@@ -794,7 +794,6 @@ def seq_len_mask(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rand_int(
-             source: LayerRef,
              *,
              shape: Union[Tuple[Dim, ...], List[Dim]],
              maxval: int,
@@ -806,7 +805,6 @@ def rand_int(
   """
   Generates random numbers using ``tf.random.uniform``
 
-  :param LayerRef source:
   :param tuple[Dim]|list[Dim] shape: desired shape of output tensor
   :param int maxval: upper bound (exclusive) on range of random values
   :param int minval: lower bound (inclusive) on range of random values
@@ -826,13 +824,11 @@ def rand_int(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
     'class': 'rand_int',
-    'from': source,
     **args}, name=name or 'rand_int')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def range(
-          source: LayerRef,
           *,
           limit: Union[int, float],
           start: Union[int, float] = NotSpecified,
@@ -845,7 +841,6 @@ def range(
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
 
-  :param LayerRef source:
   :param int|float limit:
   :param int|float start:
   :param int|float delta:
@@ -865,7 +860,6 @@ def range(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
     'class': 'range',
-    'from': source,
     **args}, name=name or 'range')
 
 

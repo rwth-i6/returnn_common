@@ -85,6 +85,7 @@ LayersWithoutSourceArg = {
   "constant", "variable",
   "cond", "switch",
   "generic_attention",
+  "range", "rand_int",
 }
 
 LayersSupportingMultipleSources = {
