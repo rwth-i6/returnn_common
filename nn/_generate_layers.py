@@ -37,7 +37,19 @@ _out_filename = f"{_my_dir}/_generated_layers.py"
 # please open an issue.
 BlacklistLayerClassNames = {
   "_ConcatInputLayer",  # we don't do automatic concat, https://github.com/rwth-i6/returnn_common/issues/41
-  "DropoutLayer",  # we do that manually
+
+  # all these manual
+  "concat",
+  "activation",
+  "dropout",
+  "batch_norm",
+  "linear",
+  "rec",
+  "self_attention",
+  "concat_attention",
+  "gauss_window_attention",
+  "relative_positional_encoding",
+  "gating",
 
   "RecStepInfoLayer",
   "_TemplateLayer",
@@ -46,13 +58,10 @@ BlacklistLayerClassNames = {
   "subnetwork",  # explicitly
 
   "source",  # we have get_extern_data instead
-  "concat",  # we wrap that explicitly
   "rec_last_output",  # explicitly
-  "activation",  # will be explicit. https://github.com/rwth-i6/returnn_common/issues/63
   "swap_axes",
   "gather_nd",  # -> gather
   "softmax",  # misleading (because not just activation), also we will have a separate softmax activation
-  "gating",
   "expand_dims",  # not sure if this is ever needed
   "weighted_sum",
   "elemwise_prod",
@@ -65,14 +74,11 @@ BlacklistLayerClassNames = {
   "get_rec_accumulated",  # covered by our Loop logic
   "decide_keep_beam",  # internal
   "rnn_cell",  # -> rec
-  "AttentionBaseLayer",
-  "GlobalAttentionContextBaseLayer",
   "generic_attention",  # -> dot
   "dot_attention",  # -> dot
-  "concat_attention",
-  "gauss_window_attention",
-  "self_attention",
-  "relative_positional_encoding",
+  "AttentionBaseLayer",
+  "GlobalAttentionContextBaseLayer",
+  "twod_lstm",
 }
 
 LayersHidden = {
