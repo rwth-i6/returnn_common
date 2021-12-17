@@ -243,14 +243,7 @@ def setup():
           if sig.has_recurrent_state():
             # There must be an axis argument.
             assert "axis" in sig.params
-            print("    if axis == single_step_dim:", file=f)
-            print("      assert state is not NotSpecified", file=f)
-            print("      assert initial_state is NotSpecified", file=f)
-            print("      args['state'] = state", file=f)
-            print("    else:", file=f)
-            print("      assert state is NotSpecified", file=f)
-            print("      if initial_state is not NotSpecified:", file=f)
-            print("        args['initial_state'] = initial_state", file=f)
+            print("    self.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)", file=f)
         if sig.has_recurrent_state():
           print("    layer = make_layer({", file=f)
         else:
@@ -326,13 +319,14 @@ def setup():
       print('  """', file=f)
       if sig.has_recurrent_state() or mod_args:
         print("  args = {", file=f)
-        if sig.has_recurrent_state():
-          print("    'state': state, 'initial_state': initial_state,", file=f)
         for param in mod_args:
           print(f"    '{param.returnn_name}': {param.get_module_param_name()},", file=f)
         print("    }", file=f)
         print("  args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
       if sig.has_recurrent_state():
+        print(
+          "  _ReturnnWrappedLayerBase.handle_recurrent_state("
+          "args, axis=axis, state=state, intial_state=initial_state)", file=f)
         print("  layer = make_layer({", file=f)
       else:
         print("  return make_layer({", file=f)

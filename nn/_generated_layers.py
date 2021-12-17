@@ -1026,7 +1026,6 @@ def window(
   :param str|NameCtx|None name:
   """
   args = {
-    'state': state, 'initial_state': initial_state,
     'window_dim': window_dim,
     'window_left': window_left,
     'window_right': window_right,
@@ -1036,6 +1035,7 @@ def window(
     'stride': stride,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
   layer = make_layer({
     'class': 'window',
     'from': source,
@@ -1066,12 +1066,12 @@ def cumsum(
   :param str|NameCtx|None name:
   """
   args = {
-    'state': state, 'initial_state': initial_state,
     'axis': axis,
     'additional_left_summand_per_element': additional_left_summand_per_element,
     'reverse': reverse,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
@@ -2787,14 +2787,7 @@ class _Rec(_Base):
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    if axis == single_step_dim:
-      assert state is not NotSpecified
-      assert initial_state is NotSpecified
-      args['state'] = state
-    else:
-      assert state is NotSpecified
-      if initial_state is not NotSpecified:
-        args['initial_state'] = initial_state
+    self.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
     layer = make_layer({
       'class': 'rec',
       'from': source,
@@ -3149,7 +3142,6 @@ def ken_lm_state(
   :param str|NameCtx|None name:
   """
   args = {
-    'state': state, 'initial_state': initial_state,
     'lm_file': lm_file,
     'vocab_file': vocab_file,
     'vocab_unknown_label': vocab_unknown_label,
@@ -3160,6 +3152,7 @@ def ken_lm_state(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
   layer = make_layer({
     'class': 'kenlm',
     'from': source,
@@ -3200,13 +3193,13 @@ def edit_distance_table(
   :param str|NameCtx|None name:
   """
   args = {
-    'state': state, 'initial_state': initial_state,
     'debug': debug,
     'blank_idx': blank_idx,
     'out_dim': out_dim,
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
   layer = make_layer({
     'class': 'edit_distance_table',
     'from': source,
@@ -3281,11 +3274,11 @@ def unmask(
   :param str|NameCtx|None name:
   """
   args = {
-    'state': state, 'initial_state': initial_state,
     'mask': mask,
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
   layer = make_layer({
     'class': 'unmask',
     'from': source,
@@ -3358,14 +3351,7 @@ class _TwoDLSTM(_Base):
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    if axis == single_step_dim:
-      assert state is not NotSpecified
-      assert initial_state is NotSpecified
-      args['state'] = state
-    else:
-      assert state is NotSpecified
-      if initial_state is not NotSpecified:
-        args['initial_state'] = initial_state
+    self.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
     layer = make_layer({
       'class': 'twod_lstm',
       'from': source,
@@ -3435,11 +3421,11 @@ def cum_concat(
   :param str|NameCtx|None name:
   """
   args = {
-    'state': state, 'initial_state': initial_state,
     'out_spatial_dim': out_spatial_dim,
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
   layer = make_layer({
     'class': 'cum_concat',
     'from': source,

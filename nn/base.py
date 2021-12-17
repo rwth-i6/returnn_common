@@ -532,6 +532,30 @@ class _ReturnnWrappedLayerBase(Module):
           return LayerState(h=0, c=0)  # TODO get real shape... how to get batch dim?
     raise NotImplementedError(f"{self}.default_initial_state")
 
+  @staticmethod
+  def handle_recurrent_state(args: Dict[str, Any], *,
+                             axis: Dim,
+                             state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                             ):
+    """
+    Update the args to include either state or initial_state,
+    depending on whether we operate per step or on an axis.
+
+    :param args: layer arguments
+    :param axis: single_step_dim specifies to operate for a single step
+    :param state: prev state when operating a single step
+    :param initial_state: initial state when operating on an axis
+    """
+    if axis == single_step_dim:
+      assert state is not NotSpecified
+      assert initial_state is NotSpecified
+      args['state'] = state
+    else:
+      assert state is NotSpecified
+      if initial_state is not NotSpecified:
+        args['initial_state'] = initial_state
+
 
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, NameCtx]] = None,
