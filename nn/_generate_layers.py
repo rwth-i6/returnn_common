@@ -82,6 +82,23 @@ LayersHidden = {
   "get_last_hidden_state",  # we handle all state explicitly, there is no hidden state. this is only needed internally
 }
 
+LayersWithoutSourceArg = {
+  "source",
+  "constant", "variable",
+  "cond", "switch",
+  "generic_attention",
+}
+
+LayersSupportingMultipleSources = {
+  "eval", "combine", "compare", "stack"
+}
+
+LayersNeedingMultipleSources = LayersSupportingMultipleSources.copy() - {"eval"}
+
+LayersExplicitFixedMultipleSources = {
+  "dot": 2,
+}
+
 BlacklistLayerArgs = {
   "range_in_axis": {"unbroadcast", "keepdims"},
 }
@@ -368,9 +385,7 @@ class LayerSignature:
     """
     Whether this layer has a "from" arg.
     """
-    if issubclass(
-          self.layer_class,
-          (SourceLayer, ConstantLayer, VariableLayer, CondLayer, SwitchLayer, GenericAttentionLayer)):
+    if self.layer_class.layer_class in LayersWithoutSourceArg:
       return False
     if self.explicit_source_list():
       return False
@@ -382,7 +397,7 @@ class LayerSignature:
     When :func:`need_multiple_sources` returns true, this ofc also implies that it supports it,
     and we do not necessarily list all those cases here.
     """
-    if issubclass(self.layer_class, (CombineLayer, CompareLayer, StackLayer)):
+    if self.layer_class.layer_class in LayersSupportingMultipleSources:
       return True
     return False
 
@@ -390,9 +405,7 @@ class LayerSignature:
     """
     Whether "from" needs multiple sources (list of layers).
     """
-    if self.layer_class.layer_class == "eval":
-      return False
-    if issubclass(self.layer_class, (CombineLayer, CompareLayer, StackLayer)):
+    if self.layer_class.layer_class in LayersNeedingMultipleSources:
       return True
     return False
 
@@ -401,9 +414,7 @@ class LayerSignature:
     If returned value is given, it means that instead of source: list[Layers],
     we have source1, source2 etc, the number returned here.
     """
-    if self.layer_class.layer_class == "dot":
-      return 2
-    return None
+    return LayersExplicitFixedMultipleSources.get(self.layer_class.layer_class, None)
 
   # noinspection PyMethodMayBeStatic
   def default_source(self) -> Optional[str]:
