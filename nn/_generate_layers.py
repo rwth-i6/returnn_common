@@ -112,7 +112,7 @@ def setup():
   print("from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("# noinspection PyProtectedMember", file=f)
-  print("from returnn.tf.util.data import Dim, _ImplicitDim, single_step_dim", file=f)
+  print("from returnn.tf.util.data import Dim, _ImplicitDim", file=f)
   print(
     "from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
   layer_classes = collect_layers()
@@ -243,7 +243,7 @@ def setup():
           if sig.has_recurrent_state():
             # There must be an axis argument.
             assert "axis" in sig.params
-            print("    self.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)", file=f)
+            print("    self.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)", file=f)
         if sig.has_recurrent_state():
           print("    layer = make_layer({", file=f)
         else:
@@ -326,7 +326,7 @@ def setup():
       if sig.has_recurrent_state():
         print(
           "  _ReturnnWrappedLayerBase.handle_recurrent_state("
-          "args, axis=axis, state=state, intial_state=initial_state)", file=f)
+          "args, axis=axis, state=state, initial_state=initial_state)", file=f)
         print("  layer = make_layer({", file=f)
       else:
         print("  return make_layer({", file=f)

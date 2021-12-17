@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any
 from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
-from returnn.tf.util.data import Dim, _ImplicitDim, single_step_dim
+from returnn.tf.util.data import Dim, _ImplicitDim
 from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer
 
 
@@ -1035,7 +1035,7 @@ def window(
     'stride': stride,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'window',
     'from': source,
@@ -1071,7 +1071,7 @@ def cumsum(
     'reverse': reverse,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
@@ -2787,7 +2787,7 @@ class _Rec(_Base):
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    self.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+    self.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
     layer = make_layer({
       'class': 'rec',
       'from': source,
@@ -3152,7 +3152,7 @@ def ken_lm_state(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'kenlm',
     'from': source,
@@ -3199,7 +3199,7 @@ def edit_distance_table(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'edit_distance_table',
     'from': source,
@@ -3278,7 +3278,7 @@ def unmask(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'unmask',
     'from': source,
@@ -3351,7 +3351,7 @@ class _TwoDLSTM(_Base):
       'axis': axis,
     }
     args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-    self.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+    self.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
     layer = make_layer({
       'class': 'twod_lstm',
       'from': source,
@@ -3425,7 +3425,7 @@ def cum_concat(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, intial_state=initial_state)
+  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'cum_concat',
     'from': source,
