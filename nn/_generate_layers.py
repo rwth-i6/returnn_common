@@ -278,7 +278,7 @@ def setup():
       if name in FunctionNameMap:
         name = FunctionNameMap[name]
       # Also see get_module_class_name_for_layer_class for the hidden logic.
-      if sig.layer_class.layer_class in LayersHidden or sig.has_recurrent_state():
+      if sig.layer_class.layer_class in LayersHidden:
         name = "_" + name
       print("\n", file=f)
       print("# noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
