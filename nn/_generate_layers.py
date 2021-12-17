@@ -118,10 +118,7 @@ IgnoreLayerArgs = {
   "batch_norm",
   "is_output_layer", "register_as_extern_data",
   "copy_output_loss_from_source_idx",
-}
-
-IgnoreLayerArgs2 = {
-  "num_splits", "size_splits",
+  "num_splits", "size_splits",  # out_dims instead
   # keep dims should never be needed
   "keepdims", "keep_dims",
   "add_var2_if_empty", "add_time_axis", "add_batch_axis", "with_batch_dim",
@@ -777,23 +774,6 @@ class LayerSignature:
       if param_.docstring:
         param.docstring += "\n"
         param.docstring += param_.docstring
-    for arg in IgnoreLayerArgs2:
-      self.params.pop(arg, None)
-    self.params.pop("num_splits", None)
-    self.params.pop("size_splits", None)
-    # keep dims should never be needed
-    self.params.pop("keepdims", None)
-    self.params.pop("keep_dims", None)
-    self.params.pop("add_var2_if_empty", None)
-    self.params.pop("add_time_axis", None)
-    self.params.pop("add_batch_axis", None)
-    self.params.pop("with_batch_dim", None)
-    # keep order should be correct by default (with new behavior version) and not needed otherwise
-    self.params.pop("keep_order", None)
-    # order of axes should never matter
-    self.params.pop("enforce_batch_dim_axis", None)
-    self.params.pop("enforce_batch_major", None)
-    self.params.pop("enforce_time_major", None)
 
   def __repr__(self):
     args = []
