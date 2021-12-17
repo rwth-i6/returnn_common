@@ -41,7 +41,9 @@ BlacklistLayerClassNames = {
 
   "RecStepInfoLayer",
   "_TemplateLayer",
-  "cond", "masked_computation", "subnetwork",
+  "cond",  # explicitly
+  "masked_computation", "unmask",  # explicitly
+  "subnetwork",  # explicitly
 
   "source",  # we have get_extern_data instead
   "concat",  # we wrap that explicitly
@@ -140,7 +142,8 @@ FunctionNameMap = {
   "norm": "normalize",
   "softmax_over_spatial": "softmax",  # generic also for normal softmax on feature
   "window": "rec_window",  # for non-recurrent case, we would provide some own custom wrapper
-  "cumsum": "rec_cumsum",  # for non-recurrent case, we would provide some own custom wrapper
+  "cumsum": "rec_cum_sum",  # for non-recurrent case, we would provide some own custom wrapper. also consistency
+  "cum_concat": "rec_cum_concat",  # consistency
 }
 
 

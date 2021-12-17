@@ -1039,15 +1039,15 @@ def rec_window(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def rec_cumsum(
-               source: LayerRef,
-               *,
-               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               axis: Dim,
-               additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
-               reverse: bool = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+def rec_cum_sum(
+                source: LayerRef,
+                *,
+                state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                axis: Dim,
+                additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
+                reverse: bool = NotSpecified,
+                name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
@@ -1069,7 +1069,7 @@ def rec_cumsum(
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
-    **args}, name=name or 'rec_cumsum')
+    **args}, name=name or 'rec_cum_sum')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
@@ -3226,49 +3226,6 @@ def optimal_completions(
     **args}, name=name or 'optimal_completions')
 
 
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def unmask(
-           source: LayerRef,
-           *,
-           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           mask: LayerRef,
-           axis: Dim,
-           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
-  """
-  This is meant to be used together with :class:`MaskedComputationLayer`,
-  which operates on input [B,T,D], and given a mask, returns [B,T',D'].
-  This layer :class:`UnmaskLayer` is supposed to undo the masking,
-  i.e. to recover the original time dimension, i.e. given [B,T',D'], we output [B,T,D'].
-  This is done by repeating the output for the non-masked frames,
-  via the last masked frame.
-
-  If this layer is inside a recurrent loop, i.e. we get [B,D'] as input,
-  this is a no-op, and we just return the input as is.
-  In that case, the repetition logic is handled via :class:`MaskedComputationLayer`.
-
-  :param LayerRef source:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
-  :param LayerBase mask: the same as as used for :class:`MaskedComputationLayer`.
-    Outside loop: [B,T] or [T,B], original T. Inside loop, just [B].
-  :param Dim axis: axis to operate over, or nn.single_step_dim
-  :param str|NameCtx|None name:
-  """
-  args = {
-    'mask': mask,
-    'axis': axis,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
-  layer = make_layer({
-    'class': 'unmask',
-    'from': source,
-    **args}, name=name or 'unmask')
-  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_state
-
-
 class _TwoDLSTM(_Base):
   """
   2D LSTM.
@@ -3344,14 +3301,14 @@ class _TwoDLSTM(_Base):
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def cum_concat(
-               source: LayerRef,
-               *,
-               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               out_spatial_dim: Dim,
-               axis: Dim,
-               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+def rec_cum_concat(
+                   source: LayerRef,
+                   *,
+                   state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                   initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+                   out_spatial_dim: Dim,
+                   axis: Dim,
+                   name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
@@ -3411,6 +3368,6 @@ def cum_concat(
   layer = make_layer({
     'class': 'cum_concat',
     'from': source,
-    **args}, name=name or 'cum_concat')
+    **args}, name=name or 'rec_cum_concat')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
