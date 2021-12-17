@@ -2039,10 +2039,6 @@ def dot(
         source2: LayerRef,
         *,
         reduce: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
-        red1: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
-        red2: Union[Dim, Tuple[Dim, ...], List[Dim]] = NotSpecified,
-        var1: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
-        var2: Optional[Union[Dim, Tuple[Dim, ...], List[Dim]]] = NotSpecified,
         debug: bool = NotSpecified,
         name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -2062,19 +2058,11 @@ def dot(
   :param LayerRef source1:
   :param LayerRef source2:
   :param Dim|tuple[Dim]|list[Dim] reduce: reduce axes of both sources
-  :param Dim|tuple[Dim]|list[Dim] red1: reduce axes of first source
-  :param Dim|tuple[Dim]|list[Dim] red2: reduce axes of second source
-  :param Dim|tuple[Dim]|list[Dim]|None var1: var axes of first source
-  :param Dim|tuple[Dim]|list[Dim]|None var2: var axes of second source
   :param bool debug: will print debug shapes, etc.
   :param str|NameCtx|None name:
   """
   args = {
     'reduce': reduce,
-    'red1': red1,
-    'red2': red2,
-    'var1': var1,
-    'var2': var2,
     'debug': debug,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
