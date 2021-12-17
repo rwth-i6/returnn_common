@@ -19,13 +19,11 @@ from returnn.util import better_exchook
 from returnn.util.basic import camel_case_to_snake_case, NotSpecified
 from returnn.tf.layers.base import LayerBase, InternalLayer
 # noinspection PyProtectedMember
-from returnn.tf.layers.basic import _ConcatInputLayer, SourceLayer, CopyLayer
-from returnn.tf.layers.basic import CombineLayer, CompareLayer, StackLayer, DropoutLayer
-from returnn.tf.layers.basic import LinearLayer, ConvLayer, TransposedConvLayer
-from returnn.tf.layers.basic import ConstantLayer, VariableLayer, CondLayer, SwitchLayer, SubnetworkLayer
-from returnn.tf.layers.rec import RecLayer, RnnCellLayer
-from returnn.tf.layers.rec import PositionalEncodingLayer, RelativePositionalEncodingLayer
-from returnn.tf.layers.rec import BaseChoiceLayer, ChoiceLayer, GenericAttentionLayer
+from returnn.tf.layers.basic import _ConcatInputLayer, CopyLayer
+from returnn.tf.layers.basic import DropoutLayer
+from returnn.tf.layers.basic import VariableLayer, SubnetworkLayer
+from returnn.tf.layers.rec import RecLayer
+from returnn.tf.layers.rec import BaseChoiceLayer
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 _out_filename = f"{_my_dir}/_generated_layers.py"
@@ -97,6 +95,29 @@ LayersNeedingMultipleSources = LayersSupportingMultipleSources.copy() - {"eval"}
 
 LayersExplicitFixedMultipleSources = {
   "dot": 2,
+}
+
+LayerClassesWithExplicitDim = {
+  "linear", "conv", "transposed_conv", "rec", "rnn_cell",
+  "positional_encoding", "relative_positional_encoding",
+  "get_last_hidden_state",
+}
+
+LayerClassesWithExplicitTarget = {
+  "choice",
+}
+
+IgnoreLayerArgs = {
+  "self", "name", "network", "output",
+  "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
+  "activation",  # more explicitly decoupled. https://github.com/rwth-i6/returnn_common/issues/62
+  "name_scope", "reuse_params",
+  "rec_previous_layer", "control_dependencies_on_output",
+  "state", "initial_state", "initial_output",
+  "extra_deps", "collocate_with",
+  "batch_norm",
+  "is_output_layer", "register_as_extern_data",
+  "copy_output_loss_from_source_idx",
 }
 
 BlacklistLayerArgs = {
@@ -564,30 +585,9 @@ class LayerSignature:
       return False
     return True
 
-  _IgnoreParamNames = {
-    "self", "name", "network", "output",
-    "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
-    "activation",  # more explicitly decoupled. https://github.com/rwth-i6/returnn_common/issues/62
-    "name_scope", "reuse_params",
-    "rec_previous_layer", "control_dependencies_on_output",
-    "state", "initial_state", "initial_output",
-    "extra_deps", "collocate_with",
-    "batch_norm",
-    "is_output_layer", "register_as_extern_data",
-    "copy_output_loss_from_source_idx",
-  }
-
-  _LayerClassesWithExplicitDim = {
-    LinearLayer, ConvLayer, TransposedConvLayer, RecLayer, RnnCellLayer,
-    PositionalEncodingLayer, RelativePositionalEncodingLayer,
-    "get_last_hidden_state"}
-
-  _LayerClassesWithExplicitTarget = {
-    ChoiceLayer}
-
   def _init_args(self):
     # n_out is handled specially
-    if self._LayerClassesWithExplicitDim.intersection((self.layer_class, self.layer_class.layer_class)):
+    if self.layer_class.layer_class in LayerClassesWithExplicitDim:
       self.params["out_dim"] = LayerSignature.Param(
         self,
         inspect.Parameter(
@@ -595,7 +595,7 @@ class LayerSignature:
           kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
         param_type_s="Dim",
         docstring="output feature dimension")
-    if self.layer_class in self._LayerClassesWithExplicitTarget:
+    if self.layer_class.layer_class in LayerClassesWithExplicitTarget:
       self.params["target"] = LayerSignature.Param(
         self,
         inspect.Parameter(
@@ -613,7 +613,7 @@ class LayerSignature:
         continue
       if name.startswith("_"):
         continue
-      if name in self._IgnoreParamNames:
+      if name in IgnoreLayerArgs:
         continue
       if name in blacklist:
         continue
@@ -656,7 +656,7 @@ class LayerSignature:
           assert isinstance(param_type_s, str) and isinstance(param_name, str)
         if param_name.startswith("_"):
           continue
-        if param_name in self._IgnoreParamNames and param_name not in self.params:
+        if param_name in IgnoreLayerArgs and param_name not in self.params:
           continue
         if param_name not in self.params:  # some typo or bugs we might have in some RETURNN version
           continue
@@ -828,7 +828,7 @@ class LayerSignature:
         continue
       key, value = arg.split("=")
       key, value = key.strip(), value.strip()
-      if key in self._IgnoreParamNames:
+      if key in IgnoreLayerArgs:
         continue
       assert key in base_sig.params
       param = base_sig.params[key]
