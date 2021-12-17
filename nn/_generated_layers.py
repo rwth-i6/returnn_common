@@ -980,19 +980,19 @@ def constant(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def window(
-           source: LayerRef,
-           *,
-           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           window_dim: Optional[Dim] = NotSpecified,
-           window_left: Optional[int] = NotSpecified,
-           window_right: Optional[int] = NotSpecified,
-           axis: Dim,
-           out_spatial_dim: Optional[Dim] = NotSpecified,
-           padding: str = NotSpecified,
-           stride: int = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+def rec_window(
+               source: LayerRef,
+               *,
+               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               window_dim: Optional[Dim] = NotSpecified,
+               window_left: Optional[int] = NotSpecified,
+               window_right: Optional[int] = NotSpecified,
+               axis: Dim,
+               out_spatial_dim: Optional[Dim] = NotSpecified,
+               padding: str = NotSpecified,
+               stride: int = NotSpecified,
+               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -1033,7 +1033,7 @@ def window(
   layer = make_layer({
     'class': 'window',
     'from': source,
-    **args}, name=name or 'window')
+    **args}, name=name or 'rec_window')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
