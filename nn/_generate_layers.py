@@ -140,6 +140,7 @@ FunctionNameMap = {
   "norm": "normalize",
   "softmax_over_spatial": "softmax",  # generic also for normal softmax on feature
   "window": "rec_window",  # for non-recurrent case, we would provide some own custom wrapper
+  "cumsum": "rec_cumsum",  # for non-recurrent case, we would provide some own custom wrapper
 }
 
 

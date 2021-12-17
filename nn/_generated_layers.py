@@ -1039,15 +1039,15 @@ def rec_window(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def cumsum(
-           source: LayerRef,
-           *,
-           state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-           axis: Dim,
-           additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
-           reverse: bool = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+def rec_cumsum(
+               source: LayerRef,
+               *,
+               state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
+               axis: Dim,
+               additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
+               reverse: bool = NotSpecified,
+               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
@@ -1069,7 +1069,7 @@ def cumsum(
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
-    **args}, name=name or 'cumsum')
+    **args}, name=name or 'rec_cumsum')
   out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
