@@ -179,28 +179,28 @@ class LayerRef:
     return _eval([self, convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
 
   def __eq__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import compare
-    return compare([self, convert_to_layer_ref(other)], kind="equal", name="equal")
+    from ._generated_layers import _compare
+    return _compare([self, convert_to_layer_ref(other)], kind="equal", name="equal")
 
   def __ne__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import compare
-    return compare([self, convert_to_layer_ref(other)], kind="not_equal", name="not_equal")
+    from ._generated_layers import _compare
+    return _compare([self, convert_to_layer_ref(other)], kind="not_equal", name="not_equal")
 
   def __lt__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import compare
-    return compare([self, convert_to_layer_ref(other)], kind="less", name="less")
+    from ._generated_layers import _compare
+    return _compare([self, convert_to_layer_ref(other)], kind="less", name="less")
 
   def __le__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import compare
-    return compare([self, convert_to_layer_ref(other)], kind="less_equal", name="less_equal")
+    from ._generated_layers import _compare
+    return _compare([self, convert_to_layer_ref(other)], kind="less_equal", name="less_equal")
 
   def __gt__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import compare
-    return compare([self, convert_to_layer_ref(other)], kind="greater", name="greater")
+    from ._generated_layers import _compare
+    return _compare([self, convert_to_layer_ref(other)], kind="greater", name="greater")
 
   def __ge__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
-    from . import compare
-    return compare([self, convert_to_layer_ref(other)], kind="greater_equal", name="greater_equal")
+    from ._generated_layers import _compare
+    return _compare([self, convert_to_layer_ref(other)], kind="greater_equal", name="greater_equal")
 
 
 class Layer(LayerRef):

@@ -74,8 +74,9 @@ BlacklistLayerClassNames = {
 }
 
 LayersHidden = {
-  "combine",  # only needed as base
-  "eval",
+  "combine",  # only needed as base; we should have all common combining functions wrapped here
+  "eval",  # we should have all common functions wrapped here
+  "compare",  # we should have all common comparison functions wrapped here
   "split",
   "get_last_hidden_state",  # we handle all state explicitly, there is no hidden state. this is only needed internally
 }

@@ -2253,12 +2253,12 @@ def _eval(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def compare(
-            source: Union[List[LayerRef], Tuple[LayerRef]],
-            *,
-            kind: str = NotSpecified,
-            value: Optional[Union[float, int]] = NotSpecified,
-            name: Optional[Union[str, NameCtx]] = None) -> Layer:
+def _compare(
+             source: Union[List[LayerRef], Tuple[LayerRef]],
+             *,
+             kind: str = NotSpecified,
+             value: Optional[Union[float, int]] = NotSpecified,
+             name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Compares element-wise the tokens of all input sequences among themselves and/or with a specified given value.
   The comparisons are performed in a chain according to the order in which they are listed.
