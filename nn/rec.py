@@ -57,28 +57,33 @@ class LSTM(_Rec):
   """
   LSTM operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
   """
-  def __init__(self, out_dim: nn.Dim):
+  def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None):
+    self.param_W_re = None  # type: Optional[nn.Parameter]
+    self.param_W = None  # type: Optional[nn.Parameter]
+    self.param_b = None  # type: Optional[nn.Parameter]
     super().__init__(
-      out_dim=out_dim, unit="nativelstm2",
+      unit="nativelstm2",
+      out_dim=out_dim, in_dim=in_dim,
       param_list=[
         ("W_re", lambda: (self.out_dim, 4 * self.out_dim)),
         ("W", lambda: (self.in_dim, 4 * self.out_dim)),
         ("b", lambda: (self.out_dim,))])
-    self.param_W_re = None  # type: Optional[nn.Parameter]
-    self.param_W = None  # type: Optional[nn.Parameter]
-    self.param_b = None  # type: Optional[nn.Parameter]
 
 
 class ZoneoutLSTM(_Rec):
   """
   LSTM with zoneout operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
   """
-  def __init__(self, out_dim: nn.Dim, zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0.):
+  def __init__(self, out_dim: nn.Dim,
+               *,
+               in_dim: Optional[nn.Dim] = None,
+               zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0.):
+    self.param_kernel = None  # type: Optional[nn.Parameter]
+    self.param_bias = None  # type: Optional[nn.Parameter]
     super().__init__(
-      out_dim=out_dim, unit="zoneoutlstm",
+      unit="zoneoutlstm",
+      out_dim=out_dim, in_dim=in_dim,
       unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
       param_list=[
         ("kernel", lambda: (self.in_dim + self.out_dim, 4 * self.out_dim)),
         ("bias", lambda: (4 * self.out_dim,))])
-    self.param_kernel = None  # type: Optional[nn.Parameter]
-    self.param_bias = None  # type: Optional[nn.Parameter]
