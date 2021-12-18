@@ -28,11 +28,11 @@ class _Rec(nn.Module):
         shape = shape_func()
         setattr(self, f"param_{param}", nn.Parameter(shape))
 
-  @nn.scoped
   def __call__(self, source: nn.LayerRef, *,
                axis: nn.Dim,
                state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
                initial_state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
+               name: Optional[Union[str, nn.NameCtx]] = None,
                ) -> Tuple[nn.Layer, nn.LayerState]:
     self._lazy_init(source.dim)
     rec_layer_dict = {
@@ -48,7 +48,7 @@ class _Rec(nn.Module):
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     nn.ReturnnWrappedLayerBase.handle_recurrent_state(
       rec_layer_dict, axis=axis, state=state, initial_state=initial_state)
-    out = nn.make_layer(rec_layer_dict, name="rec")
+    out = nn.make_layer(rec_layer_dict, name=name or "rec")
     out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(out)
     return out, out_state
 
