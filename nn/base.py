@@ -49,7 +49,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator, Iterable
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Iterator, Iterable
 from returnn.tf.util.data import *  # Dim, Data, and others
 from returnn.util.basic import NotSpecified, OptionalNotImplementedError
 from tensorflow.python.util import nest
@@ -59,6 +59,8 @@ LayerDictRaw = Dict[str, Any]
 LayerRefRaw = str
 NetDictRaw = Dict[str, LayerDictRaw]
 RawTensorTypes = Union[int, float, complex, bool, str]
+
+_min_returnn_behavior_version = 11
 
 
 class LayerRef:
@@ -78,19 +80,61 @@ class LayerRef:
   or layers (:class:`Layer`) via :func:`make_layer`.
   """
 
-  def __init__(self, *, name_ctx: NameCtx):
+  def __init__(self, *, name_ctx: NameCtx, data: Data):
+    self.parent_modules = []  # type: List[Tuple[Module, str]]  # with attr
     self.name_ctx = name_ctx
     assert name_ctx.layer_ref is None
     name_ctx.layer_ref = self
+    self.data = data
 
   def __repr__(self):
     return f"<{self.__class__.__name__} {self.name_ctx}>"
 
-  def get_name(self) -> str:
+  @property
+  def shape(self) -> Set[Dim]:
+    """
+    :return: shape (set of dims)
+    """
+    return self.data.dim_tags_set_implicit
+
+  @property
+  def dtype(self) -> str:
+    """
+    :return: data type (e.g. "float32")
+    """
+    return self.data.dtype
+
+  @property
+  def dim(self) -> Optional[Dim]:
+    """
+    :return: feature dim
+    """
+    return self.data.feature_dim_or_sparse_dim
+
+  def get_name_in_current_ctx(self) -> str:
     """
     :return: RETURNN layer name, valid in the current active name context.
     """
-    return self.name_ctx.get_name_in_current_ctx()
+    return self.get_name_in_ctx(ctx=NameCtx.current_ctx())
+
+  def get_name_in_ctx(self, ctx: NameCtx) -> str:
+    """
+    :return: RETURNN layer name in the given name context.
+    """
+    if not self.name_ctx.parent and ctx != self.name_ctx:
+      # We allow creating name ctx early without having a known parent,
+      # such as for Parameter, which might be created outside a name context,
+      # or in an unrelated name context.
+      # We caught this case here, and now assign some parent.
+      assert self.parent_modules  # cannot assign parent without parent modules
+      for parent_module, attr in self.parent_modules:
+        if getattr(parent_module, attr, None) is not self:
+          continue  # might have been reset later...
+        if parent_module.calls:
+          self.name_ctx.assign_parent(parent_module.calls[0], attr)
+          break
+      assert self.name_ctx.parent  # could not find parent
+    return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:
     """
@@ -209,8 +253,12 @@ class Layer(LayerRef):
   You would not create an instance of this explicitly.
   """
 
-  def __init__(self, *, layer_dict: LayerDictRaw, name_ctx: NameCtx):
-    super(Layer, self).__init__(name_ctx=name_ctx)
+  def __init__(self, *, layer_dict: LayerDictRaw, name_ctx: NameCtx, predefined_out_data: Optional[Data] = None):
+    if predefined_out_data:
+      data = predefined_out_data
+    else:
+      data = _data_from_layer_dict(layer_dict)
+    super(Layer, self).__init__(name_ctx=name_ctx, data=data)
     assert self.name_ctx.layer is None
     self.name_ctx.layer = self
     self.layer_dict = layer_dict
@@ -228,6 +276,25 @@ class Layer(LayerRef):
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
     return sis_hash_helper(self.layer_dict)
+
+
+class Parameter(Layer):
+  """
+  This represents a (potential trainable) parameter,
+  aka ``tf.Variable`` in TensorFlow,
+  wrapping to ``VariableLayer`` in RETURNN.
+  """
+  def __init__(self, shape: Sequence[Dim], dtype: str = "float32"):
+    if not all(isinstance(dim, Dim) for dim in shape):
+      raise TypeError(f"shape {shape} must be a sequence of Dim")
+    # Note: At creation time, we don't know the name yet.
+    # The name will be inferred by the parent modules and the attribute chain.
+    name_ctx = NameCtx(name="parameter", parent=None)  # this is incomplete and will be configured later
+    data = Data("parameter", dim_tags=list(shape), dtype=dtype)
+    super(Parameter, self).__init__(
+      layer_dict={"class": "variable", "shape": list(shape), "dtype": dtype},
+      predefined_out_data=data,
+      name_ctx=name_ctx)
 
 
 def scoped(func):
@@ -251,16 +318,17 @@ def scoped(func):
         self.calls.append(name_ctx)
         return res
       if isinstance(res, LayerRef):
-        copy(res, name=name_ctx.get_child("output"))
+        out = copy(res, name=name_ctx.get_child("output"))
       else:
         # we return more than one layer (thus also working on other layers of the subnet, that are not output)
         # by convention: first layer is the output layer
         res_flat = nest.flatten(res)
-        copy(res_flat[0], name=name_ctx.get_child("output"))
+        out = copy(res_flat[0], name=name_ctx.get_child("output"))
+      assert out.data
       # Now create the subnetwork layer itself.
       subnet_layer = make_layer(
         {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
-        name=name_ctx)
+        name=name_ctx, predefined_out_data=out.data)
     if isinstance(res, LayerRef):
       return subnet_layer  # maybe nicer to return subnet layer
     return res
@@ -377,6 +445,9 @@ class Module:
     super().__setattr__(key, value)
     if isinstance(value, Module):
       value._parents[(self, key)] = None
+    if isinstance(value, LayerRef):
+      if (self, key) not in value.parent_modules:
+        value.parent_modules.append((self, key))
 
   def parents_with_attr(self) -> Iterator[Tuple[Module, str]]:
     """
@@ -389,53 +460,59 @@ class Module:
       if getattr(parent, attr, None) is self:
         yield parent, attr
 
-  def children(self) -> Iterator[Module]:
+  def children(self, *, recurse: bool = True) -> Iterator[Module]:
     """
     Get all (immediate) children modules
     """
-    for name, child in self.named_children():
+    for name, child in self.named_children(recurse=recurse):
       yield child
 
-  def named_children(self) -> Iterator[Tuple[str, Module]]:
+  def named_children(self,
+                     *, recurse: bool = True, memo: Optional[Set[Module]] = None, prefix: str = ''
+                     ) -> Iterator[Tuple[str, Module]]:
     """
-    Get all (immediate) children modules
-    """
-    # We rely on deterministic order of dict and vars.
-    for key, value in vars(self).items():
-      if isinstance(value, Module):
-        yield key, value
-
-  def children_deep(self) -> Iterator[Module]:
-    """
-    Get all children (deeply)
-    """
-    for name, child in self.named_children_deep():
-      yield child
-
-  def named_children_deep(self, memo: Optional[Set[Module]] = None, prefix: str = ''):
-    """
-    Get all children (deeply)
+    Get all children modules
     """
     if memo is None:
       memo = set()
     if self not in memo:
-      memo.add(self)
-      yield prefix, self
-      for name, module in self.named_children():
-        if module is None:
+      for name, module in vars(self).items():
+        if not isinstance(module, Module):
           continue
         sub_prefix = prefix + ('.' if prefix else '') + name
-        for m in module.named_children_deep(memo, sub_prefix):
-          yield m
+        memo.add(module)
+        yield sub_prefix, module
+        if recurse:
+          for name_, mod_ in module.named_children(recurse=True, memo=memo, prefix=sub_prefix):
+            yield name_, mod_
+
+  def named_parameters(self, *, recurse: bool = True) -> Iterator[Tuple[str, Parameter]]:
+    """
+    Get all children parameters
+    """
+    memo = set()  # over name contexts because we cannot hash layer refs
+
+    def _iter_params(module: Module, prefix: str) -> Iterator[Tuple[str, Parameter]]:
+      for key, value in vars(module).items():
+        if isinstance(value, Parameter) and value.name_ctx not in memo:
+          sub_prefix = prefix + ('.' if prefix else '') + key
+          memo.add(value.name_ctx)
+          yield sub_prefix, value
+
+    for name, param in _iter_params(module=self, prefix=''):
+      yield name, param
+    if recurse:
+      for child_prefix, child_mod in self.named_children(recurse=True):
+        for name, param in _iter_params(module=child_mod, prefix=child_prefix):
+          yield name, param
 
   @property
-  def has_variables(self):
+  def has_parameters(self):
     """
     Whether this module has variables
     """
-    for module in self.children():
-      if module.has_variables:
-        return True
+    for _, _ in self.named_parameters(recurse=True):
+      return True
     return False
 
 
@@ -559,7 +636,8 @@ class _ReturnnWrappedLayerBase(Module):
 
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, NameCtx]] = None,
-               module: Optional[Module] = None) -> Layer:
+               module: Optional[Module] = None,
+               predefined_out_data: Optional[Data] = None) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   When no name is given, this assumes that the top name ctx corresponds to this module.
@@ -577,24 +655,26 @@ def make_layer(layer_dict: LayerDictRaw, *,
     if str: (suggested) layer name. if given, will create a new :class:`NameCtx`
     if NameCtx, will use this.
   :param Module|None module: if given, will create new name scope with this module
+  :param Data|None predefined_out_data: normally we can derive the out data automatically.
+    If this should be skipped, you can pass this explicitly.
   """
   if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
     name_ctx = NameCtx.get_from_call(module=module, name=name)
-    return make_layer(layer_dict=layer_dict, name=name_ctx)
+    return make_layer(layer_dict=layer_dict, name=name_ctx, predefined_out_data=predefined_out_data)
   elif isinstance(name, NameCtx):
     name_ctx = name
     if NameCtx.top() is name:
       pass  # go on
     else:
       with name_ctx:
-        return make_layer(layer_dict=layer_dict)
+        return make_layer(layer_dict=layer_dict, predefined_out_data=predefined_out_data)
   else:
     name_ctx = NameCtx.top()
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
-  if name_ctx.module and name_ctx.module.has_variables:
+  if name_ctx.module and name_ctx.module.has_parameters:
     # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
     # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
     if name_ctx.is_root:
@@ -616,7 +696,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
           layer_dict["name_scope"] = "/" + name_ctx.layer_abs_name_scope
 
   name_ctx.is_subnet_ctx = False
-  layer = Layer(layer_dict=layer_dict, name_ctx=name_ctx)
+  layer = Layer(layer_dict=layer_dict, name_ctx=name_ctx, predefined_out_data=predefined_out_data)
   if name_ctx.module:
     name_ctx.module.calls.append(name_ctx)
   return layer
@@ -632,7 +712,7 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
   return constant(value=x)
 
 
-def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
+def make_root_net_dict(model: Module, *args: Data, **kwargs: Data) -> Dict[str, Any]:
   """
   Make net dict, to be used as the main RETURNN network, not within a subnetwork.
   Any passed arguments are keys of extern data,
@@ -653,7 +733,14 @@ def make_root_net_dict(model: Module, *args, **kwargs) -> NetDictRaw:
         assert res_list and isinstance(res_list[0], LayerRef)
         copy(res_list[0], name=name_ctx.get_child("output"))
     net = name_ctx.make_net()
-  return net.make_net_dict_raw()
+  config = {
+    "network": net.make_net_dict_raw(),
+    "extern_data": {
+      data_key: {key: value for (key, value) in data.get_kwargs().items() if key not in {"name"}}
+      for (data_key, data) in name_ctx.extern_data.items()},
+    "behavior_version": _min_returnn_behavior_version,
+  }
+  return config
 
 
 class Loop:
@@ -717,6 +804,9 @@ class Loop:
     self._state = _StateHolder(loop=self)
     self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
+    self._has_given_axis = bool(axis)
+    if not axis:
+      axis = SpatialDim(f"{name}-dim")
     self.axis = axis
     self.end_ref = None  # type: Optional[LayerRef]
 
@@ -762,8 +852,6 @@ class Loop:
       self._state[key] = value
 
   def unstack(self, source: LayerRef, *,
-              axis: Optional[Dim] = None,
-              declare_rec_time: bool = False,
               name: Optional[str] = None
               ) -> LayerRef:
     """
@@ -772,15 +860,8 @@ class Loop:
     or locally here (not recommended).
     """
     from . import rec_unstack
-    opts = {}
-    if axis:
-      opts["axis"] = axis
-      if declare_rec_time:
-        opts["declare_rec_time"] = True
-    else:
-      assert self.axis and self.axis is not NotSpecified, f"{self}: `axis` should be specified when unstack() is used"
-      opts["axis"] = self.axis
-      assert not declare_rec_time
+    assert self._has_given_axis, "%s: unstack() requires a given axis" % self
+    opts = {"axis": self.axis}
     res = rec_unstack(source, name=name, **opts)
     self.unstacked_refs.append(res)
     return res
@@ -807,7 +888,7 @@ class Loop:
     assert isinstance(source, Layer)
     source.layer_dict["need_last"] = True
     sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
-    with self.name_ctx.parent:  # need to be outside of the loop
+    with self.name_ctx.parent:  # need to be outside the loop
       return make_layer(
         {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
         name=name or sub_layer_name.replace("/", "_"))
@@ -839,10 +920,15 @@ class _LoopLayerModule(Module):
     Makes layer dict for this loop, i.e. a RecLayer.
     """
     name_ctx = self.loop.name_ctx
+    out = name_ctx.children["output"].layer_ref
     return make_layer(
-      {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts}, name=name_ctx)
+      {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts},
+      name=name_ctx,
+      predefined_out_data=out.data.copy_add_dim_by_tag(self.loop.axis, unbroadcast=True, axis=0))
 
-  def named_children(self) -> Iterator[Tuple[str, Module]]:
+  def named_children(self, *,
+                     recurse: bool = True, memo: Optional[Set[Module]] = None, prefix: str = ''
+                     ) -> Iterator[Tuple[str, Module]]:
     """
     Children
     """
@@ -857,7 +943,7 @@ class PrevLayerRef(LayerRef):
   Refers to a layer from the previous loop iteration.
   """
   @classmethod
-  def get_prev_ref(cls, *, cur_layer_name_ctx: NameCtx) -> PrevLayerRef:
+  def get_prev_ref(cls, *, cur_layer_name_ctx: NameCtx, initial: LayerRef) -> PrevLayerRef:
     """
     Create prev ref.
     """
@@ -868,13 +954,14 @@ class PrevLayerRef(LayerRef):
       assert isinstance(prev_layer_ref, PrevLayerRef)
       assert prev_layer_ref.cur_layer_name_ctx is cur_layer_name_ctx
     else:
-      prev_layer_ref = PrevLayerRef(name_ctx=prev_layer_name_ctx, cur_layer_name_ctx=cur_layer_name_ctx)
+      prev_layer_ref = PrevLayerRef(
+        name_ctx=prev_layer_name_ctx, cur_layer_name_ctx=cur_layer_name_ctx, data=initial.data)
       assert prev_layer_name_ctx.layer_ref is prev_layer_ref
     return prev_layer_ref
 
-  def __init__(self, *, name_ctx: NameCtx, cur_layer_name_ctx: NameCtx):
+  def __init__(self, *, name_ctx: NameCtx, cur_layer_name_ctx: NameCtx, data: Data):
     # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
-    super().__init__(name_ctx=name_ctx)
+    super().__init__(name_ctx=name_ctx, data=data)
     self.cur_layer_name_ctx = cur_layer_name_ctx
 
 
@@ -933,6 +1020,7 @@ class State:
     """
     super(State, self).__init__()
     assert initial is not None
+    initial = nest.map_structure(convert_to_layer_ref, initial)
     self.initial = initial
     self.loop = None  # type: Optional[Loop]
     self.name = None  # type: Optional[str]
@@ -965,7 +1053,7 @@ class State:
     nest.assert_same_structure(self.name_ctx, value)
     self.assigned_value = value
 
-    def _map_ref_to_name_ctx(layer_ref: LayerRef, name_ctx: NameCtx, initial: Any):
+    def _map_ref_to_name_ctx(layer_ref: LayerRef, name_ctx: NameCtx, initial: LayerRef):
       assert isinstance(layer_ref, LayerRef)
       assert isinstance(name_ctx, NameCtx)
 
@@ -1005,9 +1093,9 @@ class State:
     nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
   @staticmethod
-  def _map_name_ctx_to_prev_layer_ref(name_ctx: NameCtx) -> PrevLayerRef:
+  def _map_name_ctx_to_prev_layer_ref(name_ctx: NameCtx, initial: LayerRef) -> PrevLayerRef:
     assert isinstance(name_ctx, NameCtx)
-    return PrevLayerRef.get_prev_ref(cur_layer_name_ctx=name_ctx)
+    return PrevLayerRef.get_prev_ref(cur_layer_name_ctx=name_ctx, initial=initial)
 
   def get(self):
     """
@@ -1016,7 +1104,7 @@ class State:
     assert self.name_ctx is not None
     if self.assigned_value is None:  # not yet assigned
       # Return prev value
-      return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx)
+      return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx, self.initial)
     return self.assigned_value
 
   def _map_name_ctx_to_last_layer_ref(self, name_ctx: NameCtx) -> LayerRef:
@@ -1034,40 +1122,35 @@ class State:
     return nest.map_structure(self._map_name_ctx_to_last_layer_ref, self.name_ctx)
 
 
-def get_root_extern_data(data_key: str) -> LayerRef:
+def get_extern_data(data: Data) -> LayerRef:
   """
-  Get extern data from root.
+  Get extern data from root ctx.
   """
-  scope = NameCtx.top()  # must exist
-  scope_abs = scope.get_abs_name_ctx_list()
-  root_scope = scope_abs[0]
-  root_layer_name = f"data:{data_key}"
-  return get_special_layer(root_layer_name, scope=root_scope)
+  assert isinstance(data, Data)  # the usage was different before. make sure we get this correct
+  root_scope = NameCtx.top().root  # must exist
+  if data.name not in root_scope.extern_data:
+    root_scope.extern_data[data.name] = data
+  else:
+    assert root_scope.extern_data[data.name] is data
+  root_layer_name = f"data:{data.name}"
+  return _get_special_layer(root_layer_name, scope=root_scope, data=data)
 
 
-def get_extern_data(data_key: str) -> LayerRef:
-  """
-  Get extern data from current scope.
-  """
-  assert isinstance(data_key, str)
-  return get_special_layer(f"data:{data_key}")
-
-
-def get_special_layer(name: str, *, scope: Optional[NameCtx] = None) -> LayerRef:
+def _get_special_layer(name: str, *, scope: Optional[NameCtx] = None, data: Data) -> LayerRef:
   """
   Special layer can be "data:..." or whatever.
   """
   if not scope:
     scope = NameCtx.current_ctx()  # must exist
-  return scope.get_child_layer_ref(name)
+  return scope.get_child_layer_ref(name, data=data)
 
 
-def get_sub_layer(layer: LayerRef, name: str) -> LayerRef:
+def _get_sub_layer(layer: LayerRef, name: str, *, data: Data) -> LayerRef:
   """
   Like the "{layer}/{name}" syntax in RETURNN.
   Normally this should only be needed for internal usage.
   """
-  return layer.name_ctx.get_child_layer_ref(name)
+  return layer.name_ctx.get_child_layer_ref(name, data=data)
 
 
 class Net:
@@ -1080,7 +1163,7 @@ class Net:
 
   def _map_elem_resolve(self, obj: Any) -> Any:
     if isinstance(obj, LayerRef):
-      return obj.name_ctx.get_name_in_ctx(ctx=self.name_ctx)
+      return obj.get_name_in_ctx(ctx=self.name_ctx)
     if isinstance(obj, Net):
       return obj.make_net_dict_raw()
     return obj
@@ -1090,11 +1173,21 @@ class Net:
     Create raw net dict, not containing any :class:`LayerRef` or :class:`Net` instances anymore.
     """
     net_dict = {}
-    for key, value in self.name_ctx.children.items():
-      if value.layer:
-        layer_dict = value.layer.layer_dict
-        layer_dict = nest.map_structure(self._map_elem_resolve, layer_dict)
-        net_dict[key] = layer_dict
+    # Due to late assignments of name context parents (e.g. for Parameter),
+    # the name_ctx.children dict might change while we iterate over it.
+    # To avoid that, we iterate over a copy.
+    # We must then check if no new children were added.
+    while True:
+      children = list(self.name_ctx.children.values())
+      for sub_name_ctx in children:
+        if sub_name_ctx.name in net_dict:
+          continue
+        if sub_name_ctx.layer:
+          layer_dict = sub_name_ctx.layer.layer_dict
+          layer_dict = nest.map_structure(self._map_elem_resolve, layer_dict)
+          net_dict[sub_name_ctx.name] = layer_dict
+      if len(self.name_ctx.children) == len(children):  # we never would delete entries, so this should be safe
+        break
     return net_dict
 
 
@@ -1149,6 +1242,7 @@ class NameCtx:
     self._layer_abs_name_scope = None  # type: Optional[str]
     self.is_subnet_ctx = False
     self.children = {}  # type: Dict[str, NameCtx]
+    self.extern_data = {}  # type: Dict[str, Data]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name  # early assign such that debug repr works later
     if not name:
@@ -1177,6 +1271,18 @@ class NameCtx:
 
   def __repr__(self):
     return f"<{self.__class__.__name__} module:{self.module} name:{self.get_abs_name_repr()}>"
+
+  def __hash__(self):
+    return hash(id(self))
+
+  def assign_parent(self, parent: NameCtx, suggested_name: str):
+    """
+    Assign parent to this name context, when it is not set yet.
+    """
+    assert not self.parent
+    self.parent = parent
+    self.name = self._get_unique_name(suggested_name)
+    self.parent._add_child(self)
 
   @property
   def root(self) -> NameCtx:
@@ -1356,22 +1462,22 @@ class NameCtx:
     else:
       return NameCtx(name=name, parent=self)  # also registers in self.children
 
-  def get_child_with_layer_ref(self, name: str) -> NameCtx:
+  def get_child_with_layer_ref(self, name: str, *, data: Data) -> NameCtx:
     """
     Makes sure the child exists, including a corresponding layer ref.
     Creates the child together with a layer ref if it does not exist yet.
     """
     child = self.get_child(name)
     if not child.layer_ref:
-      layer_ref = LayerRef(name_ctx=child)
+      layer_ref = LayerRef(name_ctx=child, data=data)
       assert child.layer_ref is layer_ref
     return child
 
-  def get_child_layer_ref(self, name: str) -> LayerRef:
+  def get_child_layer_ref(self, name: str, *, data: Data) -> LayerRef:
     """
     Get child layer ref. Makes sure it exists.
     """
-    return self.get_child_with_layer_ref(name).layer_ref
+    return self.get_child_with_layer_ref(name, data=data).layer_ref
 
   def __enter__(self):
     self.stack.append(self)
@@ -1432,6 +1538,8 @@ class NameCtx:
       # However, we allow to use the name if it is the attrib itself.
       if self.module and name not in reserved_names and getattr(self.parent.module, name, None) is self.module:
         return name
+      if self.layer_ref and name not in reserved_names and getattr(self.parent.module, name, None) is self.layer_ref:
+        return name
       reserved_names |= set(vars(self.parent.module).keys())
     if name not in reserved_names:
       return name
@@ -1467,3 +1575,73 @@ def _move_layer_ref_to_new_name_ctx(*, layer_ref: LayerRef, name_ctx: NameCtx):
 def _remove_name_ctx_from_parent(name_ctx: NameCtx):
   old_name_ctx = name_ctx.parent.children.pop(name_ctx.name)
   assert old_name_ctx is name_ctx
+
+
+def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
+  from returnn.tf.network import TFNetwork, ExternData, get_layer_class
+  from returnn.tf.layers.base import InternalLayer, LayerBase
+  from returnn.util import BehaviorVersion
+  from returnn.config import Config
+  config = Config({
+    "behavior_version": _min_returnn_behavior_version,
+  })
+  BehaviorVersion.set(_min_returnn_behavior_version)
+  net = TFNetwork(config=config, extern_data=ExternData(), name="dummy_net")
+
+  ref_to_layer_name = {}  # type: Dict[NameCtx, str]
+
+  def _get_unique_name(name) -> str:
+    reserved_names = set(net.layers.keys()) | {"data"}
+    if name not in reserved_names:
+      return name
+    i = 0
+    while True:
+      name_ = f"{name}_{i}"
+      if name_ not in reserved_names:
+        return name_
+      i += 1
+
+  def _get_layer_name(ref: LayerRef) -> str:
+    if ref.name_ctx in ref_to_layer_name:
+      return ref_to_layer_name[ref.name_ctx]
+    name = _get_unique_name(ref.name_ctx.name)
+    ref_to_layer_name[ref.name_ctx] = name
+    assert name not in net.layers
+    net.layers[name] = InternalLayer(name=name, network=net, output=ref.data)
+    return name
+
+  def _get_layer(name: str) -> LayerBase:
+    assert name in net.layers
+    return net.layers[name]
+
+  def _map_layer_dict_elem(value):
+    if isinstance(value, LayerRef):
+      return _get_layer_name(value)
+    return value
+
+  layer_dict = nest.map_structure(_map_layer_dict_elem, layer_dict)
+  out_name = _get_unique_name("output")
+
+  layer_desc = layer_dict.copy()
+  layer_class = None
+  try:
+    layer_class = get_layer_class(layer_desc.pop("class"))
+    # Note about name:
+    # The name can be to the root network (full name) or to the owning/direct network (`net`) (base_name).
+    # The name can optionally have a prefix (here we only care about extra net prefix "extra...:").
+    # The prefix is implied by the owning network.
+    layer_desc["_network"] = net
+    layer_desc["_name"] = out_name
+
+    layer_class.transform_config_dict(layer_desc, network=net, get_layer=_get_layer)
+
+    # noinspection PyProtectedMember
+    layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
+    out_data = layer_class.get_out_data_from_opts(**layer_desc)
+
+  except Exception as exc:
+    raise Exception(
+      f"Failed to infer output Data from {layer_class.layer_class if layer_class else None!r} layer"
+      f" {layer_desc!r}") from exc
+
+  return out_data

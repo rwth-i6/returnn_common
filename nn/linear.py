@@ -15,13 +15,20 @@ class Linear(nn.Module):
     super().__init__()
     self.out_dim = out_dim
     self.in_dim = in_dim
-    self.weight = nn.Parameter((in_dim, out_dim))  # TODO
-    self.bias = nn.Parameter((out_dim,))  # TODO
+    self.weight = None  # type: Optional[nn.Parameter]
+    self.bias = None  # type: Optional[nn.Parameter]
+    if in_dim:
+      self._lazy_init(in_dim)
 
-  def _lazy_init(self, source: nn.LayerRef):
-    pass  # TODO
+  def _lazy_init(self, in_dim: nn.Dim):
+    if self.in_dim:
+      assert self.in_dim == in_dim
+    else:
+      self.in_dim = in_dim
+      self.weight = nn.Parameter((self.in_dim, self.out_dim))
+      self.bias = nn.Parameter((self.out_dim,))
 
   @nn.scoped
   def __call__(self, source: nn.LayerRef) -> nn.Layer:
-    self._lazy_init(source)
-    return nn.dot(source, self.weight) + self.bias
+    self._lazy_init(source.dim)
+    return nn.dot(source, self.weight, reduce=self.in_dim) + self.bias

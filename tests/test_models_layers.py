@@ -33,10 +33,12 @@ def test_simple_net_linear():
       return self.linear(x)
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
+  config = nn.make_root_net_dict(
+    net, nn.Data("data", dim_tags=[nn.batch_dim, nn.SpatialDim("time"), nn.FeatureDim("input", 13)]))
+  net_dict = config["network"]
   pprint(net_dict)
   assert "linear" in net_dict
-  dummy_run_net(net_dict)
+  dummy_run_net(config)
 
 
 def test_simple_net_module_explicit_root_ctx():
@@ -376,8 +378,8 @@ def test_from_call_variations2():
       """
       Forward
       """
-      assert_equal(x.get_name(), "base:sub/linear")
-      assert_equal(y.get_name(), "base:linear")
+      assert_equal(x.get_name_in_current_ctx(), "base:sub/linear")
+      assert_equal(y.get_name_in_current_ctx(), "base:linear")
       x_ = self.linear(x)
       x = self.linear2(x_)
       return x, x_
@@ -395,13 +397,13 @@ def test_from_call_variations2():
       Forward
       """
       out, add_out = self.sub(x)
-      assert_equal(out.get_name(), "sub/linear2")
-      assert_equal(add_out.get_name(), "sub/linear")
+      assert_equal(out.get_name_in_current_ctx(), "sub/linear2")
+      assert_equal(add_out.get_name_in_current_ctx(), "sub/linear")
       lin = self.linear(out)
-      assert_equal(lin.get_name(), "linear")
+      assert_equal(lin.get_name_in_current_ctx(), "linear")
       out2, add_out2 = self.sub2(add_out, lin)
-      assert_equal(out2.get_name(), "sub2/linear2")
-      assert_equal(add_out2.get_name(), "sub2/linear")
+      assert_equal(out2.get_name_in_current_ctx(), "sub2/linear2")
+      assert_equal(add_out2.get_name_in_current_ctx(), "sub2/linear")
       return out2
 
   net = _Net()

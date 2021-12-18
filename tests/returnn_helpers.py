@@ -8,7 +8,7 @@ import returnn.tf.engine
 import returnn.datasets
 
 
-def dummy_run_net(net_dict: Dict[str, Dict[str, Any]], *, train: bool = False):
+def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
   """
   Runs a couple of training iterations using some dummy dataset on the net dict.
   Use this to validate that the net dict is sane.
@@ -22,15 +22,14 @@ def dummy_run_net(net_dict: Dict[str, Dict[str, Any]], *, train: bool = False):
   from returnn.tf.engine import Engine
   from returnn.datasets import init_dataset
   from returnn.config import Config
-  n_data_dim, n_classes_dim = 5, 7
+  n_data_dim, n_classes_dim = config["extern_data"]["data"]["dim_tags"][-1].dimension, 7
   config = Config({
     "train": {
       "class": "DummyDataset", "input_dim": n_data_dim, "output_dim": n_classes_dim,
       "num_seqs": 2, "seq_len": 5},
-    "extern_data": {"data": {"dim": n_data_dim}, "classes": {"dim": n_classes_dim, "sparse": True}},
-    "network": net_dict,
     "debug_print_layer_output_template": True,
     "task": "train",  # anyway, to random init the net
+    **config
   })
   dataset = init_dataset(config.typed_value("train"))
   engine = Engine(config=config)
