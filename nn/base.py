@@ -133,7 +133,7 @@ class LayerRef:
         if parent_module.calls:
           self.name_ctx.assign_parent(parent_module.calls[0], attr)
           break
-      assert self.name_ctx.parent  # could not find parent
+      assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
     return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:

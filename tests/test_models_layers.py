@@ -118,7 +118,7 @@ def test_simple_net_lstm():
       """
       Forward
       """
-      x, _ = self.lstm(x, axis=nn.any_spatial_dim)
+      x, _ = self.lstm(x, axis=nn.any_spatial_dim)  # TODO axis
       return x
 
   net = _Net()
