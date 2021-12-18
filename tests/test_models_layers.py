@@ -114,18 +114,20 @@ def test_simple_net_lstm():
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped
-    def __call__(self, x) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
       """
       Forward
       """
-      x, _ = self.lstm(x)  # TODO axis
+      x, _ = self.lstm(x, axis=nn.any_spatial_dim)
       return x
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
+  config = nn.make_root_net_dict(
+    net, nn.Data("data", dim_tags=[nn.batch_dim, nn.SpatialDim("time"), nn.FeatureDim("input", 13)]))
+  net_dict = config["network"]
   pprint(net_dict)
   assert "lstm" in net_dict
-  dummy_run_net(net_dict)
+  dummy_run_net(config)
 
 
 def test_simple_net_share_params():

@@ -12,10 +12,10 @@ from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any
 from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
 from returnn.tf.util.data import Dim, _ImplicitDim
-from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer
+from .base import NameCtx, ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer
 
 
-class _Base(_ReturnnWrappedLayerBase):
+class _Base(ReturnnWrappedLayerBase):
   """
   This is the base class for all layers.
   Every layer by default has a list of source layers `sources` and defines `self.output` which is of type :class:`Data`.
@@ -132,7 +132,7 @@ class _Base(_ReturnnWrappedLayerBase):
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return opts
 
-  __call__ = _ReturnnWrappedLayerBase.__call__  # abstract
+  __call__ = ReturnnWrappedLayerBase.__call__  # abstract
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -865,12 +865,12 @@ def rec_window(
     'stride': stride,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'window',
     'from': source,
     **args}, name=name or 'rec_window')
-  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
 
@@ -901,12 +901,12 @@ def rec_cum_sum(
     'reverse': reverse,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
     **args}, name=name or 'rec_cum_sum')
-  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
 
@@ -2796,12 +2796,12 @@ def ken_lm_state(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'kenlm',
     'from': source,
     **args}, name=name or 'ken_lm_state')
-  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
 
@@ -2843,12 +2843,12 @@ def edit_distance_table(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'edit_distance_table',
     'from': source,
     **args}, name=name or 'edit_distance_table')
-  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state
 
 
@@ -2952,10 +2952,10 @@ def rec_cum_concat(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  _ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
   layer = make_layer({
     'class': 'cum_concat',
     'from': source,
     **args}, name=name or 'rec_cum_concat')
-  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_state

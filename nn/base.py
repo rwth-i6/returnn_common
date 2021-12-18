@@ -570,7 +570,7 @@ class LayerState(dict):
 
 
 # noinspection PyAbstractClass
-class _ReturnnWrappedLayerBase(Module):
+class ReturnnWrappedLayerBase(Module):
   """
   Base class for all automatically wrapped layers.
   """
@@ -1060,7 +1060,7 @@ class State:
       assert isinstance(name_ctx, NameCtx)
 
       # Potential optimization for RETURNN layers.
-      # See _ReturnnWrappedLayerBase._get_recurrent_state.
+      # See ReturnnWrappedLayerBase._get_recurrent_state.
       if isinstance(layer_ref, Layer):
         if layer_ref.layer_dict["class"] == "get_last_hidden_state":
           used_state_eliminate_optimization = False

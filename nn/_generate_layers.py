@@ -174,7 +174,7 @@ def setup():
   print("# noinspection PyProtectedMember", file=f)
   print("from returnn.tf.util.data import Dim, _ImplicitDim", file=f)
   print(
-    "from .base import NameCtx, _ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
+    "from .base import NameCtx, ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
   for layer_class in layer_classes:
@@ -184,7 +184,7 @@ def setup():
     if layer_class != LayerBase:
       cls_base_str = get_module_class_name_for_layer_class(sig.derived_layer())
     else:
-      cls_base_str = "_ReturnnWrappedLayerBase"
+      cls_base_str = "ReturnnWrappedLayerBase"
 
     if not sig.is_functional() or layer_class == LayerBase:
       print(f"\n\nclass {cls_str}({cls_base_str}):", file=f)
@@ -322,7 +322,7 @@ def setup():
           print("    return layer, out_state", file=f)
       else:
         print("", file=f)
-        print("  __call__ = _ReturnnWrappedLayerBase.__call__  # abstract", file=f)
+        print("  __call__ = ReturnnWrappedLayerBase.__call__  # abstract", file=f)
 
     # Make function if this is functional
     name = get_module_class_name_for_layer_class(sig)
@@ -385,7 +385,7 @@ def setup():
         print("  args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
       if sig.has_recurrent_state():
         print(
-          "  _ReturnnWrappedLayerBase.handle_recurrent_state("
+          "  ReturnnWrappedLayerBase.handle_recurrent_state("
           "args, axis=axis, state=state, initial_state=initial_state)", file=f)
         print("  layer = make_layer({", file=f)
       else:
@@ -400,7 +400,7 @@ def setup():
       else:
         print(f"    }}, name=name or {name.lstrip('_')!r})", file=f)
       if sig.has_recurrent_state():
-        print("  out_state = _ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
+        print("  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
         print("  return layer, out_state", file=f)
 
     print(name, sig)
