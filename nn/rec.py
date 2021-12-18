@@ -64,6 +64,9 @@ class LSTM(_Rec):
         ("W_re", lambda: (self.out_dim, 4 * self.out_dim)),
         ("W", lambda: (self.in_dim, 4 * self.out_dim)),
         ("b", lambda: (self.out_dim,))])
+    self.param_W_re = None  # type: Optional[nn.Parameter]
+    self.param_W = None  # type: Optional[nn.Parameter]
+    self.param_b = None  # type: Optional[nn.Parameter]
 
 
 class ZoneoutLSTM(_Rec):
@@ -77,3 +80,5 @@ class ZoneoutLSTM(_Rec):
       param_list=[
         ("kernel", lambda: (self.in_dim + self.out_dim, 4 * self.out_dim)),
         ("bias", lambda: (4 * self.out_dim,))])
+    self.param_kernel = None  # type: Optional[nn.Parameter]
+    self.param_bias = None  # type: Optional[nn.Parameter]
