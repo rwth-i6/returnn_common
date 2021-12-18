@@ -287,6 +287,8 @@ class Parameter(Layer):
   def __init__(self, shape: Sequence[Dim], dtype: str = "float32"):
     if not all(isinstance(dim, Dim) for dim in shape):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
+    if not all(isinstance(dim.dimension, int) for dim in shape):
+      raise ValueError(f"shape {shape} must be static")
     # Note: At creation time, we don't know the name yet.
     # The name will be inferred by the parent modules and the attribute chain.
     name_ctx = NameCtx(name="parameter", parent=None)  # this is incomplete and will be configured later
