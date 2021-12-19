@@ -57,17 +57,19 @@ def test_simple_net_module_explicit_root_ctx():
   net = _Net()
 
   with nn.NameCtx.new_root() as name_ctx:
-    out = net(nn.get_extern_data("data"), name=name_ctx)
+    time_dim = nn.SpatialDim("time")
+    in_dim = nn.FeatureDim("input", 13)
+    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
+    out = net(data, name=name_ctx)
     assert isinstance(out, nn.Layer)
     name_ctx.make_default_output(out)
-    net_dict = name_ctx.make_net().make_net_dict_raw()
-    pprint(net_dict)
+
+  config = name_ctx.get_returnn_config()
+  net_dict = config["network"]
+  pprint(net_dict)
 
   assert "linear" in net_dict
-  linear_layer_dict = net_dict["linear"]
-  assert_equal(linear_layer_dict["class"], "linear")
-  assert_equal(linear_layer_dict["from"], "data:data")
-  dummy_run_net(net_dict)
+  dummy_run_net(config)
 
 
 def test_simple_net_rc():

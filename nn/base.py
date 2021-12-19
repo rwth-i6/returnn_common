@@ -734,15 +734,7 @@ def make_root_net_dict(model: Module, *args: Data, **kwargs: Data) -> Dict[str, 
         res_list = nest.flatten(res)
         assert res_list and isinstance(res_list[0], LayerRef)
         copy(res_list[0], name=name_ctx.get_child("output"))
-    net = name_ctx.make_net()
-  config = {
-    "network": net.make_net_dict_raw(),
-    "extern_data": {
-      data_key: {key: value for (key, value) in data.get_kwargs().items() if key not in {"name"}}
-      for (data_key, data) in name_ctx.extern_data.items()},
-    "behavior_version": _min_returnn_behavior_version,
-  }
-  return config
+  return name_ctx.get_returnn_config()
 
 
 class Loop:
@@ -1129,13 +1121,14 @@ def get_extern_data(data: Data) -> LayerRef:
   Get extern data from root ctx.
   """
   assert isinstance(data, Data)  # the usage was different before. make sure we get this correct
-  root_scope = NameCtx.top().root  # must exist
-  if data.name not in root_scope.extern_data:
-    root_scope.extern_data[data.name] = data
+  scope = NameCtx.top()  # must exist
+  assert not scope.parent  # get_extern_data only allowed (only makes sense) in root name ctx
+  if data.name not in scope.extern_data:
+    scope.extern_data[data.name] = data
   else:
-    assert root_scope.extern_data[data.name] is data
+    assert scope.extern_data[data.name] is data
   root_layer_name = f"data:{data.name}"
-  return _get_special_layer(root_layer_name, scope=root_scope, data=data)
+  return _get_special_layer(root_layer_name, scope=scope, data=data)
 
 
 def _get_special_layer(name: str, *, scope: Optional[NameCtx] = None, data: Data) -> LayerRef:
@@ -1309,6 +1302,20 @@ class NameCtx:
     """
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
+
+  def get_returnn_config(self) -> Dict[str, Any]:
+    """
+    :return: config dict updates for returnn
+    """
+    assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
+    net_dict = self.make_net().make_net_dict_raw()
+    return {
+      "network": net_dict,
+      "extern_data": {
+        data_key: {key: value for (key, value) in data.get_kwargs().items() if key not in {"name"}}
+        for (data_key, data) in self.extern_data.items()},
+      "behavior_version": _min_returnn_behavior_version,
+    }
 
   def make_net(self) -> Net:
     """
