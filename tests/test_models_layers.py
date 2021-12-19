@@ -12,36 +12,30 @@ import typing
 from typing import Tuple
 
 if typing.TYPE_CHECKING:
-  from .. import __init__ as rc
   from .. import nn
 else:
-  import returnn_common as rc  # noqa
   from returnn_common import nn  # noqa
 
 
-def test_simple_net_linear():
-  class _Net(nn.Module):
-    def __init__(self):
-      super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+def _dummy_config_net_dict(net: nn.Module, *, with_axis=False):
+  with nn.NameCtx.new_root() as name_ctx:
+    time_dim = nn.SpatialDim("time")
+    in_dim = nn.FeatureDim("input", 13)
+    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
+    opts = {}
+    if with_axis:
+      opts["axis"] = time_dim
+    out = net(data, **opts, name=name_ctx)
+    assert isinstance(out, nn.Layer)
+    out.mark_as_default_output()
 
-    @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
-      """
-      Forward
-      """
-      return self.linear(x)
-
-  net = _Net()
-  config = nn.make_root_net_dict(
-    net, nn.Data("data", dim_tags=[nn.batch_dim, nn.SpatialDim("time"), nn.FeatureDim("input", 13)]))
+  config = name_ctx.get_returnn_config()
   net_dict = config["network"]
   pprint(net_dict)
-  assert "linear" in net_dict
-  dummy_run_net(config)
+  return config, net_dict
 
 
-def test_simple_net_module_explicit_root_ctx():
+def test_simple_net_linear():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
@@ -54,43 +48,9 @@ def test_simple_net_module_explicit_root_ctx():
       """
       return self.linear(x)
 
-  net = _Net()
-
-  with nn.NameCtx.new_root() as name_ctx:
-    time_dim = nn.SpatialDim("time")
-    in_dim = nn.FeatureDim("input", 13)
-    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
-    out = net(data, name=name_ctx)
-    assert isinstance(out, nn.Layer)
-    out.mark_as_default_output()
-
-  config = name_ctx.get_returnn_config()
-  net_dict = config["network"]
-  pprint(net_dict)
-
+  config, net_dict = _dummy_config_net_dict(_Net())
   assert "linear" in net_dict
   dummy_run_net(config)
-
-
-def test_simple_net_rc():
-  class _Net(rc.nn.Module):
-    def __init__(self):
-      super().__init__()
-      self.linear = rc.nn.Linear(nn.FeatureDim("linear-out", 13))
-
-    @nn.scoped
-    def __call__(self, x: rc.nn.LayerRef) -> rc.nn.LayerRef:
-      """
-      Forward
-      """
-      x = self.linear(x)
-      return x
-
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
-  pprint(net_dict)
-  assert "linear" in net_dict
-  dummy_run_net(net_dict)
 
 
 def test_simple_net_arithmetic():
@@ -103,10 +63,8 @@ def test_simple_net_arithmetic():
       x = 1. / x + x * 2.
       return x
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
-  pprint(net_dict)
-  dummy_run_net(net_dict)
+  config, net_dict = _dummy_config_net_dict(_Net())
+  dummy_run_net(config)
 
 
 def test_simple_net_lstm():
@@ -116,18 +74,14 @@ def test_simple_net_lstm():
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
       """
       Forward
       """
-      x, _ = self.lstm(x, axis=nn.any_spatial_dim)  # TODO axis
+      x, _ = self.lstm(x, axis=axis)
       return x
 
-  net = _Net()
-  config = nn.make_root_net_dict(
-    net, nn.Data("data", dim_tags=[nn.batch_dim, nn.SpatialDim("time"), nn.FeatureDim("input", 13)]))
-  net_dict = config["network"]
-  pprint(net_dict)
+  config, net_dict = _dummy_config_net_dict(_Net(), with_axis=True)
   assert "lstm" in net_dict
   dummy_run_net(config)
 
