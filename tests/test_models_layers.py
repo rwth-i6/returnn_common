@@ -90,8 +90,9 @@ def test_simple_net_share_params():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
-      self.linear2 = nn.Linear(nn.FeatureDim("linear2-out", 13))
+      self.dim = nn.FeatureDim("linear-out", 13)
+      self.linear = nn.Linear(self.dim)
+      self.linear2 = nn.Linear(self.dim)
 
     @nn.scoped
     def __call__(self, x) -> nn.LayerRef:
@@ -103,13 +104,11 @@ def test_simple_net_share_params():
       x = self.linear2(x)
       return x
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
-  pprint(net_dict)
+  config, net_dict = _dummy_config_net_dict(_Net())
   assert "linear2" in net_dict
   assert "linear2_0" in net_dict
   assert_equal(net_dict["linear2_0"]["name_scope"], "linear2")
-  dummy_run_net(net_dict)
+  dummy_run_net(config)
 
 
 def test_explicit_root_ctx_sub():
