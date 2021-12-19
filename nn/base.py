@@ -146,7 +146,21 @@ class LayerRef:
     """
     Mark this as a loss.
     """
-    raise TypeError("mark_as_loss can only be called on a layer, not a layer-ref.")
+    raise TypeError(f"mark_as_loss can only be called on a layer, not a layer-ref {self}.")
+
+  def mark_as_default_output(self) -> LayerRef:
+    """
+    Mark this as the default output, i.e. create the "output" layer with a reference to this.
+
+    :return: the "output" layer.
+    """
+    return NameCtx.current_ctx().make_default_output(self)
+
+  def mark_as_output(self):
+    """
+    Mark this as an output.
+    """
+    raise TypeError(f"mark_as_output can only be called on a layer, not a layer-ref {self}.")
 
   def __add__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
     from ._generated_layers import _combine
@@ -272,6 +286,15 @@ class Layer(LayerRef):
     if loss_scale is not None:
       assert "loss_scale" not in self.layer_dict
       self.layer_dict["loss_scale"] = loss_scale
+
+  def mark_as_output(self):
+    """
+    Mark this as an output.
+    """
+    scope = NameCtx.current_ctx()
+    assert scope.parent is None, f"{self} mark_as_output only makes sense at the top level"
+    self.layer_dict["is_output_layer"] = True
+    scope.marked_outputs.append(self)
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
@@ -1238,6 +1261,7 @@ class NameCtx:
     self.is_subnet_ctx = False
     self.children = {}  # type: Dict[str, NameCtx]
     self.extern_data = {}  # type: Dict[str, Data]
+    self.marked_outputs = []  # type: List[LayerRef]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name  # early assign such that debug repr works later
     if not name:
@@ -1329,6 +1353,8 @@ class NameCtx:
     """
     from . import copy
     assert self.is_subnet_ctx
+    if ref.name_ctx is self.children.get("output", None):  # if this is the output layer already, allow and just return
+      return ref
     assert "output" not in self.children
     return copy(ref, name=self.get_child("output"))
 

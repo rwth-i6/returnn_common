@@ -62,7 +62,7 @@ def test_simple_net_module_explicit_root_ctx():
     data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
     out = net(data, name=name_ctx)
     assert isinstance(out, nn.Layer)
-    name_ctx.make_default_output(out)
+    out.mark_as_default_output()
 
   config = name_ctx.get_returnn_config()
   net_dict = config["network"]
