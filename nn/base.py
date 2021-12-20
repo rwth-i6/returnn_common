@@ -267,11 +267,15 @@ class Layer(LayerRef):
   You would not create an instance of this explicitly.
   """
 
-  def __init__(self, *, layer_dict: LayerDictRaw, name_ctx: NameCtx, predefined_out_data: Optional[Data] = None):
+  def __init__(self, *, layer_dict: LayerDictRaw, name_ctx: NameCtx,
+               predefined_out_data: Optional[Data] = None,
+               add_out_shape_info: bool = True):
     if predefined_out_data:
       data = predefined_out_data
     else:
       data = _data_from_layer_dict(layer_dict)
+    if add_out_shape_info:
+      layer_dict["out_shape"] = set(data.dim_tags_set_implicit)
     super(Layer, self).__init__(name_ctx=name_ctx, data=data)
     assert self.name_ctx.layer is None
     self.name_ctx.layer = self
@@ -318,7 +322,7 @@ class Parameter(Layer):
     data = Data("parameter", dim_tags=list(shape), dtype=dtype)
     super(Parameter, self).__init__(
       layer_dict={"class": "variable", "shape": list(shape), "dtype": dtype},
-      predefined_out_data=data,
+      predefined_out_data=data, add_out_shape_info=False,
       name_ctx=name_ctx)
 
 
@@ -662,7 +666,8 @@ class ReturnnWrappedLayerBase(Module):
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, NameCtx]] = None,
                module: Optional[Module] = None,
-               predefined_out_data: Optional[Data] = None) -> Layer:
+               predefined_out_data: Optional[Data] = None,
+               add_out_shape_info: bool = True) -> Layer:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   When no name is given, this assumes that the top name ctx corresponds to this module.
@@ -682,18 +687,22 @@ def make_layer(layer_dict: LayerDictRaw, *,
   :param Module|None module: if given, will create new name scope with this module
   :param Data|None predefined_out_data: normally we can derive the out data automatically.
     If this should be skipped, you can pass this explicitly.
+  :param bool add_out_shape_info: if True, we will add the out shape info to the layer.
   """
   if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
     name_ctx = NameCtx.get_from_call(module=module, name=name)
-    return make_layer(layer_dict=layer_dict, name=name_ctx, predefined_out_data=predefined_out_data)
+    return make_layer(
+      layer_dict=layer_dict, name=name_ctx,
+      predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info)
   elif isinstance(name, NameCtx):
     name_ctx = name
     if NameCtx.top() is name:
       pass  # go on
     else:
       with name_ctx:
-        return make_layer(layer_dict=layer_dict, predefined_out_data=predefined_out_data)
+        return make_layer(
+          layer_dict=layer_dict, predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info)
   else:
     name_ctx = NameCtx.top()
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
@@ -721,7 +730,9 @@ def make_layer(layer_dict: LayerDictRaw, *,
           layer_dict["name_scope"] = "/" + name_ctx.layer_abs_name_scope
 
   name_ctx.is_subnet_ctx = False
-  layer = Layer(layer_dict=layer_dict, name_ctx=name_ctx, predefined_out_data=predefined_out_data)
+  layer = Layer(
+    layer_dict=layer_dict, name_ctx=name_ctx,
+    predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info)
   if name_ctx.module:
     name_ctx.module.calls.append(name_ctx)
   return layer
