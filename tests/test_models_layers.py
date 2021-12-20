@@ -130,22 +130,20 @@ def test_explicit_root_ctx_sub():
 
   with nn.NameCtx.new_root() as name_ctx:
     net = _Net(out_dim=nn.FeatureDim("linear-out", 13))
-    out = net(nn.get_extern_data("data"), name=name_ctx)
+    out = net(nn.get_extern_data(nn.Data("data", shape=(None, 5))), name=name_ctx)
     assert isinstance(out, nn.Layer)
+    out.mark_as_default_output()
 
-    name_ctx.make_default_output(out)
-    net_dict = name_ctx.make_net().make_net_dict_raw()
-    pprint(net_dict)
+  config = name_ctx.get_returnn_config()
+  net_dict = config["network"]
+  pprint(net_dict)
 
   assert "linear" in net_dict
-  lin_layer_dict = net_dict["linear"]
-  assert_equal(lin_layer_dict["class"], "linear")
-  assert_equal(lin_layer_dict["from"], "pre")
   assert "pre" in net_dict
   lin_layer_dict = net_dict["pre"]
   assert_equal(lin_layer_dict["class"], "dropout")
   assert_equal(lin_layer_dict["from"], "data:data")
-  dummy_run_net(net_dict)
+  dummy_run_net(config)
 
 
 def test_root_mod_call_twice():
@@ -169,17 +167,20 @@ def test_root_mod_call_twice():
       return x
 
   with nn.NameCtx.new_root() as name_ctx:
-    test_block = TestBlock(nn.FeatureDim("linear-out", 13))
-    y = test_block(nn.get_extern_data("input1"), name=name_ctx)
-    z = test_block(nn.get_extern_data("input2"))
+    test_block = TestBlock(out_dim=nn.FeatureDim("linear-out", 13))
+    time_dim = nn.SpatialDim("time")
+    in_dim = nn.FeatureDim("input", 5)
+    y = test_block(nn.get_extern_data(nn.Data("input1", dim_tags=[nn.batch_dim, time_dim, in_dim])), name=name_ctx)
+    z = test_block(nn.get_extern_data(nn.Data("input2", dim_tags=[nn.batch_dim, time_dim, in_dim])))
 
     print(y)
     assert isinstance(y, nn.LayerRef)
     print(z)
     assert isinstance(z, nn.LayerRef)
 
-    net_dict = name_ctx.make_net().make_net_dict_raw()
-    pprint(net_dict)
+  config = name_ctx.get_returnn_config()
+  net_dict = config["network"]
+  pprint(net_dict)
 
   assert "linear" in net_dict and "test_block" in net_dict
   assert_equal(net_dict["test_block"]["name_scope"], "")
@@ -213,10 +214,11 @@ def test_multiple_returns_depth_1():
       return out
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/linear"
-  assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "base:data:data"
+  assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
+  dummy_run_net(config)
 
 
 def test_multiple_returns_depth_2():
@@ -260,11 +262,17 @@ def test_multiple_returns_depth_2():
       return out
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/sub/linear"
   assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub/linear"
-  assert net_dict["sub"]["subnetwork"]["sub"]["subnetwork"]["linear"]["from"] == "base:base:data:data"
+  assert (
+      net_dict
+      ["sub"]["subnetwork"]
+      ["sub"]["subnetwork"]
+      ["linear"]["subnetwork"]
+      ["dot"]["from"][0] == "base:base:base:data:data")
+  dummy_run_net(config)
 
 
 def test_from_call_variations():
@@ -299,13 +307,14 @@ def test_from_call_variations():
       return out2
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub2/linear2"
-  assert net_dict["sub"]["subnetwork"]["linear"]["from"] == "base:data:data"
-  assert net_dict["sub"]["subnetwork"]["linear2"]["from"] == "linear"
-  assert net_dict["sub2"]["subnetwork"]["linear"]["from"] == "base:sub/linear2"
-  assert net_dict["sub2"]["subnetwork"]["linear2"]["from"] == "linear"
+  assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
+  assert net_dict["sub"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "base:linear"
+  assert net_dict["sub2"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:sub/linear2"
+  assert net_dict["sub2"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "linear"
+  dummy_run_net(config)
 
 
 def test_from_call_variations2():
@@ -364,7 +373,7 @@ def test_from_call_variations2():
       return out2
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, x="data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
 
 
@@ -413,7 +422,7 @@ def test_module_list():
       return out
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
 
   assert net_dict["ls.0"]["from"] == "data:data"
@@ -451,7 +460,7 @@ def test_sequential_base_case():
       return seq
 
   net = _TestSequential()
-  net_dict = nn.make_root_net_dict(net, "data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
 
   assert net_dict["seq"]["subnetwork"]["0"]["from"] == "base:data:data"
@@ -481,7 +490,7 @@ def test_sequential_named_case():
       return seq
 
   net = _TestSequential()
-  net_dict = nn.make_root_net_dict(net, "data")
+  config, net_dict = _dummy_config_net_dict(net)
   pprint(net_dict)
 
   assert net_dict["seq"]["subnetwork"]["one"]["from"] == "base:data:data"
@@ -489,19 +498,27 @@ def test_sequential_named_case():
   assert net_dict["seq"]["subnetwork"]["three"]["from"] == "two"
   assert net_dict["seq"]["subnetwork"]["output"]["from"] == "three"
   assert net_dict["output"]["from"] == "seq"
+  dummy_run_net(config)
 
 
 def test_split_glu():
   class _Net(nn.Module):
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, axis: nn.Dim) -> nn.Layer:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
       """forward"""
       a, b = nn.split(x, axis=axis, out_dims=[axis // 2, axis // 2])
       return a * nn.sigmoid(b)
 
-  net = _Net()
-  # TODO how to get extern data dims?
-  net_dict = nn.make_root_net_dict(net, "data")
+  with nn.NameCtx.new_root() as name_ctx:
+    net = _Net()
+    time_dim = nn.SpatialDim("time")
+    feat_dim = nn.FeatureDim("feature", 6)
+    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
+    out = net(data, axis=feat_dim, name=name_ctx)
+    out.mark_as_default_output()
+
+  config = name_ctx.get_returnn_config()
+  net_dict = config["network"]
   pprint(net_dict)
 
   assert_equal(
@@ -509,12 +526,11 @@ def test_split_glu():
     {'mul': {'class': 'combine', 'from': ['split/0', 'sigmoid'], 'kind': 'mul'},
      'output': {'class': 'copy', 'from': 'mul'},
      'sigmoid': {'activation': 'sigmoid', 'class': 'activation', 'from': 'split/1'},
-     'split': {'axis': 'F', 'class': 'split', 'from': 'data:data', 'num_splits': 2}})
+     'split': {'axis': feat_dim, 'class': 'split', 'from': 'data:data', 'out_dims': [feat_dim // 2, feat_dim // 2]}})
+  dummy_run_net(config)
 
 
 def test_self_attention():
-  time_dim = nn.SpatialDim("time")
-
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
@@ -524,13 +540,14 @@ def test_self_attention():
         num_heads=3)
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.Layer:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
       """forward"""
-      return self.self_att(x, axis=time_dim)
+      return self.self_att(x, axis=axis)
 
   net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
+  config, net_dict = _dummy_config_net_dict(net, with_axis=True)
   pprint(net_dict)
+  dummy_run_net(config)
 
 
 def test_deepcopy():
@@ -538,11 +555,8 @@ def test_deepcopy():
 
   dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
   layers = nn.Sequential(copy.deepcopy(nn.Linear(dim)) for dim in dims)
-  net_dict = nn.make_root_net_dict(layers, "data")
+  config, net_dict = _dummy_config_net_dict(layers)
   pprint(net_dict)
-  assert_equal(
-    net_dict,
-    {'0': {'class': 'linear', 'from': 'data:data', 'out_dim': dims[0]},
-     '1': {'class': 'linear', 'from': '0', 'out_dim': dims[1]},
-     '2': {'class': 'linear', 'from': '1', 'out_dim': dims[2]},
-     'output': {'class': 'copy', 'from': '2'}})
+  assert "0" in net_dict
+  assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
+  dummy_run_net(config)
