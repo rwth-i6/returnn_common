@@ -1002,6 +1002,7 @@ class LayerSignature:
         end = len(s)
         post_replacements = []
         start_ = 0
+        m_ = None
         while True:
           m = re.search(r"[()\[\]]", s[start_:])
           if not m:
@@ -1028,7 +1029,7 @@ class LayerSignature:
           parts = s.split(",")
           parts = [_translate(p)[0] for p in parts]
           s = ", ".join(parts)
-          if end < len(s) and s[end] == ")":
+          if m_ == ")":
             s = f'Tuple[{s}]'
 
         else:

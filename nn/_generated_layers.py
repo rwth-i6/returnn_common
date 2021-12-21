@@ -912,7 +912,7 @@ def pad(
         source: LayerRef,
         *,
         axes: Union[Dim, List[Dim]],
-        padding: Union[List[int, int], int, int, int],
+        padding: Union[List[Tuple[int, int]], Tuple[int, int], int],
         out_dims: Optional[Union[Dim, List[Dim]]] = NotSpecified,
         value: Union[int, float] = NotSpecified,
         mode: str = NotSpecified,
