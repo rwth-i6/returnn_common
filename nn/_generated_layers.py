@@ -139,27 +139,18 @@ class _Base(ReturnnWrappedLayerBase):
 def copy(
          source: LayerRef,
          *,
-         in_dim: Optional[Dim] = NotSpecified,
-         out_dim: Optional[Dim] = NotSpecified,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This layer does nothing, it copies its input.
   If multiple sources are provided, they are concatenated in the feature-dim.
 
   :param LayerRef source:
-  :param Dim|None in_dim:
-  :param Dim|None out_dim:
   :param str|NameCtx|None name:
   """
-  args = {
-    'in_dim': in_dim,
-    'out_dim': out_dim,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
     'class': 'copy',
     'from': source,
-    **args}, name=name or 'copy')
+    }, name=name or 'copy')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames

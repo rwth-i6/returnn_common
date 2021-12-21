@@ -144,6 +144,7 @@ IgnoreLayerArgs = {
 }
 
 PerLayerIgnoreArgs = {
+  "copy": {"in_dim", "out_dim"},
   "stack": {"axis"},
 }
 
