@@ -132,6 +132,7 @@ IgnoreLayerArgs = {
   # keep dims should never be needed
   "keepdims", "keep_dims",
   "add_var2_if_empty", "add_time_axis", "add_batch_axis", "with_batch_dim",
+  "unbroadcast",
   # keep order should be correct by default (with new behavior version) and not needed otherwise
   "keep_order",
   # order of axes should never matter
@@ -139,10 +140,6 @@ IgnoreLayerArgs = {
   "red1", "red2", "var1", "var2",  # single reduce, and also var automatically, because we always want unique dims
   # no need because of tags
   "output_dim_via_time_from",
-}
-
-BlacklistLayerArgs = {
-  "range_in_axis": {"unbroadcast", "keepdims"},
 }
 
 FunctionNameMap = {
@@ -627,10 +624,6 @@ class LayerSignature:
           kind=inspect.Parameter.KEYWORD_ONLY),
         param_type_s="LayerBase",
         docstring="target")
-    if self.layer_class.layer_class in BlacklistLayerArgs:
-      blacklist = BlacklistLayerArgs[self.layer_class.layer_class]
-    else:
-      blacklist = set()
     for name, param in self.inspect_init_sig.parameters.items():
       # Ignore a number of params which are handled explicitly.
       if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
@@ -638,8 +631,6 @@ class LayerSignature:
       if name.startswith("_"):
         continue
       if name in IgnoreLayerArgs:
-        continue
-      if name in blacklist:
         continue
       param = inspect.Parameter(name=param.name, kind=param.KEYWORD_ONLY, default=param.default)
       self.params[name] = LayerSignature.Param(self, param)
