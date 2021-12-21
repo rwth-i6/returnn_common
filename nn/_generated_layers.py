@@ -449,7 +449,7 @@ def scatter_nd(
                *,
                position: LayerRef,
                position_axis: Union[str, int],
-               out_spatial_dim: Optional[Dim] = NotSpecified,
+               out_spatial_dim: Dim,
                filter_invalid_indices: bool = NotSpecified,
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -489,7 +489,7 @@ def scatter_nd(
   :param LayerRef source:
   :param LayerBase position: indices into first axis (excluding batch) of the output
   :param str|int position_axis: axis in `position` to replace by the output-dim
-  :param Dim|None out_spatial_dim:
+  :param Dim out_spatial_dim:
   :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
   :param str|NameCtx|None name:
   """
