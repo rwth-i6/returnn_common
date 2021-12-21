@@ -192,7 +192,7 @@ def scaled_gradient(
 def layer_norm(
                source: LayerRef,
                *,
-               in_dim: Optional[Dim] = NotSpecified,
+               in_dim: Dim,
                out_dim: Optional[Dim] = NotSpecified,
                epsilon: float = NotSpecified,
                name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -208,7 +208,7 @@ def layer_norm(
   For a more generic variant, see :class:`NormLayer`.
 
   :param LayerRef source:
-  :param Dim|None in_dim:
+  :param Dim in_dim:
   :param Dim|None out_dim:
   :param float epsilon:
   :param str|NameCtx|None name:
@@ -365,7 +365,7 @@ def slice_nd(
              start: LayerRef,
              size: Union[Dim, LayerRef],
              min_size: Optional[int] = NotSpecified,
-             out_spatial_dim: Optional[Dim] = NotSpecified,
+             out_spatial_dim: Dim,
              name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   This takes out a slice-range from the time axis,
@@ -385,7 +385,7 @@ def slice_nd(
     We assume that this is >=0. If this might not be the case, use ``min_size=0``.
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
-  :param Dim|None out_spatial_dim:
+  :param Dim out_spatial_dim:
   :param str|NameCtx|None name:
   """
   args = {
@@ -668,7 +668,7 @@ def range(
           delta: Union[int, float] = NotSpecified,
           dtype: Optional[str] = NotSpecified,
           sparse: bool = NotSpecified,
-          out_spatial_dim: Optional[Dim] = NotSpecified,
+          out_spatial_dim: Dim,
           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Generic wrapper around ``tf.range``.
@@ -679,7 +679,7 @@ def range(
   :param int|float delta:
   :param str|None dtype:
   :param bool sparse:
-  :param Dim|None out_spatial_dim:
+  :param Dim out_spatial_dim:
   :param str|NameCtx|None name:
   """
   args = {
@@ -1313,7 +1313,7 @@ class Conv(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               out_dim: Optional[Dim] = NotSpecified,
+               out_dim: Dim,
                filter_size: Tuple[int, ...],
                padding: str,
                strides: Union[int, Tuple[int, ...]] = NotSpecified,
@@ -1323,16 +1323,15 @@ class Conv(_Base):
                input_add_feature_dim: bool = NotSpecified,
                input_split_feature_dim: Optional[int] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Optional[List[Dim]] = NotSpecified,
+               in_spatial_dims: Union[List[Dim], Dim],
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
-               auto_use_channel_first: Union[bool, NotSpecified] = NotSpecified,
                with_bias: Union[bool, NotSpecified] = NotSpecified,
                forward_weights_init: Any = NotSpecified,
                bias_init: Any = NotSpecified,
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
-    :param Dim|None out_dim:
+    :param Dim out_dim:
     :param tuple[int] filter_size: (width,), (height,width) or (depth,height,width) for 1D/2D/3D conv.
       the input data ndim must match, or you can add dimensions via input_expand_dims or input_add_feature_dim.
       it will automatically swap the batch-dim to the first axis of the input data.
@@ -1348,9 +1347,8 @@ class Conv(_Base):
       which is of value input_split_feature_dim, and the original input feature dim
       will be divided by input_split_feature_dim, thus it must be a multiple of that value.
     :param Dim|None in_dim:
-    :param list[Dim]|None in_spatial_dims:
+    :param list[Dim]|Dim in_spatial_dims:
     :param list[Dim]|None out_spatial_dims:
-    :param bool|NotSpecified auto_use_channel_first: convert the input to NCHW or not
     :param bool|NotSpecified with_bias: if True, will add a bias to the output features. False by default
     :param forward_weights_init:
     :param bias_init:
@@ -1369,7 +1367,6 @@ class Conv(_Base):
     self.in_dim = in_dim
     self.in_spatial_dims = in_spatial_dims
     self.out_spatial_dims = out_spatial_dims
-    self.auto_use_channel_first = auto_use_channel_first
     self.with_bias = with_bias
     self.forward_weights_init = forward_weights_init
     self.bias_init = bias_init
@@ -1392,7 +1389,6 @@ class Conv(_Base):
       'in_dim': self.in_dim,
       'in_spatial_dims': self.in_spatial_dims,
       'out_spatial_dims': self.out_spatial_dims,
-      'auto_use_channel_first': self.auto_use_channel_first,
       'with_bias': self.with_bias,
       'forward_weights_init': self.forward_weights_init,
       'bias_init': self.bias_init,
@@ -1434,10 +1430,9 @@ def pool(
          dilation_rate: Union[Tuple[int, ...], int] = NotSpecified,
          strides: Optional[Union[Tuple[int, ...], int]] = NotSpecified,
          in_dim: Optional[Dim] = NotSpecified,
-         in_spatial_dims: Optional[List[Dim]] = NotSpecified,
+         in_spatial_dims: Union[List[Dim], Dim],
          out_dim: Optional[Dim] = NotSpecified,
          out_spatial_dims: Optional[List[Dim]] = NotSpecified,
-         use_channel_first: Union[bool, NotSpecified] = NotSpecified,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   A generic N-D pooling layer.
@@ -1450,10 +1445,9 @@ def pool(
   :param tuple[int]|int dilation_rate:
   :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
   :param Dim|None in_dim:
-  :param list[Dim]|None in_spatial_dims:
+  :param list[Dim]|Dim in_spatial_dims:
   :param Dim|None out_dim:
   :param list[Dim]|None out_spatial_dims:
-  :param bool|NotSpecified use_channel_first: if set, will transform input to NCHW format
   :param str|NameCtx|None name:
   """
   args = {
@@ -1466,7 +1460,6 @@ def pool(
     'in_spatial_dims': in_spatial_dims,
     'out_dim': out_dim,
     'out_spatial_dims': out_spatial_dims,
-    'use_channel_first': use_channel_first,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return make_layer({
@@ -1518,14 +1511,14 @@ class TransposedConv(_Base):
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
                *,
-               out_dim: Optional[Dim] = NotSpecified,
+               out_dim: Dim,
                filter_size: List[int],
                strides: Optional[List[int]] = NotSpecified,
                padding: str = NotSpecified,
                remove_padding: Union[List[int], int] = NotSpecified,
                output_padding: Optional[Union[List[Optional[int]], int]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Optional[List[Dim]] = NotSpecified,
+               in_spatial_dims: Union[List[Dim], Dim],
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
                with_bias: bool = NotSpecified,
                forward_weights_init: Any = NotSpecified,
@@ -1533,14 +1526,14 @@ class TransposedConv(_Base):
                filter_perm: Optional[Dict[str, str]] = NotSpecified,
                **kwargs):
     """
-    :param Dim|None out_dim:
+    :param Dim out_dim:
     :param list[int] filter_size:
     :param list[int]|None strides: specifies the upscaling. by default, same as filter_size
     :param str padding: "same" or "valid"
     :param list[int]|int remove_padding:
     :param list[int|None]|int|None output_padding:
     :param Dim|None in_dim:
-    :param list[Dim]|None in_spatial_dims:
+    :param list[Dim]|Dim in_spatial_dims:
     :param list[Dim]|None out_spatial_dims:
     :param bool with_bias: whether to add a bias. enabled by default.
       Note that the default is different from ConvLayer!
@@ -1707,8 +1700,7 @@ def squeeze(
 def stack(
           source: Union[List[LayerRef], Tuple[LayerRef]],
           *,
-          axis: Dim,
-          out_spatial_dim: Optional[Dim] = NotSpecified,
+          out_spatial_dim: Dim,
           name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Stacks multiple inputs together using :func:`tf.stack`.
@@ -1717,14 +1709,10 @@ def stack(
   For concatenation (in feature dimension), see :class:`CopyLayer`.
 
   :param list[LayerRef]|tuple[LayerRef] source:
-  :param Dim axis: new axis.
-    If not given, will use Data.get_default_new_axis_for_dim_tag(<spatial>),
-    i.e. some reasonable default for a new spatial axis.
-  :param Dim|None out_spatial_dim:
+  :param Dim out_spatial_dim:
   :param str|NameCtx|None name:
   """
   args = {
-    'axis': axis,
     'out_spatial_dim': out_spatial_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}

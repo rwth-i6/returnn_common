@@ -138,15 +138,28 @@ IgnoreLayerArgs = {
   # order of axes should never matter
   "enforce_batch_dim_axis", "enforce_batch_major", "enforce_time_major",
   "red1", "red2", "var1", "var2",  # single reduce, and also var automatically, because we always want unique dims
+  "auto_use_channel_first", "use_channel_first",
   # no need because of tags
   "output_dim_via_time_from",
+}
+
+PerLayerIgnoreArgs = {
+  "stack": {"axis"},
 }
 
 # Mandatory == non-optional
 # We derive this already from the signature.
 # However, here we add some more, just for returnn-common.
-LayerMandatoryArgs = {
+PerLayerMandatoryArgs = {
+  "layer_norm": {"in_dim"},
+  "slice": {"out_dim"},
+  "slice_nd": {"out_spatial_dim"},
   "scatter_nd": {"out_spatial_dim"},
+  "range": {"out_spatial_dim"},
+  "conv": {"out_dim", "in_spatial_dims"},
+  "pool": {"in_spatial_dims"},
+  "transposed_conv": {"out_dim", "in_spatial_dims"},
+  "stack": {"out_spatial_dim"},
 }
 
 FunctionNameMap = {
@@ -639,6 +652,8 @@ class LayerSignature:
         continue
       if name in IgnoreLayerArgs:
         continue
+      if name in PerLayerIgnoreArgs.get(self.layer_class.layer_class, ()):
+        continue
       param = inspect.Parameter(name=param.name, kind=param.KEYWORD_ONLY, default=param.default)
       self.params[name] = LayerSignature.Param(self, param)
 
@@ -780,7 +795,7 @@ class LayerSignature:
     for name, param in self.params.items():
       if name == "out_shape":
         continue
-      if name in LayerMandatoryArgs.get(self.layer_class.layer_class, ()):
+      if name in PerLayerMandatoryArgs.get(self.layer_class.layer_class, ()):
         param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make not optional
       if name in {"axis", "axes"} or (param.param_type_s and "Dim" in param.param_type_s):
         self._handle_axis_like_arg(param)
