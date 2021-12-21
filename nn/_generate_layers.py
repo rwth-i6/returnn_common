@@ -725,10 +725,9 @@ class LayerSignature:
   def _handle_axis_like_arg(cls, param: Param):
     if param.param_type_s:
       replace_types = {"int": "Dim", "str": "Dim"}  # they get merged by typing.Union, so duplicates are no problem
-      if param.inspect_param.default == inspect.Parameter.empty:
-        replace_types["None"] = "Dim"
       res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
-        param.param_type_s, replace_types=replace_types)
+        param.param_type_s, replace_types=replace_types,
+        allow_optional=param.inspect_param.default != inspect.Parameter.empty)
       res_t = eval(res_t_s, {
         "typing": typing,
         "Optional": Optional, "Union": Union, "List": List, "Tuple": Tuple, "Set": Set, "Dict": Dict,
@@ -995,7 +994,8 @@ class LayerSignature:
 
     @classmethod
     def translate_param_type_code_to_typing_code(cls, t: str, *,
-                                                 replace_types: Optional[Dict[str, Union[str, None]]] = None) -> str:
+                                                 replace_types: Optional[Dict[str, Union[str, None]]] = None,
+                                                 allow_optional: bool = True) -> str:
       """
       Convert old-style param type code to new-style typing code.
       """
@@ -1053,20 +1053,21 @@ class LayerSignature:
               parts = [p for p in parts if p]
             if "None" in parts:
               parts.remove("None")
-              optional = True
+              if allow_optional:
+                optional = True
             if len(parts) >= 2:
               s = f'Union[{", ".join(parts)}]'
             elif len(parts) == 1:
               s = parts[0]
             else:
               optional = False
-              s = "None"
+              s = "None" if allow_optional else "Any"
             if optional:
               s = f"Optional[{s}]"
           elif replace_types:
             s = replace_types.get(s, s)
             if not s:
-              s = "None"
+              s = "None" if allow_optional else "Any"
 
         for rep in post_replacements:
           if rep[0] == "(" and rep[-1] == ")":

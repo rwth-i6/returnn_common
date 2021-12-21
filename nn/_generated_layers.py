@@ -1314,7 +1314,7 @@ class Conv(_Base):
                input_add_feature_dim: bool = NotSpecified,
                input_split_feature_dim: Optional[int] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Union[List[Dim], Dim],
+               in_spatial_dims: List[Dim],
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
                with_bias: Union[bool, NotSpecified] = NotSpecified,
                forward_weights_init: Any = NotSpecified,
@@ -1338,7 +1338,7 @@ class Conv(_Base):
       which is of value input_split_feature_dim, and the original input feature dim
       will be divided by input_split_feature_dim, thus it must be a multiple of that value.
     :param Dim|None in_dim:
-    :param list[Dim]|Dim in_spatial_dims:
+    :param list[Dim] in_spatial_dims:
     :param list[Dim]|None out_spatial_dims:
     :param bool|NotSpecified with_bias: if True, will add a bias to the output features. False by default
     :param forward_weights_init:
@@ -1421,7 +1421,7 @@ def pool(
          dilation_rate: Union[Tuple[int, ...], int] = NotSpecified,
          strides: Optional[Union[Tuple[int, ...], int]] = NotSpecified,
          in_dim: Optional[Dim] = NotSpecified,
-         in_spatial_dims: Union[List[Dim], Dim],
+         in_spatial_dims: List[Dim],
          out_dim: Optional[Dim] = NotSpecified,
          out_spatial_dims: Optional[List[Dim]] = NotSpecified,
          name: Optional[Union[str, NameCtx]] = None) -> Layer:
@@ -1436,7 +1436,7 @@ def pool(
   :param tuple[int]|int dilation_rate:
   :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
   :param Dim|None in_dim:
-  :param list[Dim]|Dim in_spatial_dims:
+  :param list[Dim] in_spatial_dims:
   :param Dim|None out_dim:
   :param list[Dim]|None out_spatial_dims:
   :param str|NameCtx|None name:
@@ -1509,7 +1509,7 @@ class TransposedConv(_Base):
                remove_padding: Union[List[int], int] = NotSpecified,
                output_padding: Optional[Union[List[Optional[int]], int]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Union[List[Dim], Dim],
+               in_spatial_dims: List[Dim],
                out_spatial_dims: Optional[List[Dim]] = NotSpecified,
                with_bias: bool = NotSpecified,
                forward_weights_init: Any = NotSpecified,
@@ -1524,7 +1524,7 @@ class TransposedConv(_Base):
     :param list[int]|int remove_padding:
     :param list[int|None]|int|None output_padding:
     :param Dim|None in_dim:
-    :param list[Dim]|Dim in_spatial_dims:
+    :param list[Dim] in_spatial_dims:
     :param list[Dim]|None out_spatial_dims:
     :param bool with_bias: whether to add a bias. enabled by default.
       Note that the default is different from ConvLayer!
