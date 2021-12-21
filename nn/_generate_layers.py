@@ -137,6 +137,8 @@ IgnoreLayerArgs = {
   # order of axes should never matter
   "enforce_batch_dim_axis", "enforce_batch_major", "enforce_time_major",
   "red1", "red2", "var1", "var2",  # single reduce, and also var automatically, because we always want unique dims
+  # no need because of tags
+  "output_dim_via_time_from",
 }
 
 BlacklistLayerArgs = {
