@@ -1968,7 +1968,7 @@ def remove(
            *,
            symbol: int,
            axis: Dim,
-           out_dim: Optional[Dim] = NotSpecified,
+           out_dim: Dim,
            name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
   Currently, assumes sparse data, and removes a specific symbol from the data.
@@ -1979,7 +1979,7 @@ def remove(
   :param LayerRef source:
   :param int symbol:
   :param Dim axis: the axis to operate over, to potentially remove frames
-  :param Dim|None out_dim: derived from the dim of axis, the reduced new dim
+  :param Dim out_dim: derived from the dim of axis, the reduced new dim
   :param str|NameCtx|None name:
   """
   args = {
@@ -2668,7 +2668,7 @@ def choice_get_src_beams(
 def split_batch_beam(
                      source: LayerRef,
                      *,
-                     beam_dim: Optional[Dim] = NotSpecified,
+                     beam_dim: Dim,
                      search: Union[NotSpecified, bool] = NotSpecified,
                      name: Optional[Union[str, NameCtx]] = None) -> Layer:
   """
@@ -2677,7 +2677,7 @@ def split_batch_beam(
   Like :class:`DecideLayer`, this removes the beam.
 
   :param LayerRef source:
-  :param Dim|None beam_dim:
+  :param Dim beam_dim:
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
   :param str|NameCtx|None name:

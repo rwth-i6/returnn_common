@@ -160,6 +160,8 @@ PerLayerMandatoryArgs = {
   "pool": {"in_spatial_dims"},
   "transposed_conv": {"out_dim", "in_spatial_dims"},
   "stack": {"out_spatial_dim"},
+  "remove": {"out_dim"},
+  "split_batch_beam": {"beam_dim"},
 }
 
 FunctionNameMap = {
