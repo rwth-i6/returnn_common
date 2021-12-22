@@ -34,7 +34,7 @@ class _Rec(nn.Module):
                state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
                initial_state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
                ) -> Tuple[nn.Layer, nn.LayerState]:
-    self._lazy_init(source.dim)
+    self._lazy_init(source.feature_dim)
     rec_layer_dict = {
       "class": "rec", "from": source,
       "in_dim": self.in_dim, "axis": axis, "out_dim": self.out_dim,

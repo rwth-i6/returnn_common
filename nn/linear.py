@@ -33,7 +33,7 @@ class Linear(nn.Module):
 
   @nn.scoped
   def __call__(self, source: nn.LayerRef) -> nn.Layer:
-    self._lazy_init(source.dim)
+    self._lazy_init(source.feature_dim)
     out = nn.dot(source, self.weight, reduce=self.in_dim) + self.bias
     if self.out_dim_inner != self.out_dim:
       out = nn.reinterpret_data(out, set_dim_tags={self.out_dim_inner: self.out_dim})

@@ -105,11 +105,17 @@ class LayerRef:
     return self.data.dtype
 
   @property
-  def dim(self) -> Optional[Dim]:
+  def feature_dim(self) -> Optional[Dim]:
     """
     :return: feature dim
     """
-    return self.data.feature_dim_or_sparse_dim
+    dim = self.data.feature_dim_or_sparse_dim
+    if dim and dim.kind == Dim.Types.Feature:
+      # Make sure it is unique.
+      feature_dims = [dim_ for dim_ in self.data.dim_tags_set_implicit if dim_.kind == Dim.Types.Feature]
+      if feature_dims == [dim]:
+        return dim
+    return None
 
   def get_name_in_current_ctx(self) -> str:
     """
