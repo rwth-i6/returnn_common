@@ -34,8 +34,11 @@ def dropout(source: nn.LayerRef,
   if axis is not NotSpecified:
     assert noise_shape is NotSpecified, "cannot provide both axis and noise_shape"
     noise_shape = {"*": 1, axis: None}
-  if noise_shape is not NotSpecified:
-    opts["dropout_noise_shape"] = noise_shape
+  elif noise_shape is not NotSpecified:
+    pass
+  else:
+    raise ValueError("dropout: provide either `axis` or `noise_shape` explicitly")
+  opts["dropout_noise_shape"] = noise_shape
   if on_forward:
     opts["dropout_on_forward"] = True
   from .base import make_layer
