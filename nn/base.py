@@ -1816,6 +1816,23 @@ class ReturnnDimTagsProxy:
         return value.debug_idx
       return value
 
+    def _map_dict_key_to_path_elem_key(key):
+      if isinstance(key, Dim):
+        return '_dim'  # description will be added to the name as well
+      return key
+
+    def _map_dict_key_to_path_elem_value(key):
+      if isinstance(key, Dim):
+        return key.description
+      return key
+
+    def _is_better_path(ref: ReturnnDimTagsProxy.DimRefProxy, new_path: Tuple[Any, ...]) -> bool:
+      if "out_shape" in ref.path and "out_shape" not in new_path:
+        return True
+      if "keys" in ref.path and "keys" not in new_path:
+        return True
+      return False
+
     def _map(path, value):
       if isinstance(value, Dim):
         if value.kind == Dim.Types.Batch:
@@ -1831,7 +1848,7 @@ class ReturnnDimTagsProxy:
         assert name not in self.dim_refs_by_name
         if value in self.dim_tags_to_ref:
           ref = self.dim_tags_to_ref[value]
-          if "out_shape" in ref.path and "out_shape" not in path:
+          if _is_better_path(ref, path):
             # Prefer path without "out_shape". Use new name.
             del self.dim_refs_by_name[ref.name]
             self.dim_refs_by_name[name] = ref
@@ -1843,7 +1860,10 @@ class ReturnnDimTagsProxy:
         self.dim_tags_to_ref[value] = ref
         return ref
       if isinstance(value, dict):
-        return {key: _map(path + (key,), value_) for key, value_ in value.items()}
+        return {
+          _map(path + ("keys", _map_dict_key_to_path_elem_key(key)), key): (
+            _map(path + (_map_dict_key_to_path_elem_value(key),), value_))
+          for key, value_ in value.items()}
       if isinstance(value, list):
         return [_map(path + (i,), value_) for i, value_ in enumerate(value)]
       if isinstance(value, tuple):
