@@ -1752,7 +1752,7 @@ class ReturnnDimTagsProxy:
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         return str(dim.derived_from_op.attribs["value"])
-      op_str = {"add": "+", "mul": "*"}[dim.derived_from_op.kind]
+      op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
       return f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
     ref = self.dim_tags_to_ref[dim]
     return f"dim_tags[{ref.name!r}]"
