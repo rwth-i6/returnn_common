@@ -147,7 +147,7 @@ def test_explicit_root_ctx_sub():
       """
       forward
       """
-      x = nn.dropout(x, self.dropout, name="pre")
+      x = nn.dropout(x, self.dropout, axis=x.feature_dim, name="pre")
       x = self.linear(x)
       return x
 
