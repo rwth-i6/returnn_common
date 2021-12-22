@@ -1747,6 +1747,8 @@ class ReturnnDimTagsProxy:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
     """
+    if dim.kind == Dim.Types.Batch:
+      return "batch_dim"
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         return str(dim.derived_from_op.attribs["value"])
@@ -1764,6 +1766,7 @@ class ReturnnDimTagsProxy:
       self.name = name
       self.path = path
       self.parent = parent
+      self.debug_idx = len(parent.dim_refs_by_name)
 
     def __repr__(self):
       return self.ref_repr()
@@ -1808,11 +1811,16 @@ class ReturnnDimTagsProxy:
 
     def _sort_key(value):
       if isinstance(value, ReturnnDimTagsProxy.DimRefProxy):
-        return value.name
+        if value.dim.kind == Dim.Types.Batch:
+          return -1
+        return value.debug_idx
       return value
 
     def _map(path, value):
       if isinstance(value, Dim):
+        if value.kind == Dim.Types.Batch:
+          # No need to register this.
+          return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
         if value.derived_from_op:
           # Make sure all the inputs are registered.
           for i, child in enumerate(value.derived_from_op.inputs):
