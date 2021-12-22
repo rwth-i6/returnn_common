@@ -1703,26 +1703,19 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
   out_name = _get_unique_name("output")
 
   layer_desc = layer_dict.copy()
-  layer_class = None
-  try:
-    layer_class = get_layer_class(layer_desc.pop("class"))
-    # Note about name:
-    # The name can be to the root network (full name) or to the owning/direct network (`net`) (base_name).
-    # The name can optionally have a prefix (here we only care about extra net prefix "extra...:").
-    # The prefix is implied by the owning network.
-    layer_desc["_network"] = net
-    layer_desc["_name"] = out_name
+  layer_class = get_layer_class(layer_desc.pop("class"))
+  # Note about name:
+  # The name can be to the root network (full name) or to the owning/direct network (`net`) (base_name).
+  # The name can optionally have a prefix (here we only care about extra net prefix "extra...:").
+  # The prefix is implied by the owning network.
+  layer_desc["_network"] = net
+  layer_desc["_name"] = out_name
 
-    layer_class.transform_config_dict(layer_desc, network=net, get_layer=_get_layer)
+  layer_class.transform_config_dict(layer_desc, network=net, get_layer=_get_layer)
 
-    # noinspection PyProtectedMember
-    layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
-    out_data = layer_class.get_out_data_from_opts(**layer_desc)
-
-  except Exception as exc:
-    raise Exception(
-      f"Failed to infer output Data from {layer_class.layer_class if layer_class else None!r} layer"
-      f" {layer_desc!r}") from exc
+  # noinspection PyProtectedMember
+  layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
+  out_data = layer_class.get_out_data_from_opts(**layer_desc)
 
   return out_data
 
