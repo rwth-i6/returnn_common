@@ -9,7 +9,7 @@ from builtins import range as range_
 from pprint import pprint
 from nose.tools import assert_equal
 import typing
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 if typing.TYPE_CHECKING:
   from .. import nn
@@ -17,10 +17,10 @@ else:
   from returnn_common import nn  # noqa
 
 
-def _dummy_config_net_dict(net: nn.Module, *, with_axis=False):
+def _dummy_config_net_dict(net: nn.Module, *, with_axis=False, in_dim: int = 13):
   with nn.NameCtx.new_root() as name_ctx:
     time_dim = nn.SpatialDim("time")
-    in_dim = nn.FeatureDim("input", 13)
+    in_dim = nn.FeatureDim("input", in_dim)
     data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
     opts = {}
     if with_axis:
@@ -30,6 +30,13 @@ def _dummy_config_net_dict(net: nn.Module, *, with_axis=False):
     out.mark_as_default_output()
 
   config_code = name_ctx.get_returnn_config_serialized()
+  return config_net_dict_via_serialized(config_code)
+
+
+def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+  """
+  :param str config_code: via get_returnn_config_serialized
+  """
   print(config_code)
   scope = {}
   exec(config_code, scope, scope)
@@ -533,16 +540,44 @@ def test_split_glu():
     out = net(data, axis=feat_dim, name=name_ctx)
     out.mark_as_default_output()
 
-  config = name_ctx.get_returnn_config()
-  net_dict = config["network"]
-  pprint(net_dict)
-
+  config, net_dict = config_net_dict_via_serialized(name_ctx.get_returnn_config_serialized())
+  batch_dim = nn.batch_dim
+  dim_tags = config["dim_tags"]
   assert_equal(
     net_dict,
-    {'mul': {'class': 'combine', 'from': ['split/0', 'sigmoid'], 'kind': 'mul'},
-     'output': {'class': 'copy', 'from': 'mul'},
-     'sigmoid': {'activation': 'sigmoid', 'class': 'activation', 'from': 'split/1'},
-     'split': {'axis': feat_dim, 'class': 'split', 'from': 'data:data', 'out_dims': [feat_dim // 2, feat_dim // 2]}})
+    {
+      'split': {
+        'class': 'split',
+        'from': 'data:data',
+        'axis': dim_tags['extern_data.data.dim_tags.2.feature'],
+        'out_dims': [
+          dim_tags['extern_data.data.dim_tags.2.feature'] // 2,
+          dim_tags['extern_data.data.dim_tags.2.feature'] // 2
+        ],
+        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
+                      dim_tags['extern_data.data.dim_tags.2.feature']}
+      },
+      'sigmoid': {
+        'class': 'activation',
+        'from': 'split/1',
+        'activation': 'sigmoid',
+        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
+                      dim_tags['extern_data.data.dim_tags.2.feature'] // 2}
+      },
+      'mul': {
+        'class': 'combine',
+        'from': ['split/0', 'sigmoid'],
+        'kind': 'mul',
+        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
+                      dim_tags['extern_data.data.dim_tags.2.feature'] // 2}
+      },
+      'output': {
+        'class': 'copy',
+        'from': 'mul',
+        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
+                      dim_tags['extern_data.data.dim_tags.2.feature'] // 2}
+      }
+    })
   dummy_run_net(config)
 
 
