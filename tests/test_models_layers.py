@@ -50,6 +50,7 @@ def test_simple_net_linear():
 
   config, net_dict = _dummy_config_net_dict(_Net())
   assert "linear" in net_dict
+  pprint(config)
   dummy_run_net(config)
 
 

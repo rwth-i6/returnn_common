@@ -316,7 +316,7 @@ class Parameter(Layer):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
     if not all(isinstance(dim.dimension, int) for dim in shape):
       raise ValueError(f"shape {shape} must be static")
-    if sorted(shape) != sorted(set(shape)):
+    if len(shape) != len(set(shape)):
       raise ValueError(f"shape {shape} dims must be unique")
     # Note: At creation time, we don't know the name yet.
     # The name will be inferred by the parent modules and the attribute chain.
@@ -1349,7 +1349,10 @@ class NameCtx:
     return {
       "network": net_dict,
       "extern_data": {
-        data_key: {key: value for (key, value) in data.get_kwargs().items() if key not in {"name"}}
+        data_key: {
+          key: getattr(data, key)
+          for key in [*data.get_kwargs(include_special_axes=False).keys(), "available_for_inference"]
+          if key not in {"name"}}
         for (data_key, data) in self.extern_data.items()},
       "behavior_version": _min_returnn_behavior_version,
     }
