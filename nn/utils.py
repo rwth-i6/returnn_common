@@ -2,7 +2,7 @@
 Some generic utils (which doesn't fit into math_, array_, etc)
 """
 
-from typing import Optional, Tuple, Dict, Union
+from typing import Optional, Dict, Union
 from .. import nn
 from ..nn import NotSpecified
 
