@@ -31,6 +31,8 @@ class SelfAttentionBase(nn.Module):
   def __init__(self, *, key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
                att_dropout: float = 0.):
     super().__init__()
+    if isinstance(num_heads, int):
+      num_heads = nn.SpatialDim("num_heads", num_heads)
     self.key_dim_total = key_dim_total
     self.key_dim_per_head = key_dim_total.div_left(num_heads)
     self.value_dim_total = value_dim_total
