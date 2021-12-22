@@ -29,9 +29,14 @@ def _dummy_config_net_dict(net: nn.Module, *, with_axis=False):
     assert isinstance(out, nn.Layer)
     out.mark_as_default_output()
 
-  config = name_ctx.get_returnn_config()
+  config_code = name_ctx.get_returnn_config_serialized()
+  print(config_code)
+  scope = {}
+  exec(config_code, scope, scope)
+  for tmp in ["__builtins__", "Dim", "batch_dim", "FeatureDim", "SpatialDim"]:
+    scope.pop(tmp)
+  config = scope
   net_dict = config["network"]
-  pprint(net_dict)
   return config, net_dict
 
 
