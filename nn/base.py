@@ -1745,6 +1745,10 @@ class ReturnnDimTagsProxy:
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         return str(dim.derived_from_op.attribs["value"])
+      if dim.derived_from_op.kind == "truediv_left":
+        assert len(dim.derived_from_op.inputs) == 2
+        a, b = dim.derived_from_op.inputs
+        return f"{self.dim_ref_repr(a)}.div_left({self.dim_ref_repr(b)})"
       op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
       return f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
     ref = self.dim_tags_to_ref[dim]
