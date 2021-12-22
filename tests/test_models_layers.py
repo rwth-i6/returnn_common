@@ -185,7 +185,7 @@ def test_root_mod_call_twice():
       """
       forward
       """
-      x = nn.dropout(x, self.dropout)
+      x = nn.dropout(x, self.dropout, axis=x.feature_dim)
       x = self.linear(x)
       return x
 
@@ -335,8 +335,8 @@ def test_from_call_variations():
   assert net_dict["output"]["from"] == "sub2/linear2"
   assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   assert net_dict["sub"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "base:linear"
-  assert net_dict["sub2"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:sub/linear2"
-  assert net_dict["sub2"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "linear"
+  assert net_dict["sub2"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:sub/linear2"
+  assert net_dict["sub2"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "base:linear"
   dummy_run_net(config)
 
 
