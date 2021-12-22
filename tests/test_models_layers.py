@@ -514,11 +514,10 @@ def test_sequential_named_case():
 
   net = _TestSequential()
   config, net_dict = _dummy_config_net_dict(net)
-  pprint(net_dict)
 
-  assert net_dict["seq"]["subnetwork"]["one"]["from"] == "base:data:data"
-  assert net_dict["seq"]["subnetwork"]["two"]["from"] == "one"
-  assert net_dict["seq"]["subnetwork"]["three"]["from"] == "two"
+  assert net_dict["seq"]["subnetwork"]["one"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
+  assert net_dict["seq"]["subnetwork"]["two"]["subnetwork"]["dot"]["from"][0] == "base:one"
+  assert net_dict["seq"]["subnetwork"]["three"]["subnetwork"]["dot"]["from"][0] == "base:two"
   assert net_dict["seq"]["subnetwork"]["output"]["from"] == "three"
   assert net_dict["output"]["from"] == "seq"
   dummy_run_net(config)
