@@ -1734,11 +1734,47 @@ class ReturnnDimTagsProxy:
   """
 
   def __init__(self):
-    self.dim_tags_by_name = {}  # type: Dict[str, Dim]
+    self.dim_refs_by_name = {}  # type: Dict[str, ReturnnDimTagsProxy.DimRefProxy]
     self.dim_tags_to_ref = {}  # type: Dict[Dim, ReturnnDimTagsProxy.DimRefProxy]
 
   def __repr__(self):
-    def _dim_repr(dim: Dim) -> str:
+    return "\n".join([
+      "{",
+      *(f"  {key!r}: {value.dim_repr()}," for key, value in self.dim_refs_by_name.items()),
+      "}"])
+
+  def dim_ref_repr(self, dim: Dim) -> str:
+    """
+    :return: for the given dim, Python code which refers to it, via ``dim_tags``
+    """
+    if dim.derived_from_op:
+      if dim.derived_from_op.kind == "constant":
+        return str(dim.derived_from_op.attribs["value"])
+      op_str = {"add": "+", "mul": "*"}[dim.derived_from_op.kind]
+      return f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
+    ref = self.dim_tags_to_ref[dim]
+    return f"dim_tags[{ref.name!r}]"
+
+  class DimRefProxy:
+    """
+    This will be a reference to the global dim_tags __repr__.
+    """
+    def __init__(self, *, dim: Dim, name: Optional[str], path: Tuple[Any, ...], parent: ReturnnDimTagsProxy):
+      self.dim = dim
+      self.name = name
+      self.path = path
+      self.parent = parent
+
+    def __repr__(self):
+      return self.ref_repr()
+
+    def ref_repr(self) -> str:
+      """ref repr"""
+      return self.parent.dim_ref_repr(self.dim)
+
+    def dim_repr(self):
+      """dim repr"""
+      dim = self.dim
       # We assume batch_dim, FeatureDim, SpatialDim and Dim are imported.
       if dim.kind == Dim.Types.Batch:
         return "batch_dim"
@@ -1751,24 +1787,6 @@ class ReturnnDimTagsProxy:
           return f"SpatialDim({dim.description!r})"
       # generic fallback
       return f"Dim(kind={dim.kind}, description={dim.description!r}, dimension={dim.dimension})"
-
-    return "\n".join([
-      "{",
-      *(f"  {key!r}: {_dim_repr(value)}," for key, value in self.dim_tags_by_name.items()),
-      "}"])
-
-  class DimRefProxy:
-    """
-    This will be a reference to the global dim_tags __repr__.
-    """
-    def __init__(self, *, dim: Dim, name: str, path: Tuple[Any, ...], parent: ReturnnDimTagsProxy):
-      self.dim = dim
-      self.name = name
-      self.path = path
-      self.parent = parent
-
-    def __repr__(self):
-      return f"dim_tags[{self.name!r}]"
 
   class SetProxy:
     """
@@ -1795,19 +1813,25 @@ class ReturnnDimTagsProxy:
 
     def _map(path, value):
       if isinstance(value, Dim):
+        if value.derived_from_op:
+          # Make sure all the inputs are registered.
+          for i, child in enumerate(value.derived_from_op.inputs):
+            _map(path + (value.derived_from_op.kind, i), child)
+          # No need to register this.
+          return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
         name = '.'.join(str(key) for key in path + (value.description,))
-        assert name not in self.dim_tags_by_name
+        assert name not in self.dim_refs_by_name
         if value in self.dim_tags_to_ref:
           ref = self.dim_tags_to_ref[value]
           if "out_shape" in ref.path and "out_shape" not in path:
             # Prefer path without "out_shape". Use new name.
-            del self.dim_tags_by_name[ref.name]
-            self.dim_tags_by_name[name] = value
+            del self.dim_refs_by_name[ref.name]
+            self.dim_refs_by_name[name] = ref
             ref.name = name
             ref.path = path
           return ref
-        self.dim_tags_by_name[name] = value
         ref = ReturnnDimTagsProxy.DimRefProxy(dim=value, name=name, path=path, parent=self)
+        self.dim_refs_by_name[name] = ref
         self.dim_tags_to_ref[value] = ref
         return ref
       if isinstance(value, dict):
