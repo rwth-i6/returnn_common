@@ -4,7 +4,7 @@ Test rec module
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict
 
 import typing
 from pprint import pprint
@@ -24,21 +24,19 @@ def test_rec_ff():
       self.rec_linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
       """
       Forward
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
-      with nn.Loop() as loop:
-        x_ = loop.unstack(x, axis="T", declare_rec_time=True)  # TODO how to get axis?
-        loop.state.h = nn.State(initial=0)  # TODO proper initial...
-        loop.state.h = self.rec_linear(nn.concat((x_, "F"), (loop.state.h, self.rec_linear.out_dim)))  # TODO dim?
+      with nn.Loop(axis=axis) as loop:
+        x_ = loop.unstack(x)
+        loop.state.h = nn.State(initial=nn.zeros([nn.batch_dim, self.rec_linear.out_dim]))
+        loop.state.h = self.rec_linear(nn.concat((x_, x_.feature_dim), (loop.state.h, self.rec_linear.out_dim)))
         y = loop.stack(loop.state.h)
       return y
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
-  pprint(net_dict)
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
   assert_equal(
     net_dict,
     {'loop': {'class': 'rec',
