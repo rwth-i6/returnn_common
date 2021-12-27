@@ -13,7 +13,7 @@ import inspect
 import re
 import typing
 import collections.abc
-from typing import Type, Optional, Union, Dict, List, Tuple, Set
+from typing import Type, Optional, Union, Dict, List, Tuple, Sequence, Set
 import returnn
 from returnn.util import better_exchook
 from returnn.util.basic import camel_case_to_snake_case, NotSpecified
@@ -730,7 +730,9 @@ class LayerSignature:
         allow_optional=param.inspect_param.default != inspect.Parameter.empty)
       res_t = eval(res_t_s, {
         "typing": typing,
-        "Optional": Optional, "Union": Union, "List": List, "Tuple": Tuple, "Set": Set, "Dict": Dict,
+        "Optional": Optional, "Union": Union,
+        "List": List, "Tuple": Tuple, "Sequence": Sequence,
+        "Set": Set, "Dict": Dict,
         "Dim": "Dim", "LayerRef": "LayerRef", "NotSpecified": NotSpecified})
 
       def _convert(t) -> str:
@@ -1037,9 +1039,10 @@ class LayerSignature:
           if "->" in s:
             return "callable", end  # cannot really handle yet
 
-          s = re.sub(r"\blist\b", "List", s)
+          # Sequence instead of list/tuple.
+          s = re.sub(r"\blist\b", "Sequence", s)
+          s = re.sub(r"\btuple\b", "Sequence", s)
           s = re.sub(r"\bset\b", "Set", s)
-          s = re.sub(r"\btuple\b", "Tuple", s)
           s = re.sub(r"\bdict\b", "Dict", s)
           s = re.sub(r"\bLayerBase\b", "LayerRef", s)
           s = re.sub(r",(?=\S)", ", ", s)
