@@ -37,22 +37,7 @@ def test_rec_ff():
       return y
 
   config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  assert_equal(
-    net_dict,
-    {'loop': {'class': 'rec',
-              'from': [],
-              'unit': {'concat': {'class': 'concat',
-                                  'from': (('rec_unstack', 'F'),
-                                           ('prev:state.h', 'F'))},
-                       'output': {'class': 'copy', 'from': 'state.h'},
-                       'rec_unstack': {'axis': 'T', 'declare_rec_time': True,
-                                       'class': 'rec_unstack',
-                                       'from': 'base:data:data'},
-                       'state.h': {'class': 'linear',
-                                   'from': 'concat',
-                                   'n_out': 13}}},
-     'output': {'class': 'copy', 'from': 'loop/output'}})
-  dummy_run_net(net_dict)
+  dummy_run_net(config)
 
 
 def test_lstm_default_name():
