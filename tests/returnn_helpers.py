@@ -3,9 +3,10 @@ Helpers for RETURNN
 """
 
 from __future__ import annotations
-from typing import Dict, Any
+from typing import Dict, Tuple, Any
 import returnn.tf.engine
 import returnn.datasets
+from .. import nn
 
 
 def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
@@ -64,3 +65,38 @@ def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: ret
     extra_fetches=extra_fetches,
     extra_fetches_callback=_extra_fetches_cb)
   forwarder.run(report_prefix=engine.get_epoch_str() + " forward")
+
+
+def dummy_config_net_dict(net: nn.Module, *,
+                          with_axis=False, in_dim: int = 13
+                          ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+  """
+  :return: config, net_dict
+  """
+  with nn.NameCtx.new_root() as name_ctx:
+    time_dim = nn.SpatialDim("time")
+    in_dim = nn.FeatureDim("input", in_dim)
+    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
+    opts = {}
+    if with_axis:
+      opts["axis"] = time_dim
+    out = net(data, **opts, name=name_ctx)
+    assert isinstance(out, nn.Layer)
+    out.mark_as_default_output()
+
+  config_code = name_ctx.get_returnn_config_serialized()
+  return config_net_dict_via_serialized(config_code)
+
+
+def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+  """
+  :param str config_code: via get_returnn_config_serialized
+  """
+  print(config_code)
+  scope = {}
+  exec(config_code, scope, scope)
+  for tmp in ["__builtins__", "Dim", "batch_dim", "FeatureDim", "SpatialDim"]:
+    scope.pop(tmp)
+  config = scope
+  net_dict = config["network"]
+  return config, net_dict

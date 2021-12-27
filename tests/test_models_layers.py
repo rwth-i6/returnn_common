@@ -4,47 +4,17 @@ Test layers
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, config_net_dict_via_serialized
 from builtins import range as range_
 from pprint import pprint
 from nose.tools import assert_equal
 import typing
-from typing import Tuple, Dict, Any
+from typing import Tuple
 
 if typing.TYPE_CHECKING:
   from .. import nn
 else:
   from returnn_common import nn  # noqa
-
-
-def _dummy_config_net_dict(net: nn.Module, *, with_axis=False, in_dim: int = 13):
-  with nn.NameCtx.new_root() as name_ctx:
-    time_dim = nn.SpatialDim("time")
-    in_dim = nn.FeatureDim("input", in_dim)
-    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
-    opts = {}
-    if with_axis:
-      opts["axis"] = time_dim
-    out = net(data, **opts, name=name_ctx)
-    assert isinstance(out, nn.Layer)
-    out.mark_as_default_output()
-
-  config_code = name_ctx.get_returnn_config_serialized()
-  return config_net_dict_via_serialized(config_code)
-
-
-def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-  """
-  :param str config_code: via get_returnn_config_serialized
-  """
-  print(config_code)
-  scope = {}
-  exec(config_code, scope, scope)
-  for tmp in ["__builtins__", "Dim", "batch_dim", "FeatureDim", "SpatialDim"]:
-    scope.pop(tmp)
-  config = scope
-  net_dict = config["network"]
-  return config, net_dict
 
 
 def test_simple_net_linear():
@@ -60,7 +30,7 @@ def test_simple_net_linear():
       """
       return self.linear(x)
 
-  config, net_dict = _dummy_config_net_dict(_Net())
+  config, net_dict = dummy_config_net_dict(_Net())
   assert "linear" in net_dict
   pprint(config)
   dummy_run_net(config)
@@ -76,7 +46,7 @@ def test_simple_net_arithmetic():
       x = 1. / x + x * 2.
       return x
 
-  config, net_dict = _dummy_config_net_dict(_Net())
+  config, net_dict = dummy_config_net_dict(_Net())
   dummy_run_net(config)
 
 
@@ -94,7 +64,7 @@ def test_simple_net_lstm():
       x, _ = self.lstm(x, axis=axis)
       return x
 
-  config, net_dict = _dummy_config_net_dict(_Net(), with_axis=True)
+  config, net_dict = dummy_config_net_dict(_Net(), with_axis=True)
   assert "lstm" in net_dict
   dims = config["dim_tags"]
   lstm_subnet = net_dict["lstm"]["subnetwork"]
@@ -127,7 +97,7 @@ def test_simple_net_share_params():
       x = self.linear2(x)
       return x
 
-  config, net_dict = _dummy_config_net_dict(_Net())
+  config, net_dict = dummy_config_net_dict(_Net())
   assert "linear2" in net_dict
   assert "linear2_0" in net_dict
   assert_equal(net_dict["linear2_0"]["name_scope"], "linear2")
@@ -237,7 +207,7 @@ def test_multiple_returns_depth_1():
       return out
 
   net = _Net()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/linear"
   assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
@@ -285,7 +255,7 @@ def test_multiple_returns_depth_2():
       return out
 
   net = _Net()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub/sub/linear"
   assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub/linear"
@@ -330,7 +300,7 @@ def test_from_call_variations():
       return out2
 
   net = _Net()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub2/linear2"
   assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
@@ -396,7 +366,7 @@ def test_from_call_variations2():
       return out2
 
   net = _Net()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
 
 
@@ -445,7 +415,7 @@ def test_module_list():
       return out
 
   net = _Net()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
 
   assert net_dict["ls.0"]["subnetwork"]["dot"]["from"][0] == "base:data:data"
@@ -662,7 +632,7 @@ def test_sequential_base_case():
       return seq
 
   net = _TestSequential()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
 
   assert net_dict["seq"]["subnetwork"]["0"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
@@ -692,7 +662,7 @@ def test_sequential_named_case():
       return seq
 
   net = _TestSequential()
-  config, net_dict = _dummy_config_net_dict(net)
+  config, net_dict = dummy_config_net_dict(net)
 
   assert net_dict["seq"]["subnetwork"]["one"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   assert net_dict["seq"]["subnetwork"]["two"]["subnetwork"]["dot"]["from"][0] == "base:one"
@@ -774,7 +744,7 @@ def test_self_attention():
       return self.self_att(x, axis=axis)
 
   net = _Net()
-  config, net_dict = _dummy_config_net_dict(net, with_axis=True)
+  config, net_dict = dummy_config_net_dict(net, with_axis=True)
   pprint(net_dict)
   dummy_run_net(config)
 
@@ -784,7 +754,7 @@ def test_deepcopy():
 
   dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
   layers = nn.Sequential(copy.deepcopy(nn.Linear(dim)) for dim in dims)
-  config, net_dict = _dummy_config_net_dict(layers)
+  config, net_dict = dummy_config_net_dict(layers)
   pprint(net_dict)
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
