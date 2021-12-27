@@ -1863,10 +1863,10 @@ class ReturnnDimTagsProxy:
           for key, value_ in value.items()}
       if isinstance(value, list):
         return [_map(path + (i,), value_) for i, value_ in enumerate(value)]
-      if isinstance(value, tuple):
+      if isinstance(value, tuple) and type(value) is tuple:
         return tuple(_map(path + (i,), value_) for i, value_ in enumerate(value))
-      if nest.is_namedtuple(value):
-        # noinspection PyProtectedMember
+      if isinstance(value, tuple) and type(value) is not tuple:
+        # noinspection PyProtectedMember,PyUnresolvedReferences
         return type(value)(*(_map(path + (key,), getattr(value, key)) for key in value._fields))
       if isinstance(value, set):
         values = [_map(path + ('_',), value_) for value_ in value]
