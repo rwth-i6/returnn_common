@@ -287,6 +287,13 @@ class Layer(LayerRef):
     self.name_ctx.layer = self
     self.layer_dict = layer_dict
 
+  def __repr__(self):
+    return (
+      f"<{self.__class__.__name__}"
+      f" {self.name_ctx.get_abs_name_repr()}"
+      f" {self.data.__repr__()}"
+      f" via {self.name_ctx.module if self.name_ctx.module else self.layer_dict.get('class', '?')!r}>")
+
   def mark_as_loss(self, loss_scale: Optional[float] = 1.0):
     """
     Mark this as a loss.
