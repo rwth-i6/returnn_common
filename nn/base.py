@@ -904,8 +904,7 @@ class Loop:
     """
     from . import rec_unstack
     assert self._has_given_axis, "%s: unstack() requires a given axis" % self
-    opts = {"axis": self.axis}
-    res = rec_unstack(source, name=name, **opts)
+    res = rec_unstack(source, axis=self.axis, name=name)
     self.unstacked_refs.append(res)
     return res
 
