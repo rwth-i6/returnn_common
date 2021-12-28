@@ -915,6 +915,8 @@ class Loop:
     to make it accessible outside the loop.
     """
     from . import copy
+    # We don't need to do anything special because RETURNN RecLayer will automatically accumulate the frames
+    # when we marked a layer with is_output_layer and we access it from outside the loop.
     if not name and "output" not in self.name_ctx.children:
       name = self.name_ctx.get_child("output")
     res = copy(source, name=name)
