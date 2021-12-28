@@ -860,7 +860,7 @@ class Loop:
     self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
     self._has_given_axis = bool(axis)
-    if not axis:
+    if not axis or axis is NotSpecified:
       axis = SpatialDim(f"{name}-dim")
     self.axis = axis
     self.end_ref = None  # type: Optional[LayerRef]
