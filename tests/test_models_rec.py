@@ -54,21 +54,19 @@ def test_rec_inner_lstm():
       self.lstm = nn.LSTM(nn.FeatureDim("out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
       """
       Forward
       """
-      with nn.Loop() as loop:
-        x_ = loop.unstack(x, axis="T", declare_rec_time=True)  # TODO how to get axis?
+      with nn.Loop(axis=axis) as loop:
+        x_ = loop.unstack(x)
         loop.state.lstm = nn.State(initial=self.lstm.default_initial_state())
         y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, axis=nn.single_step_dim)
         y = loop.stack(y_)
       return y
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
-  pprint(net_dict)
-  dummy_run_net(net_dict)
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  dummy_run_net(config)
 
 
 def test_rec_simple_iter():
