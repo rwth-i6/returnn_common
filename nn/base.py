@@ -847,6 +847,8 @@ class Loop:
                name: str = "loop"
                ):
     super(Loop, self).__init__()
+    if not axis or axis is NotSpecified:
+      axis = SpatialDim(f"{name}-dim")
     self.extra_opts = {
       key: value for (key, value) in locals().items()
       if value is not NotSpecified and key not in {"self", "__class__", "name"}}
@@ -860,8 +862,6 @@ class Loop:
     self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
     self._has_given_axis = bool(axis)
-    if not axis or axis is NotSpecified:
-      axis = SpatialDim(f"{name}-dim")
     self.axis = axis
     self.end_ref = None  # type: Optional[LayerRef]
 
