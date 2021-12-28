@@ -656,13 +656,14 @@ class ReturnnWrappedLayerBase(Module):
     """
     :return: default initial state
     """
+    from .const import zeros
     assert self.has_recurrent_state
     # Match the logic of _get_recurrent_state above.
     if self.returnn_layer_class == "rec":
       unit = getattr(self, "unit")
       if isinstance(unit, str):
         if "lstm" in unit.lower():
-          return LayerState(h=0, c=0)  # TODO get real shape... how to get batch dim?
+          return LayerState(h=zeros([batch_dim]), c=zeros([batch_dim]))
     raise NotImplementedError(f"{self}.default_initial_state")
 
   @staticmethod
