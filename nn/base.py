@@ -292,7 +292,7 @@ class Layer(LayerRef):
       data = predefined_out_data
     else:
       data = _data_from_layer_dict(layer_dict)
-    if add_out_shape_info:
+    if add_out_shape_info and layer_dict["class"] not in {"constant", "variable"}:
       layer_dict["out_shape"] = set(data.dim_tags_set_implicit)
     super(Layer, self).__init__(name_ctx=name_ctx, data=data)
     assert self.name_ctx.layer is None
