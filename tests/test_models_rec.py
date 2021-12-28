@@ -78,7 +78,7 @@ def test_rec_simple_iter():
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
       with nn.Loop(max_seq_len=10) as loop:
-        loop.state.i = nn.State(initial=0.)
+        loop.state.i = nn.State(initial=nn.zeros([nn.batch_dim]))
         loop.state.i = loop.state.i + 1.
         loop.end(loop.state.i >= 5., include_eos=True)
         y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis=axis))
