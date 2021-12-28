@@ -1148,6 +1148,14 @@ class State:
               f" We need https://github.com/rwth-i6/returnn_common/issues/31"
               f" and https://github.com/rwth-i6/returnn/issues/732.")
 
+        else:  # class != get_last_hidden_state
+          assert "initial_state" not in layer_ref.layer_dict
+          assert "initial_output" not in layer_ref.layer_dict
+          layer_ref.layer_dict["initial_output"] = initial
+
+      else:  # layer_ref not Layer
+        raise NotImplementedError(f"{self}.assign to {layer_ref} but layer expected")
+
       _move_layer_ref_to_new_name_ctx(layer_ref=layer_ref, name_ctx=name_ctx)
 
     nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
