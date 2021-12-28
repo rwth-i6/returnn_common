@@ -72,7 +72,7 @@ def test_rec_inner_lstm():
 def test_rec_simple_iter():
   class _Net(nn.Module):
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
       """
       Forward
       """
@@ -81,13 +81,11 @@ def test_rec_simple_iter():
         loop.state.i = nn.State(initial=0.)
         loop.state.i = loop.state.i + 1.
         loop.end(loop.state.i >= 5., include_eos=True)
-        y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis="T"))  # TODO axis
+        y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis=axis))
       return y
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
-  pprint(net_dict)
-  dummy_run_net(net_dict)
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  dummy_run_net(config)
 
 
 def test_rec_hidden():
@@ -97,40 +95,37 @@ def test_rec_hidden():
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
       """
       Forward
       """
-      y, state = self.lstm(x)  # TODO axis
+      y, state = self.lstm(x, axis=axis)
       res = nn.concat(
         (y, self.lstm.out_dim), (state.h, self.lstm.out_dim), (state.c, self.lstm.out_dim), allow_broadcast=True)
       return res
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
-  pprint(net_dict)
-  dummy_run_net(net_dict)
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  dummy_run_net(config)
 
 
 def test_rec_hidden_initial():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
-      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
+      self.out_dim = nn.FeatureDim("out", 13)
+      self.linear = nn.Linear(self.out_dim)
+      self.lstm = nn.LSTM(self.out_dim)
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
       """
       Forward
       """
       y = self.linear(x)
       state = None
       for _ in range_(3):
-        y, state = self.lstm(y, initial_state=state)  # TODO axis?
+        y, state = self.lstm(y, initial_state=state, axis=axis)
       return y
 
-  net = _Net()
-  net_dict = nn.make_root_net_dict(net, "data")
-  pprint(net_dict)
-  dummy_run_net(net_dict)
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  dummy_run_net(config)
