@@ -1686,7 +1686,15 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
     "behavior_version": _min_returnn_behavior_version,
   })
   BehaviorVersion.set(_min_returnn_behavior_version)
-  net = TFNetwork(config=config, extern_data=ExternData(), name="dummy_net")
+  ctx = NameCtx.top()
+  inside_rec_time_dim = None
+  while ctx:
+    mod = ctx.module
+    if isinstance(mod, _LoopLayerModule):
+      inside_rec_time_dim = mod.loop.axis
+      break
+    ctx = ctx.parent
+  net = TFNetwork(config=config, extern_data=ExternData(), name="dummy_net", inside_rec_time_dim=inside_rec_time_dim)
 
   ref_to_layer_name = {}  # type: Dict[NameCtx, str]
 
