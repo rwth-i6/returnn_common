@@ -927,13 +927,16 @@ class Loop:
     """
     from . import copy
     # We don't need to do anything special because RETURNN RecLayer will automatically accumulate the frames
-    # when we marked a layer with is_output_layer and we access it from outside the loop.
+    # when we marked a layer with is_output_layer, and we access it from outside the loop.
     if not name and "output" not in self.name_ctx.children:
       name = self.name_ctx.get_child("output")
     res = copy(source, name=name)
     assert isinstance(res, Layer)
     if res.name_ctx.name != "output":
       res.layer_dict["is_output_layer"] = True
+    # We access the returned layer-ref from outside, thus fix the data template.
+    res.data = res.data.copy_add_dim_by_tag(dim_tag=self.axis, unbroadcast=True, axis=0)
+    res.data.time_dim_axis = 0
     self.outputs.append(res)
     return res
 
