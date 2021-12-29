@@ -194,7 +194,7 @@ def setup():
   print("from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("# noinspection PyProtectedMember", file=f)
-  print("from returnn.tf.util.data import Dim, _ImplicitDim", file=f)
+  print("from returnn.tf.util.data import Dim, _MarkedDim", file=f)
   print(
     "from .base import NameCtx, ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
   layer_classes = collect_layers()

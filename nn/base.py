@@ -52,7 +52,7 @@ from __future__ import annotations
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Iterator, Iterable
 from returnn.tf.util.data import *  # Dim, Data, and others
 # noinspection PyProtectedMember
-from returnn.tf.util.data import _ImplicitDim
+from returnn.tf.util.data import _MarkedDim
 from returnn.util.basic import NotSpecified, OptionalNotImplementedError
 from tensorflow.python.util import nest
 
@@ -119,7 +119,7 @@ class LayerRef:
         return dim
     return None
 
-  def verify_out_shape(self, out_shape: Union[Set[Union[Dim, _ImplicitDim]], tuple, list]):
+  def verify_out_shape(self, out_shape: Union[Set[Union[Dim, _MarkedDim]], tuple, list]):
     """
     Verify out_shape.
 
