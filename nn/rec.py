@@ -70,7 +70,7 @@ class _Rec(nn.Module):
 
 class LSTM(_Rec):
   """
-  LSTM operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
+  LSTM. returns (output, state) tuple, where state is (h,c).
   """
   def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None):
     self.param_W_re = None  # type: Optional[nn.Parameter]
@@ -87,7 +87,7 @@ class LSTM(_Rec):
 
 class ZoneoutLSTM(_Rec):
   """
-  LSTM with zoneout operating on a sequence. returns (output, final_state) tuple, where final_state is (h,c).
+  LSTM with zoneout. returns (output, state) tuple, where state is (h,c).
   """
   def __init__(self, out_dim: nn.Dim,
                *,
