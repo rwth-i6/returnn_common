@@ -11,7 +11,7 @@ def zeros(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
   """
   zeros
   """
-  return nn.constant(value=0, shape=shape, dtype=dtype, name=name or "zeros")
+  return nn.constant(value=0., shape=shape, dtype=dtype, name=name or "zeros")
 
 
 def zeros_like(value: nn.LayerRef, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
