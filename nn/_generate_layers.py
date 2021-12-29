@@ -972,7 +972,7 @@ class LayerSignature:
       """
       Whether this param should become a Module call arg.
       """
-      if self.returnn_name in {"reuse_params", "chunking_layer", "axes", "axis"}:
+      if self.returnn_name in {"reuse_params", "chunking_layer", "axes", "axis", "in_spatial_dim", "in_spatial_dims"}:
         return True
       if not self.param_type_s:
         return False

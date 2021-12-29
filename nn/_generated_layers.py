@@ -1323,7 +1323,6 @@ class Conv(_Base):
                input_add_feature_dim: bool = NotSpecified,
                input_split_feature_dim: Optional[int] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Sequence[Dim],
                out_spatial_dims: Optional[Sequence[Dim]] = NotSpecified,
                with_bias: Union[bool, NotSpecified] = NotSpecified,
                forward_weights_init: Any = NotSpecified,
@@ -1347,7 +1346,6 @@ class Conv(_Base):
       which is of value input_split_feature_dim, and the original input feature dim
       will be divided by input_split_feature_dim, thus it must be a multiple of that value.
     :param Dim|None in_dim:
-    :param Sequence[Dim] in_spatial_dims:
     :param Sequence[Dim]|None out_spatial_dims:
     :param bool|NotSpecified with_bias: if True, will add a bias to the output features. False by default
     :param forward_weights_init:
@@ -1365,7 +1363,6 @@ class Conv(_Base):
     self.input_add_feature_dim = input_add_feature_dim
     self.input_split_feature_dim = input_split_feature_dim
     self.in_dim = in_dim
-    self.in_spatial_dims = in_spatial_dims
     self.out_spatial_dims = out_spatial_dims
     self.with_bias = with_bias
     self.forward_weights_init = forward_weights_init
@@ -1387,7 +1384,6 @@ class Conv(_Base):
       'input_add_feature_dim': self.input_add_feature_dim,
       'input_split_feature_dim': self.input_split_feature_dim,
       'in_dim': self.in_dim,
-      'in_spatial_dims': self.in_spatial_dims,
       'out_spatial_dims': self.out_spatial_dims,
       'with_bias': self.with_bias,
       'forward_weights_init': self.forward_weights_init,
@@ -1401,6 +1397,7 @@ class Conv(_Base):
   def __call__(self,
                source: LayerRef,
                *,
+               in_spatial_dims: Sequence[Dim],
                filter: Optional[LayerRef] = NotSpecified,
                bias: Optional[LayerRef] = NotSpecified,
                ) -> Layer:
@@ -1409,6 +1406,7 @@ class Conv(_Base):
     """
     assert isinstance(source, LayerRef)
     args = {
+      'in_spatial_dims': in_spatial_dims,
       'filter': filter,
       'bias': bias,
     }
@@ -1518,7 +1516,6 @@ class TransposedConv(_Base):
                remove_padding: Union[Sequence[int], int] = NotSpecified,
                output_padding: Optional[Union[Sequence[Optional[int]], int]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               in_spatial_dims: Sequence[Dim],
                out_spatial_dims: Optional[Sequence[Dim]] = NotSpecified,
                with_bias: bool = NotSpecified,
                forward_weights_init: Any = NotSpecified,
@@ -1533,7 +1530,6 @@ class TransposedConv(_Base):
     :param list[int]|int remove_padding:
     :param list[int|None]|int|None output_padding:
     :param Dim|None in_dim:
-    :param Sequence[Dim] in_spatial_dims:
     :param Sequence[Dim]|None out_spatial_dims:
     :param bool with_bias: whether to add a bias. enabled by default.
       Note that the default is different from ConvLayer!
@@ -1549,7 +1545,6 @@ class TransposedConv(_Base):
     self.remove_padding = remove_padding
     self.output_padding = output_padding
     self.in_dim = in_dim
-    self.in_spatial_dims = in_spatial_dims
     self.out_spatial_dims = out_spatial_dims
     self.with_bias = with_bias
     self.forward_weights_init = forward_weights_init
@@ -1568,7 +1563,6 @@ class TransposedConv(_Base):
       'remove_padding': self.remove_padding,
       'output_padding': self.output_padding,
       'in_dim': self.in_dim,
-      'in_spatial_dims': self.in_spatial_dims,
       'out_spatial_dims': self.out_spatial_dims,
       'with_bias': self.with_bias,
       'forward_weights_init': self.forward_weights_init,
@@ -1582,6 +1576,7 @@ class TransposedConv(_Base):
   def __call__(self,
                source: LayerRef,
                *,
+               in_spatial_dims: Sequence[Dim],
                filter: Optional[LayerRef] = NotSpecified,
                bias: Optional[LayerRef] = NotSpecified,
                ) -> Layer:
@@ -1590,6 +1585,7 @@ class TransposedConv(_Base):
     """
     assert isinstance(source, LayerRef)
     args = {
+      'in_spatial_dims': in_spatial_dims,
       'filter': filter,
       'bias': bias,
     }
