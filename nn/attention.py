@@ -2,7 +2,7 @@
 Attention, self-attention, auto-regressive self-attention
 """
 
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 from .. import nn
 
 
@@ -24,7 +24,7 @@ def dot_attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
 
 
 # noinspection PyAbstractClass
-class SelfAttentionBase(nn.Module):
+class GenericSelfAttention(nn.Module):
   """
   Shared base class for self attention
   """
@@ -43,13 +43,16 @@ class SelfAttentionBase(nn.Module):
     self.qkv = nn.Linear(self.qkv_dim_total)
     self.att_dropout = att_dropout
 
+  def default_initial_state(self) -> nn.LayerState:
+    """
+    For causal attention.
+    """
+    pass  # TODO ...
 
-class SelfAttention(SelfAttentionBase):
-  """
-  Classic self attention
-  """
   @nn.scoped
-  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
+  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim,
+               causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
+               ) -> Tuple[nn.Layer, Optional[nn.LayerState]]:
     """forward"""
     expand_dim = nn.SpatialDim("self_att_expand_dim")
     qkv = self.qkv(source)
@@ -59,37 +62,44 @@ class SelfAttention(SelfAttentionBase):
       qkv, axis=self.qkv_dim_per_head,
       out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
-    k = nn.reinterpret_data(k, set_dim_tags={axis: expand_dim}, name="k_new_dim")
-    v = nn.reinterpret_data(v, set_dim_tags={axis: expand_dim}, name="v_new_dim")
+    if axis == nn.single_step_dim:
+      assert causal is None or causal
+      assert state
+      new_state = nn.LayerState()
+      k, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
+      v, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
+    else:
+      new_state = None
+      if causal:
+        raise NotImplementedError(
+          "Causal attention on sequence level not implemented. "
+          "We can easily extend CumConcatLayer on RETURNN side for this, to accept any axis argument. "
+          "However, normally any causal attention should always be inside a loop and this should never be needed.")
+      k = nn.reinterpret_data(k, set_dim_tags={axis: expand_dim}, name="k_new_dim")
+      v = nn.reinterpret_data(v, set_dim_tags={axis: expand_dim}, name="v_new_dim")
     att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
-    return output
+    return output, new_state
 
 
-class CausalSelfAttention(SelfAttentionBase):
-  pass  # TODO
-
-
-class CausalSelfAttentionStep(SelfAttentionBase):
+class SelfAttention(GenericSelfAttention):
   """
-  Causal auto-regressive self-attention
+  Classic self attention on sequence level
   """
   @nn.scoped
-  def __call__(self, source: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.Layer, nn.LayerState]:
+  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
     """forward"""
-    expand_dim = nn.SpatialDim("self_att_expand_dim")
-    new_state = nn.LayerState()
-    qkv = self.qkv(source)
-    qkv = nn.split_dims(
-      qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head),
-      name="qkv_split_dims")
-    q, k, v = nn.split(
-      qkv, axis=self.qkv_dim_per_head, out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
-      name="qkv_split")
-    k_accum, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
-    v_accum, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
-    att = dot_attention(q, k_accum, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
-    output = nn.merge_dims(
-      att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
-    return output, new_state
+    out, _ = super().__call__(source, axis=axis, causal=False)
+    return out
+
+
+class CausalSelfAttention(GenericSelfAttention):
+  """
+  Classic causal self attention
+  """
+  @nn.scoped
+  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
+    """forward"""
+    out, _ = super().__call__(source, axis=axis, causal=True)
+    return out
