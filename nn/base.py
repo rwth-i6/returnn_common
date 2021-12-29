@@ -1402,13 +1402,13 @@ class NameCtx:
     from ..utils.pprint import pformat
     config = self.get_returnn_config()
     dim_tags_proxy = ReturnnDimTagsProxy()
-    config = dim_tags_proxy.transform_config(config)
+    config = dim_tags_proxy.collect_dim_tags_and_transform_config(config)
 
     code_lines = [
       "from returnn.tf.util.data import Dim, batch_dim, SpatialDim, FeatureDim\n\n",
       "use_tensorflow = True\n",
       f"behavior_version = {config.pop('behavior_version')}\n\n",
-      f"dim_tags = {config.pop('dim_tags')!r}\n\n",
+      f"{dim_tags_proxy.py_code_str()}\n",
       f"extern_data = {pformat(config.pop('extern_data'))}\n",
       f"network = {pformat(config.pop('network'))}\n",
     ]
@@ -1776,6 +1776,14 @@ class ReturnnDimTagsProxy:
       *(f"  {key!r}: {value.dim_repr()}," for key, value in self.dim_refs_by_name.items()),
       "}"])
 
+  def py_code_str(self):
+    """
+    :return: Python code
+    """
+    return "".join([
+      *(f"{value.py_id_name()} = {value.dim_repr()}\n" for key, value in self.dim_refs_by_name.items()),
+      ])
+
   def dim_ref_repr(self, dim: Dim) -> str:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
@@ -1792,7 +1800,7 @@ class ReturnnDimTagsProxy:
       op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
       return f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
     ref = self.dim_tags_to_ref[dim]
-    return f"dim_tags[{ref.name!r}]"
+    return ref.py_id_name()
 
   class DimRefProxy:
     """
@@ -1811,6 +1819,14 @@ class ReturnnDimTagsProxy:
     def ref_repr(self) -> str:
       """ref repr"""
       return self.parent.dim_ref_repr(self.dim)
+
+    def py_id_name(self) -> str:
+      """
+      :return: valid Python identifier
+      """
+      assert self.name
+      import re
+      return re.sub(r"[^a-zA-Z0-9_]", "_", self.name) + "_dim"
 
     def dim_repr(self):
       """dim repr"""
@@ -1831,6 +1847,7 @@ class ReturnnDimTagsProxy:
   class SetProxy:
     """
     This represents a set but with a predefined order.
+    We want a deterministic order in the repr such that the generated code stays deterministic.
     """
     def __init__(self, values: Sequence[Any]):
       self.values = values
@@ -1838,7 +1855,7 @@ class ReturnnDimTagsProxy:
     def __repr__(self):
       return f"{{{', '.join(map(repr, self.values))}}}"
 
-  def transform_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+  def collect_dim_tags_and_transform_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Go through the config and collect all dim tags, replace them by proxies.
 
@@ -1915,4 +1932,4 @@ class ReturnnDimTagsProxy:
       return value
 
     config = _map((), config)
-    return {"dim_tags": self, **config}
+    return config

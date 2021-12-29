@@ -66,16 +66,17 @@ def test_simple_net_lstm():
 
   config, net_dict = dummy_config_net_dict(_Net(), with_axis=True)
   assert "lstm" in net_dict
-  dims = config["dim_tags"]
+  extern_data_data_dim_tags_2_input_dim = config["extern_data_data_dim_tags_2_input_dim"]
+  network_lstm_subnetwork_rec_out_dim_lstm_out_dim = config["network_lstm_subnetwork_rec_out_dim_lstm_out_dim"]
   lstm_subnet = net_dict["lstm"]["subnetwork"]
   param_input_weights_shape = lstm_subnet["param_W"]["shape"]
   param_rec_weights_shape = lstm_subnet["param_W_re"]["shape"]
   assert_equal(
     param_input_weights_shape,
-    [dims["extern_data.data.dim_tags.2.input"], 4 * dims["network.lstm.subnetwork.rec.out_dim.lstm-out"]])
+    [extern_data_data_dim_tags_2_input_dim, 4 * network_lstm_subnetwork_rec_out_dim_lstm_out_dim])
   assert_equal(
     param_rec_weights_shape,
-    [dims["network.lstm.subnetwork.rec.out_dim.lstm-out"], 4 * dims["network.lstm.subnetwork.rec.out_dim.lstm-out"]])
+    [network_lstm_subnetwork_rec_out_dim_lstm_out_dim, 4 * network_lstm_subnetwork_rec_out_dim_lstm_out_dim])
   dummy_run_net(config)
 
 
@@ -416,7 +417,6 @@ def test_module_list():
 
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
-  pprint(net_dict)
 
   assert net_dict["ls.0"]["subnetwork"]["dot"]["from"][0] == "base:data:data"
   assert net_dict["ls.1"]["subnetwork"]["dot"]["from"][0] == "base:ls.0"
@@ -424,194 +424,7 @@ def test_module_list():
   assert net_dict["ls.3"]["subnetwork"]["dot"]["from"][0] == "base:ls.2"
   assert net_dict["output"]["from"] == "ls.3"
 
-  batch_dim = nn.batch_dim
-  dim_tags = config["dim_tags"]
-  assert_equal(
-    net_dict,
-    {
-      'ls.0': {
-        'class': 'subnetwork',
-        'from': [],
-        'subnetwork': {
-          'dot': {
-            'class': 'dot',
-            'from': ['base:data:data', 'weight'],
-            'reduce': dim_tags['extern_data.data.dim_tags.2.input'],
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out']}
-          },
-          'add': {
-            'class': 'combine',
-            'from': ['dot', 'bias'],
-            'kind': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out']}
-          },
-          'output': {
-            'class': 'copy',
-            'from': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out']}
-          },
-          'weight': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['extern_data.data.dim_tags.2.input'],
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out']
-            ],
-            'dtype': 'float32'
-          },
-          'bias': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out']
-            ],
-            'dtype': 'float32'
-          }
-        },
-        'name_scope': 'ls/0',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out']}
-      },
-      'ls.1': {
-        'class': 'subnetwork',
-        'from': [],
-        'subnetwork': {
-          'dot': {
-            'class': 'dot',
-            'from': ['base:ls.0', 'weight'],
-            'reduce': dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'],
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1}
-          },
-          'add': {
-            'class': 'combine',
-            'from': ['dot', 'bias'],
-            'kind': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1}
-          },
-          'output': {
-            'class': 'copy',
-            'from': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1}
-          },
-          'weight': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'],
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1
-            ],
-            'dtype': 'float32'
-          },
-          'bias': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1
-            ],
-            'dtype': 'float32'
-          }
-        },
-        'name_scope': 'ls/1',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1}
-      },
-      'ls.2': {
-        'class': 'subnetwork',
-        'from': [],
-        'subnetwork': {
-          'dot': {
-            'class': 'dot',
-            'from': ['base:ls.1', 'weight'],
-            'reduce': dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1,
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2}
-          },
-          'add': {
-            'class': 'combine',
-            'from': ['dot', 'bias'],
-            'kind': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2}
-          },
-          'output': {
-            'class': 'copy',
-            'from': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2}
-          },
-          'weight': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 1,
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2
-            ],
-            'dtype': 'float32'
-          },
-          'bias': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2
-            ],
-            'dtype': 'float32'
-          }
-        },
-        'name_scope': 'ls/2',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2}
-      },
-      'ls.3': {
-        'class': 'subnetwork',
-        'from': [],
-        'subnetwork': {
-          'dot': {
-            'class': 'dot',
-            'from': ['base:ls.2', 'weight'],
-            'reduce': dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2,
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3}
-          },
-          'add': {
-            'class': 'combine',
-            'from': ['dot', 'bias'],
-            'kind': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3}
-          },
-          'output': {
-            'class': 'copy',
-            'from': 'add',
-            'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                          dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3}
-          },
-          'weight': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 2,
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3
-            ],
-            'dtype': 'float32'
-          },
-          'bias': {
-            'class': 'variable',
-            'shape': [
-              dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3
-            ],
-            'dtype': 'float32'
-          }
-        },
-        'name_scope': 'ls/3',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3}
-      },
-      'output': {
-        'class': 'copy',
-        'from': 'ls.3',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['network.ls.0.subnetwork.weight.shape.1.linear-out'] + 3}
-      }
-    })
+  dummy_run_net(config)
 
 
 def test_sequential_base_case():
@@ -690,40 +503,37 @@ def test_split_glu():
 
   config, net_dict = config_net_dict_via_serialized(name_ctx.get_returnn_config_serialized())
   batch_dim = nn.batch_dim
-  dim_tags = config["dim_tags"]
+  extern_data_data_dim_tags_1_time_dim = config["extern_data_data_dim_tags_1_time_dim"]
+  extern_data_data_dim_tags_2_feature_dim = config["extern_data_data_dim_tags_2_feature_dim"]
   assert_equal(
     net_dict,
     {
       'split': {
         'class': 'split',
         'from': 'data:data',
-        'axis': dim_tags['extern_data.data.dim_tags.2.feature'],
+        'axis': extern_data_data_dim_tags_2_feature_dim,
         'out_dims': [
-          dim_tags['extern_data.data.dim_tags.2.feature'] // 2,
-          dim_tags['extern_data.data.dim_tags.2.feature'] // 2
+          extern_data_data_dim_tags_2_feature_dim // 2,
+          extern_data_data_dim_tags_2_feature_dim // 2
         ],
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['extern_data.data.dim_tags.2.feature']}
+        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim}
       },
       'sigmoid': {
         'class': 'activation',
         'from': 'split/1',
         'activation': 'sigmoid',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['extern_data.data.dim_tags.2.feature'] // 2}
+        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim // 2}
       },
       'mul': {
         'class': 'combine',
         'from': ['split/0', 'sigmoid'],
         'kind': 'mul',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['extern_data.data.dim_tags.2.feature'] // 2}
+        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim // 2}
       },
       'output': {
         'class': 'copy',
         'from': 'mul',
-        'out_shape': {batch_dim, dim_tags['extern_data.data.dim_tags.1.time'],
-                      dim_tags['extern_data.data.dim_tags.2.feature'] // 2}
+        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim // 2}
       }
     })
   dummy_run_net(config)
