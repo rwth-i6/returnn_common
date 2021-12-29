@@ -101,8 +101,8 @@ def cumsum(
   Applies cumsum.
   See :func:`._generated_layers._cumsum`.
   """
-  from ._generated_layers import _cumsum
-  layer, state = _cumsum(
+  from ._generated_layers import rec_cum_sum
+  layer, state = rec_cum_sum(
     x, axis=axis,
     additional_left_summand_per_element=additional_left_summand_per_element,
     reverse=reverse,
