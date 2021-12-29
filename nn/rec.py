@@ -7,6 +7,12 @@ from .. import nn
 
 
 class _Rec(nn.Module):
+  """
+  Wraps the RecLayer in RETURNN for specific units like LSTM.
+  This can operate both single-step and on a sequence.
+  See :func:`__call__`.
+  """
+
   def __init__(self, *, out_dim: nn.Dim, unit: str, param_list: List[Tuple[str, Callable[[], Tuple[nn.Dim, ...]]]],
                in_dim: Optional[nn.Dim] = None,
                unit_opts: Optional[Dict[str, Any]] = None):
@@ -35,6 +41,13 @@ class _Rec(nn.Module):
                state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
                initial_state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
                ) -> Tuple[nn.Layer, nn.LayerState]:
+    """
+    :param source:
+    :param axis: nn.single_step_dim specifies to operate for a single step
+    :param state: prev state when operating a single step
+    :param initial_state: initial state when operating on an axis
+    :return: out, out_state. out_state is the new or last state.
+    """
     self._lazy_init(source.feature_dim)
     rec_layer_dict = {
       "class": "rec", "from": source,
