@@ -1406,7 +1406,7 @@ class NameCtx:
     config = dim_tags_proxy.collect_dim_tags_and_transform_config(config)
 
     code_lines = [
-      "from returnn.tf.util.data import Dim, batch_dim, SpatialDim, FeatureDim\n\n",
+      "from returnn.tf.util.data import Dim, batch_dim, single_step_dim, SpatialDim, FeatureDim\n\n",
       "use_tensorflow = True\n",
       f"behavior_version = {config.pop('behavior_version')}\n\n",
       f"{dim_tags_proxy.py_code_str()}\n",
@@ -1789,8 +1789,10 @@ class ReturnnDimTagsProxy:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
     """
-    if dim.kind == Dim.Types.Batch:
+    if dim == batch_dim:
       return "batch_dim"
+    if dim == single_step_dim:
+      return "single_step_dim"
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         return str(dim.derived_from_op.attribs["value"])
@@ -1832,9 +1834,8 @@ class ReturnnDimTagsProxy:
     def dim_repr(self):
       """dim repr"""
       dim = self.dim
-      # We assume batch_dim, FeatureDim, SpatialDim and Dim are imported.
-      if dim.kind == Dim.Types.Batch:
-        return "batch_dim"
+      # We assume FeatureDim, SpatialDim and Dim are imported.
+      assert dim.can_be_used_as_dim()
       if dim.kind == Dim.Types.Feature:
         return f"FeatureDim({dim.description!r}, {dim.dimension})"
       if dim.kind == Dim.Types.Spatial:
@@ -1890,7 +1891,7 @@ class ReturnnDimTagsProxy:
 
     def _map(path, value):
       if isinstance(value, Dim):
-        if value.kind == Dim.Types.Batch:
+        if value in {batch_dim, single_step_dim}:
           # No need to register this.
           return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
         if value.derived_from_op:
