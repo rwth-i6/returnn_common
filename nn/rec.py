@@ -20,6 +20,7 @@ class _Rec(nn.Module):
       self._lazy_init(in_dim)
 
   def _lazy_init(self, in_dim: nn.Dim):
+    assert in_dim
     if self.in_dim:
       assert self.in_dim == in_dim
     else:
@@ -41,6 +42,7 @@ class _Rec(nn.Module):
       "unit": self.unit}
     if self.unit_opts:
       rec_layer_dict["unit_opts"] = self.unit_opts
+    # We use the reuse_params mechanism from RETURNN to explicitly pass the parameters.
     reuse_params = {}
     for param, _ in self.param_list:
       param_ = getattr(self, f"param_{param}")
