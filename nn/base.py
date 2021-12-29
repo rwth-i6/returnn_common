@@ -778,29 +778,6 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
   return constant(value=x)
 
 
-def make_root_net_dict(model: Module, *args: Data, **kwargs: Data) -> Dict[str, Any]:
-  """
-  Make net dict, to be used as the main RETURNN network, not within a subnetwork.
-  Any passed arguments are keys of extern data,
-  and are forwarded to the module.
-  """
-  assert isinstance(model, Module)
-  from . import copy
-  with NameCtx(module=model, parent=None) as name_ctx:
-    name_ctx.is_subnet_ctx = True
-    args = tuple(get_extern_data(arg) for arg in args)
-    kwargs = {key: get_extern_data(value) for (key, value) in kwargs.items()}
-    res = model(*args, **kwargs, name=name_ctx)
-    if "output" not in name_ctx.children:
-      if isinstance(res, LayerRef):
-        copy(res, name=name_ctx.get_child("output"))
-      else:
-        res_list = nest.flatten(res)
-        assert res_list and isinstance(res_list[0], LayerRef)
-        copy(res_list[0], name=name_ctx.get_child("output"))
-  return name_ctx.get_returnn_config()
-
-
 class Loop:
   """
   This represents a RecLayer subnetwork in RETURNN,
