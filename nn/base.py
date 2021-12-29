@@ -663,7 +663,9 @@ class ReturnnWrappedLayerBase(Module):
       unit = getattr(self, "unit")
       if isinstance(unit, str):
         if "lstm" in unit.lower():
-          return LayerState(h=zeros([batch_dim]), c=zeros([batch_dim]))
+          out_dim = getattr(self, "out_dim")
+          return LayerState(h=zeros([batch_dim, out_dim]), c=zeros([batch_dim, out_dim]))
+      raise NotImplementedError(f"{self}.default_initial_state for RecLayer with unit {unit!r}")
     raise NotImplementedError(f"{self}.default_initial_state")
 
   @staticmethod
