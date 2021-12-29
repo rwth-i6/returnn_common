@@ -825,10 +825,12 @@ class Loop:
 
   You would write::
 
-    with Loop() as loop:
+    dim = nn.FeatureDim(...)
+    loop = nn.Loop(axis=...)
+    loop.state.h = nn.zeros([batch_dim,dim])  # initial state
+    with loop:
       x_t = loop.unstack(x)
       x_lin = Linear(dim)(x_t)
-      loop.state.h = State(shape=[batch,dim], initial=0)  # optional
       loop.state.h = Linear(dim)(x_lin + loop.state.h)
       out = loop.stack(loop.state.h)
 
