@@ -6,14 +6,12 @@ from typing import Optional, Union, Dict, List, Tuple, Callable, Any
 from .. import nn
 
 
-class _Rec(nn.ReturnnWrappedLayerBase):
+class _Rec(nn.Module):
   """
   Wraps the RecLayer in RETURNN for specific units like LSTM.
   This can operate both single-step and on a sequence.
   See :func:`__call__`.
   """
-  returnn_layer_class = "rec"
-  has_recurrent_state = True
 
   def __init__(self, *, out_dim: nn.Dim, unit: str, param_list: List[Tuple[str, Callable[[], Tuple[nn.Dim, ...]]]],
                in_dim: Optional[nn.Dim] = None,
@@ -68,6 +66,15 @@ class _Rec(nn.ReturnnWrappedLayerBase):
     out = nn.make_layer(rec_layer_dict, name="rec")
     out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(out)
     return out, out_state
+
+  def default_initial_state(self) -> nn.LayerState:
+    """
+    :return: default initial state
+    """
+    from .const import zeros
+    if "lstm" in self.unit.lower():
+      return nn.LayerState(h=zeros([nn.batch_dim, self.out_dim]), c=zeros([nn.batch_dim, self.out_dim]))
+    raise NotImplementedError(f"{self}.default_initial_state for RecLayer with unit {self.unit!r}")
 
 
 class LSTM(_Rec):
