@@ -11,12 +11,13 @@ class Linear(nn.Module):
   Linear transformation.
   """
 
-  def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None):
+  def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None, with_bias=True):
     super().__init__()
     self.out_dim = out_dim
     self.out_dim_inner = out_dim
     self.in_dim = in_dim
     self.weight = None  # type: Optional[nn.Parameter]
+    self.with_bias = with_bias
     self.bias = None  # type: Optional[nn.Parameter]
     if in_dim:
       self._lazy_init(in_dim)
@@ -29,12 +30,15 @@ class Linear(nn.Module):
       if in_dim == self.out_dim:
         self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")
       self.weight = nn.Parameter((self.in_dim, self.out_dim_inner))
-      self.bias = nn.Parameter((self.out_dim_inner,))
+      if self.with_bias:
+        self.bias = nn.Parameter((self.out_dim_inner,))
 
   @nn.scoped
   def __call__(self, source: nn.LayerRef) -> nn.Layer:
     self._lazy_init(source.feature_dim)
-    out = nn.dot(source, self.weight, reduce=self.in_dim) + self.bias
+    out = nn.dot(source, self.weight, reduce=self.in_dim)
+    if self.with_bias:
+      out += self.bias
     if self.out_dim_inner != self.out_dim:
       out = nn.reinterpret_data(out, set_dim_tags={self.out_dim_inner: self.out_dim})
     return out
