@@ -859,7 +859,7 @@ class Loop:
     self.name_ctx.extend_reserved_names({"output", "end"})
     self._entered_scope = False
     self._exited_scope = False
-    self._state = _StateHolder(loop=self)
+    self._state = _LoopStateHolder(loop=self)
     self.unstacked_refs = []  # type: List[LayerRef]
     self.outputs = []  # type: List[LayerRef]
     self._has_given_axis = bool(axis)
@@ -894,7 +894,14 @@ class Loop:
       self.layer_module()  # create the rec layer itself
 
   @property
-  def state(self) -> Union[_StateHolder, LayerState]:
+  def has_entered_scope(self) -> bool:
+    """
+    :return: whether we have entered the scope, i.e. we define the per-step calculation.
+    """
+    return self._entered_scope
+
+  @property
+  def state(self) -> Union[_LoopStateHolder, LayerState]:
     """state holder inside the loop"""
     if not self._exited_scope:
       return self._state
@@ -1025,15 +1032,15 @@ class PrevLayerRef(LayerRef):
     self.cur_layer_name_ctx = cur_layer_name_ctx
 
 
-class _StateHolder:
+class _LoopStateHolder:
   def __init__(self, loop: Loop):
     self._loop = loop
-    self._state = {}  # type: Dict[str, State]
+    self._state = {}  # type: Dict[str, _LoopState]
 
   def __repr__(self):
     return f"{self._loop}.state"
 
-  def _get_state(self, name: str) -> State:
+  def _get_state(self, name: str) -> _LoopState:
     if name in self._state:
       return self._state[name]
     raise AttributeError(f"{self}: Unknown state attrib {name!r}. Assign the initial state first.")
@@ -1045,10 +1052,9 @@ class _StateHolder:
     return self._get_state(item).get()
 
   def __setitem__(self, key, value):
-    if isinstance(value, State):
-      # noinspection PyProtectedMember
-      value._set_name_and_loop(name=key, loop=self._loop)
-      self._state[key] = value
+    if not self._loop.has_entered_scope:
+      assert key not in self._state, f"{self} already has state {key!r}"
+      self._state[key] = _LoopState(name=key, loop=self._loop, initial=value)
       return
     self._get_state(key).assign(value)
 
@@ -1068,36 +1074,29 @@ class _StateHolder:
     return len(self._state)
 
 
-class State:
+class _LoopState:
   """
   Represents some recurrent state, to be used with :class:`Loop`.
   It can also represent some nested hierarchy of states.
   """
 
-  def __init__(self, *, initial: Union[LayerRef, Any]):
+  def __init__(self, *, name: str, loop: Loop, initial: Union[LayerRef, Any]):
     """
+    :param name:
+    :param loop:
     :param initial: some layer-ref, or any kind of nested structure of layers.
     """
-    super(State, self).__init__()
+    super(_LoopState, self).__init__()
     assert initial is not None
     initial = nest.map_structure(convert_to_layer_ref, initial)
     self.initial = initial
-    self.loop = None  # type: Optional[Loop]
-    self.name = None  # type: Optional[str]
-    self.name_ctx = None  # type: Optional[Union[NameCtx, Any]]  # same nested structure as initial
-    self.assigned_value = None
-
-  def _set_name_and_loop(self, *, name: str, loop: Loop):
-    """
-    Assigns the name (internally on first assignment).
-    """
-    if self.name == name and self.loop is loop:
-      return
-    assert not self.loop and not self.name and not self.name_ctx  # not yet assigned
     self.loop = loop
     self.name = name
+    self.assigned_value = None
     self.name_ctx = nest.map_structure_with_tuple_paths(
-      lambda path, ref: NameCtx(suggested_name='.'.join(str(key) for key in ('state', name) + path)),
+      lambda path, ref: NameCtx(
+        suggested_name='.'.join(str(key) for key in ('state', name) + path),
+        parent=loop.name_ctx),
       self.initial)
 
   def assign(self, value):

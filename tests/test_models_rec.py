@@ -29,9 +29,10 @@ def test_rec_ff():
       Forward
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
-      with nn.Loop(axis=axis) as loop:
+      loop = nn.Loop(axis=axis)
+      loop.state.h = nn.zeros([nn.batch_dim, self.rec_linear.out_dim])
+      with loop:
         x_ = loop.unstack(x)
-        loop.state.h = nn.State(initial=nn.zeros([nn.batch_dim, self.rec_linear.out_dim]))
         loop.state.h = self.rec_linear(nn.concat((x_, x_.feature_dim), (loop.state.h, self.rec_linear.out_dim)))
         y = loop.stack(loop.state.h)
       return y
@@ -58,9 +59,10 @@ def test_rec_inner_lstm():
       """
       Forward
       """
-      with nn.Loop(axis=axis) as loop:
+      loop = nn.Loop(axis=axis)
+      loop.state.lstm = self.lstm.default_initial_state()
+      with loop:
         x_ = loop.unstack(x)
-        loop.state.lstm = nn.State(initial=self.lstm.default_initial_state())
         y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, axis=nn.single_step_dim)
         y = loop.stack(y_)
       return y
@@ -77,8 +79,9 @@ def test_rec_simple_iter():
       Forward
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
-      with nn.Loop(max_seq_len=10) as loop:
-        loop.state.i = nn.State(initial=nn.zeros([nn.batch_dim]))
+      loop = nn.Loop(max_seq_len=10)
+      loop.state.i = nn.zeros([nn.batch_dim])
+      with loop:
         loop.state.i = loop.state.i + 1.
         loop.end(loop.state.i >= 5., include_eos=True)
         y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis=axis))
