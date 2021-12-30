@@ -336,7 +336,7 @@ class Parameter(Layer):
   aka ``tf.Variable`` in TensorFlow,
   wrapping to ``VariableLayer`` in RETURNN.
   """
-  def __init__(self, shape: Sequence[Dim], dtype: str = "float32"):
+  def __init__(self, shape: Sequence[Dim], dtype: Optional[str] = None, *, trainable: Optional[bool] = None):
     if not all(isinstance(dim, Dim) for dim in shape):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
     if not all(isinstance(dim.dimension, int) for dim in shape):
@@ -347,8 +347,13 @@ class Parameter(Layer):
     # The name will be inferred by the parent modules and the attribute chain.
     name_ctx = NameCtx(name="parameter", parent=None)  # this is incomplete and will be configured later
     data = Data("parameter", dim_tags=list(shape), dtype=dtype)
+    layer_dict = {"class": "variable", "shape": list(shape)}
+    if dtype is not None:
+      layer_dict["dtype"] = dtype
+    if trainable is not None:
+      layer_dict["trainable"] = trainable
     super(Parameter, self).__init__(
-      layer_dict={"class": "variable", "shape": list(shape), "dtype": dtype},
+      layer_dict=layer_dict,
       predefined_out_data=data, add_out_shape_info=False,
       name_ctx=name_ctx)
 
