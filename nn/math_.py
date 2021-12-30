@@ -35,6 +35,7 @@ def gelu(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="gelu")
 
 
+@nn.scoped
 def glu(x: nn.LayerRef, axis: nn.Dim) -> nn.Layer:
   """GLU https://arxiv.org/abs/1612.08083"""
   from . import split
