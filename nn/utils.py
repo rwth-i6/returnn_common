@@ -44,3 +44,8 @@ def dropout(source: nn.LayerRef,
   return make_layer(
     {"class": "dropout", "from": source, **opts},
     name=name or "dropout")
+
+
+def stop_gradient(source: nn.LayerRef, name: Optional[str] = None) -> nn.LayerRef:
+  """wraps tf.stop_gradient"""
+  return nn.scaled_gradient(source, scale=0, name=name)
