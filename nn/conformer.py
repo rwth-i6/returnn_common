@@ -55,7 +55,8 @@ class ConformerConvBlock(nn.Module):
     super().__init__()
 
     self.positionwise_conv1 = nn.Linear(2 * out_dim)
-    self.depthwise_conv = nn.Conv(n_out=out_dim, filter_size=(kernel_size,), groups=out_dim, padding='same')
+    self.depthwise_conv = nn.Conv(
+      out_dim=out_dim, filter_size=(kernel_size,), groups=out_dim.dimension, padding='same')
     self.positionwise_conv2 = nn.Linear(out_dim)
 
     if batch_norm_opts is None:
