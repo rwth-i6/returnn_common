@@ -74,12 +74,12 @@ class Sequential(ModuleList):
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
   @nn.scoped
-  def __call__(self, inp) -> LayerRef:
+  def __call__(self, inp, **kwargs) -> LayerRef:
     """
     Forward
     """
     for module in self:
-      inp = module(inp)
+      inp = module(inp, **kwargs)
     return inp
 
 
