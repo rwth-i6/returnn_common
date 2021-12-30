@@ -3,7 +3,7 @@ Conformer code.
 Ref: https://arxiv.org/abs/2005.08100
 """
 
-from typing import Tuple, List, Callable, Optional, Dict, Any
+from typing import Tuple, List, Callable, Optional
 from .. import nn
 import copy
 
