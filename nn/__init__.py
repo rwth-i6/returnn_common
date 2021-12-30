@@ -8,6 +8,7 @@ from .const import *
 from .math_ import *
 from .array_ import *
 from .utils import *
+from .norm import *
 from .linear import *
 from .rec import *
 from .container import *
