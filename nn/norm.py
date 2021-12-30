@@ -28,28 +28,28 @@ class BatchNorm(nn.Module):
   See here for discussion on defaults: https://github.com/rwth-i6/returnn/issues/522
   """
 
-  def __init__(self, feature_dim: Optional[nn.Dim] = None):
+  def __init__(self, in_dim: Optional[nn.Dim] = None):
     super().__init__()
-    self.feature_dim = feature_dim
+    self.in_dim = in_dim
     self.mean = None  # type: Optional[nn.Parameter]
     self.var = None  # type: Optional[nn.Parameter]
-    if feature_dim:
-      self._lazy_init(feature_dim)
+    if in_dim:
+      self._lazy_init(in_dim)
 
-  def _lazy_init(self, feature_dim: nn.Dim):
-    self.feature_dim = feature_dim
-    self.mean = nn.Parameter([feature_dim], trainable=False)
-    self.var = nn.Parameter([feature_dim], trainable=False)
+  def _lazy_init(self, in_dim: nn.Dim):
+    self.in_dim = in_dim
+    self.mean = nn.Parameter([in_dim], trainable=False)
+    self.var = nn.Parameter([in_dim], trainable=False)
 
-  def __call__(self, source: nn.LayerRef, *, feature_dim: Optional[nn.Dim], spatial_dims: Sequence[nn.Dim],
+  def __call__(self, source: nn.LayerRef, *, in_dim: Optional[nn.Dim],
                epsilon: float = 1e-5) -> nn.Layer:
-    assert self.feature_dim or source.feature_dim or feature_dim
-    if feature_dim:
-      self._lazy_init(feature_dim)
-    elif not self.feature_dim:
+    assert self.in_dim or source.feature_dim or in_dim
+    if in_dim:
+      self._lazy_init(in_dim)
+    elif not self.in_dim:
       self._lazy_init(source.feature_dim)
 
-    reduce_dims = [d for d in source.data.dim_tags if d != feature_dim]
+    reduce_dims = [d for d in source.data.dim_tags if d != in_dim]
     mean, variance = moments(source, reduce_dims)
     # TODO: handle running mean/var ...
     return (source - mean) * nn.rsqrt(variance + epsilon)
