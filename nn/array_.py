@@ -7,6 +7,46 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
+def expand_dim(source: nn.LayerRef, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Layer:
+  """
+  Expand the source by the given dimension,
+  which should be 1.
+
+  Note that this is *never* needed for broadcasting.
+  All broadcasting should always happen automatically.
+
+  This might be needed for convolution.
+
+  This can be reversed via :func:`squeeze`.
+  """
+  if dim.dimension != 1:
+    raise ValueError(f"{dim} is not a 1-dim")
+  # We use SplitDimsLayer for this.
+  # ExpandDimsLayer in RETURNN currently would allow to use a dim tag.
+  # Now search for a good axis to split via some heuristics.
+  source_dims = [d for d in source.data.dim_tags if not d.is_batch_dim()]
+  if not source_dims:
+    # Unfortunately, for scalars (ignoring batch), split_dims does not work.
+    return source + nn.zeros(source.data.dim_tags + (dim,), dtype=source.dtype)
+  if dim.is_spatial_dim():
+    if any(d.is_spatial_dim() for d in source_dims):
+      axis = [d for d in source_dims if d.is_spatial_dim()][-1]
+      return nn.split_dims(source, axis=axis, dims=(axis, dim), name=name)
+    else:
+      axis = source_dims[0]
+      return nn.split_dims(source, axis=axis, dims=(dim, axis), name=name)
+  elif dim.is_feature_dim():
+    if any(d.is_feature_dim() for d in source_dims):
+      axis = [d for d in source_dims if d.is_feature_dim()][-1]
+      return nn.split_dims(
+        source, axis=axis, dims=(axis.copy(same_as_self=True, kind=nn.Dim.Types.Spatial), dim), name=name)
+    else:
+      axis = source_dims[-1]
+      return nn.split_dims(source, axis=axis, dims=(axis, dim), name=name)
+  else:
+    raise ValueError(f"{dim} is not a spatial or feature dim")
+
+
 def concat(*sources: Tuple[nn.LayerRef, nn.Dim],
            allow_broadcast=False,
            name: Optional[str] = None) -> nn.Layer:
