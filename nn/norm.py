@@ -41,7 +41,7 @@ class BatchNorm(nn.Module):
     self.mean = nn.Parameter([in_dim], trainable=False)
     self.var = nn.Parameter([in_dim], trainable=False)
 
-  def __call__(self, source: nn.LayerRef, *, in_dim: Optional[nn.Dim],
+  def __call__(self, source: nn.LayerRef, *, in_dim: Optional[nn.Dim] = None,
                epsilon: float = 1e-5) -> nn.Layer:
     assert self.in_dim or source.feature_dim or in_dim
     if in_dim:
