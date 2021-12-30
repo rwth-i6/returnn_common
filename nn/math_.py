@@ -67,6 +67,16 @@ def log_sigmoid(x: nn.LayerRef) -> nn.Layer:
   return _activation(x, activation="log_sigmoid")
 
 
+def sqrt(x: nn.LayerRef) -> nn.Layer:
+  """sqrt"""
+  return _activation(x, activation="sqrt")
+
+
+def rsqrt(x: nn.LayerRef) -> nn.Layer:
+  """rsqrt"""
+  return _activation(x, activation="rsqrt")
+
+
 def swish(x: nn.LayerRef) -> nn.Layer:
   """swish"""
   return _activation(x, activation="swish")
