@@ -46,29 +46,26 @@ class ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, out_dim: nn.Dim, *, kernel_size: int, batch_norm_opts: Optional[Dict[str, Any]] = None):
+  def __init__(self, out_dim: nn.Dim, *, kernel_size: int, batch_norm: nn.BatchNorm):
     """
     :param out_dim: output feature dimension
     :param kernel_size: kernel size of depthwise convolution
-    :param batch_norm_opts: batch norm options
+    :param batch_norm:
     """
     super().__init__()
 
     self.positionwise_conv1 = nn.Linear(2 * out_dim)
     self.depthwise_conv = nn.Conv(
-      out_dim=out_dim, filter_size=(kernel_size,), groups=out_dim.dimension, padding='same')
+      out_dim=out_dim, filter_size=[kernel_size], groups=out_dim.dimension, padding='same')
     self.positionwise_conv2 = nn.Linear(out_dim)
-
-    if batch_norm_opts is None:
-      batch_norm_opts = {}
-    self.batch_norm = nn.BatchNorm(update_sample_only_in_training=True, delay_sample_update=True, **batch_norm_opts)
+    self.batch_norm = batch_norm
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.glu(x_conv1, axis=inp.feature_dim)
-    x_depthwise_conv = self.depthwise_conv(x_act)
+    x_depthwise_conv = self.depthwise_conv(x_act, in_spatial_dims=[axis])
     x_bn = self.batch_norm(x_depthwise_conv)
     x_swish = nn.swish(x_bn)
     x_conv2 = self.positionwise_conv2(x_swish)
@@ -81,7 +78,7 @@ class ConformerConvSubsample(nn.Module):
   """
 
   def __init__(
-        self, filter_sizes: List[Tuple[int, int]], channel_sizes: List[nn.Dim], dropout: float,
+        self, *, filter_sizes: List[Tuple[int, int]], channel_sizes: List[nn.Dim], dropout: float,
         pool_sizes: Optional[List[Tuple[int, int]]] = None, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
         padding: str = 'same'):
     """
@@ -99,23 +96,31 @@ class ConformerConvSubsample(nn.Module):
     self.activation = activation
 
     self.conv_layers = nn.ModuleList()
-    assert len(filter_sizes) == len(channel_sizes)
+    assert len(filter_sizes) == len(channel_sizes) > 0
     for filter_size, channel_size in zip(filter_sizes, channel_sizes):
       self.conv_layers.append(
         nn.Conv(filter_size=filter_size, out_dim=channel_size, padding=padding))
+    self.out_dim = channel_sizes[-1]
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *, axis: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
     """forward"""
-    x = nn.split_dims(inp, axis='F', dims=(-1, 1))
+    in_spatial_dims = [axis, inp.feature_dim]
+    in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
+    x = nn.expand_dim(inp, dim=in_dim)
     for i, conv_layer in enumerate(self.conv_layers):
-      x = conv_layer(x)
+      out_spatial_dims = [nn.SpatialDim(f"conv-{i}-1"), nn.SpatialDim(f"conv-{i}-2")]
+      x = conv_layer(x, in_dim=in_dim, in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims)
+      in_spatial_dims = out_spatial_dims
+      in_dim = conv_layer.out_dim
       x = self.activation(x)
       if self.pool_sizes and i < len(self.pool_sizes):
-        x = nn.pool(x, pool_size=self.pool_sizes[i], padding='same', mode='max')
+        x = nn.pool(
+          x, in_dim=in_dim, in_spatial_dims=in_spatial_dims,
+          pool_size=self.pool_sizes[i], padding='same', mode='max')
       if self.dropout:
-        x = nn.dropout(x, dropout=self.dropout)
-    out = nn.merge_dims(x, axes='static')
+        x = nn.dropout(x, axis=in_dim, dropout=self.dropout)
+    out = nn.merge_dims(x, axes=in_spatial_dims, out_dim=out_spatial_dim)
     return out
 
 
@@ -126,6 +131,7 @@ class ConformerEncoderLayer(nn.Module):
 
   def __init__(
         self,
+        *,
         conv_kernel_size: int = 32,
         activation_ff: Callable[[nn.LayerRef], nn.LayerRef] = nn.swish,
         out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
@@ -133,7 +139,7 @@ class ConformerEncoderLayer(nn.Module):
         dim_ff: nn.Dim = nn.FeatureDim("conformer-enc-default-ff-dim", 2048),
         dropout: float = 0.1,
         att_dropout: float = 0.1,
-        batch_norm_opts: Optional[Dict[str, Any]] = None):
+        batch_norm: nn.BatchNorm):
     """
     :param conv_kernel_size: the kernel size of depthwise convolution
     :param activation_ff: activation funtion for feed-forward network
@@ -142,7 +148,7 @@ class ConformerEncoderLayer(nn.Module):
     :param att_dropout: attention dropout value
     :param out_dim: the output feature dimension
     :param num_heads: the number of attention heads
-    :param batch_norm_opts: passed to :class:`nn.BatchNorm`
+    :param batch_norm:
     """
     super().__init__()
 
@@ -156,7 +162,7 @@ class ConformerEncoderLayer(nn.Module):
       out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
     self.conv_block = ConformerConvBlock(
-      out_dim=out_dim, kernel_size=conv_kernel_size, batch_norm_opts=batch_norm_opts)
+      out_dim=out_dim, kernel_size=conv_kernel_size, batch_norm=batch_norm)
 
     self.self_att = nn.SelfAttention(
       key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
@@ -206,7 +212,7 @@ class ConformerEncoder(nn.Module):
     self.conv_subsample_layer = ConformerConvSubsample(
       filter_sizes=[(3, 3), (3, 3)],
       pool_sizes=[(2, 2), (2, 2)],
-      channel_sizes=[self.out_dim, self.out_dim],
+      channel_sizes=[self.out_dim.copy(same_as_self=False, description="intermediate"), self.out_dim],
       dropout=self.dropout)
 
     self.linear = nn.Linear(self.out_dim, with_bias=False)
@@ -214,10 +220,10 @@ class ConformerEncoder(nn.Module):
     self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *, axis: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
     """forward"""
-    x_subsample = self.conv_subsample_layer(inp)
+    x_subsample = self.conv_subsample_layer(inp, axis=axis, out_spatial_dim=out_spatial_dim)
     x_linear = self.linear(x_subsample)
-    x = nn.dropout(x_linear, dropout=self.dropout)
-    x = self.layers(x)
+    x = nn.dropout(x_linear, axis=self.linear.out_dim, dropout=self.dropout)
+    x = self.layers(x, axis=out_spatial_dim)
     return x
