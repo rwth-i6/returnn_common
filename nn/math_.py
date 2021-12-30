@@ -5,6 +5,7 @@ Some basic math functions
 
 from typing import Optional, Union
 from .. import nn
+from ._generated_layers import _eval
 
 
 def identity(x: nn.LayerRef) -> nn.LayerRef:
@@ -81,6 +82,11 @@ def rsqrt(x: nn.LayerRef) -> nn.Layer:
 def swish(x: nn.LayerRef) -> nn.Layer:
   """swish"""
   return _activation(x, activation="swish")
+
+
+def squared_difference(a: nn.LayerRef, b: nn.LayerRef, *, name: Optional[str] = None) -> nn.Layer:
+  """wraps tf.math.squared_difference"""
+  return _eval([a, b], eval="tf.math.squared_difference(source(0), source(1))", name=name or "squared_difference")
 
 
 # softmax already provided via generated layers
