@@ -173,66 +173,6 @@ def layer_norm(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def normalize(
-              source: LayerRef,
-              *,
-              axis: Union[Dim, Sequence[Dim]],
-              param_shape: Union[Dim, Sequence[Dim]] = NotSpecified,
-              scale: bool = NotSpecified,
-              bias: bool = NotSpecified,
-              epsilon: float = NotSpecified,
-              name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  Normalize over specified axes, e.g. time and/or feature axis.
-
-  Note: For calculating a norm, see :class:`MathNormLayer` instead.
-
-  In case of just feature (``axes="F"``),
-  this corresponds to `layer normalization <https://arxiv.org/abs/1607.06450>`__ (see :class:`LayerNormLayer`).
-  In case of time and feature (``axes="TF"``) for a 3D input,
-  or more general all except batch (``axes="except_batch"``),
-  this corresponds to `group normalization <https://arxiv.org/abs/1803.08494>`__ with G=1,
-  or non-standard layer normalization.
-  (The definition of layer-normalization is not clear on what axes should be normalized over.
-  In many other frameworks, the default axis is just the last axis,
-  which is usually the feature axis.
-  However, in certain implementations and models,
-  it is also common to normalize over all axes except batch.)
-
-  The statistics are calculated just on the input.
-  There are no running statistics (in contrast to batch normalization, see :class:`BatchNormLayer`).
-
-  For some discussion on the definition of layer-norm vs group-norm,
-  also see
-  `here <https://stats.stackexchange.com/questions/485550/is-group-norm-with-g-1-equiv-to-layer-norm>`__
-  and `here <https://github.com/tensorflow/addons/issues/2143>`__.
-
-  :param LayerRef source:
-  :param Dim|Sequence[Dim] axis: axis or axes over which the mean and variance are computed, e.g. "F" or "TF"
-    axis or axes over which the mean and variance are computed, e.g. "F" or "TF"
-  :param Dim|Sequence[Dim] param_shape: shape of the scale and bias parameters.
-    You can also refer to (static) axes of the input, such as the feature-dim.
-    This is also the default, i.e. a param-shape of [F], independent of the axes to normalize over.
-  :param bool scale: add trainable scale parameters
-  :param bool bias: add trainable bias parameters
-  :param float epsilon: epsilon for numerical stability
-  :param str|NameCtx|None name:
-  """
-  args = {
-    'axis': axis,
-    'param_shape': param_shape,
-    'scale': scale,
-    'bias': bias,
-    'epsilon': epsilon,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
-    'class': 'norm',
-    'from': source,
-    **args}, name=name or 'normalize')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def math_norm(
               source: LayerRef,
               *,

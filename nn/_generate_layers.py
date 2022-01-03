@@ -51,6 +51,7 @@ BlacklistLayerClassNames = {
   "gauss_window_attention",
   "relative_positional_encoding",
   "gating",
+  "norm",
 
   "RecStepInfoLayer",
   "_TemplateLayer",
