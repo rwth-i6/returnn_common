@@ -39,6 +39,7 @@ BlacklistLayerClassNames = {
   "_ConcatInputLayer",  # we don't do automatic concat, https://github.com/rwth-i6/returnn_common/issues/41
 
   # all these manual
+  "variable",
   "concat",
   "activation",
   "dropout",
@@ -120,13 +121,16 @@ LayerClassesWithExplicitTarget = {
 IgnoreLayerArgs = {
   "self", "name", "network", "output",
   "n_out", "out_type", "sources", "target", "loss", "loss_", "size_target",
+  "param_device", "trainable", "custom_param_importer",
+  "only_on_eval", "only_on_search",
+  "L2", "darc1", "spatial_smoothing", "param_variational_noise",
   "activation",  # more explicitly decoupled. https://github.com/rwth-i6/returnn_common/issues/62
   "name_scope", "reuse_params",
   "rec_previous_layer", "control_dependencies_on_output",
   "state", "initial_state", "initial_output",
   "extra_deps", "collocate_with",
   "batch_norm",
-  "is_output_layer", "register_as_extern_data",
+  "is_output_layer", "need_last", "register_as_extern_data",
   "copy_output_loss_from_source_idx",
   "num_splits", "size_splits",  # out_dims instead
   # keep dims should never be needed

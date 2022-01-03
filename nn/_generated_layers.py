@@ -56,17 +56,7 @@ class _Base(ReturnnWrappedLayerBase):
                out_dim: Optional[Dim] = NotSpecified,
                out_shape: Optional[Union[Set[Union[Dim, _MarkedDim]], Sequence, Sequence]] = NotSpecified,
                in_dim: Optional[Dim] = NotSpecified,
-               param_device: Optional[str] = NotSpecified,
-               only_on_eval: bool = NotSpecified,
-               only_on_search: bool = NotSpecified,
-               l2: Optional[float] = NotSpecified,
-               darc1: Optional[float] = NotSpecified,
-               spatial_smoothing: Optional[float] = NotSpecified,
-               param_variational_noise: Optional[float] = NotSpecified,
                updater_opts: Optional[Dict[str]] = NotSpecified,
-               need_last: bool = NotSpecified,
-               trainable: Optional[bool] = NotSpecified,
-               custom_param_importer: Optional[Union[str, callable]] = NotSpecified,
                ):
     """
     Usually the arguments, when specified in the network dict,
@@ -77,37 +67,13 @@ class _Base(ReturnnWrappedLayerBase):
     :param set[Dim|_MarkedDim]|tuple|list|None out_shape:
       verifies the output shape (dim tags). See :func:`Data.verify_out_shape`.
     :param Dim|None in_dim: input feature dim tag
-    :param str|None param_device: e.g. "CPU", etc. any valid name for tf.device.
-      see https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/util/device_name_utils.h
-    :param bool only_on_eval: if True, this layer will only be calculated in eval
-    :param bool only_on_search: if True, this layer will only be calculated when search is done
-    :param float|None l2: for constraints
-    :param float|None darc1: for constraints. see Generalization in Deep Learning, https://arxiv.org/abs/1710.05468
-    :param float|None spatial_smoothing: see :func:`returnn.tf.util.basic.spatial_smoothing_energy`
-    :param float|None param_variational_noise: adds variational noise to the params during training
     :param dict[str]|None updater_opts: accepts similar opts as TFUpdater, e.g. "optimizer", "learning_rate", ...
-    :param bool need_last: Inside :class:`RecLayer`, make sure that we can access the last frame.
-      Similar to ``is_output_layer, but this is specifically about the last frame,
-      i.e. it does not trigger accumulation.
-    :param bool|None trainable: whether the parameters of this layer will be trained.
-      default (None) inherits from the parent layer if there is one, or otherwise True.
-    :param str|callable|None custom_param_importer: used by :func:`set_param_values_by_dict`
     """
     super().__init__()
     self.out_dim = out_dim
     self.out_shape = out_shape
     self.in_dim = in_dim
-    self.param_device = param_device
-    self.only_on_eval = only_on_eval
-    self.only_on_search = only_on_search
-    self.l2 = l2
-    self.darc1 = darc1
-    self.spatial_smoothing = spatial_smoothing
-    self.param_variational_noise = param_variational_noise
     self.updater_opts = updater_opts
-    self.need_last = need_last
-    self.trainable = trainable
-    self.custom_param_importer = custom_param_importer
 
   def get_opts(self):
     """
@@ -117,17 +83,7 @@ class _Base(ReturnnWrappedLayerBase):
       'out_dim': self.out_dim,
       'out_shape': self.out_shape,
       'in_dim': self.in_dim,
-      'param_device': self.param_device,
-      'only_on_eval': self.only_on_eval,
-      'only_on_search': self.only_on_search,
-      'L2': self.l2,
-      'darc1': self.darc1,
-      'spatial_smoothing': self.spatial_smoothing,
-      'param_variational_noise': self.param_variational_noise,
       'updater_opts': self.updater_opts,
-      'need_last': self.need_last,
-      'trainable': self.trainable,
-      'custom_param_importer': self.custom_param_importer,
     }
     opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}
     return opts
@@ -2184,36 +2140,6 @@ def search_sorted(
     'class': 'search_sorted',
     'from': source,
     **args}, name=name or 'search_sorted')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def variable(
-             *,
-             shape: Sequence[Dim],
-             dtype: str = NotSpecified,
-             trainable: bool = NotSpecified,
-             init: Union[str, float, int] = NotSpecified,
-             name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  Represents a variable. Can add batch/time dimension if wanted. Can be trainable.
-  See defaults.
-
-  :param Sequence[Dim] shape:
-  :param str dtype:
-  :param bool trainable:
-  :param str|float|int init: see :func:`returnn.tf.util.basic.get_initializer`
-  :param str|NameCtx|None name:
-  """
-  args = {
-    'shape': shape,
-    'dtype': dtype,
-    'trainable': trainable,
-    'init': init,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
-    'class': 'variable',
-    **args}, name=name or 'variable')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
