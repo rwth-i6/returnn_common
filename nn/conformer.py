@@ -35,7 +35,7 @@ class ConformerPositionwiseFeedForward(nn.Module):
     """forward"""
     x_ff1 = self.linear_ff(inp)
     x_act = self.activation(x_ff1)
-    x_drop = nn.dropout(x_act, dropout=self.dropout)
+    x_drop = nn.dropout(x_act, axis=inp.feature_dim, dropout=self.dropout)
     x_ff2 = self.linear_out(x_drop)
     return x_ff2
 
@@ -173,7 +173,7 @@ class ConformerEncoderLayer(nn.Module):
     # FFN
     x_ffn1_ln = nn.layer_norm(inp, in_dim=inp.feature_dim)
     x_ffn1 = self.ffn1(x_ffn1_ln)
-    x_ffn1_out = 0.5 * nn.dropout(x_ffn1, dropout=self.dropout) + inp
+    x_ffn1_out = 0.5 * nn.dropout(x_ffn1, axis=inp.feature_dim, dropout=self.dropout) + inp
 
     # MHSA
     x_mhsa_ln = nn.layer_norm(x_ffn1_out, in_dim=inp.feature_dim)
@@ -183,12 +183,12 @@ class ConformerEncoderLayer(nn.Module):
     # Conv
     x_conv_ln = nn.layer_norm(x_mhsa_out, in_dim=inp.feature_dim)
     x_conv = self.conv_block(x_conv_ln)
-    x_conv_out = nn.dropout(x_conv, dropout=self.dropout) + x_mhsa_out
+    x_conv_out = nn.dropout(x_conv, axis=inp.feature_dim, dropout=self.dropout) + x_mhsa_out
 
     # FFN
     x_ffn2_ln = nn.layer_norm(x_conv_out, in_dim=inp.feature_dim)
     x_ffn2 = self.ffn2(x_ffn2_ln)
-    x_ffn2_out = 0.5 * nn.dropout(x_ffn2, dropout=self.dropout) + x_conv_out
+    x_ffn2_out = 0.5 * nn.dropout(x_ffn2, axis=inp.feature_dim, dropout=self.dropout) + x_conv_out
 
     # last LN layer
     return nn.layer_norm(x_ffn2_out, in_dim=inp.feature_dim)
