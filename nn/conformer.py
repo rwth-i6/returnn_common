@@ -78,12 +78,12 @@ class ConformerConvSubsample(nn.Module):
   """
 
   def __init__(
-        self, *, filter_sizes: List[Tuple[int, int]], channel_sizes: List[nn.Dim], dropout: float,
+        self, *, filter_sizes: List[Tuple[int, int]], out_dims: List[nn.Dim], dropout: float,
         pool_sizes: Optional[List[Tuple[int, int]]] = None, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu,
         padding: str = 'same'):
     """
     :param filter_sizes: a list of filter sizes for the conv layer
-    :param channel_sizes: the number of output channels
+    :param out_dims: the number of output channels. last element is the output feature dimension
     :param dropout: the dropout value
     :param pool_sizes: a list of pooling factors applied after conv layer
     :param activation: the activation function
@@ -96,11 +96,11 @@ class ConformerConvSubsample(nn.Module):
     self.activation = activation
 
     self.conv_layers = nn.ModuleList()
-    assert len(filter_sizes) == len(channel_sizes) > 0
-    for filter_size, channel_size in zip(filter_sizes, channel_sizes):
+    assert len(filter_sizes) == len(out_dims) > 0
+    for filter_size, out_dim in zip(filter_sizes, out_dims):
       self.conv_layers.append(
-        nn.Conv(filter_size=filter_size, out_dim=channel_size, padding=padding))
-    self.out_dim = channel_sizes[-1]
+        nn.Conv(filter_size=filter_size, out_dim=out_dim, padding=padding))
+    self.out_dim = out_dims[-1]
 
   @nn.scoped
   def __call__(self, inp: nn.LayerRef, *, in_spatial_dim: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
@@ -212,7 +212,7 @@ class ConformerEncoder(nn.Module):
     self.conv_subsample_layer = ConformerConvSubsample(
       filter_sizes=[(3, 3), (3, 3)],
       pool_sizes=[(2, 2), (2, 2)],
-      channel_sizes=[self.out_dim.copy(same_as_self=False, description="intermediate"), self.out_dim],
+      out_dims=[self.out_dim.copy(same_as_self=False, description="intermediate"), self.out_dim],
       dropout=self.dropout)
 
     self.linear = nn.Linear(self.out_dim, with_bias=False)
