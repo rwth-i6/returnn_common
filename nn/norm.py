@@ -44,10 +44,8 @@ class BatchNorm(nn.Module):
   def __call__(self, source: nn.LayerRef, *, in_dim: Optional[nn.Dim] = None,
                epsilon: float = 1e-5) -> nn.Layer:
     assert self.in_dim or source.feature_dim or in_dim
-    if in_dim:
-      self._lazy_init(in_dim)
-    elif not self.in_dim:
-      self._lazy_init(source.feature_dim)
+    if in_dim or not self.in_dim:
+      self._lazy_init(in_dim or source.feature_dim)
 
     reduce_dims = [d for d in source.data.dim_tags if d != in_dim]
     mean, variance = moments(source, reduce_dims)
