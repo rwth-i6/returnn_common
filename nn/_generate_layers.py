@@ -290,7 +290,6 @@ def setup():
             print("               *,", file=f)
             if sig.has_recurrent_state():
               print(f"               {sig.get_module_call_state_param_code_str('state')},", file=f)
-              print(f"               {sig.get_module_call_state_param_code_str('initial_state')},", file=f)
             for param in sig.get_module_call_args():
               print(f"               {param.get_module_param_code_str()},", file=f)
           print(f"               ) -> {res_type_str}:",  file=f)
@@ -325,7 +324,7 @@ def setup():
           if sig.has_recurrent_state():
             # There must be an axis argument.
             assert "axis" in sig.params
-            print("    self.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)", file=f)
+            print("    self.handle_recurrent_state(args, axis=axis, state=state)", file=f)
         if sig.has_recurrent_state():
           print("    layer = make_layer({", file=f)
         else:
@@ -368,7 +367,6 @@ def setup():
       print(f"{prefix}*,", file=f)
       if sig.has_recurrent_state():
         print(f"{prefix}{sig.get_module_call_state_param_code_str('state')},", file=f)
-        print(f"{prefix}{sig.get_module_call_state_param_code_str('initial_state')},", file=f)
       mod_args = sig.get_all_derived_args()
       for param in mod_args:
         print(f"{prefix}{param.get_module_param_code_str()},", file=f)
@@ -394,7 +392,6 @@ def setup():
           print(f"  {sig.get_module_call_source_docstring(explicit_idx=i)}", file=f)
       if sig.has_recurrent_state():
         print(f"  {sig.get_module_call_state_docstring('state')}", file=f)
-        print(f"  {sig.get_module_call_state_docstring('initial_state')}", file=f)
       for param in mod_args:
         print(param.get_module_param_docstring(indent="  "), file=f)
       print("  :param str|NameCtx|None name:", file=f)
@@ -408,7 +405,7 @@ def setup():
       if sig.has_recurrent_state():
         print(
           "  ReturnnWrappedLayerBase.handle_recurrent_state("
-          "args, axis=axis, state=state, initial_state=initial_state)", file=f)
+          "args, axis=axis, state=state)", file=f)
         print("  layer = make_layer({", file=f)
       else:
         print("  return make_layer({", file=f)
@@ -616,7 +613,7 @@ class LayerSignature:
       Outside a loop::
 
         mod = Module(...)
-        out, last_state = mod(in, [initial_state=initial_state])
+        out, last_state = mod(in, [state=initial_state])
     """
     if (
           getattr(self.layer_class.get_rec_initial_extra_outputs, "__func__")

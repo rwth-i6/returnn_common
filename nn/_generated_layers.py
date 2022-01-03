@@ -817,7 +817,6 @@ def rec_window(
                source: LayerRef,
                *,
                state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-               initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                window_dim: Optional[Dim] = NotSpecified,
                window_left: Optional[int] = NotSpecified,
                window_right: Optional[int] = NotSpecified,
@@ -842,7 +841,6 @@ def rec_window(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param Dim|None window_dim:
   :param int|None window_left:
   :param int|None window_right:
@@ -862,7 +860,7 @@ def rec_window(
     'stride': stride,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
   layer = make_layer({
     'class': 'window',
     'from': source,
@@ -876,7 +874,6 @@ def rec_cum_sum(
                 source: LayerRef,
                 *,
                 state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                 axis: Dim,
                 additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
                 reverse: bool = NotSpecified,
@@ -886,7 +883,6 @@ def rec_cum_sum(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param Dim axis: see :func:`Data.get_axis_from_description`
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
   :param bool reverse:
@@ -898,7 +894,7 @@ def rec_cum_sum(
     'reverse': reverse,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
   layer = make_layer({
     'class': 'cumsum',
     'from': source,
@@ -2738,7 +2734,6 @@ def ken_lm_state(
                  source: LayerRef,
                  *,
                  state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                 initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                  lm_file: callable,
                  vocab_file: Optional[str] = NotSpecified,
                  vocab_unknown_label: str = NotSpecified,
@@ -2758,7 +2753,6 @@ def ken_lm_state(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
   :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
   :param str vocab_unknown_label: for the vocabulary
@@ -2780,7 +2774,7 @@ def ken_lm_state(
     'debug': debug,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
   layer = make_layer({
     'class': 'kenlm',
     'from': source,
@@ -2794,7 +2788,6 @@ def edit_distance_table(
                         source: LayerRef,
                         *,
                         state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                        initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                         axis: Union[Dim, NotSpecified],
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
@@ -2813,7 +2806,6 @@ def edit_distance_table(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param Dim|NotSpecified axis:
   :param bool debug:
   :param int|None blank_idx: if given, will keep the same row for this source label
@@ -2827,7 +2819,7 @@ def edit_distance_table(
     'out_dim': out_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
   layer = make_layer({
     'class': 'edit_distance_table',
     'from': source,
@@ -2877,7 +2869,6 @@ def rec_cum_concat(
                    source: LayerRef,
                    *,
                    state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                   initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                    out_spatial_dim: Dim,
                    axis: Dim,
                    name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
@@ -2926,7 +2917,6 @@ def rec_cum_concat(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None initial_state:
   :param Dim out_spatial_dim:
   :param Dim axis: axis to operate over, or nn.single_step_dim
   :param str|NameCtx|None name:
@@ -2936,7 +2926,7 @@ def rec_cum_concat(
     'axis': axis,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state, initial_state=initial_state)
+  ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
   layer = make_layer({
     'class': 'cum_concat',
     'from': source,

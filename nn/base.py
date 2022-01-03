@@ -677,7 +677,6 @@ class ReturnnWrappedLayerBase(Module):
   def handle_recurrent_state(args: Dict[str, Any], *,
                              axis: Dim,
                              state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                             initial_state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
                              ):
     """
     Update the args to include either state or initial_state,
@@ -685,17 +684,13 @@ class ReturnnWrappedLayerBase(Module):
 
     :param args: layer arguments
     :param axis: single_step_dim specifies to operate for a single step
-    :param state: prev state when operating a single step
-    :param initial_state: initial state when operating on an axis
+    :param state: prev state when operating a single step or initial state when operating on an axis
     """
     if axis == single_step_dim:
-      assert state is not NotSpecified
-      assert initial_state is NotSpecified
       args['state'] = state
     else:
-      assert state is NotSpecified
-      if initial_state is not NotSpecified:
-        args['initial_state'] = initial_state
+      if state is not NotSpecified:
+        args['initial_state'] = state
 
 
 def make_layer(layer_dict: LayerDictRaw, *,

@@ -39,13 +39,11 @@ class _Rec(nn.Module):
   def __call__(self, source: nn.LayerRef, *,
                axis: nn.Dim,
                state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
-               initial_state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
                ) -> Tuple[nn.Layer, nn.LayerState]:
     """
     :param source:
     :param axis: nn.single_step_dim specifies to operate for a single step
-    :param state: prev state when operating a single step
-    :param initial_state: initial state when operating on an axis
+    :param state: prev state when operating a single step or initial state when operating on an axis
     :return: out, out_state. out_state is the new or last state.
     """
     self._lazy_init(source.feature_dim)
@@ -61,8 +59,7 @@ class _Rec(nn.Module):
       param_ = getattr(self, f"param_{param}")
       reuse_params[param] = {"layer_output": param_}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
-    nn.ReturnnWrappedLayerBase.handle_recurrent_state(
-      rec_layer_dict, axis=axis, state=state, initial_state=initial_state)
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(rec_layer_dict, axis=axis, state=state)
     out = nn.make_layer(rec_layer_dict, name="rec")
     out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(out)
     return out, out_state

@@ -126,7 +126,7 @@ def test_rec_hidden_initial():
       y = self.linear(x)
       state = None
       for _ in range_(3):
-        y, state = self.lstm(y, initial_state=state, axis=axis)
+        y, state = self.lstm(y, state=state, axis=axis)
       return y
 
   config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
