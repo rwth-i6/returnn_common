@@ -61,11 +61,11 @@ class ConformerConvBlock(nn.Module):
     self.batch_norm = batch_norm
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *, in_spatial_dim: nn.Dim) -> nn.LayerRef:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.glu(x_conv1, axis=inp.feature_dim)
-    x_depthwise_conv = self.depthwise_conv(x_act, in_spatial_dims=[axis])
+    x_depthwise_conv = self.depthwise_conv(x_act, in_spatial_dims=[in_spatial_dim])
     x_bn = self.batch_norm(x_depthwise_conv, in_dim=inp.feature_dim)
     x_swish = nn.swish(x_bn)
     x_conv2 = self.positionwise_conv2(x_swish)
@@ -103,9 +103,9 @@ class ConformerConvSubsample(nn.Module):
     self.out_dim = channel_sizes[-1]
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef, *, axis: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *, in_spatial_dim: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
     """forward"""
-    in_spatial_dims = [axis, inp.feature_dim]
+    in_spatial_dims = [in_spatial_dim, inp.feature_dim]
     in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
     x = nn.expand_dim(inp, dim=in_dim)
     for i, conv_layer in enumerate(self.conv_layers):
@@ -220,10 +220,10 @@ class ConformerEncoder(nn.Module):
     self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef, *, axis: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *, in_spatial_dim: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
     """forward"""
-    x_subsample = self.conv_subsample_layer(inp, axis=axis, out_spatial_dim=out_spatial_dim)
+    x_subsample = self.conv_subsample_layer(inp, in_spatial_dim=in_spatial_dim, out_spatial_dim=out_spatial_dim)
     x_linear = self.linear(x_subsample)
     x = nn.dropout(x_linear, axis=self.linear.out_dim, dropout=self.dropout)
-    x = self.layers(x, axis=out_spatial_dim)
+    x = self.layers(x, in_spatial_dim=out_spatial_dim)
     return x
