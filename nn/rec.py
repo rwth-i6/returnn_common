@@ -16,6 +16,14 @@ class _Rec(nn.Module):
   def __init__(self, *, out_dim: nn.Dim, unit: str, param_list: List[Tuple[str, Callable[[], Tuple[nn.Dim, ...]]]],
                in_dim: Optional[nn.Dim] = None,
                unit_opts: Optional[Dict[str, Any]] = None):
+    """
+    :param out_dim: dimension tag for the output feature dimension
+    :param unit: unit description string, see documentation for available recurrent cells
+    :param param_list: (str, callable) pairs where the callable (usually lambda) returns all parameter dims
+      (e.g. 1 for bias and 2 for weight matrices)
+    :param in_dim: input feature dimension
+    :param unit_opts: additional options for the recurrent unit
+    """
     super().__init__()
     self.out_dim = out_dim
     self.in_dim = in_dim
@@ -39,11 +47,13 @@ class _Rec(nn.Module):
   def __call__(self, source: nn.LayerRef, *,
                axis: nn.Dim,
                state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
+               direction: int = 1,
                ) -> Tuple[nn.Layer, nn.LayerState]:
     """
     :param source:
     :param axis: nn.single_step_dim specifies to operate for a single step
     :param state: prev state when operating a single step or initial state when operating on an axis
+    :param direction: 1 for forward direction, -1 for backward direction
     :return: out, out_state. out_state is the new or last state.
     """
     self._lazy_init(source.feature_dim)
@@ -59,6 +69,10 @@ class _Rec(nn.Module):
       param_ = getattr(self, f"param_{param}")
       reuse_params[param] = {"layer_output": param_}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
+    assert direction in [1, -1]
+    if direction == -1:
+      assert axis is not nn.single_step_dim, "Can not reverse direction for single step recurrent layers"
+      rec_layer_dict["direction"] = -1
     nn.ReturnnWrappedLayerBase.handle_recurrent_state(rec_layer_dict, axis=axis, state=state)
     out = nn.make_layer(rec_layer_dict, name="rec")
     out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(out)
