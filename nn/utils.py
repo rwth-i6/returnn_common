@@ -58,34 +58,14 @@ def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: nn.Dim,
     name=name or "new_dim")
 
 
-def reinterpret_set_feature_dim(source: nn.LayerRef, in_dim: nn.Dim) -> nn.LayerRef:
-  """
-  :return: source with feature_dim set to in_dim
-  """
-  if in_dim == source.feature_dim:
-    return source  # nothing to do
-  assert in_dim in source.shape
-  if not in_dim.is_feature_dim():
-    in_dim_ = in_dim.copy(same_as_self=True, kind=nn.Dim.Types.Feature)
-    source = nn.reinterpret_new_dim(source, in_dim=in_dim, out_dim=in_dim_)
-  assert not source.data.sparse  # otherwise, it should have been correct before
-  source = nn.make_layer(
-    {"class": "reinterpret_data", "set_axes": {"F": in_dim}, "from": source},
-    name="set_feature_dim")
-  assert source.feature_dim == in_dim
-  return source
-
-
 def check_in_feature_dim_lazy_init(
       source: nn.LayerRef, in_dim: Optional[nn.Dim], lazy_init: Callable[[nn.Dim], Any]) -> nn.LayerRef:
   """
   This is a helper function for modules which want to lazily support assigning the in_dim.
   """
   if in_dim:
-    if source.feature_dim == in_dim:
-      return source  # all fine
     if in_dim in source.shape:
-      return reinterpret_set_feature_dim(source, in_dim)
+      return source  # all fine
     raise ValueError(f"{source} does not have feature dim {in_dim}")
   # Not yet initialized.
   if not source.feature_dim:
