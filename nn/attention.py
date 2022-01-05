@@ -75,8 +75,8 @@ class GenericSelfAttention(nn.Module):
           "Causal attention on sequence level not implemented. "
           "We can easily extend CumConcatLayer on RETURNN side for this, to accept any axis argument. "
           "However, normally any causal attention should always be inside a loop and this should never be needed.")
-      k = nn.reinterpret_data(k, set_dim_tags={axis: expand_dim}, name="k_new_dim")
-      v = nn.reinterpret_data(v, set_dim_tags={axis: expand_dim}, name="v_new_dim")
+      k = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=expand_dim, name="k_new_dim")
+      v = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=expand_dim, name="v_new_dim")
     att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")

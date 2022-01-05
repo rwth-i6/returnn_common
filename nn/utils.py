@@ -48,6 +48,16 @@ def stop_gradient(source: nn.LayerRef, name: Optional[str] = None) -> nn.LayerRe
   return nn.scaled_gradient(source, scale=0, name=name)
 
 
+def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: nn.Dim,
+                        name: Optional[str] = None) -> nn.Layer:
+  """
+  :return: source with in_dim replaced by out_dim
+  """
+  return nn.make_layer(
+    {"class": "reinterpret_data", "set_dim_tags": {out_dim: in_dim}, "from": source},
+    name=name or "new_dim")
+
+
 def reinterpret_set_feature_dim(source: nn.LayerRef, in_dim: nn.Dim) -> nn.LayerRef:
   """
   :return: source with feature_dim set to in_dim
@@ -57,9 +67,11 @@ def reinterpret_set_feature_dim(source: nn.LayerRef, in_dim: nn.Dim) -> nn.Layer
   assert in_dim in source.shape
   if not in_dim.is_feature_dim():
     in_dim_ = in_dim.copy(same_as_self=True, kind=nn.Dim.Types.Feature)
-    source = nn.reinterpret_data(source, set_dim_tags={in_dim: in_dim_})
+    source = nn.reinterpret_new_dim(source, in_dim=in_dim, out_dim=in_dim_)
   assert not source.data.sparse  # otherwise, it should have been correct before
-  source = nn.reinterpret_data(source, set_axes={"F": in_dim})
+  source = nn.make_layer(
+    {"class": "reinterpret_data", "set_axes": {"F": in_dim}, "from": source},
+    name="set_feature_dim")
   assert source.feature_dim == in_dim
   return source
 
