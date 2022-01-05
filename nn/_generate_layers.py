@@ -52,6 +52,7 @@ BlacklistLayerClassNames = {
   "relative_positional_encoding",
   "gating",
   "norm",
+  "switch",
 
   "RecStepInfoLayer",
   "_TemplateLayer",

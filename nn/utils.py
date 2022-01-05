@@ -6,6 +6,19 @@ from typing import Optional, Union, Sequence, Callable, Any
 from .. import nn
 
 
+def where(cond: nn.LayerRef,
+          true_: Union[nn.LayerRef, float, int],
+          false_: Union[nn.LayerRef, float, int],
+          *, name: Optional[str] = None) -> nn.Layer:
+  """
+  Wraps tf.where, which is SwitchLayer in RETURNN.
+
+  :return: true_ if cond else false_, elemwise.
+  """
+  return nn.make_layer({
+    'class': 'switch', "condition": cond, "true_from": true_, "false_from": false_}, name=name or 'where')
+
+
 # noinspection PyShadowingNames
 def dropout(source: nn.LayerRef,
             dropout: float,

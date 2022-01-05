@@ -1972,42 +1972,6 @@ def _compare(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def switch(
-           *,
-           condition: Union[LayerRef, bool],
-           true_from: Optional[Union[LayerRef, float, int]],
-           false_from: Optional[Union[LayerRef, float, int]],
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  Wrapper around ``tf.where()`` (or more generically :func:`returnn.tf.util.basic.where_bc`),
-  or statically choose a single source if the condition is a callable (...)->bool.
-  (``tf.cond`` is not useful here, as the sources would have been already constructed and computed.)
-
-  This layer is also useful for applying any kind of generic masking to the frames.
-  E.g. one could have a layer called "mask" computing a boolean mask for the values stored in another layer "input".
-  Then use this layer with condition="mask", true_from="input", false_from=mask_value,
-  to mask out all frames where the mask is false with the mask_value.
-
-  See also :class:`CondLayer`.
-  See also :class:`SeqLenMaskLayer` if you just want to mask using the sequence lengths.
-
-  :param LayerBase|bool condition: if callable, expected to be (...)->bool, and called in transform_config_dict
-  :param LayerBase|float|int|None true_from:
-  :param LayerBase|float|int|None false_from:
-  :param str|NameCtx|None name:
-  """
-  args = {
-    'condition': condition,
-    'true_from': true_from,
-    'false_from': false_from,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
-    'class': 'switch',
-    **args}, name=name or 'switch')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def search_sorted(
                   source: LayerRef,
                   *,
