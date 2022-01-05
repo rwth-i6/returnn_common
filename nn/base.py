@@ -351,6 +351,7 @@ class Parameter(Layer):
       such as weight normalization. One example are running statistics, as used for batch normalization.
       This usually implies that the parameter is not trainable, i.e. not to be updated by the optimizer,
       but usually has some custom update.
+      This flag is not passed on to RETURNN but just used here for returnn-common logic.
     """
     if not all(isinstance(dim, Dim) for dim in shape):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
