@@ -25,17 +25,17 @@ class Linear(nn.Module):
   def _lazy_init(self, in_dim: nn.Dim):
     if self.in_dim:
       assert self.in_dim == in_dim
-    else:
-      self.in_dim = in_dim
-      if in_dim == self.out_dim:
-        self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")
-      self.weight = nn.Parameter((self.in_dim, self.out_dim_inner))
-      if self.with_bias:
-        self.bias = nn.Parameter((self.out_dim_inner,))
+      return
+    self.in_dim = in_dim
+    if in_dim == self.out_dim:
+      self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")
+    self.weight = nn.Parameter((self.in_dim, self.out_dim_inner))
+    if self.with_bias:
+      self.bias = nn.Parameter((self.out_dim_inner,))
 
   @nn.scoped
   def __call__(self, source: nn.LayerRef) -> nn.Layer:
-    self._lazy_init(source.feature_dim)
+    source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
     out = nn.dot(source, self.weight, reduce=self.in_dim)
     if self.with_bias:
       out += self.bias

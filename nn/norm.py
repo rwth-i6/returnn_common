@@ -37,17 +37,16 @@ class BatchNorm(nn.Module):
       self._lazy_init(in_dim)
 
   def _lazy_init(self, in_dim: nn.Dim):
+    if self.in_dim:
+      return
     self.in_dim = in_dim
     self.mean = nn.Parameter([in_dim], trainable=False)
     self.var = nn.Parameter([in_dim], trainable=False)
 
-  def __call__(self, source: nn.LayerRef, *, in_dim: Optional[nn.Dim] = None,
+  def __call__(self, source: nn.LayerRef, *,
                epsilon: float = 1e-5) -> nn.Layer:
-    assert self.in_dim or source.feature_dim or in_dim
-    if in_dim or not self.in_dim:
-      self._lazy_init(in_dim or source.feature_dim)
-
-    reduce_dims = [d for d in source.data.dim_tags if d != in_dim]
+    source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
+    reduce_dims = [d for d in source.data.dim_tags if d != self.in_dim]
     mean, variance = moments(source, reduce_dims)
     # TODO: handle running mean/var ...
     return (source - mean) * nn.rsqrt(variance + epsilon)
