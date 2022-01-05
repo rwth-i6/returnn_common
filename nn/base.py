@@ -449,7 +449,13 @@ class Module:
   would usually overwrite :func:`__call__` and :func:`__init__`.
 
   To actually make it a subnetwork in RETURNN,
-  any function would be decorated with :func:`scoped`.
+  any function (e.g. :func:`__call__`) would be decorated with :func:`scoped`.
+
+  The :func:`__init__` would usually get module-level arguments
+  which describe the parameters.
+  As a module might be called multiple times,
+  any input-specific arguments such as spatial dims
+  are usually arguments of :func:`__call__`.
   """
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
   default_name: Optional[str] = None
