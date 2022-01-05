@@ -478,7 +478,6 @@ class Module:
   although there are no strict rules.
   """
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
-  default_name: Optional[str] = None
 
   def __init__(self):
     """
@@ -508,9 +507,9 @@ class Module:
   def get_default_name(self) -> str:
     """
     Get a default layer name (used when we do not have a Module attribute pointing to this).
+    This is used by :class:`NameCtx` for the RETURNN layer naming
+    (but only when the RETURNN layer name is not implied by other the module attribute hierarchy).
     """
-    if self.default_name:
-      return self.default_name
     name = self.__class__.__name__
     if name.startswith("_"):
       name = name[1:]
