@@ -472,6 +472,10 @@ class Module:
   As a module might be called multiple times,
   any input-specific arguments such as spatial dims
   are usually arguments of :func:`__call__`.
+  Other arguments which might vary between calls
+  would also be arguments of :func:`__call__`
+  such as epsilon
+  although there are no strict rules.
   """
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
   default_name: Optional[str] = None
