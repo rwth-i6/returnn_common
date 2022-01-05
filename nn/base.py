@@ -339,7 +339,19 @@ class Parameter(Layer):
   aka ``tf.Variable`` in TensorFlow,
   wrapping to ``VariableLayer`` in RETURNN.
   """
-  def __init__(self, shape: Sequence[Dim], dtype: Optional[str] = None, *, trainable: Optional[bool] = None):
+  def __init__(self, shape: Sequence[Dim], dtype: Optional[str] = None,
+               *,
+               trainable: Optional[bool] = None,
+               auxiliary: bool = False):
+    """
+    :param shape:
+    :param dtype:
+    :param trainable: if True, and optimizer would do updates to this parameter in training mode
+    :param auxiliary: if True, this indicates that this parameter should not be transformed by transformations
+      such as weight normalization. One example are running statistics, as used for batch normalization.
+      This usually implies that the parameter is not trainable, i.e. not to be updated by the optimizer,
+      but usually has some custom update.
+    """
     if not all(isinstance(dim, Dim) for dim in shape):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
     if not all(isinstance(dim.dimension, int) for dim in shape):
@@ -353,12 +365,15 @@ class Parameter(Layer):
     layer_dict = {"class": "variable", "shape": list(shape)}
     if dtype is not None:
       layer_dict["dtype"] = dtype
+    if auxiliary and trainable is None:
+      trainable = False
     if trainable is not None:
       layer_dict["trainable"] = trainable
     super(Parameter, self).__init__(
       layer_dict=layer_dict,
       predefined_out_data=data, add_out_shape_info=False,
       name_ctx=name_ctx)
+    self.auxiliary = auxiliary
 
 
 def scoped(func):

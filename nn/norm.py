@@ -73,8 +73,8 @@ class BatchNorm(nn.Module):
 
   def _lazy_init(self, in_dim: nn.Dim):
     self.in_dim = in_dim
-    self.mean = nn.Parameter([in_dim], trainable=False)
-    self.var = nn.Parameter([in_dim], trainable=False)
+    self.mean = nn.Parameter([in_dim], auxiliary=True)
+    self.var = nn.Parameter([in_dim], auxiliary=True)
     if self.affine:
       self.gamma = nn.Parameter([in_dim])
       self.beta = nn.Parameter([in_dim])
