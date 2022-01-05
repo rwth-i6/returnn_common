@@ -67,7 +67,7 @@ def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: nn.Dim,
   :return: source with in_dim replaced by out_dim
   """
   return nn.make_layer(
-    {"class": "reinterpret_data", "set_dim_tags": {out_dim: in_dim}, "from": source},
+    {"class": "reinterpret_data", "set_dim_tags": {in_dim: out_dim}, "from": source},
     name=name or "new_dim")
 
 
