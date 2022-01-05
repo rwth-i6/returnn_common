@@ -410,54 +410,46 @@ class Module:
 
       class MyModule(nn.Module):
 
-        def __init__(self, dim: int, activation=tanh):
+        def __init__(self, dim: nn.Dim, activation=tanh):
           super().__init__()
-          self.linear = Linear(dim)
+          self.linear = nn.Linear(dim)
           self.activation = activation
 
-        @nn.scoped_method
-        def __call__(self, x: LayerRef) -> LayerRef:
+        @nn.scoped
+        def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
           x_ = x
           x = layer_norm(x)
           x = self.linear(x)
           x = self.activation(x)
           return x_ + x
 
-  It is also used to wrap existing RETURNN layers
-  by using :func:`make_layer`.
-
-  A RETURNN layer also has some specific input and output,
-  and usually its own parameters.
-
-  This is in contrast to PyTorch or Keras, where a module or layer
+  A module (here, just like in PyTorch or Keras)
   has params, but getting some output for some input
   requires an additional `forward` or `__call__` call,
   which can be called multiple times.
   Every such call would then share the same module parameters.
 
-  :class:`Module` is similar to PyTorch/Keras
-  in that it can be called multiple times.
-  Every call would create a RETURNN layer,
+  In contrast, a normal RETURNN layer already has some assigned input and output,
+  and usually its own parameters.
+  Thus, a module here is different in that aspect,
+  that it decouples the module call from the module definition including parameters.
+
+  Every module call creates a RETURNN layer,
   where every call after the first would share the params
-  with the first layer,
-  via the RETURNN ``reuse_params`` layer option.
+  with the first layer.
 
   A user would create an instance and then call it,
   and get :class:`Layer` instances.
-  The naming logic of created layers
-  is handled via :class:`NameCtx`.
 
-  A developer which wants to derive its own module
-  would overwrite :func:`__call__` and use :func:`make_layer`.
-  Usually :func:`make_layer` is never needed though,
-  as all standard RETURNN layers are already wrapped,
-  and any potential operation should be possible to be defined
-  using the standard RETURNN layers.
-  For one-time usages to wrap RETURNN layers, you might not need an own :class:`Module`
-  and you could use :func:`make_layer` directly instead.
-  For defining own modules (subnetworks)
-  based on existing modules or layers,
-  see :class:`Module`.
+  The RETURNN naming logic of created layers
+  is handled via :class:`NameCtx`
+  but usually the user does not need to care about that.
+
+  A module developer which wants to derive its own module
+  would usually overwrite :func:`__call__` and :func:`__init__`.
+
+  To actually make it a subnetwork in RETURNN,
+  any function would be decorated with :func:`scoped`.
   """
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
   default_name: Optional[str] = None
@@ -466,7 +458,7 @@ class Module:
     """
     By convention, any options to the module or module are passed to the constructor,
     and potential changing inputs (other layers)
-    are passed to :func:`__call__` (:func:`make_layer_dict`).
+    are passed to :func:`__call__`.
     """
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
