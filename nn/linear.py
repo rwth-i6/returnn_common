@@ -23,9 +23,6 @@ class Linear(nn.Module):
       self._lazy_init(in_dim)
 
   def _lazy_init(self, in_dim: nn.Dim):
-    if self.in_dim:
-      assert self.in_dim == in_dim
-      return
     self.in_dim = in_dim
     if in_dim == self.out_dim:
       self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")

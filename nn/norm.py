@@ -37,8 +37,6 @@ class BatchNorm(nn.Module):
       self._lazy_init(in_dim)
 
   def _lazy_init(self, in_dim: nn.Dim):
-    if self.in_dim:
-      return
     self.in_dim = in_dim
     self.mean = nn.Parameter([in_dim], trainable=False)
     self.var = nn.Parameter([in_dim], trainable=False)
