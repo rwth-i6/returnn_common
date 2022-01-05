@@ -1153,7 +1153,7 @@ def reinterpret_data(
                      *,
                      switch_axes: Union[str, Sequence[str]] = NotSpecified,
                      size_base: Optional[LayerRef] = NotSpecified,
-                     set_axes: Dict[str, Union[int, str]] = NotSpecified,
+                     set_axes: Dict[str, Dim] = NotSpecified,
                      set_dim_tags: Optional[Dict[Dim,  Dim]] = NotSpecified,
                      set_sparse: Optional[bool] = NotSpecified,
                      set_sparse_dim: Optional[Union[Dim, NotSpecified]] = NotSpecified,
