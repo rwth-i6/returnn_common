@@ -66,7 +66,7 @@ class ConformerConvBlock(nn.Module):
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.glu(x_conv1, axis=inp.feature_dim)
     x_depthwise_conv = self.depthwise_conv(x_act, in_spatial_dims=[in_spatial_dim])
-    x_bn = self.batch_norm(x_depthwise_conv, in_dim=inp.feature_dim)
+    x_bn = self.batch_norm(x_depthwise_conv)
     x_swish = nn.swish(x_bn)
     x_conv2 = self.positionwise_conv2(x_swish)
     return x_conv2
