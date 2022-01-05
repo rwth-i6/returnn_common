@@ -10,7 +10,9 @@ from .. import nn
 @nn.scoped
 def moments(x: nn.LayerRef, axis: Union[nn.Dim, Sequence[nn.Dim]]) -> Tuple[nn.Layer, nn.Layer]:
   """
-  :return: mean, variance
+  :param x: input
+  :param axis: the axis to be reduced, to calculate statistics over
+  :return: mean, variance. it has the same shape as the input with the axis removed
   """
   mean = nn.reduce(x, mode="mean", axis=axis, name="mean")
   # stop_gradient does not change the gradient here
@@ -46,5 +48,7 @@ class BatchNorm(nn.Module):
     source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
     reduce_dims = [d for d in source.data.dim_tags if d != self.in_dim]
     mean, variance = moments(source, reduce_dims)
+    mean.verify_out_shape({self.in_dim})
+    variance.verify_out_shape({self.in_dim})
     # TODO: handle running mean/var ...
     return (source - mean) * nn.rsqrt(variance + epsilon)

@@ -121,7 +121,10 @@ class LayerRef:
 
   def verify_out_shape(self, out_shape: Union[Set[Union[Dim, _MarkedDim]], tuple, list]):
     """
-    Verify out_shape.
+    Verify out_shape via :func:`Data.verify_out_shape`.
+
+    This does not add out_shape to the layer dict as we already have that automatically.
+    Thus, this is purely for verification here on returnn-common side.
 
     :return: self, such that you can write this as a chained op
     :rtype: LayerRef
