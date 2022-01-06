@@ -10,6 +10,7 @@ from .array_ import *
 from .utils import *
 from .norm import *
 from .linear import *
+from .conv import *
 from .rec import *
 from .container import *
 from .attention import *
