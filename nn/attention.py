@@ -78,7 +78,7 @@ class GenericSelfAttention(nn.Module):
       k = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=expand_dim, name="k_new_dim")
       v = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=expand_dim, name="v_new_dim")
     att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
-    output = nn.merge_dims(
+    output, _ = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
     return output, new_state
 
