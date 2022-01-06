@@ -81,6 +81,8 @@ def dummy_config_net_dict(net: nn.Module, *,
     if with_axis:
       opts["axis"] = time_dim
     out = net(data, **opts, name=name_ctx)
+    if isinstance(out, tuple):
+      out = out[0]
     assert isinstance(out, nn.Layer)
     out.mark_as_default_output()
 
