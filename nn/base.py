@@ -62,7 +62,7 @@ LayerRefRaw = str
 NetDictRaw = Dict[str, LayerDictRaw]
 RawTensorTypes = Union[int, float, complex, bool, str]
 
-_min_returnn_behavior_version = 11
+_min_returnn_behavior_version = 12
 
 
 class LayerRef:
