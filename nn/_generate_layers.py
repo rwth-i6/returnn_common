@@ -72,6 +72,7 @@ BlacklistLayerClassNames = {
   "weighted_sum",
   "elemwise_prod",
   "combine_dims",  # -> merge_dims
+  "split_batch_time",  # should have different API. or just unflatten_batch?
   "loss",
   "transpose",
   "accumulate_mean",
