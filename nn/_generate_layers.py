@@ -45,6 +45,8 @@ BlacklistLayerClassNames = {
   "dropout",
   "batch_norm",
   "linear",
+  "conv",
+  "transposed_conv",
   "rec",
   "self_attention",
   "concat_attention",
