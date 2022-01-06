@@ -184,6 +184,35 @@ FunctionNameMap = {
   "cum_concat": "rec_cum_concat",  # consistency
 }
 
+PerLayerOutDimArgs = {
+  "slice": {"out_dim"},
+  "slice_nd": {"out_spatial_dim"},
+  "scatter_nd": {"out_spatial_dim"},
+  "rand_int": {"sparse_dim"},
+  "range": {"out_spatial_dim"},
+  "range_from_length": {"out_spatial_dim"},
+  "window": {"out_spatial_dim"},
+  # pad?
+  "unflatten_nd": {"out_dims"},
+  "repeat": {"out_dim"},
+  # tile?
+  "conv": {"out_spatial_dims"},
+  "transposed_conv": {"out_spatial_dims"},
+  "pool": {"out_spatial_dims"},
+  # reduce_out?
+  "merge_dims": {"out_dim"},
+  "stack": {"out_spatial_dim"},
+  "prefix_in_time": {"out_dim"},
+  "postfix_in_time": {"out_dim"},
+  "time_chunking": {"out_dim"},
+  # shift_axis?
+  "resize": {"out_dim"},
+  "remove": {"out_dim"},
+  "split_batch_beam": {"beam_dim"},
+  "edit_distance_table": {"out_dim"},
+  "cum_concat": {"out_spatial_dim"},
+}
+
 
 def setup():
   """
