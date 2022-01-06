@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any
 from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
-from returnn.tf.util.data import Dim, _MarkedDim
+from returnn.tf.util.data import Dim, SpatialDim, _MarkedDim
 from .base import NameCtx, ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer
 
 
@@ -102,6 +102,7 @@ def copy(
 
   :param LayerRef source:
   :param str|NameCtx|None name:
+  :return: layer
   """
   return make_layer({
     'class': 'copy',
@@ -124,6 +125,7 @@ def scaled_gradient(
   :param LayerRef source:
   :param float scale: if 0., will use tf.stop_gradient
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'scale': scale,
@@ -159,6 +161,7 @@ def layer_norm(
   :param Dim|None out_dim: just the same as in_dim
   :param float epsilon:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'in_dim': in_dim,
@@ -186,6 +189,7 @@ def math_norm(
   :param int|float p:
   :param Dim|Sequence[Dim] axis:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'p': p,
@@ -206,8 +210,8 @@ def slice(
           slice_start: Optional[int] = NotSpecified,
           slice_end: Optional[int] = NotSpecified,
           slice_step: Optional[int] = NotSpecified,
-          out_dim: Dim,
-          name: Optional[Union[str, NameCtx]] = None) -> Layer:
+          out_dim: Optional[Dim] = NotSpecified,
+          name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Slicing on the input, i.e. x[start:end:step] in some axis.
   See also :class:`SliceNdLayer`, for variable start.
@@ -231,9 +235,12 @@ def slice(
   :param int|None slice_start:
   :param int|None slice_end:
   :param int|None slice_step:
-  :param Dim out_dim:
+  :param Dim|None out_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'axis': axis,
     'slice_start': slice_start,
@@ -242,10 +249,11 @@ def slice(
     'out_dim': out_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'slice',
     'from': source,
     **args}, name=name or 'slice')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -256,8 +264,8 @@ def slice_nd(
              size: Union[Dim, LayerRef],
              min_size: Optional[int] = NotSpecified,
              axis: Dim,
-             out_spatial_dim: Dim,
-             name: Optional[Union[str, NameCtx]] = None) -> Layer:
+             out_spatial_dim: Optional[Dim] = NotSpecified,
+             name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   This takes out a slice-range from the time axis,
   e.g. ``x[start:start + size]``.
@@ -277,9 +285,12 @@ def slice_nd(
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
   :param Dim axis:
-  :param Dim out_spatial_dim:
+  :param Dim|None out_spatial_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_spatial_dim
   """
+  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+    out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
   args = {
     'start': start,
     'size': size,
@@ -288,10 +299,11 @@ def slice_nd(
     'out_spatial_dim': out_spatial_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'slice_nd',
     'from': source,
     **args}, name=name or 'slice_nd')
+  return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -324,6 +336,7 @@ def gather(
     Can also specify a constant ``int``.
   :param Dim axis: The axis into which we gather the indices into
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'position': position,
@@ -385,6 +398,7 @@ def scatter_nd(
   :param Dim out_spatial_dim:
   :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'position': position,
@@ -415,6 +429,7 @@ def length(
   :param str dtype:
   :param bool sparse:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -461,6 +476,7 @@ def softmax(
     By default, if dyn seq len exists, it uses it.
   :param bool log_space: if True, returns in log space (i.e. uses log_softmax)
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -502,6 +518,7 @@ def seq_len_mask(
   :param LayerBase|None window_start: Tensor of shape (B,) indicating the window start
   :param LayerBase|int|None window_size:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'mask_value': mask_value,
@@ -538,6 +555,7 @@ def rand_int(
   :param Dim|None sparse_dim:
   :param int|None seed: random seed
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'shape': shape,
@@ -561,8 +579,8 @@ def range(
           delta: Union[int, float] = NotSpecified,
           dtype: Optional[str] = NotSpecified,
           sparse: bool = NotSpecified,
-          out_spatial_dim: Dim,
-          name: Optional[Union[str, NameCtx]] = None) -> Layer:
+          out_spatial_dim: Optional[Dim] = NotSpecified,
+          name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
@@ -572,9 +590,12 @@ def range(
   :param int|float delta:
   :param str|None dtype:
   :param bool sparse:
-  :param Dim out_spatial_dim:
+  :param Dim|None out_spatial_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_spatial_dim
   """
+  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+    out_spatial_dim = SpatialDim('out_spatial_dim')
   args = {
     'limit': limit,
     'start': start,
@@ -584,9 +605,10 @@ def range(
     'out_spatial_dim': out_spatial_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'range',
     **args}, name=name or 'range')
+  return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -607,6 +629,7 @@ def range_in_axis(
   :param str dtype:
   :param bool sparse:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -627,7 +650,7 @@ def range_from_length(
                       dtype: str = NotSpecified,
                       sparse: bool = NotSpecified,
                       out_spatial_dim: Optional[Dim] = NotSpecified,
-                      name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                      name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Given some dynamic sequence lengths as input, this creates a tf.range over the implied dimension.
   As a side effect, this can create a new dyn dim tag for the given sequence lengths.
@@ -649,17 +672,21 @@ def range_from_length(
   :param bool sparse:
   :param Dim|None out_spatial_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_spatial_dim
   """
+  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+    out_spatial_dim = SpatialDim('out_spatial_dim')
   args = {
     'dtype': dtype,
     'sparse': sparse,
     'out_spatial_dim': out_spatial_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'range_from_length',
     'from': source,
     **args}, name=name or 'range_from_length')
+  return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -672,6 +699,7 @@ def batch_softmax(
 
   :param LayerRef source:
   :param str|NameCtx|None name:
+  :return: layer
   """
   return make_layer({
     'class': 'batch_softmax',
@@ -695,6 +723,7 @@ def constant(
   :param str|None dtype:
   :param Dim|None sparse_dim:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'value': value,
@@ -720,7 +749,7 @@ def rec_window(
                out_spatial_dim: Optional[Dim] = NotSpecified,
                padding: str = NotSpecified,
                stride: int = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Tuple[Dim, Dim], LayerState]:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -745,7 +774,12 @@ def rec_window(
   :param str padding: "same" or "valid"
   :param int stride: return only each Nth window
   :param str|NameCtx|None name:
+  :return: layer, (window_dim, out_spatial_dim), out_state
   """
+  if window_dim is None or window_dim is NotSpecified:
+    window_dim = SpatialDim('window_dim')
+  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+    out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
   args = {
     'window_dim': window_dim,
     'window_left': window_left,
@@ -762,7 +796,7 @@ def rec_window(
     'from': source,
     **args}, name=name or 'rec_window')
   out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_state
+  return layer, (window_dim, out_spatial_dim), out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -783,6 +817,7 @@ def rec_cum_sum(
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
   :param bool reverse:
   :param str|NameCtx|None name:
+  :return: layer, out_state
   """
   args = {
     'axis': axis,
@@ -820,6 +855,7 @@ def pad(
   :param int|float value: what constant value to pad, with mode=="constant"
   :param str mode: "constant", "reflect", "symmetric" and "replication"
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axes': axes,
@@ -841,7 +877,7 @@ def merge_dims(
                *,
                axes: Sequence[Dim],
                out_dim: Optional[Dim] = NotSpecified,
-               name: Optional[Union[str, NameCtx]] = None) -> Layer:
+               name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Merges a list of axes into a single one. (Flatten the dims.)
   E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
@@ -855,16 +891,20 @@ def merge_dims(
   :param Sequence[Dim] axes: see :func:`Data.get_axis_from_description`
   :param Dim|None out_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = SpatialDim('out_dim')
   args = {
     'axes': axes,
     'out_dim': out_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'merge_dims',
     'from': source,
     **args}, name=name or 'merge_dims')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -883,6 +923,7 @@ def _split(
   :param Dim axis: feature axis by default
   :param Sequence[Dim]|None out_dims:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -931,6 +972,7 @@ def split_dims(
     By default this is done iff the axis has a dynamic size
   :param int|float pad_value: What pad value to use for pad_to_multiples
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -943,31 +985,6 @@ def split_dims(
     'class': 'split_dims',
     'from': source,
     **args}, name=name or 'split_dims')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def split_batch_time(
-                     source: LayerRef,
-                     *,
-                     base: LayerRef,
-                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
-  """
-  A very specific layer which expects to get input of shape (batch * time, ...)
-  and converts it into (batch, time, ...), where it recovers the seq-lens from some other layer.
-  See :class:`SplitDimsLayer` for a more generic layer.
-
-  :param LayerRef source:
-  :param LayerBase base: used to recover the seq-lens
-  :param str|NameCtx|None name:
-  """
-  args = {
-    'base': base,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
-    'class': 'split_batch_time',
-    'from': source,
-    **args}, name=name or 'split_batch_time')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -989,6 +1006,7 @@ def flatten_batch(
   :param Dim axis:
   :param bool batch_major: if False, will flatten in time-major manner
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -1013,6 +1031,7 @@ def unflatten_batch(
 
   :param LayerRef source:
   :param str|NameCtx|None name:
+  :return: layer
   """
   return make_layer({
     'class': 'unflatten_batch',
@@ -1049,6 +1068,7 @@ def unflatten_nd(
   :param Sequence[Dim]|None out_dims:
   :param dict[int,LayerBase]|None declare_same_sizes_as:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'sizes': sizes,
@@ -1071,7 +1091,7 @@ def repeat(
            repetitions: Union[LayerRef, int],
            axis: Dim,
            out_dim: Optional[Dim] = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   A wrapper around tf.repeat, but supports an additional batch axis for the durations
   The sum of the repetitions has to be non-zero for each sequence in the batch.
@@ -1085,17 +1105,21 @@ def repeat(
   :param Dim axis: (dynamic) axis for repetition (currently only time axis is supported)
   :param Dim|None out_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'repetitions': repetitions,
     'axis': axis,
     'out_dim': out_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'repeat',
     'from': source,
     **args}, name=name or 'repeat')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1112,6 +1136,7 @@ def tile(
   :param dict[Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
   :param dict[Dim, Dim]|None out_dims:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'multiples': multiples,
@@ -1136,6 +1161,7 @@ def cast(
   :param LayerRef source:
   :param str dtype:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'dtype': dtype,
@@ -1160,7 +1186,7 @@ def pool(
          in_spatial_dims: Sequence[Dim],
          out_dim: Optional[Dim] = NotSpecified,
          out_spatial_dims: Optional[Sequence[Dim]] = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> Layer:
+         name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Sequence[Dim]]:
   """
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
@@ -1176,7 +1202,12 @@ def pool(
   :param Dim|None out_dim:
   :param Sequence[Dim]|None out_spatial_dims:
   :param str|NameCtx|None name:
+  :return: layer, out_spatial_dims
   """
+  if out_spatial_dims is None or out_spatial_dims is NotSpecified:
+    out_spatial_dims = [
+      d.copy(same_as_self=False, description=f'out_spatial_dims{i}')
+      for i, d in enumerate(in_spatial_dims)]
   args = {
     'mode': mode,
     'pool_size': pool_size,
@@ -1189,10 +1220,11 @@ def pool(
     'out_spatial_dims': out_spatial_dims,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'pool',
     'from': source,
     **args}, name=name or 'pool')
+  return layer, out_spatial_dims
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1213,6 +1245,7 @@ def dct(
   :param int|None n: length of the transform
   :param str|None norm: normalization to apply. Must be None or "ortho"
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'type': type,
@@ -1248,6 +1281,7 @@ def reduce(
   :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
     By default, in that case, it will be True.
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'mode': mode,
@@ -1279,6 +1313,7 @@ def reduce_out(
   :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
   :param Dim|None out_dim:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'mode': mode,
@@ -1309,6 +1344,7 @@ def squeeze(
     it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
   :param bool allow_no_op:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -1325,8 +1361,8 @@ def squeeze(
 def stack(
           source: Union[List[LayerRef], Tuple[LayerRef]],
           *,
-          out_spatial_dim: Dim,
-          name: Optional[Union[str, NameCtx]] = None) -> Layer:
+          out_spatial_dim: Optional[Dim] = NotSpecified,
+          name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Stacks multiple inputs together using :func:`tf.stack`.
   This creates a new dimension for the stack.
@@ -1334,17 +1370,21 @@ def stack(
   For concatenation (in feature dimension), see :class:`CopyLayer`.
 
   :param list[LayerRef]|tuple[LayerRef] source:
-  :param Dim out_spatial_dim:
+  :param Dim|None out_spatial_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_spatial_dim
   """
+  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+    out_spatial_dim = SpatialDim('out_spatial_dim')
   args = {
     'out_spatial_dim': out_spatial_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'stack',
     'from': source,
     **args}, name=name or 'stack')
+  return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1356,7 +1396,7 @@ def prefix_in_time(
                    prefix: Union[float, str] = NotSpecified,
                    repeat: Union[int, LayerRef] = NotSpecified,
                    size_base: Optional[LayerRef] = NotSpecified,
-                   name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                   name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Adds some prefix in time dimension.
   This is kind of the reverse of :class:`SliceNdLayer` does.
@@ -1370,7 +1410,10 @@ def prefix_in_time(
   :param int|LayerBase repeat: how often to repeat the prefix
   :param LayerBase|None size_base: copy seq-lens from here
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'axis': axis,
     'out_dim': out_dim,
@@ -1379,10 +1422,11 @@ def prefix_in_time(
     'size_base': size_base,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'prefix_in_time',
     'from': source,
     **args}, name=name or 'prefix_in_time')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1393,7 +1437,7 @@ def postfix_in_time(
                     out_dim: Optional[Dim] = NotSpecified,
                     postfix: Union[float, int, LayerRef] = NotSpecified,
                     repeat: int = NotSpecified,
-                    name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                    name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Adds some postfix in time dimension.
   Also see :class:`PrefixInTimeLayer`.
@@ -1404,7 +1448,10 @@ def postfix_in_time(
   :param float|int|LayerBase postfix: constant or other layer without time axis to use as postfix
   :param int repeat: how often to repeat the postfix
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'axis': axis,
     'out_dim': out_dim,
@@ -1412,10 +1459,11 @@ def postfix_in_time(
     'repeat': repeat,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'postfix_in_time',
     'from': source,
     **args}, name=name or 'postfix_in_time')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1426,7 +1474,7 @@ def time_chunking(
                   chunk_step: int,
                   axis: Dim,
                   out_dim: Optional[Dim] = NotSpecified,
-                  name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                  name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Performs chunking in time. See :func:`returnn.tf.native_op.chunk`.
 
@@ -1436,7 +1484,10 @@ def time_chunking(
   :param Dim axis:
   :param Dim|None out_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'chunk_size': chunk_size,
     'chunk_step': chunk_step,
@@ -1444,10 +1495,11 @@ def time_chunking(
     'out_dim': out_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'time_chunking',
     'from': source,
     **args}, name=name or 'time_chunking')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1462,6 +1514,7 @@ def time_un_chunking(
   :param LayerRef source:
   :param TimeChunkingLayer chunking_layer:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'chunking_layer': chunking_layer,
@@ -1510,6 +1563,7 @@ def dot(
   :param Dim|Sequence[Dim] reduce: reduce axes of both sources
   :param bool debug: will print debug shapes, etc.
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'reduce': reduce,
@@ -1544,6 +1598,7 @@ def shift_axis(
   :param bool pad: preserve shape by padding
   :param bool adjust_size_info: whether to adjust the size_placeholder
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -1568,7 +1623,7 @@ def resize(
            kind: str = NotSpecified,
            fill_value: Optional[Union[int, float]] = NotSpecified,
            fill_dropout: float = NotSpecified,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Resizes the input, i.e. upsampling or downsampling.
   Supports different kinds, such as linear interpolation or nearest-neighbor.
@@ -1581,7 +1636,10 @@ def resize(
   :param None|int|float fill_value: if kind=="fill"
   :param float fill_dropout: if set, will dropout in the same axis
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'factor': factor,
     'axis': axis,
@@ -1591,10 +1649,11 @@ def resize(
     'fill_dropout': fill_dropout,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'resize',
     'from': source,
     **args}, name=name or 'resize')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1603,8 +1662,8 @@ def remove(
            *,
            symbol: int,
            axis: Dim,
-           out_dim: Dim,
-           name: Optional[Union[str, NameCtx]] = None) -> Layer:
+           out_dim: Optional[Dim] = NotSpecified,
+           name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Currently, assumes sparse data, and removes a specific symbol from the data.
 
@@ -1614,19 +1673,23 @@ def remove(
   :param LayerRef source:
   :param int symbol:
   :param Dim axis: the axis to operate over, to potentially remove frames
-  :param Dim out_dim: derived from the dim of axis, the reduced new dim
+  :param Dim|None out_dim: derived from the dim of axis, the reduced new dim
   :param str|NameCtx|None name:
+  :return: layer, out_dim
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'symbol': symbol,
     'axis': axis,
     'out_dim': out_dim,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'remove',
     'from': source,
     **args}, name=name or 'remove')
+  return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -1655,6 +1718,7 @@ def _combine(
   :param dict[str]|None eval_locals: locals for eval
   :param bool eval_for_output_loss: will do the same eval on layer.output_loss
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'kind': kind,
@@ -1694,6 +1758,7 @@ def _eval(
   :param dict[str]|None eval_locals: locals for eval
   :param bool eval_for_output_loss: will do the same eval on layer.output_loss
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'eval': eval,
@@ -1742,6 +1807,7 @@ def _compare(
     or other supported TF comparison ops
   :param float|int|None value: if specified, will also compare to this
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'kind': kind,
@@ -1779,6 +1845,7 @@ def search_sorted(
     When one of the `values` exactly matches an element of the `sorted_sequence`,
     whether to choose the lower or higher index.
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'sorted_sequence': sorted_sequence,
@@ -1809,6 +1876,7 @@ def forced_alignment(
   :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
   :param str input_type: "log_prob" or "prob"
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'align_target': align_target,
@@ -1851,6 +1919,7 @@ def fast_baum_welch(
   :param float min_prob: clips the minimum prob (value in [0,1])
   :param LayerBase|None staircase_seq_len_source:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'align_target': align_target,
@@ -1886,6 +1955,7 @@ def synthetic_gradient(
   :param LayerBase gradient:
   :param float meta_loss_scale:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'gradient': gradient,
@@ -1910,6 +1980,7 @@ def tikhonov_regularization(
   :param LayerRef source:
   :param float meta_loss_scale:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'meta_loss_scale': meta_loss_scale,
@@ -1935,6 +2006,7 @@ def print(
   :param int|None summarize: passed to :func:`py_print`
   :param list|tuple extra_print_args:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'summarize': summarize,
@@ -1979,6 +2051,7 @@ def hdf_dump(
   :param bool extend_existing_file: True also means we expect that it exists
   :param bool dump_per_run: write via :func:`TFNetwork.register_run_finished_callback`
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'filename': filename,
@@ -2011,6 +2084,7 @@ def _get_last_hidden_state(
   :param str combine: "concat" or "add"
   :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'out_dim': out_dim,
@@ -2056,6 +2130,7 @@ def rec_unstack(
   :param Dim axis:
   :param bool declare_rec_time:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'axis': axis,
@@ -2134,6 +2209,7 @@ def choice(
   :param list[LayerBase]|None explicit_search_sources: will mark it as an additional dependency.
     You might use these also in custom_score_combine.
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'target': target,
@@ -2180,6 +2256,7 @@ def decide(
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'length_normalization': length_normalization,
@@ -2208,6 +2285,7 @@ def choice_get_beam_scores(
 
   :param LayerRef source:
   :param str|NameCtx|None name:
+  :return: layer
   """
   return make_layer({
     'class': 'choice_get_beam_scores',
@@ -2226,6 +2304,7 @@ def choice_get_src_beams(
 
   :param LayerRef source:
   :param str|NameCtx|None name:
+  :return: layer
   """
   return make_layer({
     'class': 'choice_get_src_beams',
@@ -2237,29 +2316,33 @@ def choice_get_src_beams(
 def split_batch_beam(
                      source: LayerRef,
                      *,
-                     beam_dim: Dim,
+                     beam_dim: Optional[Dim] = NotSpecified,
                      search: Union[NotSpecified, bool] = NotSpecified,
-                     name: Optional[Union[str, NameCtx]] = None) -> Layer:
+                     name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim]:
   """
   Splits the batch dimension of the input, which includes a beam, into (batch,beam).
 
   Like :class:`DecideLayer`, this removes the beam.
 
   :param LayerRef source:
-  :param Dim beam_dim:
+  :param Dim|None beam_dim:
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
   :param str|NameCtx|None name:
+  :return: layer, beam_dim
   """
+  if beam_dim is None or beam_dim is NotSpecified:
+    beam_dim = SpatialDim('beam_dim')
   args = {
     'beam_dim': beam_dim,
     'search': search,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return make_layer({
+  layer = make_layer({
     'class': 'split_batch_beam',
     'from': source,
     **args}, name=name or 'split_batch_beam')
+  return layer, beam_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2291,6 +2374,7 @@ def positional_encoding(
   :param int constant: if positive, always output the corresponding positional encoding.
   :param None|LayerBase offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'out_dim': out_dim,
@@ -2339,6 +2423,7 @@ def ken_lm_state(
   :param bool dense_output: whether we output the score for all possible succeeding tokens
   :param bool debug: prints debug info
   :param str|NameCtx|None name:
+  :return: layer, out_state
   """
   args = {
     'lm_file': lm_file,
@@ -2369,7 +2454,7 @@ def edit_distance_table(
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
                         out_dim: Optional[Dim] = NotSpecified,
-                        name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+                        name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim, LayerState]:
   """
   Given a source and a target, calculates the edit distance table between them.
   Source can be inside a recurrent loop.
@@ -2388,7 +2473,10 @@ def edit_distance_table(
   :param int|None blank_idx: if given, will keep the same row for this source label
   :param Dim|None out_dim:
   :param str|NameCtx|None name:
+  :return: layer, out_dim, out_state
   """
+  if out_dim is None or out_dim is NotSpecified:
+    out_dim = axis.copy(same_as_self=False, description='out_dim')
   args = {
     'axis': axis,
     'debug': debug,
@@ -2402,7 +2490,7 @@ def edit_distance_table(
     'from': source,
     **args}, name=name or 'edit_distance_table')
   out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_state
+  return layer, out_dim, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
@@ -2429,6 +2517,7 @@ def optimal_completions(
   :param bool debug:
   :param int|None blank_idx:
   :param str|NameCtx|None name:
+  :return: layer
   """
   args = {
     'debug': debug,
@@ -2446,9 +2535,9 @@ def rec_cum_concat(
                    source: LayerRef,
                    *,
                    state: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified,
-                   out_spatial_dim: Dim,
+                   out_spatial_dim: Optional[Dim] = NotSpecified,
                    axis: Dim,
-                   name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, LayerState]:
+                   name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Dim, LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
@@ -2494,10 +2583,13 @@ def rec_cum_concat(
 
   :param LayerRef source:
   :param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None state:
-  :param Dim out_spatial_dim:
+  :param Dim|None out_spatial_dim:
   :param Dim axis: axis to operate over, or nn.single_step_dim
   :param str|NameCtx|None name:
+  :return: layer, out_spatial_dim, out_state
   """
+  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+    out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
   args = {
     'out_spatial_dim': out_spatial_dim,
     'axis': axis,
@@ -2509,4 +2601,4 @@ def rec_cum_concat(
     'from': source,
     **args}, name=name or 'rec_cum_concat')
   out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_state
+  return layer, out_spatial_dim, out_state

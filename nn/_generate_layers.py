@@ -187,13 +187,11 @@ FunctionNameMap = {
 PerLayerOutDimArgs = {
   "slice": ["out_dim"],
   "slice_nd": ["out_spatial_dim"],
-  "scatter_nd": ["out_spatial_dim"],
-  "rand_int": ["sparse_dim"],
   "range": ["out_spatial_dim"],
   "range_from_length": ["out_spatial_dim"],
-  "window": ["out_spatial_dim"],
+  "window": ["window_dim", "out_spatial_dim"],
   # pad?
-  "unflatten_nd": ["out_dims"],
+  # unflatten_nd?
   "repeat": ["out_dim"],
   # tile?
   "conv": ["out_spatial_dims"],
@@ -233,7 +231,7 @@ def setup():
   print("from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("# noinspection PyProtectedMember", file=f)
-  print("from returnn.tf.util.data import Dim, _MarkedDim", file=f)
+  print("from returnn.tf.util.data import Dim, SpatialDim, _MarkedDim", file=f)
   print(
     "from .base import NameCtx, ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
   layer_classes = collect_layers()
@@ -394,6 +392,29 @@ def setup():
       if sig.layer_class.layer_class in LayersHidden:
         name = "_" + name
       print("\n", file=f)
+
+      res_types = ["Layer"]
+      res_args = ["layer"]
+      if layer_class.layer_class in PerLayerOutDimArgs:
+        res_types_, res_args_ = [], []
+        for out_dim_arg in PerLayerOutDimArgs[layer_class.layer_class]:
+          param = sig.params[out_dim_arg]
+          res_types_.append("Sequence[Dim]" if "Sequence" in param.param_type_s else "Dim")
+          res_args_.append(out_dim_arg)
+          if "None" not in param.param_type_s:
+            param.param_type_s += "|None"
+          if param.inspect_param.default == param.inspect_param.empty:
+            param.inspect_param = param.inspect_param.replace(default="None")
+        if len(res_types_) > 1:
+          res_types.append("Tuple[" + ", ".join(res_types_) + "]")
+          res_args.append("(" + ", ".join(res_args_) + ")")
+        else:
+          res_types.extend(res_types_)
+          res_args.extend(res_args_)
+      if sig.has_recurrent_state():
+        res_types.append("LayerState")
+        res_args.append("out_state")
+
       print("# noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
       prefix = f"def {name}("
       print(f"{prefix}", file=f)
@@ -409,9 +430,10 @@ def setup():
       mod_args = sig.get_all_derived_args()
       for param in mod_args:
         print(f"{prefix}{param.get_module_param_code_str()},", file=f)
+      res_type = "Tuple[%s]" % ", ".join(res_types) if len(res_types) > 1 else res_types[0]
       print(
         f"{prefix}name: Optional[Union[str, NameCtx]] = None)"
-        f" -> {'Tuple[Layer, LayerState]' if sig.has_recurrent_state() else 'Layer'}:",
+        f" -> {res_type}:",
         file=f)
       print('  """', file=f)
       if layer_class.__doc__:
@@ -434,7 +456,32 @@ def setup():
       for param in mod_args:
         print(param.get_module_param_docstring(indent="  "), file=f)
       print("  :param str|NameCtx|None name:", file=f)
+      print(f"  :return: {', '.join(res_args)}", file=f)
       print('  """', file=f)
+
+      if layer_class.layer_class in PerLayerOutDimArgs:
+        for out_dim_arg in PerLayerOutDimArgs[layer_class.layer_class]:
+          param = sig.params[out_dim_arg]
+          print(f"  if {out_dim_arg} is None or {out_dim_arg} is NotSpecified:", file=f)
+          in_dim_arg = None
+          if out_dim_arg in ("out_dim", "out_spatial_dim") and "axis" in sig.params and "in_dim" not in sig.params:
+            in_dim_arg = "axis"
+          if out_dim_arg == "out_spatial_dim" and "in_spatial_dim" in sig.params:
+            in_dim_arg = "in_spatial_dim"
+          if out_dim_arg == "out_spatial_dims" and "in_spatial_dims" in sig.params:
+            in_dim_arg = "in_spatial_dims"
+
+          if "Sequence" in param.param_type_s:
+            assert in_dim_arg is not None
+            print(
+              f"    {out_dim_arg} = [\n"
+              f"      d.copy(same_as_self=False, description=f{out_dim_arg + '{i}'!r})\n"
+              f"      for i, d in enumerate({in_dim_arg})]", file=f)
+          elif in_dim_arg:
+            print(f"    {out_dim_arg} = {in_dim_arg}.copy(same_as_self=False, description={out_dim_arg!r})", file=f)
+          else:
+            print(f"    {out_dim_arg} = SpatialDim({out_dim_arg!r})", file=f)
+
       if sig.has_recurrent_state() or mod_args:
         print("  args = {", file=f)
         for param in mod_args:
@@ -445,9 +492,10 @@ def setup():
         print(
           "  ReturnnWrappedLayerBase.handle_recurrent_state("
           "args, axis=axis, state=state)", file=f)
-        print("  layer = make_layer({", file=f)
-      else:
+      if res_args == ["layer"]:
         print("  return make_layer({", file=f)
+      else:
+        print("  layer = make_layer({", file=f)
       print(f"    'class': {layer_class.layer_class!r},", file=f)
       if sig.has_source_param():
         print("    'from': source,", file=f)
@@ -459,7 +507,8 @@ def setup():
         print(f"    }}, name=name or {name.lstrip('_')!r})", file=f)
       if sig.has_recurrent_state():
         print("  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
-        print("  return layer, out_state", file=f)
+      if res_args != ["layer"]:
+        print(f"  return {', '.join(res_args)}", file=f)
 
     print(name, sig)
 
