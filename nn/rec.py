@@ -65,9 +65,10 @@ class _Rec(nn.Module):
       rec_layer_dict["unit_opts"] = self.unit_opts
     # We use the reuse_params mechanism from RETURNN to explicitly pass the parameters.
     reuse_params = {}
-    for param, _ in self.param_list:
+    for param, shape_func in self.param_list:
       param_ = getattr(self, f"param_{param}")
-      reuse_params[param] = {"layer_output": param_}
+      shape = shape_func()
+      reuse_params[param] = {"layer_output": param_, "shape": shape}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     assert direction in [1, -1]
     if direction == -1:
