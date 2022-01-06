@@ -569,3 +569,20 @@ def test_deepcopy():
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
   dummy_run_net(config)
+
+
+def test_batch_norm():
+  class _Net(nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.bn = nn.BatchNorm(use_mask=False)
+
+    @nn.scoped
+    def __call__(self, x: nn.LayerRef) -> nn.Layer:
+      """forward"""
+      return self.bn(x)
+
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net)
+  pprint(net_dict)
+  dummy_run_net(config)
