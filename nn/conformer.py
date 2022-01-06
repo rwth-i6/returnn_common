@@ -55,8 +55,8 @@ class ConformerConvBlock(nn.Module):
     super().__init__()
 
     self.positionwise_conv1 = nn.Linear(2 * out_dim)
-    self.depthwise_conv = nn.Conv(
-      out_dim=out_dim, filter_size=[kernel_size], groups=out_dim.dimension, padding='same')
+    self.depthwise_conv = nn.Conv1d(
+      out_dim=out_dim, filter_size=kernel_size, groups=out_dim.dimension, padding='same')
     self.positionwise_conv2 = nn.Linear(out_dim)
     self.batch_norm = batch_norm
 
@@ -65,7 +65,7 @@ class ConformerConvBlock(nn.Module):
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.glu(x_conv1, axis=inp.feature_dim)
-    x_depthwise_conv = self.depthwise_conv(x_act, in_spatial_dims=[in_spatial_dim])
+    x_depthwise_conv, _ = self.depthwise_conv(x_act, in_spatial_dim=in_spatial_dim)
     x_bn = self.batch_norm(x_depthwise_conv)
     x_swish = nn.swish(x_bn)
     x_conv2 = self.positionwise_conv2(x_swish)
@@ -99,7 +99,7 @@ class ConformerConvSubsample(nn.Module):
     assert len(filter_sizes) == len(out_dims) > 0
     for filter_size, out_dim in zip(filter_sizes, out_dims):
       self.conv_layers.append(
-        nn.Conv(filter_size=filter_size, out_dim=out_dim, padding=padding))
+        nn.Conv2d(filter_size=filter_size, out_dim=out_dim, padding=padding))
     self.out_dim = out_dims[-1]
 
   @nn.scoped
@@ -109,9 +109,7 @@ class ConformerConvSubsample(nn.Module):
     in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
     x = nn.expand_dim(inp, dim=in_dim)
     for i, conv_layer in enumerate(self.conv_layers):
-      out_spatial_dims = [nn.SpatialDim(f"conv-{i}-1"), nn.SpatialDim(f"conv-{i}-2")]
-      x = conv_layer(x, in_dim=in_dim, in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims)
-      in_spatial_dims = out_spatial_dims
+      x, in_spatial_dims = conv_layer(x, in_dim=in_dim, in_spatial_dims=in_spatial_dims)
       in_dim = conv_layer.out_dim
       x = self.activation(x)
       if self.pool_sizes and i < len(self.pool_sizes):
