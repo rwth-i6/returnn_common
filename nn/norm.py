@@ -56,35 +56,71 @@ class BatchNorm(nn.Module):
 
   """
 
-  def __init__(self, in_dim: Optional[nn.Dim] = None, *, affine: bool = True):
+  def __init__(self, in_dim: Optional[nn.Dim] = None, *,
+               affine: bool = True,
+               momentum: float = 0.1, epsilon: float = 1e-3,
+               use_mask: Optional[bool] = None,
+               ):
     """
     :param in_dim: the feature dimension of the input
     :param affine: whether to use learnable parameters gamma and beta
+    :param momentum: momentum for the running mean and variance
+    :param epsilon: epsilon for the variance
+    :param use_mask: whether to use a mask for dynamic spatial dims.
+      This must be specified if the input has dynamic spatial dims.
+      True would use the correct masking then. However, that is inconsistent to all other frameworks
+        which ignore the masking, and also slower, and the fused op would not be used.
+      False would be consistent to all other frameworks,
+        and potentially allows for the use of an efficient fused op internally.
     """
     super().__init__()
     self.in_dim = in_dim
-    self.mean = None  # type: Optional[nn.Parameter]
-    self.var = None  # type: Optional[nn.Parameter]
+    self.running_mean = None  # type: Optional[nn.Parameter]
+    self.running_variance = None  # type: Optional[nn.Parameter]
     self.affine = affine
     self.gamma = None  # type: Optional[nn.Parameter]
     self.beta = None  # type: Optional[nn.Parameter]
+    self.use_mask = use_mask
+    self.momentum = momentum
+    self.epsilon = epsilon
     if in_dim:
       self._lazy_init(in_dim)
 
   def _lazy_init(self, in_dim: nn.Dim):
     self.in_dim = in_dim
-    self.mean = nn.Parameter([in_dim], auxiliary=True)
-    self.var = nn.Parameter([in_dim], auxiliary=True)
+    self.running_mean = nn.Parameter([in_dim], auxiliary=True)
+    self.running_variance = nn.Parameter([in_dim], auxiliary=True)
     if self.affine:
       self.gamma = nn.Parameter([in_dim])
       self.beta = nn.Parameter([in_dim])
 
-  def __call__(self, source: nn.LayerRef, *,
-               epsilon: float = 1e-5) -> nn.Layer:
+  @nn.scoped
+  def __call__(self, source: nn.LayerRef) -> nn.Layer:
     source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
-    reduce_dims = [d for d in source.data.dim_tags if d != self.in_dim]
-    mean_cur_batch, variance_cur_batch = moments(source, reduce_dims)
-    mean_cur_batch.verify_out_shape({self.in_dim})
-    variance_cur_batch.verify_out_shape({self.in_dim})
-    # TODO: handle running mean/var ...
-    return (source - mean_cur_batch) * nn.rsqrt(variance_cur_batch + epsilon)
+    # We wrap the RETURNN layer because we want efficient handling if possible,
+    # which is potentially the use of a fused op,
+    # and maybe reordering of dims.
+    # https://github.com/rwth-i6/returnn_common/issues/89
+    spatial_dims = source.shape - {nn.batch_dim, self.in_dim}
+    assert len(spatial_dims) == len(source.shape) - 2
+    if any(d.dimension is None for d in spatial_dims):  # any dynamic spatial dim
+      if self.use_mask is None:
+        raise ValueError(
+          f"{self}: use_mask must be specified if the input {source} has any dynamic spatial dims")
+      use_mask = self.use_mask
+    else:
+      use_mask = False  # not needed. False because this potentially enables an efficient fused op.
+    reuse_params = {
+      "batch_norm/v2_mean": self.running_mean,
+      "batch_norm/v2_variance": self.running_variance,
+    }
+    if self.affine:
+      reuse_params["batch_norm/v2_gamma"] = self.gamma
+      reuse_params["batch_norm/v2_beta"] = self.beta
+    reuse_params = {"map": {k: {"layer_output": v} for k, v in reuse_params.items()}}
+    return nn.make_layer({
+      "class": "batch_norm", "from": source, "in_dim": self.in_dim,
+      "use_std": self.affine, "use_shift": self.affine,
+      "param_version": 2, "reuse_params": reuse_params,
+      "momentum": self.momentum, "epsilon": self.epsilon, "masked_time": use_mask,
+    }, name="batch_norm")
