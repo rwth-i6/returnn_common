@@ -103,7 +103,9 @@ class ConformerConvSubsample(nn.Module):
     self.out_dim = out_dims[-1]
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef, *, in_spatial_dim: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *,
+               in_spatial_dim: nn.Dim, out_spatial_dim: Optional[nn.Dim] = None
+               ) -> Tuple[nn.LayerRef, nn.Dim]:
     """forward"""
     in_spatial_dims = [in_spatial_dim, inp.feature_dim]
     in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
@@ -118,8 +120,8 @@ class ConformerConvSubsample(nn.Module):
           pool_size=self.pool_sizes[i], padding='same', mode='max')
       if self.dropout:
         x = nn.dropout(x, axis=in_dim, dropout=self.dropout)
-    out = nn.merge_dims(x, axes=in_spatial_dims, out_dim=out_spatial_dim)
-    return out
+    out, out_spatial_dim = nn.merge_dims(x, axes=in_spatial_dims, out_dim=out_spatial_dim)
+    return out, out_spatial_dim
 
 
 class ConformerEncoderLayer(nn.Module):
@@ -218,10 +220,12 @@ class ConformerEncoder(nn.Module):
     self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
   @nn.scoped
-  def __call__(self, inp: nn.LayerRef, *, in_spatial_dim: nn.Dim, out_spatial_dim: nn.Dim) -> nn.LayerRef:
+  def __call__(self, inp: nn.LayerRef, *,
+               in_spatial_dim: nn.Dim, out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.LayerRef, nn.Dim]:
     """forward"""
-    x_subsample = self.conv_subsample_layer(inp, in_spatial_dim=in_spatial_dim, out_spatial_dim=out_spatial_dim)
+    x_subsample, out_spatial_dim = self.conv_subsample_layer(
+      inp, in_spatial_dim=in_spatial_dim, out_spatial_dim=out_spatial_dim)
     x_linear = self.linear(x_subsample)
     x = nn.dropout(x_linear, axis=self.linear.out_dim, dropout=self.dropout)
     x = self.layers(x, in_spatial_dim=out_spatial_dim)
-    return x
+    return x, out_spatial_dim
