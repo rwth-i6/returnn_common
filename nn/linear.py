@@ -37,5 +37,5 @@ class Linear(nn.Module):
     if self.with_bias:
       out += self.bias
     if self.out_dim_inner != self.out_dim:
-      out = nn.reinterpret_new_dim(out, in_dim=self.out_dim_inner, out_dim=self.out_dim)
+      out, _ = nn.reinterpret_new_dim(out, in_dim=self.out_dim_inner, out_dim=self.out_dim)
     return out

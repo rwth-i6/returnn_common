@@ -2,7 +2,7 @@
 Some generic utils (which doesn't fit into math_, array_, etc)
 """
 
-from typing import Optional, Union, Sequence, Callable, Any
+from typing import Optional, Union, Sequence, Tuple, Callable, Any
 from .. import nn
 
 
@@ -61,14 +61,17 @@ def stop_gradient(source: nn.LayerRef, name: Optional[str] = None) -> nn.LayerRe
   return nn.scaled_gradient(source, scale=0, name=name)
 
 
-def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: nn.Dim,
-                        name: Optional[str] = None) -> nn.Layer:
+def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: Optional[nn.Dim] = None,
+                        name: Optional[str] = None) -> Tuple[nn.Layer, nn.Dim]:
   """
   :return: source with in_dim replaced by out_dim
   """
-  return nn.make_layer(
+  if not out_dim:
+    out_dim = in_dim.copy(same_as_self=False, description="new-dim")
+  out = nn.make_layer(
     {"class": "reinterpret_data", "set_dim_tags": {in_dim: out_dim}, "from": source},
     name=name or "new_dim")
+  return out, out_dim
 
 
 def check_in_feature_dim_lazy_init(

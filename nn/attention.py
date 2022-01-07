@@ -66,8 +66,8 @@ class GenericSelfAttention(nn.Module):
       assert causal is None or causal
       assert state
       new_state = nn.LayerState()
-      k, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
-      v, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
+      k, _, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
+      v, _, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
     else:
       new_state = None
       if causal:
@@ -75,8 +75,8 @@ class GenericSelfAttention(nn.Module):
           "Causal attention on sequence level not implemented. "
           "We can easily extend CumConcatLayer on RETURNN side for this, to accept any axis argument. "
           "However, normally any causal attention should always be inside a loop and this should never be needed.")
-      k = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=expand_dim, name="k_new_dim")
-      v = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=expand_dim, name="v_new_dim")
+      k, _ = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=expand_dim, name="k_new_dim")
+      v, _ = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=expand_dim, name="v_new_dim")
     att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=expand_dim, att_dropout=self.att_dropout)
     output, _ = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
