@@ -1174,19 +1174,19 @@ def cast(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def pool(
-         source: LayerRef,
-         *,
-         mode: str,
-         pool_size: Sequence[int],
-         padding: str = NotSpecified,
-         dilation_rate: Union[Sequence[int], int] = NotSpecified,
-         strides: Optional[Union[Sequence[int], int]] = NotSpecified,
-         in_dim: Optional[Dim] = NotSpecified,
-         in_spatial_dims: Sequence[Dim],
-         out_dim: Optional[Dim] = NotSpecified,
-         out_spatial_dims: Optional[Sequence[Dim]] = NotSpecified,
-         name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Sequence[Dim]]:
+def _pool(
+          source: LayerRef,
+          *,
+          mode: str,
+          pool_size: Sequence[int],
+          padding: str = NotSpecified,
+          dilation_rate: Union[Sequence[int], int] = NotSpecified,
+          strides: Optional[Union[Sequence[int], int]] = NotSpecified,
+          in_dim: Optional[Dim] = NotSpecified,
+          in_spatial_dims: Sequence[Dim],
+          out_dim: Optional[Dim] = NotSpecified,
+          out_spatial_dims: Optional[Sequence[Dim]] = NotSpecified,
+          name: Optional[Union[str, NameCtx]] = None) -> Tuple[Layer, Sequence[Dim]]:
   """
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.

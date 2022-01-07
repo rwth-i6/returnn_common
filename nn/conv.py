@@ -267,3 +267,138 @@ class TransposedConv3d(_TransposedConv):
   3D transposed convolution
   """
   nd = 3
+
+
+def _pool_nd(
+      source: nn.LayerRef,
+      *,
+      nd: int,
+      mode: str,
+      pool_size: Union[Sequence[int], int],
+      padding: str = nn.NotSpecified,
+      dilation_rate: Union[Sequence[int], int] = nn.NotSpecified,
+      strides: Optional[Union[Sequence[int], int]] = nn.NotSpecified,
+      in_spatial_dims: Sequence[nn.Dim],
+      out_spatial_dims: Optional[Sequence[nn.Dim]] = nn.NotSpecified,
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+  """
+  A generic N-D pooling layer.
+  This would usually be done after a convolution for down-sampling.
+
+  :param LayerRef source:
+  :param str mode: "max" or "avg"
+  :param tuple[int] pool_size: shape of the window of each reduce
+  :param str padding: "valid" or "same"
+  :param tuple[int]|int dilation_rate:
+  :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
+  :param Sequence[Dim] in_spatial_dims:
+  :param Sequence[Dim]|None out_spatial_dims:
+  :param str|NameCtx|None name:
+  :return: layer, out_spatial_dims
+  """
+  if isinstance(pool_size, int):
+    pool_size = [pool_size] * nd
+  assert isinstance(pool_size, (list, tuple))
+  assert len(pool_size) == nd
+  from ._generated_layers import _pool
+  return _pool(
+    source=source, mode=mode, pool_size=pool_size, padding=padding,
+    dilation_rate=dilation_rate, strides=strides,
+    in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims,
+    name=name)
+
+
+def pool1d(
+      source: nn.LayerRef,
+      *,
+      mode: str,
+      pool_size: int,
+      padding: str = nn.NotSpecified,
+      dilation_rate: Union[int] = nn.NotSpecified,
+      strides: Optional[int] = nn.NotSpecified,
+      in_spatial_dim: nn.Dim,
+      out_spatial_dim: Optional[nn.Dim] = nn.NotSpecified,
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+  """
+  1D pooling.
+
+  :param LayerRef source:
+  :param str mode: "max" or "avg"
+  :param tuple[int] pool_size: shape of the window of each reduce
+  :param str padding: "valid" or "same"
+  :param tuple[int]|int dilation_rate:
+  :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
+  :param Sequence[Dim] in_spatial_dim:
+  :param Sequence[Dim]|None out_spatial_dim:
+  :param str|NameCtx|None name:
+  :return: layer, out_spatial_dim
+  """
+  out, (out_spatial_dim,) = _pool_nd(
+    source=source, nd=1, mode=mode, pool_size=pool_size, padding=padding,
+    dilation_rate=dilation_rate, strides=strides, in_spatial_dims=[in_spatial_dim],
+    out_spatial_dims=[out_spatial_dim], name=name)
+  return out, out_spatial_dim
+
+
+def pool2d(
+      source: nn.LayerRef,
+      *,
+      mode: str,
+      pool_size: Union[Sequence[int], int],
+      padding: str = nn.NotSpecified,
+      dilation_rate: Union[Sequence[int], int] = nn.NotSpecified,
+      strides: Optional[Union[Sequence[int], int]] = nn.NotSpecified,
+      in_spatial_dims: Sequence[nn.Dim],
+      out_spatial_dims: Optional[Sequence[nn.Dim]] = nn.NotSpecified,
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+  """
+  2D pooling.
+
+  :param LayerRef source:
+  :param str mode: "max" or "avg"
+  :param tuple[int] pool_size: shape of the window of each reduce
+  :param str padding: "valid" or "same"
+  :param tuple[int]|int dilation_rate:
+  :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
+  :param Sequence[Dim] in_spatial_dims:
+  :param Sequence[Dim]|None out_spatial_dims:
+  :param str|NameCtx|None name:
+  :return: layer, out_spatial_dims
+  """
+  return _pool_nd(
+    source=source, nd=2, mode=mode, pool_size=pool_size, padding=padding,
+    dilation_rate=dilation_rate, strides=strides,
+    in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims,
+    name=name)
+
+
+def pool3d(
+      source: nn.LayerRef,
+      *,
+      mode: str,
+      pool_size: Union[Sequence[int], int],
+      padding: str = nn.NotSpecified,
+      dilation_rate: Union[Sequence[int], int] = nn.NotSpecified,
+      strides: Optional[Union[Sequence[int], int]] = nn.NotSpecified,
+      in_spatial_dims: Sequence[nn.Dim],
+      out_spatial_dims: Optional[Sequence[nn.Dim]] = nn.NotSpecified,
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+  """
+  3D pooling.
+
+  :param LayerRef source:
+  :param str mode: "max" or "avg"
+  :param tuple[int] pool_size: shape of the window of each reduce
+  :param str padding: "valid" or "same"
+  :param tuple[int]|int dilation_rate:
+  :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
+  :param Sequence[Dim] in_spatial_dims:
+  :param Sequence[Dim]|None out_spatial_dims:
+  :param str|NameCtx|None name:
+  :return: layer, out_spatial_dims
+  """
+  return _pool_nd(
+    source=source, nd=3, mode=mode, pool_size=pool_size, padding=padding,
+    dilation_rate=dilation_rate, strides=strides,
+    in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims,
+    name=name)
