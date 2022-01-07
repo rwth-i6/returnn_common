@@ -6,6 +6,15 @@ from typing import Optional, Union, Sequence, Tuple, Callable, Any
 from .. import nn
 
 
+def convert_to_layer_ref(x: Union[nn.LayerRef, int, float, complex, bool, str]) -> nn.LayerRef:
+  """
+  In case it is not a layer ref yet, it will make some constant.
+  """
+  if isinstance(x, nn.LayerRef):
+    return x
+  return nn.constant(value=x)
+
+
 def where(cond: nn.LayerRef,
           true_: Union[nn.LayerRef, float, int],
           false_: Union[nn.LayerRef, float, int],
