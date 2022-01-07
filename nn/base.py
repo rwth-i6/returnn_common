@@ -499,6 +499,9 @@ def convert_to_layer_ref(x: Union[LayerRef, int, float, complex, bool, str]) -> 
 def get_extern_data(data: Data) -> LayerRef:
   """
   Get extern data from root ctx.
+  As a side effect, it registers the given data as extern data,
+  and this will be included when creating the RETURNN config,
+  via :func:`NameCtx.get_returnn_config`.
   """
   assert isinstance(data, Data)  # the usage was different before. make sure we get this correct
   scope = nn.NameCtx.top()  # must exist
