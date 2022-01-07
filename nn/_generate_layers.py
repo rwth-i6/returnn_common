@@ -229,12 +229,9 @@ def setup():
   print('"""', file=f)
   print("", file=f)
   print("from __future__ import annotations", file=f)
-  print("from typing import Union, Optional, Tuple, List, Sequence, Dict, Set, Any", file=f)
+  print("from typing import Union, Optional, Tuple, Sequence, Dict, Any", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
-  print("# noinspection PyProtectedMember", file=f)
-  print("from returnn.tf.util.data import Dim, SpatialDim, _MarkedDim", file=f)
-  print(
-    "from .base import NameCtx, ReturnnWrappedLayerBase, Layer, LayerRef, LayerState, make_layer", file=f)
+  print("from .. import nn", file=f)
   layer_classes = collect_layers()
   signatures = {}  # type: Dict[Type[LayerBase], LayerSignature]
   for layer_class in layer_classes:
@@ -244,7 +241,7 @@ def setup():
     if layer_class != LayerBase:
       cls_base_str = get_module_class_name_for_layer_class(sig.derived_layer())
     else:
-      cls_base_str = "ReturnnWrappedLayerBase"
+      cls_base_str = "nn.ReturnnWrappedLayerBase"
 
     if not sig.is_functional() or layer_class == LayerBase:
       print(f"\n\nclass {cls_str}({cls_base_str}):", file=f)
@@ -311,7 +308,7 @@ def setup():
         print("", file=f)
         # Note: For the __call__, we do not need the nn.scoped decorator because it does not make sense to wrap it
         # into an own subnetwork.
-        res_type_str = "Tuple[Layer, LayerState]" if sig.has_recurrent_state() else "Layer"
+        res_type_str = "Tuple[nn.Layer, nn.LayerState]" if sig.has_recurrent_state() else "nn.Layer"
         if any([
               sig.has_source_param(),
               sig.explicit_source_list(),
@@ -337,19 +334,19 @@ def setup():
         if sig.has_source_param():
           if sig.need_multiple_sources():
             print(
-              "    assert isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)",
+              "    assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.LayerRef) for s in source)",
               file=f)
           elif sig.support_multiple_sources():
             print(
               "    assert (\n"
-              "      isinstance(source, LayerRef) or\n"
-              "      (isinstance(source, (tuple, list)) and all(isinstance(s, LayerRef) for s in source)))",
+              "      isinstance(source, nn.LayerRef) or\n"
+              "      (isinstance(source, (tuple, list)) and all(isinstance(s, nn.LayerRef) for s in source)))",
               file=f)
           else:
-            print("    assert isinstance(source, LayerRef)", file=f)
+            print("    assert isinstance(source, nn.LayerRef)", file=f)
         elif sig.explicit_source_list():
           for i in range(sig.explicit_source_list()):
-            print(f"    assert isinstance(source{i + 1}, LayerRef)", file=f)
+            print(f"    assert isinstance(source{i + 1}, nn.LayerRef)", file=f)
         if sig.has_module_call_args() or sig.has_recurrent_state():
           if sig.has_module_call_args():
             print("    args = {", file=f)
@@ -364,9 +361,9 @@ def setup():
             assert "axis" in sig.params
             print("    self.handle_recurrent_state(args, axis=axis, state=state)", file=f)
         if sig.has_recurrent_state():
-          print("    layer = make_layer({", file=f)
+          print("    layer = nn.make_layer({", file=f)
         else:
-          print("    return make_layer({", file=f)
+          print("    return nn.make_layer({", file=f)
         print(f"      'class': {layer_class.layer_class!r},", file=f)
         if sig.has_source_param():
           print("      'from': source,", file=f)
@@ -381,7 +378,7 @@ def setup():
           print("    return layer, out_state", file=f)
       else:
         print("", file=f)
-        print("  __call__ = ReturnnWrappedLayerBase.__call__  # abstract", file=f)
+        print("  __call__ = nn.ReturnnWrappedLayerBase.__call__  # abstract", file=f)
 
     # Make function if this is functional
     name = get_module_class_name_for_layer_class(sig)
@@ -394,13 +391,13 @@ def setup():
         name = "_" + name
       print("\n", file=f)
 
-      res_types = ["Layer"]
+      res_types = ["nn.Layer"]
       res_args = ["layer"]
       if layer_class.layer_class in PerLayerOutDimArgs:
         res_types_, res_args_ = [], []
         for out_dim_arg in PerLayerOutDimArgs[layer_class.layer_class]:
           param = sig.params[out_dim_arg]
-          res_types_.append("Sequence[Dim]" if "Sequence" in param.param_type_s else "Dim")
+          res_types_.append("Sequence[nn.Dim]" if "Sequence" in param.param_type_s else "nn.Dim")
           res_args_.append(out_dim_arg)
           if "None" not in param.param_type_s:
             param.param_type_s += "|None"
@@ -413,7 +410,7 @@ def setup():
           res_types.extend(res_types_)
           res_args.extend(res_args_)
       if sig.has_recurrent_state():
-        res_types.append("LayerState")
+        res_types.append("nn.LayerState")
         res_args.append("out_state")
 
       print("# noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
@@ -433,7 +430,7 @@ def setup():
         print(f"{prefix}{param.get_module_param_code_str()},", file=f)
       res_type = "Tuple[%s]" % ", ".join(res_types) if len(res_types) > 1 else res_types[0]
       print(
-        f"{prefix}name: Optional[Union[str, NameCtx]] = None)"
+        f"{prefix}name: Optional[Union[str, nn.NameCtx]] = None)"
         f" -> {res_type}:",
         file=f)
       print('  """', file=f)
@@ -456,7 +453,7 @@ def setup():
         print(f"  {sig.get_module_call_state_docstring('state')}", file=f)
       for param in mod_args:
         print(param.get_module_param_docstring(indent="  "), file=f)
-      print("  :param str|NameCtx|None name:", file=f)
+      print("  :param str|nn.NameCtx|None name:", file=f)
       print(f"  :return: {', '.join(res_args)}", file=f)
       print('  """', file=f)
 
@@ -481,7 +478,7 @@ def setup():
           elif in_dim_arg:
             print(f"    {out_dim_arg} = {in_dim_arg}.copy(same_as_self=False, description={out_dim_arg!r})", file=f)
           else:
-            print(f"    {out_dim_arg} = SpatialDim({out_dim_arg!r})", file=f)
+            print(f"    {out_dim_arg} = nn.SpatialDim({out_dim_arg!r})", file=f)
 
       if sig.has_recurrent_state() or mod_args:
         print("  args = {", file=f)
@@ -491,12 +488,12 @@ def setup():
         print("  args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
       if sig.has_recurrent_state():
         print(
-          "  ReturnnWrappedLayerBase.handle_recurrent_state("
+          "  nn.ReturnnWrappedLayerBase.handle_recurrent_state("
           "args, axis=axis, state=state)", file=f)
       if res_args == ["layer"]:
-        print("  return make_layer({", file=f)
+        print("  return nn.make_layer({", file=f)
       else:
-        print("  layer = make_layer({", file=f)
+        print("  layer = nn.make_layer({", file=f)
       print(f"    'class': {layer_class.layer_class!r},", file=f)
       if sig.has_source_param():
         print("    'from': source,", file=f)
@@ -507,7 +504,7 @@ def setup():
       else:
         print(f"    }}, name=name or {name.lstrip('_')!r})", file=f)
       if sig.has_recurrent_state():
-        print("  out_state = ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
+        print("  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
       if res_args != ["layer"]:
         print(f"  return {', '.join(res_args)}", file=f)
 
@@ -581,15 +578,15 @@ class LayerSignature:
     Code for `source` param
     """
     if explicit_idx is not None:
-      return f"source{explicit_idx + 1}: LayerRef"
+      return f"source{explicit_idx + 1}: nn.LayerRef"
     assert self.has_source_param()
     s = "source: "
     if self.need_multiple_sources():
-      s += "Union[List[LayerRef], Tuple[LayerRef]]"
+      s += "Sequence[nn.LayerRef]"
     elif self.support_multiple_sources():
-      s += "Union[LayerRef, List[LayerRef], Tuple[LayerRef]]"
+      s += "Union[nn.LayerRef, Sequence[nn.LayerRef]]"
     else:
-      s += "LayerRef"
+      s += "nn.LayerRef"
     default = self.default_source()
     if default:
       s += " = " + default
@@ -600,14 +597,14 @@ class LayerSignature:
     Code for docstring of `source` param
     """
     if explicit_idx is not None:
-      return f":param LayerRef source{explicit_idx + 1}:"
+      return f":param nn.LayerRef source{explicit_idx + 1}:"
     s = ":param "
     if self.need_multiple_sources():
-      s += "list[LayerRef]|tuple[LayerRef]"
+      s += "Sequence[nn.LayerRef]"
     elif self.support_multiple_sources():
-      s += "LayerRef|list[LayerRef]|tuple[LayerRef]"
+      s += "nn.LayerRef|Sequence[nn.LayerRef]"
     else:
-      s += "LayerRef"
+      s += "nn.LayerRef"
     s += " source:"
     return s
 
@@ -616,14 +613,14 @@ class LayerSignature:
     Code for `state` param
     """
     assert self.has_recurrent_state()
-    return f"{param_name}: Optional[Union[LayerRef, Dict[str, LayerRef], NotSpecified]] = NotSpecified"
+    return f"{param_name}: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified"
 
   def get_module_call_state_docstring(self, param_name: str):
     """
     Code for docstring of `source` param
     """
     assert self.has_recurrent_state()
-    return f":param LayerRef|list[LayerRef]|tuple[LayerRef]|NotSpecified|None {param_name}:"
+    return f":param nn.LayerRef|Sequence[nn.LayerRef]|NotSpecified|None {param_name}:"
 
   def has_module_init_args(self) -> bool:
     """
@@ -795,8 +792,9 @@ class LayerSignature:
         if param_type_s:
           param_type_s = re.sub(r"\breturnn\.tf\.util\.data\.", "", param_type_s)
           param_type_s = re.sub(r"\bDimensionTag\b", "Dim", param_type_s)
-          param_type_s = re.sub(r"\bDim\|str\b", "Dim", param_type_s)
-          param_type_s = re.sub(r"\str\|Dim\b", "Dim", param_type_s)
+          param_type_s = re.sub(r"\bDim\|str\b", "nn.Dim", param_type_s)
+          param_type_s = re.sub(r"\bstr\|Dim\b", "nn.Dim", param_type_s)
+          param_type_s = re.sub(r"\b(?<!nn\.)Dim\b", "nn.Dim", param_type_s)
         if param.inspect_param.default != param.inspect_param.empty and param_name in {"axis", "axes"}:
           if "None" not in param_type_s:
             param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)
@@ -814,12 +812,18 @@ class LayerSignature:
       res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
         param.param_type_s, replace_types=replace_types,
         allow_optional=param.inspect_param.default != inspect.Parameter.empty)
+
+      class _NnDummyScope:
+        Dim = "nn.Dim"
+        LayerRef = "nn.LayerRef"
+
       res_t = eval(res_t_s, {
         "typing": typing,
         "Optional": Optional, "Union": Union,
         "List": List, "Tuple": Tuple, "Sequence": Sequence,
         "Set": Set, "Dict": Dict,
-        "Dim": "Dim", "LayerRef": "LayerRef", "NotSpecified": NotSpecified})
+        "Dim": "nn.Dim", "LayerRef": "nn.LayerRef", "NotSpecified": NotSpecified,
+        "nn": _NnDummyScope})
 
       def _convert(t) -> str:
         if t is None:
@@ -831,7 +835,7 @@ class LayerSignature:
         if isinstance(t, str):
           return t
         if isinstance(t, typing.ForwardRef):
-          if t.__forward_arg__ == "LayerRef":
+          if t.__forward_arg__ in {"LayerRef", "nn.LayerRef"}:
             return "LayerBase"
           return t.__forward_arg__
         if typing.get_origin(t) == Union:
@@ -874,7 +878,7 @@ class LayerSignature:
     if "axes" in self.params and "axis" in self.params:
       param_ = self.params.pop("axes")
       param = self.params["axis"]
-      param.param_type_s = "Dim|list[Dim]"
+      param.param_type_s = "nn.Dim|Sequence[nn.Dim]"
       if param_.docstring:
         param.docstring += "\n"
         param.docstring += param_.docstring
@@ -884,6 +888,8 @@ class LayerSignature:
       param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make sure not optional
     for name, param in self.params.items():
       if name == "out_shape":
+        if "_MarkedDim" in param.param_type_s:
+          param.param_type_s = "nn.OutShapeType"
         continue
       if name in PerLayerMandatoryArgs.get(self.layer_class.layer_class, ()):
         param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make not optional
@@ -1130,7 +1136,7 @@ class LayerSignature:
           s = re.sub(r"\btuple\b", "Sequence", s)
           s = re.sub(r"\bset\b", "Set", s)
           s = re.sub(r"\bdict\b", "Dict", s)
-          s = re.sub(r"\bLayerBase\b", "LayerRef", s)
+          s = re.sub(r"\bLayerBase\b", "nn.LayerRef", s)
           s = re.sub(r",(?=\S)", ", ", s)
           if "|" in s:
             assert "," not in s  # should be inside brackets and thus replaced above
@@ -1178,15 +1184,15 @@ class LayerSignature:
       Param type
       """
       if self.returnn_name == "reuse_params":
-        return "Optional[Union[LayerRef, Dict[str, Any]]]"
+        return "Optional[Union[nn.LayerRef, Dict[str, Any]]]"
       if self.returnn_name == "chunking_layer":
-        return "LayerRef"
+        return "nn.LayerRef"
       if self.returnn_name == "unit":
         return "str"
       if self.returnn_name == "max_seq_len":
         return "Optional[Union[str, int]]"
       if self.returnn_name == "axis" and not self.param_type_s:
-        return "Dim"
+        return "nn.Dim"
       if not self.param_type_s:
         return "Any"
       return self.translate_param_type_code_to_typing_code(self.param_type_s)
