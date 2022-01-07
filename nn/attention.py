@@ -47,7 +47,10 @@ class GenericSelfAttention(nn.Module):
     """
     For causal attention.
     """
-    pass  # TODO ...
+    expand_dim = nn.SpatialDim("self_att_expand_dim_init", 0)
+    return nn.LayerState({
+      "k_accum": nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.key_dim_per_head]),
+      "v_accum": nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.value_dim_per_head])})
 
   @nn.scoped
   def __call__(self, source: nn.LayerRef, *, axis: nn.Dim,
@@ -70,6 +73,7 @@ class GenericSelfAttention(nn.Module):
       v, _, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
     else:
       new_state = None
+      assert not state
       if causal:
         raise NotImplementedError(
           "Causal attention on sequence level not implemented. "
@@ -99,7 +103,8 @@ class CausalSelfAttention(GenericSelfAttention):
   Classic causal self attention
   """
   @nn.scoped
-  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
+  def __call__(self, source: nn.LayerRef, *, axis: nn.Dim, state: Optional[nn.LayerState] = None
+               ) -> Tuple[nn.Layer, nn.LayerState]:
     """forward"""
-    out, _ = super().__call__(source, axis=axis, causal=True)
-    return out
+    out, state = super().__call__(source, causal=True, axis=axis, state=state)
+    return out, state
