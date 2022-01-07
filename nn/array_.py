@@ -61,8 +61,8 @@ def concat(*sources: Tuple[nn.LayerRef, nn.Dim],
 
 def cum_concat_step(
       source: nn.LayerRef, *, state: nn.LayerState,
-      out_spatial_dim: nn.Dim,
-      name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
+      out_spatial_dim: Optional[nn.Dim] = None,
+      name: Optional[str] = None) -> Tuple[nn.Layer, nn.Dim, nn.LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   See RETURNN :class:`CumConcatLayer` for details.
@@ -102,33 +102,32 @@ def window(
       window_right: Optional[int] = NotSpecified,
       padding: str = NotSpecified,
       stride: int = NotSpecified,
-      name: Optional[str] = None) -> nn.Layer:
+      name: Optional[str] = None) -> Tuple[nn.Layer, nn.Dim]:
   """
   Window. See :func:`_generated_layers._window`.
   """
   from ._generated_layers import rec_window
-  layer, state = rec_window(
+  layer, (window_dim, out_spatial_dim), state = rec_window(
     source,
     window_dim=window_dim, window_left=window_left, window_right=window_right,
     axis=axis, padding=padding, stride=stride,
     name=name)
   del state
-  return layer
+  return layer, out_spatial_dim
 
 
 def window_step(
       source: nn.LayerRef, *, state: nn.LayerState,
       window_dim: nn.Dim,
-      padding: str = NotSpecified,
-      stride: int = NotSpecified,
       name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
   """
   Window into the past when iterating.
   See :func:`_generated_layers._window`.
   """
   from ._generated_layers import rec_window
-  return rec_window(
+  out, _, state = rec_window(
     source, state=state,
     window_dim=window_dim, window_left=window_dim.dimension - 1, window_right=0,
-    axis=nn.single_step_dim, padding=padding, stride=stride,
+    axis=nn.single_step_dim,
     name=name)
+  return out, state
