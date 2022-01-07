@@ -115,8 +115,8 @@ class ConformerConvSubsample(nn.Module):
       in_dim = conv_layer.out_dim
       x = self.activation(x)
       if self.pool_sizes and i < len(self.pool_sizes):
-        x = nn.pool(
-          x, in_dim=in_dim, in_spatial_dims=in_spatial_dims,
+        x, _ = nn.pool2d(
+          x, in_spatial_dims=in_spatial_dims,
           pool_size=self.pool_sizes[i], padding='same', mode='max')
       if self.dropout:
         x = nn.dropout(x, axis=in_dim, dropout=self.dropout)
