@@ -28,8 +28,8 @@ See :func:`setup` below for implementation details.
 import sys
 import os
 
-my_dir = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
-root_dir = os.path.dirname(my_dir)
+tests_dir = os.path.dirname(os.path.realpath(os.path.abspath(__file__)))
+root_dir = os.path.dirname(tests_dir)
 parent_root_dir = os.path.dirname(root_dir)
 _my_old_mod_name = __name__
 _expected_package_name = "returnn_common.tests"
@@ -113,9 +113,17 @@ def setup():
   # Now some trickery for some good main default.
 
   main_mod = sys.modules.get("__main__")
-  if main_mod and os.path.dirname(os.path.realpath(os.path.abspath(main_mod.__file__))) == my_dir:
-    main_mod_ = importlib.import_module(
-      _expected_package_name + "." + os.path.splitext(os.path.basename(main_mod.__file__))[0])
+  if main_mod and os.path.dirname(os.path.realpath(os.path.abspath(main_mod.__file__))) == tests_dir:
+    main_mod_expected_name = _expected_package_name + "." + os.path.splitext(os.path.basename(main_mod.__file__))[0]
+    if main_mod.__package__ != _expected_package_name:
+      main_mod.__package__ = _expected_package_name
+    # We need to import the module again because so far it (__main__) is not fully imported
+    # because we are right in the `import _setup_test_env` in the very beginning.
+    # Another import will skip over `import _setup_test_env`.
+    # Another import should not be problematic as the module should not have other side effects,
+    # such as a custom `if __name__ == "__main__":` block.
+    sys.modules.pop(main_mod_expected_name, None)
+    main_mod_ = importlib.import_module(main_mod_expected_name)
     _main(main_mod_)
 
 
