@@ -7,8 +7,8 @@ from .. import nn
 
 
 @nn.scoped
-def dot_attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef,
-                  key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.) -> nn.LayerRef:
+def dot_attention(query: nn.LayerRef, keys: nn.LayerRef, values: nn.LayerRef, *,
+                  key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.1) -> nn.LayerRef:
   """
   Calculates attention over the given axis, for given key dim.
   Any other unrelated axes do not matter here.
@@ -29,7 +29,7 @@ class GenericSelfAttention(nn.Module):
   Shared base class for self attention
   """
   def __init__(self, *, key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
-               att_dropout: float = 0.):
+               att_dropout: float = 0.1):
     super().__init__()
     if isinstance(num_heads, int):
       num_heads = nn.SpatialDim("num_heads", num_heads)
