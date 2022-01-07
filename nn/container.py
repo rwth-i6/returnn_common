@@ -3,16 +3,15 @@ container functions
 """
 
 from __future__ import annotations
-from . import nn
-from .base import Module, LayerRef
+from .. import nn
 from typing import Iterable, Iterator, Union, Dict, Callable
 
 
-_UnaryFuncT = Callable[[LayerRef], LayerRef]
-_ModT = Union[Module, _UnaryFuncT]
+_UnaryFuncT = Callable[[nn.LayerRef], nn.LayerRef]
+_ModT = Union[nn.Module, _UnaryFuncT]
 
 
-class ModuleList(Module):
+class ModuleList(nn.Module):
   """
   Module list, getting passed an Iterable of Modules and creates a list of Modules in that order
   """
@@ -31,8 +30,8 @@ class ModuleList(Module):
       for idx, module in enumerate(modules):
         setattr(self, str(idx), _convert_to_module(module))
 
-  def _get_modules(self) -> Dict[str, Module]:
-    return {key: value for (key, value) in vars(self).items() if isinstance(value, Module)}
+  def _get_modules(self) -> Dict[str, nn.Module]:
+    return {key: value for (key, value) in vars(self).items() if isinstance(value, nn.Module)}
 
   def append(self, module: _ModT) -> ModuleList:
     """
@@ -55,7 +54,7 @@ class ModuleList(Module):
   def __iter__(self) -> Iterator[_ModT]:
     return iter(self._get_modules().values())
 
-  def __getitem__(self, idx) -> Union[ModuleList, Module]:
+  def __getitem__(self, idx) -> Union[ModuleList, nn.Module]:
     from builtins import slice
     if isinstance(idx, slice):
       return self.__class__(dict(list(self._get_modules().items())[idx]))
@@ -66,7 +65,7 @@ class ModuleList(Module):
     key = list(self._get_modules().keys())[idx]
     return setattr(self, key, _convert_to_module(module))
 
-  __call__ = Module.__call__  # stays abstract
+  __call__ = nn.Module.__call__  # stays abstract
 
 
 class Sequential(ModuleList):
@@ -74,7 +73,7 @@ class Sequential(ModuleList):
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
   @nn.scoped
-  def __call__(self, inp, **kwargs) -> LayerRef:
+  def __call__(self, inp, **kwargs) -> nn.LayerRef:
     """
     Forward
     """
@@ -83,37 +82,20 @@ class Sequential(ModuleList):
     return inp
 
 
-def sequential(source: LayerRef, *modules) -> LayerRef:
+def sequential(source: nn.LayerRef, *modules) -> nn.LayerRef:
   """
   Wraps ``Sequential(*modules)(source)``
   """
   return Sequential(*modules)(source)
 
 
-def _convert_to_module(obj: _ModT) -> Module:
-  if isinstance(obj, Module):
+def _convert_to_module(obj: _ModT) -> nn.Module:
+  if isinstance(obj, nn.Module):
     return obj
   elif callable(obj):
-    return WrappedFunction(obj)
+    return nn.Functional(obj)
   else:
     raise TypeError(f"did not expect {obj!r}")
-
-
-class WrappedFunction(Module):
-  """
-  Wrap any function as a module.
-  """
-  def __init__(self, func):
-    super().__init__()
-    assert callable(func)
-    self.func = func
-
-  @nn.scoped
-  def __call__(self, *args, **kwargs) -> LayerRef:
-    """
-    Forward
-    """
-    return self.func(*args, **kwargs)
 
 
 def _is_iterable(obj) -> bool:
