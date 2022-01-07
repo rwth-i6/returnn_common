@@ -18,8 +18,7 @@ TODO this is all work-in-progress. the transducer-fullsum was the base for this 
 from __future__ import annotations
 from typing import Optional
 from enum import Enum
-from .. import nn
-from ..base import Module, LayerRef
+from ... import nn
 
 
 class LabelTopology(Enum):
@@ -32,7 +31,7 @@ class LabelTopology(Enum):
   WITH_VERTICAL = 4
 
 
-class Decoder(Module):
+class Decoder(nn.Module):
   """
   Generic decoder, for attention-based encoder-decoder or transducer.
   Can use label-sync label topology, or time-sync (RNA/CTC), or with vertical transitions (RNN-T).
@@ -79,7 +78,7 @@ class Decoder(Module):
     self.log_prob_separate_wb = log_prob_separate_wb
 
   @nn.scoped
-  def __call__(self, encoder: LayerRef) -> LayerRef:
+  def __call__(self, encoder: nn.LayerRef) -> nn.LayerRef:
     """
     Make one decoder step (train and/or recognition).
     """
@@ -90,25 +89,25 @@ class Decoder(Module):
 # TODO make generic type for args (Generic, TypeVar) to support not just single layer?
 
 
-class IDecoderLabelSyncRnn(Module):
+class IDecoderLabelSyncRnn(nn.Module):
   """
   Represents SlowRNN in Transducer.
   """
   @nn.scoped
   def __call__(self, *,
-               prev_sparse_label_nb: LayerRef,
-               prev_emit: LayerRef,
-               unmasked_sparse_label_nb_seq: Optional[LayerRef] = None,
-               prev_step_sync_rnn: LayerRef,
-               encoder: LayerRef  # TODO enc ctx?
-               ) -> LayerRef:
+               prev_sparse_label_nb: nn.LayerRef,
+               prev_emit: nn.LayerRef,
+               unmasked_sparse_label_nb_seq: Optional[nn.LayerRef] = None,
+               prev_step_sync_rnn: nn.LayerRef,
+               encoder: nn.LayerRef  # TODO enc ctx?
+               ) -> nn.LayerRef:
     """
     Make layer dict.
     """
     raise NotImplementedError
 
 
-class IDecoderStepSyncRnn(Module):
+class IDecoderStepSyncRnn(nn.Module):
   """
   Represents FastRNN in Transducer.
   Otherwise in general this runs step-synchronous,
@@ -117,9 +116,9 @@ class IDecoderStepSyncRnn(Module):
   """
   @nn.scoped
   def __call__(self, *,
-               prev_label_wb: LayerRef,
-               encoder: LayerRef,  # TODO enc ctx. or not? need full encoder for full-sum case...
-               label_sync_rnn: LayerRef) -> LayerRef:
+               prev_label_wb: nn.LayerRef,
+               encoder: nn.LayerRef,  # TODO enc ctx. or not? need full encoder for full-sum case...
+               label_sync_rnn: nn.LayerRef) -> nn.LayerRef:
     """
     prev_label_wb and encoder use the same time dim (T) (or none).
     label_sync_rnn can use the same (unmasked) (or none) or a different (U+1) (maybe in full-sum setting).
@@ -129,11 +128,11 @@ class IDecoderStepSyncRnn(Module):
     raise NotImplementedError
 
 
-class IDecoderLogProbSeparateNb(Module):
+class IDecoderLogProbSeparateNb(nn.Module):
   """
   Log prob separate without blank.
   """
-  def __call__(self, step_sync_rnn: LayerRef) -> LayerRef:
+  def __call__(self, step_sync_rnn: nn.LayerRef) -> nn.LayerRef:
     """
     Make log-prob distribution over labels (without blank).
 
@@ -142,12 +141,12 @@ class IDecoderLogProbSeparateNb(Module):
     raise NotImplementedError
 
 
-class IDecoderLogProbSeparateWb(Module):
+class IDecoderLogProbSeparateWb(nn.Module):
   """
   Log prob with blank.
   """
   @nn.scoped
-  def __call__(self, step_sync_rnn: LayerRef, log_prob_nb: LayerRef) -> LayerRef:
+  def __call__(self, step_sync_rnn: nn.LayerRef, log_prob_nb: nn.LayerRef) -> nn.LayerRef:
     """
     Make layer dict.
     """

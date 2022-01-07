@@ -13,17 +13,16 @@ So, for most purpose, e.g. for a decoder (see :mod:`..decoder.base`),
 you only care about some encoded vector of type :class:`LayerRef`.
 """
 
-from .. import nn
-from ..base import Module, LayerRef
+from ... import nn
 
 
-class IEncoder(Module):
+class IEncoder(nn.Module):
   """
   Generic encoder interface
   """
 
   @nn.scoped
-  def __call__(self, source: LayerRef) -> LayerRef:
+  def __call__(self, source: nn.LayerRef) -> nn.LayerRef:
     """
     Encode the input
     """
