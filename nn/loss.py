@@ -46,6 +46,9 @@ def cross_entropy(*, target: nn.LayerRef, estimated: nn.LayerRef, estimated_type
   elif estimated_type == "log-probs":
     return -nn.dot(target, estimated, reduce=axis)
   elif estimated_type == "logits":
+    if target.data.sparse:
+      # This is a common case and TF provides an optimized function for it, so use that directly.
+      return nn.sparse_softmax_cross_entropy_with_logits(logits=estimated, targets=target, axis=axis)
     return -nn.dot(target, nn.log_softmax(estimated, axis=axis), reduce=axis)
   else:
     raise ValueError("estimated_kind must be 'probs', 'log-probs' or 'logits'")
