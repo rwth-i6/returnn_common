@@ -11,7 +11,8 @@ from .const import *
 from .math_ import *
 from .array_ import *
 from .utils import *
-from .norm import *
+from .normalization import *
+from .loss import *
 from .linear import *
 from .conv import *
 from .rec import *
