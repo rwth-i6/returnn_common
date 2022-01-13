@@ -184,101 +184,101 @@ class LayerRef:
     """
     raise TypeError(f"mark_as_output can only be called on a layer, not a layer-ref {self}.")
 
-  def __add__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __add__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="add", name="add")
 
-  def __sub__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __sub__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="sub", name="sub")
 
-  def __mul__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __mul__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="mul", name="mul")
 
-  def __truediv__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __truediv__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="truediv", name="truediv")
 
-  def __radd__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __radd__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="add", name="add")
 
-  def __rsub__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __rsub__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="sub", name="sub")
 
-  def __rmul__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __rmul__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="mul", name="mul")
 
-  def __rtruediv__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __rtruediv__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="truediv", name="truediv")
 
-  def __neg__(self) -> LayerRef:
+  def __neg__(self) -> Layer:
     from ._generated_layers import _eval
     return _eval(self, eval="-source(0)", name="neg")
 
-  def __invert__(self) -> LayerRef:
+  def __invert__(self) -> Layer:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.logical_not(source(0))", name="invert")
 
-  def __pow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> LayerRef:
+  def __pow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> Layer:
     assert modulo is None
     from ._generated_layers import _eval
     return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.pow(source(0), source(1))", name="pow")
 
-  def __rpow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> LayerRef:
+  def __rpow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> Layer:
     assert modulo is None
     from ._generated_layers import _eval
     return _eval([nn.convert_to_layer_ref(other), self], eval="tf.math.pow(source(0), source(1))", name="pow")
 
-  def __and__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __and__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="logical_and", name="logical_and")
 
-  def __or__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __or__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="logical_or", name="logical_or")
 
-  def __abs__(self) -> LayerRef:
+  def __abs__(self) -> Layer:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.abs(source(0))", name="abs")
 
-  def __ceil__(self) -> LayerRef:
+  def __ceil__(self) -> Layer:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.math.ceil(source(0))", name="ceil")
 
-  def __floor__(self) -> LayerRef:
+  def __floor__(self) -> Layer:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.math.floor(source(0))", name="floor")
 
-  def __floordiv__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __floordiv__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _eval
     return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
 
-  def __eq__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __eq__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="equal", name="equal")
 
-  def __ne__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __ne__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="not_equal", name="not_equal")
 
-  def __lt__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __lt__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="less", name="less")
 
-  def __le__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __le__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="less_equal", name="less_equal")
 
-  def __gt__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __gt__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="greater", name="greater")
 
-  def __ge__(self, other: Union[RawTensorTypes, LayerRef]) -> LayerRef:
+  def __ge__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="greater_equal", name="greater_equal")
 
