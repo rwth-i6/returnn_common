@@ -45,13 +45,31 @@ def glu(x: nn.LayerRef, axis: nn.Dim) -> nn.Layer:
 
 
 def exp(x: nn.LayerRef) -> nn.Layer:
-  """exp"""
+  """exp. see also :func:`safe_exp`"""
   return _activation(x, activation="exp")
 
 
+def safe_exp(x: nn.LayerRef, *, eps: float = 1e-7) -> nn.Layer:
+  """
+  exp (:func:`exp`) with extra logic
+    replacing earlier log_softmax by softmax, log_sigmoid by sigmoid, log by identity, etc.
+  Also, for the fallback exp, clips the min and max value.
+  """
+  return _eval(x, eval=f"safe_exp(source(0), eps={eps!r})", name="safe_exp")
+
+
 def log(x: nn.LayerRef) -> nn.Layer:
-  """log"""
+  """log. see also :func:`safe_log`"""
   return _activation(x, activation="log")
+
+
+def safe_log(x: nn.LayerRef, *, eps: float = 1e-7, use_fake_grad: bool = True) -> nn.Layer:
+  """
+  log (:func:`log`) with extra logic
+    replacing earlier softmax by log_softmax, sigmoid by log_sigmoid, exp by identity, etc.
+  Also, for the fallback log, adds some eps in the backprop (only in backprop) to avoid nan/inf.
+  """
+  return _eval(x, eval=f"safe_log(source(0), eps={eps!r}, use_fake_grad={use_fake_grad!r})", name="safe_log")
 
 
 def tanh(x: nn.LayerRef) -> nn.Layer:
