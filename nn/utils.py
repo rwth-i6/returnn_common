@@ -97,3 +97,67 @@ def check_in_feature_dim_lazy_init(
     raise ValueError(f"{source} has no feature dim. define the in_dim explicitly")
   lazy_init(source.feature_dim)
   return source
+
+
+def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.LayerRef] = None, sparse: bool = False) -> nn.Layer:
+  """
+  range [0,dim-1] for dim
+
+  :param nn.Dim dim:
+  :param nn.LayerRef dim_source: only needed for dynamic dims currently. might not be needed at some later point.
+  :param bool sparse:
+  """
+  if dim.dimension is None:
+    # We need to wrap nn.range_in_axis. For that, we need some source data which contains this dim.
+    # This is also needed for proper dependency resolution.
+    if dim_source:
+      assert dim in dim_source.shape
+      return nn.range_in_axis(dim_source, axis=dim, sparse=sparse)
+    # We might get a layer via dim.src_data when we keep some history of data sources.
+    # But we don't have that yet and also not sure if this is the best solution.
+    raise NotImplementedError(f"range_for_dim({dim}) not implemented for dynamic dims yet")
+  out, _ = nn.range(start=0, limit=dim.dimension, out_spatial_dim=dim, sparse=sparse)
+  return out
+
+
+@nn.scoped
+def sparse_to_dense(source: nn.LayerRef, *,
+                    label_value: Union[nn.LayerRef, int, float],
+                    other_value: Union[nn.LayerRef, int, float]) -> nn.Layer:
+  """
+  Converts a sparse tensor to a dense one.
+
+  This is a more generic variant of "one_hot".
+
+  Note that usually this is not needed as most other functions should handle sparse tensors just fine
+  and much more efficiently than they would be with dense tensors.
+  """
+  assert source.data.sparse
+  axis = source.data.sparse_dim
+  indices = range_for_dim(axis, dim_source=source, sparse=True)
+  return nn.where(source == indices, label_value, other_value)
+
+
+def one_hot(source: nn.LayerRef, *, name: Optional[str] = None) -> nn.Layer:
+  """
+  one_hot. special case of :func:`sparse_to_dense`.
+
+  Note that usually this is not needed as most other functions should handle sparse tensors just fine
+  and much more efficiently than they would be with dense tensors.
+  """
+  return sparse_to_dense(source, label_value=1., other_value=0., name=name or "one_hot")
+
+
+def smooth_one_hot(source: nn.LayerRef, *, label_prob: Union[nn.LayerRef, float],
+                   name: Optional[str] = None) -> nn.Layer:
+  """
+  Smooth variant of :func:`one_hot`.
+  Uses ``label_prob`` for the labels and ``(1 - label_prob) / (dim - 1)`` for the remaining values.
+  This is used for label smoothing.
+  """
+  assert source.data.sparse
+  if source.data.sparse_dim.dimension is None:
+    raise NotImplementedError(f"smooth_one_hot({source}) not implemented for dynamic dims")
+  return sparse_to_dense(
+    source, label_value=label_prob, other_value=(1. - label_prob) / (source.data.sparse_dim.dimension - 1),
+    name=name or "smooth_one_hot")
