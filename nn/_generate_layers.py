@@ -103,6 +103,7 @@ LayersWithoutSourceArg = {
   "cond", "switch",
   "generic_attention",
   "range", "rand_int",
+  "sparse_softmax_cross_entropy_with_logits",
 }
 
 LayersSupportingMultipleSources = {
