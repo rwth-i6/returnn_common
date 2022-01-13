@@ -54,6 +54,8 @@ def safe_exp(x: nn.LayerRef, *, eps: float = 1e-7) -> nn.Layer:
   exp (:func:`exp`) with extra logic
     replacing earlier log_softmax by softmax, log_sigmoid by sigmoid, log by identity, etc.
   Also, for the fallback exp, clips the min and max value.
+
+  Note that the default eps is higher than the default in RETURNN.
   """
   return _eval(x, eval=f"safe_exp(source(0), eps={eps!r})", name="safe_exp")
 
@@ -68,6 +70,8 @@ def safe_log(x: nn.LayerRef, *, eps: float = 1e-7, use_fake_grad: bool = True) -
   log (:func:`log`) with extra logic
     replacing earlier softmax by log_softmax, sigmoid by log_sigmoid, exp by identity, etc.
   Also, for the fallback log, adds some eps in the backprop (only in backprop) to avoid nan/inf.
+
+  Note that the default eps is higher than the default in RETURNN.
   """
   return _eval(x, eval=f"safe_log(source(0), eps={eps!r}, use_fake_grad={use_fake_grad!r})", name="safe_log")
 
