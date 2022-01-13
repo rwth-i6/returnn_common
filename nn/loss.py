@@ -16,7 +16,6 @@ from .. import nn
 
 @nn.scoped
 def cross_entropy(*, target: nn.LayerRef, estimated: nn.LayerRef, estimated_type: str,
-                  label_smoothing: float = 0.0,
                   axis: Optional[nn.Dim] = None) -> nn.Layer:
   """
   Cross entropy H(target,estimated) (https://en.wikipedia.org/wiki/Cross_entropy).
@@ -29,18 +28,21 @@ def cross_entropy(*, target: nn.LayerRef, estimated: nn.LayerRef, estimated_type
     H(target,estimated) = -reduce_sum(target * log(estimated), axis=axis)
                         = -dot(target, log(estimated), reduce=axis)
 
+  In case you want label smoothing, you can use e.g.::
+
+      ce = nn.cross_entropy(
+        target=nn.label_smoothing(target, 0.1),
+        estimated=estimated)
+
   :param target: probs, normalized. can also be sparse
   :param estimated: probs, log-probs or logits, specified via ``estimated_type``
   :param estimated_type: "probs", "log-probs" or "logits"
-  :param label_smoothing:
   :param axis: the axis to reduce over
   :return: cross entropy
   """
   if not axis:
     assert target.feature_dim
     axis = target.feature_dim
-  if label_smoothing:
-    target = nn.label_smoothing(target, label_smoothing, axis=axis)
   if estimated_type == "probs":
     return -nn.dot(target, nn.safe_log(estimated), reduce=axis)
   elif estimated_type == "log-probs":
