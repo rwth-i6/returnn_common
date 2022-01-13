@@ -161,3 +161,19 @@ def smooth_one_hot(source: nn.LayerRef, *, label_prob: Union[nn.LayerRef, float]
   return sparse_to_dense(
     source, label_value=label_prob, other_value=(1. - label_prob) / (source.data.sparse_dim.dimension - 1),
     name=name or "smooth_one_hot")
+
+
+def label_smoothing(source: nn.LayerRef, smoothing: Union[nn.LayerRef, float],
+                    *, axis: Optional[nn.Dim] = None) -> nn.Layer:
+  """
+  label smoothing
+  """
+  if not axis:
+    assert source.feature_dim
+    axis = source.feature_dim
+  if source.data.sparse:
+    assert source.data.sparse_dim == axis
+    return smooth_one_hot(source, label_prob=1. - smoothing + smoothing / axis.dimension)
+  else:
+    assert axis in source.shape
+    return source * (1. - smoothing) + smoothing / axis.dimension

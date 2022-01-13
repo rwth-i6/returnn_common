@@ -16,6 +16,7 @@ from .. import nn
 
 @nn.scoped
 def cross_entropy(*, target: nn.LayerRef, estimated: nn.LayerRef, estimated_type: str,
+                  label_smoothing: float = 0.0,
                   axis: Optional[nn.Dim] = None) -> nn.Layer:
   """
   Cross entropy H(target,estimated) (https://en.wikipedia.org/wiki/Cross_entropy).
@@ -31,12 +32,15 @@ def cross_entropy(*, target: nn.LayerRef, estimated: nn.LayerRef, estimated_type
   :param target: probs, normalized. can also be sparse
   :param estimated: probs, log-probs or logits, specified via ``estimated_type``
   :param estimated_type: "probs", "log-probs" or "logits"
+  :param label_smoothing:
   :param axis: the axis to reduce over
   :return: cross entropy
   """
   if not axis:
     assert target.feature_dim
     axis = target.feature_dim
+  if label_smoothing:
+    target = nn.label_smoothing(target, label_smoothing, axis=axis)
   if estimated_type == "probs":
     return -nn.dot(target, nn.safe_log(estimated), reduce=axis)
   elif estimated_type == "log-probs":
