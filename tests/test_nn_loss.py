@@ -43,6 +43,5 @@ def test_mark_as_loss():
     loss.mark_as_loss()
 
   config_code = name_ctx.get_returnn_config_serialized()
-  assert "sparse_softmax_cross_entropy_with_logits" in config_code
   config, net_dict = config_net_dict_via_serialized(config_code)
   dummy_run_net(config, train=True)
