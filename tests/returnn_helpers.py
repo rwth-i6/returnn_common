@@ -23,7 +23,9 @@ def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
   from returnn.tf.engine import Engine
   from returnn.datasets import init_dataset
   from returnn.config import Config
-  n_data_dim, n_classes_dim = config["extern_data"]["data"]["dim_tags"][-1].dimension, 7
+  extern_data_opts = config["extern_data"]
+  n_data_dim = extern_data_opts["data"]["dim_tags"][-1].dimension
+  n_classes_dim = extern_data_opts["classes"]["sparse_dim"].dimension if "classes" in extern_data_opts else 7
   config = Config({
     "train": {
       "class": "DummyDataset", "input_dim": n_data_dim, "output_dim": n_classes_dim,
