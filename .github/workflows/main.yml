@@ -21,9 +21,14 @@ jobs:
           - 2.3.0
         action:
           - TEST=hello
-          - TEST=models_layers
-          - TEST=models_rec
+          - TEST=nn_attention
+          - TEST=nn_base
+          - TEST=nn_container
+          - TEST=nn_loop
           - TEST=nn_loss
+          - TEST=nn_math
+          - TEST=nn_normalization
+          - TEST=nn_rec
         include:
           - action: RUN=tests/pycharm-inspect.py
             python-version: 3.7

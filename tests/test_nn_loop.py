@@ -1,5 +1,5 @@
 """
-Test rec module
+Test nn.loop
 """
 from __future__ import annotations
 
