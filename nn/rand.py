@@ -25,7 +25,8 @@ class Random(nn.Module):
   def uniform(self,
               shape, dtype=None,
               *,
-              minval: Union[int, float, nn.LayerRef] = 0, maxval: Union[int, float, nn.LayerRef]):
+              minval: Union[int, float, nn.LayerRef] = 0, maxval: Union[int, float, nn.LayerRef]
+              ) -> nn.Layer:
     """uniform"""
     return self(distribution="uniform", shape=shape, dtype=dtype, minval=minval, maxval=maxval)
 
