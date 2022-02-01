@@ -103,7 +103,7 @@ LayersWithoutSourceArg = {
   "constant", "variable",
   "cond", "switch",
   "generic_attention",
-  "range", "rand_int",
+  "range", "rand_int", "random", "random_state_init",
   "sparse_softmax_cross_entropy_with_logits",
 }
 

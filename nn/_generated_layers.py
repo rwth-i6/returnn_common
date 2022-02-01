@@ -537,7 +537,6 @@ def seq_len_mask(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def random_state_init(
-                      source: nn.LayerRef,
                       *,
                       algorithm: Optional[Union[str, tf.random.Algorithm]] = NotSpecified,
                       seed: Optional[Union[int, Sequence[int], numpy.ndarray]] = NotSpecified,
@@ -547,7 +546,6 @@ def random_state_init(
   of :class:`RandomLayer`.
   This depends on the algorithm and seed.
 
-  :param nn.LayerRef source:
   :param str|tf.random.Algorithm|None algorithm: "philox", "three-fry", "auto-select". by default "philox".
     See :func:`tf.random.stateless_uniform` for some documentation.
     "auto-select" will automatically select the optimal algorithm based on the device,
@@ -570,13 +568,11 @@ def random_state_init(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return nn.make_layer({
     'class': 'random_state_init',
-    'from': source,
     **args}, name=name or 'random_state_init')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def random(
-           source: nn.LayerRef,
            *,
            shape: Sequence[nn.Dim],
            distribution: str,
@@ -608,7 +604,6 @@ def random(
     You can just pass ``static=False``.
     Alternatively you could also pass the output of a :class:`RandomStateInitLayer` as ``state``.
 
-  :param nn.LayerRef source:
   :param Sequence[nn.Dim] shape:
   :param str distribution: "uniform", "normal" or "truncated_normal"
   :param int|float|LayerBase|None mean:
@@ -644,7 +639,6 @@ def random(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return nn.make_layer({
     'class': 'random',
-    'from': source,
     **args}, name=name or 'random')
 
 
