@@ -649,43 +649,6 @@ def random(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def rand_int(
-             *,
-             shape: Sequence[nn.Dim],
-             maxval: Union[int, nn.LayerRef],
-             minval: Union[int, nn.LayerRef] = NotSpecified,
-             dtype: str = NotSpecified,
-             sparse_dim: Optional[nn.Dim] = NotSpecified,
-             seed: Optional[int] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
-  """
-  Generates random integer numbers using ``tf.random.uniform``.
-  It is recommended to use :class:`RandomLayer` instead.
-
-  :param Sequence[nn.Dim] shape: desired shape of output tensor
-  :param int|LayerBase maxval: upper bound (exclusive) on range of random values
-  :param int|LayerBase minval: lower bound (inclusive) on range of random values
-  :param str dtype: type of the output. For random ints, int32 and int64 make sense, but could also be floats
-  :param nn.Dim|None sparse_dim:
-  :param int|None seed: random seed
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'shape': shape,
-    'maxval': maxval,
-    'minval': minval,
-    'dtype': dtype,
-    'sparse_dim': sparse_dim,
-    'seed': seed,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'rand_int',
-    **args}, name=name or 'rand_int')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def range(
           *,
           limit: Union[int, float],

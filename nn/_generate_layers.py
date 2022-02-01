@@ -55,6 +55,7 @@ BlacklistLayerClassNames = {
   "gating",
   "norm",
   "switch",
+  "rand_int",  # random instead
 
   "RecStepInfoLayer",
   "_TemplateLayer",
