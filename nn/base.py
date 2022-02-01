@@ -377,6 +377,15 @@ class Parameter(Layer):
       name_ctx=name_ctx)
     self.auxiliary = auxiliary
 
+  @property
+  def initial(self) -> Optional[nn.LayerRef]:
+    """initial value of the parameter"""
+    return self.layer_dict.get("init_by_layer")
+
+  @initial.setter
+  def initial(self, value: Optional[nn.LayerRef]):
+    self.layer_dict["init_by_layer"] = value
+
 
 class LayerState(dict):
   """
