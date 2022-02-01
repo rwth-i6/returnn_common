@@ -231,6 +231,8 @@ def setup():
   print("", file=f)
   print("from __future__ import annotations", file=f)
   print("from typing import Union, Optional, Tuple, Sequence, Dict, Any", file=f)
+  print("import numpy", file=f)
+  print("import tensorflow as tf", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("from .. import nn", file=f)
   layer_classes = collect_layers()
@@ -729,7 +731,7 @@ class LayerSignature:
         inspect.Parameter(
           name="target",
           kind=inspect.Parameter.KEYWORD_ONLY),
-        param_type_s="LayerBase",
+        param_type_s="nn.LayerRef",
         docstring="target")
     for name, param in self.inspect_init_sig.parameters.items():
       # Ignore a number of params which are handled explicitly.
@@ -792,10 +794,12 @@ class LayerSignature:
         param.docstring = doc_s
         if param_type_s:
           param_type_s = re.sub(r"\breturnn\.tf\.util\.data\.", "", param_type_s)
+          param_type_s = re.sub(r"\btyping\.Sequence\b", "Sequence", param_type_s)
           param_type_s = re.sub(r"\bDimensionTag\b", "Dim", param_type_s)
           param_type_s = re.sub(r"\bDim\|str\b", "nn.Dim", param_type_s)
           param_type_s = re.sub(r"\bstr\|Dim\b", "nn.Dim", param_type_s)
           param_type_s = re.sub(r"\b(?<!nn\.)Dim\b", "nn.Dim", param_type_s)
+          param_type_s = re.sub(r"\bLayerRef\b", "nn.LayerRef", param_type_s)
         if param.inspect_param.default != param.inspect_param.empty and param_name in {"axis", "axes"}:
           if "None" not in param_type_s:
             param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)
@@ -837,7 +841,7 @@ class LayerSignature:
           return t
         if isinstance(t, typing.ForwardRef):
           if t.__forward_arg__ in {"LayerRef", "nn.LayerRef"}:
-            return "LayerBase"
+            return "nn.LayerRef"
           return t.__forward_arg__
         if typing.get_origin(t) == Union:
           return "|".join(_convert(t_) for t_ in typing.get_args(t))
@@ -1069,7 +1073,7 @@ class LayerSignature:
         return True
       if not self.param_type_s:
         return False
-      return "LayerBase" in self.param_type_s
+      return "LayerBase" in self.param_type_s or "LayerRef" in self.param_type_s
 
     def get_module_param_name(self):
       """
