@@ -15,6 +15,7 @@ class Random(nn.Module):
     # No explicit seed, so RETURNN uses its global seed.
     init_state = nn.random_state_init()
     self.state_var = nn.Parameter(init_state.data.dim_tags, init_state.dtype)
+    self.state_var.initial = init_state
 
   @nn.scoped
   def __call__(self, **kwargs) -> nn.Layer:
