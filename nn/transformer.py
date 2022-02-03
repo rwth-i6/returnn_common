@@ -294,7 +294,9 @@ class Transformer(nn.Module):
     self.norm = norm
 
   def __call__(self, source: nn.Tensor, *, target: Optional[nn.Tensor] = None,
-               initial_state: Optional[nn.LayerState] = None) -> Tuple[nn.Tensor, nn.LayerState]:
+               initial_state: Optional[nn.LayerState] = None,
+               search: bool, beam_size: Optional[int] = None, eos_symbol: Optional[int] = None,
+               ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
     """
@@ -304,11 +306,13 @@ class Transformer(nn.Module):
     with nn.Loop() as loop:
       loop.state = initial_state
       logits, loop.state.decoder = self.decoder(loop.state.target, memory=memory, state=loop.state.decoder)
-      if self.search:
-        loop.state.target = self.search(logits)
-        loop.end(self.search_end(loop.state.target), include_eos=False)
+      target = loop.unstack(target) if target is not None else None
+      if search:
+        loop.state.target = nn.choice(logits, input_type="logits", target=target, search=True, beam_size=beam_size)
+        loop.end(loop.state.target == eos_symbol, include_eos=False)
       else:
-        loop.state.target = loop.unstack(target)
+        assert target is not None
+        loop.state.target = target
       outputs = loop.stack(loop.state.target)
     return outputs, loop.state
 
