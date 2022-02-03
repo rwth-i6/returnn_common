@@ -222,14 +222,26 @@ class Transformer(nn.Module):
   """
   Standard Transformer Module
   """
-  def __init__(self, output_dim: nn.Dim = nn.FeatureDim("output_dim", 512), num_heads: int = 8,
-               num_encoder_layers: int = 6, num_decoder_layers: int = 6, dim_ff: nn.Dim = nn.FeatureDim("ff_dim", 2048),
-               dropout: float = 0.1, att_dropout: float = 0.1,
-               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu, custom_encoder: Optional[Any] = None,
-               custom_decoder: Optional[Any] = None, custom_encoder_layer: Optional[nn.Tensor] = None,
-               custom_decoder_layer: Optional[nn.Tensor] = None, norm_eps: float = 1e-6, norm=nn.layer_norm,
-               norm_first: bool = True, dec_self_attention_step=None, enc_self_attention=None,
-               enc_dec_attention=None) -> None:
+  def __init__(self,
+               output_dim: nn.Dim = nn.FeatureDim("output_dim", 512),
+               num_heads: int = 8,
+               num_encoder_layers: int = 6,
+               num_decoder_layers: int = 6,
+               dim_ff: nn.Dim = nn.FeatureDim("ff_dim", 2048),
+               dropout: float = 0.1,
+               att_dropout: float = 0.1,
+               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
+               custom_encoder: Optional[Any] = None,
+               custom_decoder: Optional[Any] = None,
+               custom_encoder_layer: Optional[nn.Tensor] = None,
+               custom_decoder_layer: Optional[nn.Tensor] = None,
+               norm_eps: float = 1e-6,
+               norm=nn.layer_norm,
+               norm_first: bool = True,
+               dec_self_attention_step=None,
+               enc_self_attention=None,
+               enc_dec_attention=None
+               ) -> None:
     """
     Default parameters as in the original paper https://arxiv.org/pdf/1706.03762.pdf only modification to this is
     norm_first which would be False in the paper, but empirically performs better with True, thus being True by default.
