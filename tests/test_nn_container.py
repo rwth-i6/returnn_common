@@ -23,7 +23,7 @@ def test_module_list():
       self.ls = nn.ModuleList([nn.Linear(self.base_dim + i) for i in range_(4)])
 
     @nn.scoped
-    def __call__(self, out: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, out: nn.TensorRef) -> nn.TensorRef:
       """
       Forward
       """
@@ -53,7 +53,7 @@ def test_sequential_base_case():
         nn.Linear(nn.FeatureDim("feat3", 3)))
 
     @nn.scoped
-    def __call__(self, data: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, data: nn.TensorRef) -> nn.TensorRef:
       """
       Forward
       """
@@ -83,7 +83,7 @@ def test_sequential_named_case():
       self.seq = nn.Sequential(x)
 
     @nn.scoped
-    def __call__(self, data: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, data: nn.TensorRef) -> nn.TensorRef:
       """
       Forward
       """

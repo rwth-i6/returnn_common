@@ -13,7 +13,7 @@ else:
   from returnn_common import nn  # noqa
 
 
-def _make_dummy_model_with_ce_out(name_ctx: nn.NameCtx) -> nn.Layer:
+def _make_dummy_model_with_ce_out(name_ctx: nn.NameCtx) -> nn.Tensor:
   time_dim = nn.SpatialDim("time")
   in_dim = nn.FeatureDim("input", 3)
   out_dim = nn.FeatureDim("out", 5)

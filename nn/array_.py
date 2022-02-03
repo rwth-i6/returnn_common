@@ -7,7 +7,7 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-def expand_dim(source: nn.LayerRef, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Layer:
+def expand_dim(source: nn.TensorRef, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:
   """
   Expand the source by the given dimension,
   which should be 1.
@@ -47,9 +47,9 @@ def expand_dim(source: nn.LayerRef, *, dim: nn.Dim, name: Optional[str] = None) 
     raise ValueError(f"{dim} is not a spatial or feature dim")
 
 
-def concat(*sources: Tuple[nn.LayerRef, nn.Dim],
+def concat(*sources: Tuple[nn.TensorRef, nn.Dim],
            allow_broadcast=False,
-           name: Optional[str] = None) -> nn.Layer:
+           name: Optional[str] = None) -> nn.Tensor:
   """
   Concatenates multiple sources (by default in feature axis).
   """
@@ -60,9 +60,9 @@ def concat(*sources: Tuple[nn.LayerRef, nn.Dim],
 
 
 def cum_concat_step(
-      source: nn.LayerRef, *, state: nn.LayerState,
+      source: nn.TensorRef, *, state: nn.LayerState,
       out_spatial_dim: Optional[nn.Dim] = None,
-      name: Optional[str] = None) -> Tuple[nn.Layer, nn.Dim, nn.LayerState]:
+      name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   See RETURNN :class:`CumConcatLayer` for details.
@@ -73,10 +73,10 @@ def cum_concat_step(
     state=state, out_spatial_dim=out_spatial_dim, name=name)
 
 
-def split(source: nn.LayerRef, *,
+def split(source: nn.TensorRef, *,
           axis: nn.Dim,
           out_dims: Union[List[nn.Dim], Tuple[nn.Dim, ...]],
-          name: Optional[str] = None) -> Tuple[nn.LayerRef, ...]:
+          name: Optional[str] = None) -> Tuple[nn.TensorRef, ...]:
   """
   Split the input on the specified axis (by default feature).
   Basically a wrapper around tf.split.
@@ -95,14 +95,14 @@ def split(source: nn.LayerRef, *,
 
 
 def window(
-      source: nn.LayerRef, *,
+      source: nn.TensorRef, *,
       axis: nn.Dim,
       window_dim: nn.Dim,
       window_left: Optional[int] = NotSpecified,
       window_right: Optional[int] = NotSpecified,
       padding: str = NotSpecified,
       stride: int = NotSpecified,
-      name: Optional[str] = None) -> Tuple[nn.Layer, nn.Dim]:
+      name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Window. See :func:`_generated_layers._window`.
   """
@@ -117,9 +117,9 @@ def window(
 
 
 def window_step(
-      source: nn.LayerRef, *, state: nn.LayerState,
+      source: nn.TensorRef, *, state: nn.LayerState,
       window_dim: nn.Dim,
-      name: Optional[str] = None) -> Tuple[nn.Layer, nn.LayerState]:
+      name: Optional[str] = None) -> Tuple[nn.Tensor, nn.LayerState]:
   """
   Window into the past when iterating.
   See :func:`_generated_layers._window`.

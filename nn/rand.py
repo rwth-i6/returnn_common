@@ -18,7 +18,7 @@ class Random(nn.Module):
     self.state_var.initial = init_state
 
   @nn.scoped
-  def __call__(self, **kwargs) -> nn.Layer:
+  def __call__(self, **kwargs) -> nn.Tensor:
     return nn.random(
       explicit_state=self.state_var, auto_update_state=True,
       **kwargs)
@@ -26,25 +26,25 @@ class Random(nn.Module):
   def uniform(self,
               shape, dtype=None,
               *,
-              minval: Union[int, float, nn.LayerRef] = 0, maxval: Union[int, float, nn.LayerRef]
-              ) -> nn.Layer:
+              minval: Union[int, float, nn.TensorRef] = 0, maxval: Union[int, float, nn.TensorRef]
+              ) -> nn.Tensor:
     """uniform"""
     return self(distribution="uniform", shape=shape, dtype=dtype, minval=minval, maxval=maxval)
 
   def normal(self,
              shape: Sequence[nn.Dim], dtype=None,
              *,
-             mean: Union[int, float, nn.LayerRef],
-             stddev: Union[int, float, nn.LayerRef],
-             ) -> nn.Layer:
+             mean: Union[int, float, nn.TensorRef],
+             stddev: Union[int, float, nn.TensorRef],
+             ) -> nn.Tensor:
     """normal"""
     return self(distribution="normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)
 
   def truncated_normal(self,
                        shape: Sequence[nn.Dim], dtype=None,
                        *,
-                       mean: Union[int, float, nn.LayerRef],
-                       stddev: Union[int, float, nn.LayerRef],
-                       ) -> nn.Layer:
+                       mean: Union[int, float, nn.TensorRef],
+                       stddev: Union[int, float, nn.TensorRef],
+                       ) -> nn.Tensor:
     """truncated normal"""
     return self(distribution="truncated_normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)

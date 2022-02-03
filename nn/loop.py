@@ -72,11 +72,11 @@ class Loop:
     self._entered_scope = False
     self._exited_scope = False
     self._state = _LoopStateHolder(loop=self)
-    self.unstacked_refs = []  # type: List[nn.LayerRef]
-    self.outputs = []  # type: List[nn.LayerRef]
+    self.unstacked_refs = []  # type: List[nn.TensorRef]
+    self.outputs = []  # type: List[nn.TensorRef]
     self._has_given_axis = bool(axis)
     self.axis = axis
-    self.end_ref = None  # type: Optional[nn.LayerRef]
+    self.end_ref = None  # type: Optional[nn.TensorRef]
 
   def __repr__(self):
     return f"<{self.__class__.__name__} {self.name_ctx.get_abs_name_repr()}>"
@@ -126,9 +126,9 @@ class Loop:
     for key, value in initial_state.items():
       self._state[key] = value
 
-  def unstack(self, source: nn.LayerRef, *,
+  def unstack(self, source: nn.TensorRef, *,
               name: Optional[str] = None
-              ) -> nn.LayerRef:
+              ) -> nn.TensorRef:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     The axis can be specified globally for the :class:`Loop` instance (recommended)
@@ -140,7 +140,7 @@ class Loop:
     self.unstacked_refs.append(res)
     return res
 
-  def stack(self, source: nn.LayerRef, *, name: Optional[str] = None) -> nn.LayerRef:
+  def stack(self, source: nn.TensorRef, *, name: Optional[str] = None) -> nn.TensorRef:
     """
     Accumulates the frames of source within the loop,
     to make it accessible outside the loop.
@@ -151,7 +151,7 @@ class Loop:
     if not name and "output" not in self.name_ctx.children:
       name = self.name_ctx.get_child("output")
     res = copy(source, name=name)
-    assert isinstance(res, nn.Layer)
+    assert isinstance(res, nn.Tensor)
     if res.name_ctx.name != "output":
       res.layer_dict["is_output_layer"] = True
     # We access the returned layer-ref from outside, thus fix the data template.
@@ -160,11 +160,11 @@ class Loop:
     self.outputs.append(res)
     return res
 
-  def last(self, source: nn.LayerRef, *, name: Optional[str] = None) -> nn.LayerRef:
+  def last(self, source: nn.TensorRef, *, name: Optional[str] = None) -> nn.TensorRef:
     """
     Gets the last value from source.
     """
-    assert isinstance(source, nn.Layer)
+    assert isinstance(source, nn.Tensor)
     source.layer_dict["need_last"] = True
     sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
     with self.name_ctx.parent:  # need to be outside the loop
@@ -172,7 +172,7 @@ class Loop:
         {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
         name=name or sub_layer_name.replace("/", "_"))
 
-  def end(self, source: nn.LayerRef, *, include_eos: bool) -> nn.LayerRef:
+  def end(self, source: nn.TensorRef, *, include_eos: bool) -> nn.TensorRef:
     """
     For loops with dynamic ending condition (which might not use unstack),
     this defines the ending condition.
@@ -198,7 +198,7 @@ class LoopModule(nn.Module):
     super(LoopModule, self).__init__()
     self.loop = loop
 
-  def __call__(self) -> nn.Layer:
+  def __call__(self) -> nn.Tensor:
     """
     Makes layer dict for this loop, i.e. a RecLayer.
     """
@@ -210,12 +210,12 @@ class LoopModule(nn.Module):
       predefined_out_data=out.data.copy_add_dim_by_tag(self.loop.axis, unbroadcast=True, axis=0))
 
 
-class PrevLayerRef(nn.LayerRef):
+class PrevTensorRef(nn.TensorRef):
   """
   Refers to a layer from the previous loop iteration.
   """
   @classmethod
-  def get_prev_ref(cls, *, cur_layer_name_ctx: nn.NameCtx, initial: nn.LayerRef) -> PrevLayerRef:
+  def get_prev_ref(cls, *, cur_layer_name_ctx: nn.NameCtx, initial: nn.TensorRef) -> PrevTensorRef:
     """
     Create prev ref.
     """
@@ -223,10 +223,10 @@ class PrevLayerRef(nn.LayerRef):
     prev_layer_name_ctx = parent_name_ctx.get_child(f"prev:{cur_layer_name_ctx.name}")
     if prev_layer_name_ctx.layer_ref:
       prev_layer_ref = prev_layer_name_ctx.layer_ref
-      assert isinstance(prev_layer_ref, PrevLayerRef)
+      assert isinstance(prev_layer_ref, PrevTensorRef)
       assert prev_layer_ref.cur_layer_name_ctx is cur_layer_name_ctx
     else:
-      prev_layer_ref = PrevLayerRef(
+      prev_layer_ref = PrevTensorRef(
         name_ctx=prev_layer_name_ctx, cur_layer_name_ctx=cur_layer_name_ctx, data=initial.data)
       assert prev_layer_name_ctx.layer_ref is prev_layer_ref
     return prev_layer_ref
@@ -285,7 +285,7 @@ class _LoopState:
   It can also represent some nested hierarchy of states.
   """
 
-  def __init__(self, *, name: str, loop: Loop, initial: Union[nn.LayerRef, Any]):
+  def __init__(self, *, name: str, loop: Loop, initial: Union[nn.TensorRef, Any]):
     """
     :param name:
     :param loop:
@@ -317,22 +317,22 @@ class _LoopState:
     nest.assert_same_structure(self.name_ctx, value)
     self.assigned_value = value
 
-    def _map_ref_to_name_ctx(layer_ref: nn.LayerRef, name_ctx: nn.NameCtx, initial: nn.LayerRef):
-      assert isinstance(layer_ref, nn.LayerRef)
+    def _map_ref_to_name_ctx(layer_ref: nn.TensorRef, name_ctx: nn.NameCtx, initial: nn.TensorRef):
+      assert isinstance(layer_ref, nn.TensorRef)
       assert isinstance(name_ctx, nn.NameCtx)
 
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
-      if isinstance(layer_ref, nn.Layer):
+      if isinstance(layer_ref, nn.Tensor):
         if layer_ref.layer_dict["class"] == "get_last_hidden_state":
           used_state_eliminate_optimization = False
           key = layer_ref.layer_dict.get("key", "state")
           src = layer_ref.layer_dict["from"]
-          assert isinstance(src, nn.Layer)
+          assert isinstance(src, nn.Tensor)
           src_state_opt = src.layer_dict.get("state")
           if isinstance(src_state_opt, nn.LayerState):
             src_state_for_key = src_state_opt.get(key)
-            if isinstance(src_state_for_key, PrevLayerRef):
+            if isinstance(src_state_for_key, PrevTensorRef):
               if src_state_for_key.cur_layer_name_ctx is name_ctx:
                 # The 'state' argument of the rec layer refers to "prev:..." of the state.
                 # So we don't need to pass it now.
@@ -365,9 +365,9 @@ class _LoopState:
     nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
   @staticmethod
-  def _map_name_ctx_to_prev_layer_ref(name_ctx: nn.NameCtx, initial: nn.LayerRef) -> PrevLayerRef:
+  def _map_name_ctx_to_prev_layer_ref(name_ctx: nn.NameCtx, initial: nn.TensorRef) -> PrevTensorRef:
     assert isinstance(name_ctx, nn.NameCtx)
-    return PrevLayerRef.get_prev_ref(cur_layer_name_ctx=name_ctx, initial=initial)
+    return PrevTensorRef.get_prev_ref(cur_layer_name_ctx=name_ctx, initial=initial)
 
   def get(self):
     """
@@ -379,7 +379,7 @@ class _LoopState:
       return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx, self.initial)
     return self.assigned_value
 
-  def _map_name_ctx_to_last_layer_ref(self, name_ctx: nn.NameCtx) -> nn.LayerRef:
+  def _map_name_ctx_to_last_layer_ref(self, name_ctx: nn.NameCtx) -> nn.TensorRef:
     assert isinstance(name_ctx, nn.NameCtx)
     assert name_ctx.layer_ref, f"{self.loop} state {name_ctx} not assigned?"
     assert self.loop.name_ctx.layer_ref, f"{self.loop} not yet exited?"

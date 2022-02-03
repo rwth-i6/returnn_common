@@ -6,19 +6,19 @@ from typing import Optional, Union, Sequence, Tuple, Callable, Any
 from .. import nn
 
 
-def convert_to_layer_ref(x: Union[nn.LayerRef, int, float, complex, bool, str]) -> nn.LayerRef:
+def convert_to_layer_ref(x: Union[nn.TensorRef, int, float, complex, bool, str]) -> nn.TensorRef:
   """
   In case it is not a layer ref yet, it will make some constant.
   """
-  if isinstance(x, nn.LayerRef):
+  if isinstance(x, nn.TensorRef):
     return x
   return nn.constant(value=x)
 
 
-def where(cond: nn.LayerRef,
-          true_: Union[nn.LayerRef, float, int],
-          false_: Union[nn.LayerRef, float, int],
-          *, name: Optional[str] = None) -> nn.Layer:
+def where(cond: nn.TensorRef,
+          true_: Union[nn.TensorRef, float, int],
+          false_: Union[nn.TensorRef, float, int],
+          *, name: Optional[str] = None) -> nn.Tensor:
   """
   Wraps tf.where, which is SwitchLayer in RETURNN.
 
@@ -29,13 +29,13 @@ def where(cond: nn.LayerRef,
 
 
 # noinspection PyShadowingNames
-def dropout(source: nn.LayerRef,
+def dropout(source: nn.TensorRef,
             dropout: float,
             *,
             axis: Union[nn.Dim, Sequence[nn.Dim]],
             on_forward: bool = False,
             name: Optional[str] = None
-            ) -> nn.LayerRef:
+            ) -> nn.TensorRef:
   """
   Applies dropout.
 
@@ -43,7 +43,7 @@ def dropout(source: nn.LayerRef,
 
   When dropout is applied, the output will be scaled by 1/dropout.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param float dropout: 0.0 means to apply no dropout. 100% would mask everything.
     For every value in the tensor, the probability of it being dropped is drawn independently given this probability.
     The broadcasted axes are those not specified in ``axis``.
@@ -53,7 +53,7 @@ def dropout(source: nn.LayerRef,
   :param bool on_forward: apply dropout during inference
   :param str|None name:
   """
-  assert isinstance(source, nn.LayerRef)
+  assert isinstance(source, nn.TensorRef)
   if not dropout:
     return source
   opts = {"dropout": dropout, "dropout_axis": axis}
@@ -65,13 +65,13 @@ def dropout(source: nn.LayerRef,
     name=name or "dropout")
 
 
-def stop_gradient(source: nn.LayerRef, name: Optional[str] = None) -> nn.LayerRef:
+def stop_gradient(source: nn.TensorRef, name: Optional[str] = None) -> nn.TensorRef:
   """wraps tf.stop_gradient"""
   return nn.scaled_gradient(source, scale=0, name=name)
 
 
-def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: Optional[nn.Dim] = None,
-                        name: Optional[str] = None) -> Tuple[nn.Layer, nn.Dim]:
+def reinterpret_new_dim(source: nn.TensorRef, *, in_dim: nn.Dim, out_dim: Optional[nn.Dim] = None,
+                        name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   :return: source with in_dim replaced by out_dim
   """
@@ -84,7 +84,7 @@ def reinterpret_new_dim(source: nn.LayerRef, *, in_dim: nn.Dim, out_dim: Optiona
 
 
 def check_in_feature_dim_lazy_init(
-      source: nn.LayerRef, in_dim: Optional[nn.Dim], lazy_init: Callable[[nn.Dim], Any]) -> nn.LayerRef:
+      source: nn.TensorRef, in_dim: Optional[nn.Dim], lazy_init: Callable[[nn.Dim], Any]) -> nn.TensorRef:
   """
   This is a helper function for modules which want to lazily support assigning the in_dim.
   """
@@ -99,12 +99,12 @@ def check_in_feature_dim_lazy_init(
   return source
 
 
-def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.LayerRef] = None, sparse: bool = False) -> nn.Layer:
+def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.TensorRef] = None, sparse: bool = False) -> nn.Tensor:
   """
   range [0,dim-1] for dim
 
   :param nn.Dim dim:
-  :param nn.LayerRef dim_source: only needed for dynamic dims currently. might not be needed at some later point.
+  :param nn.TensorRef dim_source: only needed for dynamic dims currently. might not be needed at some later point.
   :param bool sparse:
   """
   if dim.dimension is None:
@@ -121,9 +121,9 @@ def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.LayerRef] = None, spar
 
 
 @nn.scoped
-def sparse_to_dense(source: nn.LayerRef, *,
-                    label_value: Union[nn.LayerRef, int, float],
-                    other_value: Union[nn.LayerRef, int, float]) -> nn.Layer:
+def sparse_to_dense(source: nn.TensorRef, *,
+                    label_value: Union[nn.TensorRef, int, float],
+                    other_value: Union[nn.TensorRef, int, float]) -> nn.Tensor:
   """
   Converts a sparse tensor to a dense one.
 
@@ -138,7 +138,7 @@ def sparse_to_dense(source: nn.LayerRef, *,
   return nn.where(source == indices, label_value, other_value)
 
 
-def one_hot(source: nn.LayerRef, *, name: Optional[str] = None) -> nn.Layer:
+def one_hot(source: nn.TensorRef, *, name: Optional[str] = None) -> nn.Tensor:
   """
   one_hot. special case of :func:`sparse_to_dense`.
 
@@ -148,8 +148,8 @@ def one_hot(source: nn.LayerRef, *, name: Optional[str] = None) -> nn.Layer:
   return sparse_to_dense(source, label_value=1., other_value=0., name=name or "one_hot")
 
 
-def smooth_one_hot(source: nn.LayerRef, *, label_prob: Union[nn.LayerRef, float],
-                   name: Optional[str] = None) -> nn.Layer:
+def smooth_one_hot(source: nn.TensorRef, *, label_prob: Union[nn.TensorRef, float],
+                   name: Optional[str] = None) -> nn.Tensor:
   """
   Smooth variant of :func:`one_hot`.
   Uses ``label_prob`` for the labels and ``(1 - label_prob) / (dim - 1)`` for the remaining values.
@@ -163,8 +163,8 @@ def smooth_one_hot(source: nn.LayerRef, *, label_prob: Union[nn.LayerRef, float]
     name=name or "smooth_one_hot")
 
 
-def label_smoothing(source: nn.LayerRef, smoothing: Union[nn.LayerRef, float],
-                    *, axis: Optional[nn.Dim] = None) -> nn.Layer:
+def label_smoothing(source: nn.TensorRef, smoothing: Union[nn.TensorRef, float],
+                    *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
   label smoothing
   """

@@ -85,7 +85,7 @@ def dummy_config_net_dict(net: nn.Module, *,
     out = net(data, **opts, name=name_ctx)
     if isinstance(out, tuple):
       out = out[0]
-    assert isinstance(out, nn.Layer)
+    assert isinstance(out, nn.Tensor)
     out.mark_as_default_output()
 
   config_code = name_ctx.get_returnn_config_serialized()

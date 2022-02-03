@@ -7,14 +7,14 @@ from .. import nn
 
 
 def zeros(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
-          *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+          *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   zeros
   """
   return nn.constant(value=0., shape=shape, dtype=dtype, name=name or "zeros")
 
 
-def zeros_like(value: nn.LayerRef, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+def zeros_like(value: nn.TensorRef, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   zeros with shape and dtype from value. But there is no dependency on value in the computation graph.
   """

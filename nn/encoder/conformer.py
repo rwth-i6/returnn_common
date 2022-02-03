@@ -296,7 +296,7 @@ class ConformerEncoder:
     return encoder
 
 
-LayerRef = str
+TensorRef = str
 
 
 class _NetworkMakerHelper:
@@ -314,7 +314,7 @@ class _NetworkMakerHelper:
     """
     return self._net
 
-  def add_copy_layer(self, name: LayerRef, source, **kwargs) -> LayerRef:
+  def add_copy_layer(self, name: TensorRef, source, **kwargs) -> TensorRef:
     """
     Add copy layer
     """
@@ -323,7 +323,7 @@ class _NetworkMakerHelper:
     return name
 
   # noinspection PyShadowingBuiltins
-  def add_eval_layer(self, name: LayerRef, source: LayerRef, eval, **kwargs) -> LayerRef:
+  def add_eval_layer(self, name: TensorRef, source: TensorRef, eval, **kwargs) -> TensorRef:
     """
     Add eval layer
     """
@@ -331,7 +331,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_split_dim_layer(self, name: LayerRef, source: LayerRef, axis='F', dims=(-1, 1), **kwargs) -> LayerRef:
+  def add_split_dim_layer(self, name: TensorRef, source: TensorRef, axis='F', dims=(-1, 1), **kwargs) -> TensorRef:
     """
     Add split dim layer
     """
@@ -339,9 +339,9 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_conv_layer(self, name: LayerRef, source: LayerRef,
+  def add_conv_layer(self, name: TensorRef, source: TensorRef,
                      filter_size, n_out, l2, padding='same', activation=None, with_bias=True,
-                     **kwargs) -> LayerRef:
+                     **kwargs) -> TensorRef:
     """
     Add conv layer
     """
@@ -355,9 +355,9 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_linear_layer(self, name: LayerRef, source: LayerRef,
+  def add_linear_layer(self, name: TensorRef, source: TensorRef,
                        n_out: int, activation=None, with_bias=True, dropout=0., l2=0.,
-                       forward_weights_init=None, **kwargs) -> LayerRef:
+                       forward_weights_init=None, **kwargs) -> TensorRef:
     """
     Add linear layer
     """
@@ -374,7 +374,7 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_pool_layer(self, name: LayerRef, source: LayerRef, pool_size, mode='max', **kwargs) -> LayerRef:
+  def add_pool_layer(self, name: TensorRef, source: TensorRef, pool_size, mode='max', **kwargs) -> TensorRef:
     """
     Add pool layer
     """
@@ -382,7 +382,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_merge_dims_layer(self, name: LayerRef, source: LayerRef, axes='static', **kwargs) -> LayerRef:
+  def add_merge_dims_layer(self, name: TensorRef, source: TensorRef, axes='static', **kwargs) -> TensorRef:
     """
     Add MergeDimsLayer
     """
@@ -390,8 +390,8 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_rec_layer(self, name: LayerRef, source: LayerRef,
-                    n_out: int, l2, rec_weight_dropout, direction=1, unit='nativelstm2', **kwargs) -> LayerRef:
+  def add_rec_layer(self, name: TensorRef, source: TensorRef,
+                    n_out: int, l2, rec_weight_dropout, direction=1, unit='nativelstm2', **kwargs) -> TensorRef:
     """
     Add RecLayer
     """
@@ -406,8 +406,8 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_choice_layer(self, name: LayerRef, source: LayerRef,
-                       target: str, beam_size=12, initial_output=0, **kwargs) -> LayerRef:
+  def add_choice_layer(self, name: TensorRef, source: TensorRef,
+                       target: str, beam_size=12, initial_output=0, **kwargs) -> TensorRef:
     """
     Add ChoiceLayer
     """
@@ -416,7 +416,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_compare_layer(self, name: LayerRef, source: LayerRef, value, kind='equal', **kwargs) -> LayerRef:
+  def add_compare_layer(self, name: TensorRef, source: TensorRef, value, kind='equal', **kwargs) -> TensorRef:
     """
     Add CompareLayer
     """
@@ -424,7 +424,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_combine_layer(self, name: LayerRef, source: List[LayerRef], kind: str, n_out: int, **kwargs) -> LayerRef:
+  def add_combine_layer(self, name: TensorRef, source: List[TensorRef], kind: str, n_out: int, **kwargs) -> TensorRef:
     """
     Add CombineLayer
     """
@@ -432,7 +432,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_activation_layer(self, name: LayerRef, source: LayerRef, activation, **kwargs) -> LayerRef:
+  def add_activation_layer(self, name: TensorRef, source: TensorRef, activation, **kwargs) -> TensorRef:
     """
     Add ActivationLayer
     """
@@ -440,7 +440,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_softmax_over_spatial_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+  def add_softmax_over_spatial_layer(self, name: TensorRef, source: TensorRef, **kwargs) -> TensorRef:
     """
     Add SoftmaxOverSpatialLayer
     """
@@ -448,7 +448,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_generic_att_layer(self, name: LayerRef, weights: LayerRef, base: LayerRef, **kwargs) -> LayerRef:
+  def add_generic_att_layer(self, name: TensorRef, weights: TensorRef, base: TensorRef, **kwargs) -> TensorRef:
     """
     Add GenericAttentionLayer
     """
@@ -456,8 +456,8 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_rnn_cell_layer(self, name: LayerRef, source: LayerRef,
-                         n_out: int, unit='LSTMBlock', l2=0., **kwargs) -> LayerRef:
+  def add_rnn_cell_layer(self, name: TensorRef, source: TensorRef,
+                         n_out: int, unit='LSTMBlock', l2=0., **kwargs) -> TensorRef:
     """
     Add RnnCellLayer
     """
@@ -468,9 +468,9 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_softmax_layer(self, name: LayerRef, source: LayerRef,
+  def add_softmax_layer(self, name: TensorRef, source: TensorRef,
                         l2=None, loss=None, target=None, dropout=0., loss_opts=None,
-                        forward_weights_init=None, **kwargs) -> LayerRef:
+                        forward_weights_init=None, **kwargs) -> TensorRef:
     """
     Add SoftmaxLayer
     """
@@ -491,8 +491,8 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_dropout_layer(self, name: LayerRef, source: LayerRef,
-                        dropout: float, dropout_noise_shape=None, **kwargs) -> LayerRef:
+  def add_dropout_layer(self, name: TensorRef, source: TensorRef,
+                        dropout: float, dropout_noise_shape=None, **kwargs) -> TensorRef:
     """
     Add DropoutLayer
     """
@@ -502,7 +502,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_reduceout_layer(self, name: LayerRef, source: LayerRef, num_pieces=2, mode='max', **kwargs) -> LayerRef:
+  def add_reduceout_layer(self, name: TensorRef, source: TensorRef, num_pieces=2, mode='max', **kwargs) -> TensorRef:
     """
     Add ReduceOutLayer
     """
@@ -510,7 +510,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_subnet_rec_layer(self, name: LayerRef, unit, target, source=None, **kwargs) -> LayerRef:
+  def add_subnet_rec_layer(self, name: TensorRef, unit, target, source=None, **kwargs) -> TensorRef:
     """
     Add RecLayer
     """
@@ -521,7 +521,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_decide_layer(self, name: LayerRef, source: LayerRef, target, loss='edit_distance', **kwargs) -> LayerRef:
+  def add_decide_layer(self, name: TensorRef, source: TensorRef, target, loss='edit_distance', **kwargs) -> TensorRef:
     """
     Add DecideLayer
     """
@@ -529,37 +529,37 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_slice_layer(self, name: LayerRef, source: LayerRef, axis, **kwargs) -> LayerRef:
+  def add_slice_layer(self, name: TensorRef, source: TensorRef, axis, **kwargs) -> TensorRef:
     """
     Add SliceLayer
     """
     self._net[name] = {'class': 'slice', 'from': source, 'axis': axis, **kwargs}
     return name
 
-  def add_subnetwork(self, name: LayerRef, source: LayerRef, subnetwork_net, **kwargs) -> LayerRef:
+  def add_subnetwork(self, name: TensorRef, source: TensorRef, subnetwork_net, **kwargs) -> TensorRef:
     """
     Add SubnetworkLayer
     """
     self._net[name] = {'class': 'subnetwork', 'from': source, 'subnetwork': subnetwork_net, **kwargs}
     return name
 
-  def add_layer_norm_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+  def add_layer_norm_layer(self, name: TensorRef, source: TensorRef, **kwargs) -> TensorRef:
     """
     Add LayerNormLayer
     """
     self._net[name] = {'class': 'layer_norm', 'from': source, **kwargs}
     return name
 
-  def add_batch_norm_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+  def add_batch_norm_layer(self, name: TensorRef, source: TensorRef, **kwargs) -> TensorRef:
     """
     Add BatchNormLayer
     """
     self._net[name] = {'class': 'batch_norm', 'from': source, **kwargs}
     return name
 
-  def add_self_att_layer(self, name: LayerRef, source: LayerRef,
+  def add_self_att_layer(self, name: TensorRef, source: TensorRef,
                          n_out: int, num_heads: int, total_key_dim: int, att_dropout=0., key_shift=None,
-                         forward_weights_init=None, **kwargs) -> LayerRef:
+                         forward_weights_init=None, **kwargs) -> TensorRef:
     """
     Add SelfAttentionLayer
     """
@@ -576,7 +576,7 @@ class _NetworkMakerHelper:
     self._net[name] = d
     return name
 
-  def add_pos_encoding_layer(self, name: LayerRef, source: LayerRef, add_to_input=True, **kwargs) -> LayerRef:
+  def add_pos_encoding_layer(self, name: TensorRef, source: TensorRef, add_to_input=True, **kwargs) -> TensorRef:
     """
     Add PositionalEncodingLayer
     """
@@ -584,8 +584,8 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_relative_pos_encoding_layer(self, name: LayerRef, source: LayerRef,
-                                      n_out: int, forward_weights_init=None, **kwargs) -> LayerRef:
+  def add_relative_pos_encoding_layer(self, name: TensorRef, source: TensorRef,
+                                      n_out: int, forward_weights_init=None, **kwargs) -> TensorRef:
     """
     Add RelativePositionalEncodingLayer
     """
@@ -595,7 +595,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_constant_layer(self, name: LayerRef, value, **kwargs) -> LayerRef:
+  def add_constant_layer(self, name: TensorRef, value, **kwargs) -> TensorRef:
     """
     Add ConstantLayer
     """
@@ -603,7 +603,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_gating_layer(self, name: LayerRef, source: LayerRef, activation='identity', **kwargs) -> LayerRef:
+  def add_gating_layer(self, name: TensorRef, source: TensorRef, activation='identity', **kwargs) -> TensorRef:
     """
     out = activation(a) * gate_activation(b)  (gate_activation is sigmoid by default)
     In case of one source input, it will split by 2 over the feature dimension
@@ -612,7 +612,7 @@ class _NetworkMakerHelper:
     self._net[name].update(kwargs)
     return name
 
-  def add_pad_layer(self, name: LayerRef, source: LayerRef, axes, padding, **kwargs) -> LayerRef:
+  def add_pad_layer(self, name: TensorRef, source: TensorRef, axes, padding, **kwargs) -> TensorRef:
     """
     Add PadLayer
     """
@@ -620,7 +620,7 @@ class _NetworkMakerHelper:
     self._net[name].update(**kwargs)
     return name
 
-  def add_conv_block(self, name: LayerRef, source: LayerRef, hwpc_sizes, l2, activation) -> LayerRef:
+  def add_conv_block(self, name: TensorRef, source: TensorRef, hwpc_sizes, l2, activation) -> TensorRef:
     """
     Add conv block
     """
@@ -633,9 +633,9 @@ class _NetworkMakerHelper:
     return self.add_merge_dims_layer(name, src)
 
   # noinspection PyShadowingBuiltins
-  def add_lstm_layers(self, input: LayerRef, num_layers: int, lstm_dim: int,
+  def add_lstm_layers(self, input: TensorRef, num_layers: int, lstm_dim: int,
                       dropout: float, l2: float, rec_weight_dropout, pool_sizes,
-                      bidirectional: bool) -> LayerRef:
+                      bidirectional: bool) -> TensorRef:
     """
     Add LSTM layers
     """
@@ -659,7 +659,7 @@ class _NetworkMakerHelper:
         pool_idx += 1
     return src
 
-  def add_dot_layer(self, name: LayerRef, source: LayerRef, **kwargs) -> LayerRef:
+  def add_dot_layer(self, name: TensorRef, source: TensorRef, **kwargs) -> TensorRef:
     """
     Add DotLayer
     """

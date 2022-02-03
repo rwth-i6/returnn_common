@@ -15,7 +15,7 @@ The core interfaces for the user are:
   Use :func:`scoped` as a decorator for the ``__call__`` method.
 
 Instances of both objects can be called directly,
-and return instances of type :class:`LayerRef`,
+and return instances of type :class:`TensorRef`,
 which can be thought of as analogue to :class:`torch.Tensor` or :class:`tf.Tensor`.
 
 Use ``x.mark_as_loss()`` to mark some output (layer ref) as a loss.
@@ -31,7 +31,7 @@ Code example::
         self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 1024))
 
       @nn.scoped
-      def __call__(self, x: nn.LayerRef) -> nn.Layer:
+      def __call__(self, x: nn.TensorRef) -> nn.Layer:
         y = self.lstm(x)
         return y
 
@@ -58,7 +58,7 @@ from .. import nn
 
 
 LayerDictRaw = Dict[str, Any]
-LayerRefRaw = str
+TensorRefRaw = str
 NetDictRaw = Dict[str, LayerDictRaw]
 RawTensorTypes = Union[int, float, complex, bool, str]
 OutShapeType = Union[Set[Union[Dim, _MarkedDim]], tuple, list]
@@ -66,17 +66,17 @@ OutShapeType = Union[Set[Union[Dim, _MarkedDim]], tuple, list]
 min_returnn_behavior_version = 12
 
 
-class LayerRef:
+class TensorRef:
   """
-  Refers to a layer.
+  Refers to a layer in RETURNN.
 
   An instance of this class can be treated very much like a tensor.
   It supports all the common unary and binary math operations such as addition.
   This is the intended view point for the user,
   to treat instances of this class like a tensor.
 
-  For most layers, instead of just having an instance of :class:`LayerRef`,
-  you would instead directly have an instance of :class:`Layer`.
+  For most layers, instead of just having an instance of :class:`TensorRef`,
+  you would instead directly have an instance of :class:`Tensor`.
 
   You do not create instances of this object explicitly
   but they are created via :func:`get_special_layer` or :class:`NameCtx.get_child_layer_ref`,
@@ -128,7 +128,7 @@ class LayerRef:
     Thus, this is purely for verification here on returnn-common side.
 
     :return: self, such that you can write this as a chained op
-    :rtype: LayerRef
+    :rtype: TensorRef
     """
     self.data.verify_out_shape(out_shape)
     return self
@@ -170,7 +170,7 @@ class LayerRef:
     """
     raise TypeError(f"mark_as_loss can only be called on a layer, not a layer-ref {self}.")
 
-  def mark_as_default_output(self) -> LayerRef:
+  def mark_as_default_output(self) -> TensorRef:
     """
     Mark this as the default output, i.e. create the "output" layer with a reference to this.
 
@@ -184,106 +184,106 @@ class LayerRef:
     """
     raise TypeError(f"mark_as_output can only be called on a layer, not a layer-ref {self}.")
 
-  def __add__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __add__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="add", name="add")
 
-  def __sub__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __sub__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="sub", name="sub")
 
-  def __mul__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __mul__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="mul", name="mul")
 
-  def __truediv__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __truediv__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="truediv", name="truediv")
 
-  def __radd__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __radd__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="add", name="add")
 
-  def __rsub__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __rsub__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="sub", name="sub")
 
-  def __rmul__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __rmul__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="mul", name="mul")
 
-  def __rtruediv__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __rtruediv__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="truediv", name="truediv")
 
-  def __neg__(self) -> Layer:
+  def __neg__(self) -> Tensor:
     from ._generated_layers import _eval
     return _eval(self, eval="-source(0)", name="neg")
 
-  def __invert__(self) -> Layer:
+  def __invert__(self) -> Tensor:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.logical_not(source(0))", name="invert")
 
-  def __pow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> Layer:
+  def __pow__(self, other: Union[RawTensorTypes, TensorRef], modulo=None) -> Tensor:
     assert modulo is None
     from ._generated_layers import _eval
     return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.pow(source(0), source(1))", name="pow")
 
-  def __rpow__(self, other: Union[RawTensorTypes, LayerRef], modulo=None) -> Layer:
+  def __rpow__(self, other: Union[RawTensorTypes, TensorRef], modulo=None) -> Tensor:
     assert modulo is None
     from ._generated_layers import _eval
     return _eval([nn.convert_to_layer_ref(other), self], eval="tf.math.pow(source(0), source(1))", name="pow")
 
-  def __and__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __and__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="logical_and", name="logical_and")
 
-  def __or__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __or__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="logical_or", name="logical_or")
 
-  def __abs__(self) -> Layer:
+  def __abs__(self) -> Tensor:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.abs(source(0))", name="abs")
 
-  def __ceil__(self) -> Layer:
+  def __ceil__(self) -> Tensor:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.math.ceil(source(0))", name="ceil")
 
-  def __floor__(self) -> Layer:
+  def __floor__(self) -> Tensor:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.math.floor(source(0))", name="floor")
 
-  def __floordiv__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __floordiv__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _eval
     return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
 
-  def __eq__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __eq__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="equal", name="equal")
 
-  def __ne__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __ne__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="not_equal", name="not_equal")
 
-  def __lt__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __lt__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="less", name="less")
 
-  def __le__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __le__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="less_equal", name="less_equal")
 
-  def __gt__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __gt__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="greater", name="greater")
 
-  def __ge__(self, other: Union[RawTensorTypes, LayerRef]) -> Layer:
+  def __ge__(self, other: Union[RawTensorTypes, TensorRef]) -> Tensor:
     from ._generated_layers import _compare
     return _compare([self, nn.convert_to_layer_ref(other)], kind="greater_equal", name="greater_equal")
 
 
-class Layer(LayerRef):
+class Tensor(TensorRef):
   """
   Represents a layer and its output, created by :func:`make_layer`.
   You would not create an instance of this explicitly.
@@ -298,7 +298,7 @@ class Layer(LayerRef):
       data = _data_from_layer_dict(layer_dict)
     if add_out_shape_info and layer_dict["class"] not in {"constant", "variable"}:
       layer_dict["out_shape"] = set(data.dim_tags_set_implicit)
-    super(Layer, self).__init__(name_ctx=name_ctx, data=data)
+    super(Tensor, self).__init__(name_ctx=name_ctx, data=data)
     assert self.name_ctx.layer is None
     self.name_ctx.layer = self
     self.layer_dict = layer_dict
@@ -334,7 +334,7 @@ class Layer(LayerRef):
     return sis_hash_helper(self.layer_dict)
 
 
-class Parameter(Layer):
+class Parameter(Tensor):
   """
   This represents a (potential trainable) parameter,
   aka ``tf.Variable`` in TensorFlow,
@@ -378,12 +378,12 @@ class Parameter(Layer):
     self.auxiliary = auxiliary
 
   @property
-  def initial(self) -> Optional[nn.LayerRef]:
+  def initial(self) -> Optional[nn.TensorRef]:
     """initial value of the parameter"""
     return self.layer_dict.get("init_by_layer")
 
   @initial.setter
-  def initial(self, value: Optional[nn.LayerRef]):
+  def initial(self, value: Optional[nn.TensorRef]):
     self.layer_dict["init_by_layer"] = value
 
 
@@ -424,7 +424,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, nn.NameCtx]] = None,
                module: Optional[nn.Module] = None,
                predefined_out_data: Optional[Data] = None,
-               add_out_shape_info: bool = True) -> Layer:
+               add_out_shape_info: bool = True) -> Tensor:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   When no name is given, this assumes that the top name ctx corresponds to this module.
@@ -437,7 +437,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   using that.
   (If this is not the case, please report an issue.)
 
-  :param LayerDictRaw layer_dict: can contain :class:`LayerRef` instances
+  :param LayerDictRaw layer_dict: can contain :class:`TensorRef` instances
   :param str|NameCtx|None name:
     if str: (suggested) layer name. if given, will create a new :class:`NameCtx`
     if NameCtx, will use this.
@@ -487,7 +487,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
           layer_dict["name_scope"] = "/" + name_ctx.layer_abs_name_scope
 
   name_ctx.is_subnet_ctx = False
-  layer = Layer(
+  layer = Tensor(
     layer_dict=layer_dict, name_ctx=name_ctx,
     predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info)
   if name_ctx.module:
@@ -495,7 +495,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   return layer
 
 
-def get_extern_data(data: Data) -> LayerRef:
+def get_extern_data(data: Data) -> TensorRef:
   """
   Get extern data from root ctx.
   As a side effect, it registers the given data as extern data,
@@ -513,7 +513,7 @@ def get_extern_data(data: Data) -> LayerRef:
   return _get_special_layer(root_layer_name, scope=scope, data=data)
 
 
-def _get_special_layer(name: str, *, scope: Optional[nn.NameCtx] = None, data: Data) -> LayerRef:
+def _get_special_layer(name: str, *, scope: Optional[nn.NameCtx] = None, data: Data) -> TensorRef:
   """
   Special layer can be "data:..." or whatever.
   """
@@ -522,7 +522,7 @@ def _get_special_layer(name: str, *, scope: Optional[nn.NameCtx] = None, data: D
   return scope.get_child_layer_ref(name, data=data)
 
 
-def _get_sub_layer(layer: LayerRef, name: str, *, data: Data) -> LayerRef:
+def _get_sub_layer(layer: TensorRef, name: str, *, data: Data) -> TensorRef:
   """
   Like the "{layer}/{name}" syntax in RETURNN.
   Normally this should only be needed for internal usage.
@@ -566,7 +566,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
         return name_
       i += 1
 
-  def _get_layer_name(ref: LayerRef) -> str:
+  def _get_layer_name(ref: TensorRef) -> str:
     if ref.name_ctx in ref_to_layer_name:
       return ref_to_layer_name[ref.name_ctx]
     name = _get_unique_name(ref.name_ctx.name)
@@ -580,7 +580,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
     return net.layers[name]
 
   def _map_layer_dict_elem(value):
-    if isinstance(value, LayerRef):
+    if isinstance(value, TensorRef):
       return _get_layer_name(value)
     return value
 

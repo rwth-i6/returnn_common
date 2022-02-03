@@ -23,7 +23,7 @@ def test_rec_ff():
       self.rec_linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.TensorRef:
       """
       Forward
       """
@@ -54,7 +54,7 @@ def test_rec_inner_lstm():
       self.lstm = nn.LSTM(nn.FeatureDim("out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.TensorRef:
       """
       Forward
       """
@@ -73,7 +73,7 @@ def test_rec_inner_lstm():
 def test_rec_simple_iter():
   class _Net(nn.Module):
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.TensorRef:
       """
       Forward
       """
@@ -97,7 +97,7 @@ def test_rec_hidden():
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.TensorRef:
       """
       Forward
       """
@@ -119,7 +119,7 @@ def test_rec_hidden_initial():
       self.lstm = nn.LSTM(self.out_dim)
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.TensorRef:
       """
       Forward
       """

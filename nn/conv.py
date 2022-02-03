@@ -63,8 +63,8 @@ class _ConvOrTransposedConv(nn.Module):
     if self.with_bias:
       self.bias = nn.Parameter([self.out_dim_inner])
 
-  def _call_nd1(self, source: nn.LayerRef, *,
-                in_spatial_dim: nn.Dim, out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.LayerRef, nn.Dim]:
+  def _call_nd1(self, source: nn.TensorRef, *,
+                in_spatial_dim: nn.Dim, out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.TensorRef, nn.Dim]:
     assert self.nd == 1
     out, (out_spatial_dim,) = self.__call__(
       source, in_spatial_dims=[in_spatial_dim], out_spatial_dims=[out_spatial_dim] if out_spatial_dim else None)
@@ -110,9 +110,9 @@ class _Conv(_ConvOrTransposedConv):
     self.groups = groups
 
   @nn.scoped
-  def __call__(self, source: nn.LayerRef, *,
+  def __call__(self, source: nn.TensorRef, *,
                in_spatial_dims: Sequence[nn.Dim], out_spatial_dims: Optional[Sequence[nn.Dim]] = None
-               ) -> Tuple[nn.LayerRef, Sequence[nn.Dim]]:
+               ) -> Tuple[nn.TensorRef, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
     if not out_spatial_dims:
       out_spatial_dims = [nn.SpatialDim(f"out-spatial-dim{i}") for i, s in enumerate(self.filter_size)]
@@ -222,9 +222,9 @@ class _TransposedConv(_ConvOrTransposedConv):
     self.output_padding = output_padding
 
   @nn.scoped
-  def __call__(self, source: nn.LayerRef, *,
+  def __call__(self, source: nn.TensorRef, *,
                in_spatial_dims: Sequence[nn.Dim], out_spatial_dims: Optional[Sequence[nn.Dim]] = None
-               ) -> Tuple[nn.LayerRef, Sequence[nn.Dim]]:
+               ) -> Tuple[nn.TensorRef, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
     if not out_spatial_dims:
       out_spatial_dims = [nn.SpatialDim(f"out-spatial-dim{i}") for i, s in enumerate(self.filter_size)]
@@ -270,7 +270,7 @@ class TransposedConv3d(_TransposedConv):
 
 
 def _pool_nd(
-      source: nn.LayerRef,
+      source: nn.TensorRef,
       *,
       nd: int,
       mode: str,
@@ -280,12 +280,12 @@ def _pool_nd(
       strides: Optional[Union[Sequence[int], int]] = nn.NotSpecified,
       in_spatial_dims: Sequence[nn.Dim],
       out_spatial_dims: Optional[Sequence[nn.Dim]] = nn.NotSpecified,
-      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
   """
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
 
-  :param LayerRef source:
+  :param TensorRef source:
   :param str mode: "max" or "avg"
   :param tuple[int] pool_size: shape of the window of each reduce
   :param str padding: "valid" or "same"
@@ -309,7 +309,7 @@ def _pool_nd(
 
 
 def pool1d(
-      source: nn.LayerRef,
+      source: nn.TensorRef,
       *,
       mode: str,
       pool_size: int,
@@ -318,11 +318,11 @@ def pool1d(
       strides: Optional[int] = nn.NotSpecified,
       in_spatial_dim: nn.Dim,
       out_spatial_dim: Optional[nn.Dim] = nn.NotSpecified,
-      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   1D pooling.
 
-  :param LayerRef source:
+  :param TensorRef source:
   :param str mode: "max" or "avg"
   :param tuple[int] pool_size: shape of the window of each reduce
   :param str padding: "valid" or "same"
@@ -341,7 +341,7 @@ def pool1d(
 
 
 def pool2d(
-      source: nn.LayerRef,
+      source: nn.TensorRef,
       *,
       mode: str,
       pool_size: Union[Sequence[int], int],
@@ -350,11 +350,11 @@ def pool2d(
       strides: Optional[Union[Sequence[int], int]] = nn.NotSpecified,
       in_spatial_dims: Sequence[nn.Dim],
       out_spatial_dims: Optional[Sequence[nn.Dim]] = nn.NotSpecified,
-      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
   """
   2D pooling.
 
-  :param LayerRef source:
+  :param TensorRef source:
   :param str mode: "max" or "avg"
   :param tuple[int] pool_size: shape of the window of each reduce
   :param str padding: "valid" or "same"
@@ -373,7 +373,7 @@ def pool2d(
 
 
 def pool3d(
-      source: nn.LayerRef,
+      source: nn.TensorRef,
       *,
       mode: str,
       pool_size: Union[Sequence[int], int],
@@ -382,11 +382,11 @@ def pool3d(
       strides: Optional[Union[Sequence[int], int]] = nn.NotSpecified,
       in_spatial_dims: Sequence[nn.Dim],
       out_spatial_dims: Optional[Sequence[nn.Dim]] = nn.NotSpecified,
-      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
   """
   3D pooling.
 
-  :param LayerRef source:
+  :param TensorRef source:
   :param str mode: "max" or "avg"
   :param tuple[int] pool_size: shape of the window of each reduce
   :param str padding: "valid" or "same"

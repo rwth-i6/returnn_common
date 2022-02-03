@@ -93,14 +93,14 @@ class _Base(nn.ReturnnWrappedLayerBase):
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def copy(
-         source: nn.LayerRef,
+         source: nn.TensorRef,
          *,
-         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This layer does nothing, it copies its input.
   If multiple sources are provided, they are concatenated in the feature-dim.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -112,17 +112,17 @@ def copy(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def scaled_gradient(
-                    source: nn.LayerRef,
+                    source: nn.TensorRef,
                     *,
                     scale: float,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Just tf.identity in the forward pass.
   Scales the gradient by some factor in backprop.
   Can be used as gradient reversal layer (with negative factor).
   Uses :func:`returnn.tf.util.basic.scaled_gradient`, or :func:`tf.stop_gradient`
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param float scale: if 0., will use tf.stop_gradient
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -139,12 +139,12 @@ def scaled_gradient(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def layer_norm(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
                in_dim: nn.Dim,
                out_dim: Optional[nn.Dim] = NotSpecified,
                epsilon: float = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Applies `layer-normalization <https://arxiv.org/abs/1607.06450>`__.
 
@@ -156,7 +156,7 @@ def layer_norm(
   or all axes except batch and time.
   For a more generic variant, see :class:`NormLayer`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim in_dim: axis to normalize over. feature-dim by default
   :param nn.Dim|None out_dim: just the same as in_dim
   :param float epsilon:
@@ -177,15 +177,15 @@ def layer_norm(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def math_norm(
-              source: nn.LayerRef,
+              source: nn.TensorRef,
               *,
               p: Union[int, float],
               axis: Union[nn.Dim, Sequence[nn.Dim]],
-              name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+              name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Calculates sum(abs(x) ** p) ** (1./p).
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param int|float p:
   :param nn.Dim|Sequence[nn.Dim] axis:
   :param str|nn.NameCtx|None name:
@@ -204,14 +204,14 @@ def math_norm(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def slice(
-          source: nn.LayerRef,
+          source: nn.TensorRef,
           *,
           axis: nn.Dim,
           slice_start: Optional[int] = NotSpecified,
           slice_end: Optional[int] = NotSpecified,
           slice_step: Optional[int] = NotSpecified,
           out_dim: Optional[nn.Dim] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Slicing on the input, i.e. x[start:end:step] in some axis.
   See also :class:`SliceNdLayer`, for variable start.
@@ -230,7 +230,7 @@ def slice(
 
   We just support slicing in a single axis here, with optional striding (slice_step).
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param int|None slice_start:
   :param int|None slice_end:
@@ -258,14 +258,14 @@ def slice(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def slice_nd(
-             source: nn.LayerRef,
+             source: nn.TensorRef,
              *,
-             start: nn.LayerRef,
-             size: Union[nn.Dim, nn.LayerRef],
+             start: nn.TensorRef,
+             size: Union[nn.Dim, nn.TensorRef],
              min_size: Optional[int] = NotSpecified,
              axis: nn.Dim,
              out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+             name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   This takes out a slice-range from the time axis,
   e.g. ``x[start:start + size]``.
@@ -278,9 +278,9 @@ def slice_nd(
   See also :class:`GatherNdLayer`.
   :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase start: (B,...)
-  :param nn.Dim|nn.LayerRef size:
+  :param nn.Dim|nn.TensorRef size:
     We assume that this is >=0. If this might not be the case, use ``min_size=0``.
     If None, it uses the max possible size, and it becomes a dynamic axis.
   :param int|None min_size: if size is None, but we want to have a min-size
@@ -308,11 +308,11 @@ def slice_nd(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def gather(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
-           position: Union[nn.LayerRef, int],
+           position: Union[nn.TensorRef, int],
            axis: nn.Dim,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
   If the input is a layer of the shape ``[B,D,F1]``, and position of shape ``[B,F2]``, this will yield output of the
@@ -330,7 +330,7 @@ def gather(
   It provides the same functionality as the deprecated ``GatherNdLayer``, but is more generic.
   See also :class:`GatherNdLayer`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase|int position: Layer containing the indices used to select the slices of the input from.
     If another layer, must be of type ``int32`` or ``int64``.
     Can also specify a constant ``int``.
@@ -351,13 +351,13 @@ def gather(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def scatter_nd(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
-               position: nn.LayerRef,
+               position: nn.TensorRef,
                position_axis: nn.Dim,
                out_spatial_dim: nn.Dim,
                filter_invalid_indices: bool = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   The inverse of :class:`GatherNdLayer`.
   Mostly a wrapper for ``tf.scatter_nd``.
@@ -392,7 +392,7 @@ def scatter_nd(
 
   In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase position: indices into first axis (excluding batch) of the output
   :param nn.Dim position_axis: axis in `position` to replace by the output-dim
   :param nn.Dim out_spatial_dim:
@@ -415,16 +415,16 @@ def scatter_nd(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def length(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
            axis: nn.Dim,
            dtype: str = NotSpecified,
            sparse: bool = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Returns the length of sources as (B,), via input size_placeholder.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param str dtype:
   :param bool sparse:
@@ -445,16 +445,16 @@ def length(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def softmax(
-            source: nn.LayerRef,
+            source: nn.TensorRef,
             *,
             axis: nn.Dim,
             energy_factor: Optional[float] = NotSpecified,
-            start: Optional[nn.LayerRef] = NotSpecified,
-            window_start: Optional[Union[nn.LayerRef, int]] = NotSpecified,
-            window_size: Optional[Union[nn.LayerRef, int]] = NotSpecified,
+            start: Optional[nn.TensorRef] = NotSpecified,
+            window_start: Optional[Union[nn.TensorRef, int]] = NotSpecified,
+            window_size: Optional[Union[nn.TensorRef, int]] = NotSpecified,
             use_time_mask: bool = NotSpecified,
             log_space: bool = NotSpecified,
-            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This applies a softmax over spatial axis/axes (currently only time axis supported).
   E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
@@ -462,7 +462,7 @@ def softmax(
   In contrast to :class:`SoftmaxLayer`, this will not do a linear transformation.
   See :class:`SeqLenMaskLayer` if you just want to apply a masking.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis: which axis to do the softmax over. "T" by default
   :param float|None energy_factor: the energy will be scaled by this factor.
     This is like a temperature for the softmax.
@@ -496,21 +496,21 @@ def softmax(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def seq_len_mask(
-                 source: nn.LayerRef,
+                 source: nn.TensorRef,
                  *,
                  mask_value: float,
                  axis: nn.Dim,
-                 seq_len_source: Optional[nn.LayerRef] = NotSpecified,
-                 start: Optional[nn.LayerRef] = NotSpecified,
-                 window_start: Optional[nn.LayerRef] = NotSpecified,
-                 window_size: Optional[Union[nn.LayerRef, int]] = NotSpecified,
-                 name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                 seq_len_source: Optional[nn.TensorRef] = NotSpecified,
+                 start: Optional[nn.TensorRef] = NotSpecified,
+                 window_start: Optional[nn.TensorRef] = NotSpecified,
+                 window_size: Optional[Union[nn.TensorRef, int]] = NotSpecified,
+                 name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Masks some values away given the seq_len_source with mask_value.
   Also see :class:`SoftmaxOverSpatialLayer`.
   Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param float mask_value:
   :param nn.Dim axis:
   :param LayerBase|None seq_len_source: if not given, uses source
@@ -540,7 +540,7 @@ def random_state_init(
                       *,
                       algorithm: Optional[Union[str, tf.random.Algorithm]] = NotSpecified,
                       seed: Optional[Union[int, Sequence[int], numpy.ndarray]] = NotSpecified,
-                      name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                      name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This calculates the initial state value for the state var
   of :class:`RandomLayer`.
@@ -576,18 +576,18 @@ def random(
            *,
            shape: Sequence[nn.Dim],
            distribution: str,
-           mean: Optional[Union[int, float, nn.LayerRef]] = NotSpecified,
-           stddev: Optional[Union[int, float, nn.LayerRef]] = NotSpecified,
-           bound: Optional[Union[int, float, nn.LayerRef]] = NotSpecified,
-           minval: Optional[Union[int, float, nn.LayerRef]] = NotSpecified,
-           maxval: Optional[Union[int, float, nn.LayerRef]] = NotSpecified,
+           mean: Optional[Union[int, float, nn.TensorRef]] = NotSpecified,
+           stddev: Optional[Union[int, float, nn.TensorRef]] = NotSpecified,
+           bound: Optional[Union[int, float, nn.TensorRef]] = NotSpecified,
+           minval: Optional[Union[int, float, nn.TensorRef]] = NotSpecified,
+           maxval: Optional[Union[int, float, nn.TensorRef]] = NotSpecified,
            dtype: str = NotSpecified,
            seed: Optional[Union[int, Sequence[int], numpy.ndarray]] = NotSpecified,
            algorithm: Optional[Union[str, tf.random.Algorithm]] = NotSpecified,
-           explicit_state: Optional[nn.LayerRef] = NotSpecified,
+           explicit_state: Optional[nn.TensorRef] = NotSpecified,
            auto_update_state: Optional[bool] = NotSpecified,
            static: Optional[bool] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Generates random numbers from uniform or normal or truncated normal distribution.
 
@@ -660,7 +660,7 @@ def range(
           dtype: Optional[str] = NotSpecified,
           sparse: bool = NotSpecified,
           out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Generic wrapper around ``tf.range``.
   See also :class:`RangeInAxisLayer`.
@@ -693,18 +693,18 @@ def range(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def range_in_axis(
-                  source: nn.LayerRef,
+                  source: nn.TensorRef,
                   *,
                   axis: nn.Dim,
                   dtype: str = NotSpecified,
                   sparse: bool = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Assume that the input is e.g. (B,T,D), and you specify axis="T", you will get (B=1,T,D=1),
   where the specified axis is filled with ``tf.range``.
   See also :class:`RangeLayer`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param str dtype:
   :param bool sparse:
@@ -725,12 +725,12 @@ def range_in_axis(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def range_from_length(
-                      source: nn.LayerRef,
+                      source: nn.TensorRef,
                       *,
                       dtype: str = NotSpecified,
                       sparse: bool = NotSpecified,
                       out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-                      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+                      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Given some dynamic sequence lengths as input, this creates a tf.range over the implied dimension.
   As a side effect, this can create a new dyn dim tag for the given sequence lengths.
@@ -747,7 +747,7 @@ def range_from_length(
     y: {class: range_from_length, from: x_len}
 
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str dtype:
   :param bool sparse:
   :param nn.Dim|None out_spatial_dim:
@@ -771,13 +771,13 @@ def range_from_length(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def batch_softmax(
-                  source: nn.LayerRef,
+                  source: nn.TensorRef,
                   *,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Softmax over spacial and feature axis
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -794,7 +794,7 @@ def constant(
              shape: Sequence[nn.Dim] = NotSpecified,
              dtype: Optional[str] = NotSpecified,
              sparse_dim: Optional[nn.Dim] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Output is a constant value.
 
@@ -819,9 +819,9 @@ def constant(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_window(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
-               state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified,
+               state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
                window_dim: Optional[nn.Dim] = NotSpecified,
                window_left: Optional[int] = NotSpecified,
                window_right: Optional[int] = NotSpecified,
@@ -829,7 +829,7 @@ def rec_window(
                out_spatial_dim: Optional[nn.Dim] = NotSpecified,
                padding: str = NotSpecified,
                stride: int = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Tuple[nn.Dim, nn.Dim], nn.LayerState]:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Tuple[nn.Dim, nn.Dim], nn.LayerState]:
   """
   Adds a window dimension.
   By default, uses the time axis and goes over it with a sliding window.
@@ -844,8 +844,8 @@ def rec_window(
   This is not to take out a window from the time-dimension.
   See :class:`SliceLayer` or :class:`SliceNdLayer`.
 
-  :param nn.LayerRef source:
-  :param nn.LayerRef|Sequence[nn.LayerRef]|NotSpecified|None state:
+  :param nn.TensorRef source:
+  :param nn.TensorRef|Sequence[nn.TensorRef]|NotSpecified|None state:
   :param nn.Dim|None window_dim:
   :param int|None window_left:
   :param int|None window_right:
@@ -881,18 +881,18 @@ def rec_window(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_cum_sum(
-                source: nn.LayerRef,
+                source: nn.TensorRef,
                 *,
-                state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified,
+                state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
                 axis: nn.Dim,
                 additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
                 reverse: bool = NotSpecified,
-                name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.LayerState]:
+                name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.LayerState]:
   """
   Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
-  :param nn.LayerRef source:
-  :param nn.LayerRef|Sequence[nn.LayerRef]|NotSpecified|None state:
+  :param nn.TensorRef source:
+  :param nn.TensorRef|Sequence[nn.TensorRef]|NotSpecified|None state:
   :param nn.Dim axis: see :func:`Data.get_axis_from_description`
   :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
   :param bool reverse:
@@ -916,19 +916,19 @@ def rec_cum_sum(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def pad(
-        source: nn.LayerRef,
+        source: nn.TensorRef,
         *,
         axes: Union[nn.Dim, Sequence[nn.Dim]],
         padding: Union[Sequence[Tuple[int, int]], Tuple[int, int], int],
         out_dims: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = NotSpecified,
         value: Union[int, float] = NotSpecified,
         mode: str = NotSpecified,
-        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Adds (e.g. zero) padding in some axis or axes.
   Also see :class:`PrefixInTimeLayer` for dynamic dims.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim|Sequence[nn.Dim] axes: e.g. "F" etc. see :func:`Data.get_axes_from_description`.
   :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
   :param nn.Dim|Sequence[nn.Dim]|None out_dims:
@@ -953,11 +953,11 @@ def pad(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def merge_dims(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
                axes: Sequence[nn.Dim],
                out_dim: Optional[nn.Dim] = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Merges a list of axes into a single one. (Flatten the dims.)
   E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
@@ -967,7 +967,7 @@ def merge_dims(
   When you want to merge batch and time, but remove the padding efficiently, i.e. flatten it,
   see :class:`FlattenBatchLayer`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param Sequence[nn.Dim] axes: see :func:`Data.get_axis_from_description`
   :param nn.Dim|None out_dim:
   :param str|nn.NameCtx|None name:
@@ -989,17 +989,17 @@ def merge_dims(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _split(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
            axis: nn.Dim,
            out_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Splits one axis into multiple parts, via tf.split.
   self.output is simply the input copied.
   Each part can be accessed via the sublayers "/%i".
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis: feature axis by default
   :param Sequence[nn.Dim]|None out_dims:
   :param str|nn.NameCtx|None name:
@@ -1018,13 +1018,13 @@ def _split(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def split_dims(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
                axis: nn.Dim,
                dims: Sequence[nn.Dim],
                pad_to_multiples: Optional[bool] = NotSpecified,
                pad_value: Union[int, float] = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Splits one axis into multiple axes.
   E.g. if you know that your feature-dim is composed by a window,
@@ -1044,7 +1044,7 @@ def split_dims(
   Also see :class:`SplitBatchTimeLayer`.
   Also see :class:`MergeDimsLayer` which can undo this operation.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis: e.g. "F"
   :param Sequence[nn.Dim] dims: what the axis should be split into. e.g. (window, -1)
   :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
@@ -1069,11 +1069,11 @@ def split_dims(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def flatten_batch(
-                  source: nn.LayerRef,
+                  source: nn.TensorRef,
                   *,
                   axis: nn.Dim,
                   batch_major: bool = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Merges one axis into the batch axis.
   If the axis has dynamic lengths, this would use flattening,
@@ -1082,7 +1082,7 @@ def flatten_batch(
   See also :class:`MergeDimsLayer`, which does not do flattening,
   i.e. the size stays the same.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param bool batch_major: if False, will flatten in time-major manner
   :param str|nn.NameCtx|None name:
@@ -1101,15 +1101,15 @@ def flatten_batch(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def unflatten_batch(
-                    source: nn.LayerRef,
+                    source: nn.TensorRef,
                     *,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Inverse of :class:`FlattenBatchLayer`, so recovers an axis previously merged into the batch axis
 
   This basically wraps :func:`unflatten_with_seq_len_mask`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -1121,14 +1121,14 @@ def unflatten_batch(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def unflatten_nd(
-                 source: nn.LayerRef,
+                 source: nn.TensorRef,
                  *,
-                 sizes: nn.LayerRef,
+                 sizes: nn.TensorRef,
                  num_axes: int,
                  in_dim: Optional[nn.Dim] = NotSpecified,
                  out_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
-                 declare_same_sizes_as: Optional[Dict[int, nn.LayerRef]] = NotSpecified,
-                 name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                 declare_same_sizes_as: Optional[Dict[int, nn.TensorRef]] = NotSpecified,
+                 name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This keeps the batch axis as-is, i.e. the flattening/unflattening did not happen on the batch axis.
 
@@ -1141,7 +1141,7 @@ def unflatten_nd(
 
   This basically wraps :func:`returnn.tf.util.basic.unflatten_nd`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase sizes:
   :param int num_axes:
   :param nn.Dim|None in_dim:
@@ -1166,19 +1166,19 @@ def unflatten_nd(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def repeat(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
-           repetitions: Union[nn.LayerRef, int],
+           repetitions: Union[nn.TensorRef, int],
            axis: nn.Dim,
            out_dim: Optional[nn.Dim] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   A wrapper around tf.repeat, but supports an additional batch axis for the durations
   The sum of the repetitions has to be non-zero for each sequence in the batch.
 
   This layer can only be used with Tensorflow 1.15.0 or newer.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase|int repetitions:
     number of repetitions for each sequence and position in target axis.
     Can be [B,T] or [T,B] or some subset of that shape
@@ -1204,15 +1204,15 @@ def repeat(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def tile(
-         source: nn.LayerRef,
+         source: nn.TensorRef,
          *,
          multiples: Dict[nn.Dim,  int],
          out_dims: Optional[Dict[nn.Dim,  nn.Dim]] = NotSpecified,
-         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   A wrapper around tf.tile
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param dict[nn.Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
   :param dict[nn.Dim, nn.Dim]|None out_dims:
   :param str|nn.NameCtx|None name:
@@ -1231,14 +1231,14 @@ def tile(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def cast(
-         source: nn.LayerRef,
+         source: nn.TensorRef,
          *,
          dtype: str,
-         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Cast to some other dtype.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str dtype:
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -1255,7 +1255,7 @@ def cast(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _pool(
-          source: nn.LayerRef,
+          source: nn.TensorRef,
           *,
           mode: str,
           pool_size: Sequence[int],
@@ -1266,12 +1266,12 @@ def _pool(
           in_spatial_dims: Sequence[nn.Dim],
           out_dim: Optional[nn.Dim] = NotSpecified,
           out_spatial_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, Sequence[nn.Dim]]:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
   """
   A generic N-D pooling layer.
   This would usually be done after a convolution for down-sampling.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str mode: "max" or "avg"
   :param tuple[int] pool_size: shape of the window of each reduce
   :param str padding: "valid" or "same"
@@ -1309,18 +1309,18 @@ def _pool(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dct(
-        source: nn.LayerRef,
+        source: nn.TensorRef,
         *,
         type: int = NotSpecified,
         n: Optional[int] = NotSpecified,
         norm: Optional[str] = NotSpecified,
-        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Layer to perform DCT
   Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
   https://www.tensorflow.org/api_docs/python/tf/signal/dct
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param int type: DCT type to perform. Must be 1, 2, 3, or 4
   :param int|None n: length of the transform
   :param str|None norm: normalization to apply. Must be None or "ortho"
@@ -1341,17 +1341,17 @@ def dct(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reduce(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
            mode: str,
            axis: Union[nn.Dim, Sequence[nn.Dim]],
            use_time_mask: bool = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This reduces some axis by using "sum" or "max".
   It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
   :param nn.Dim|Sequence[nn.Dim] axis: for compatibility, can be used instead of ``axes``
     One axis or multiple axis to reduce.
@@ -1377,18 +1377,18 @@ def reduce(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reduce_out(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
                mode: str,
                num_pieces: int,
                out_dim: Optional[nn.Dim] = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Combination of :class:`SplitDimsLayer` applied to the feature dim
   and :class:`ReduceLayer` applied to the resulting feature dim.
   This can e.g. be used to do maxout.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str mode: "sum" or "max" or "mean"
   :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
   :param nn.Dim|None out_dim:
@@ -1409,16 +1409,16 @@ def reduce_out(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def squeeze(
-            source: nn.LayerRef,
+            source: nn.TensorRef,
             *,
             axis: Union[nn.Dim, Sequence[nn.Dim]],
             allow_no_op: bool = NotSpecified,
-            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Removes an axis with dimension 1.
   This is basically a wrapper around tf.squeeze.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim|Sequence[nn.Dim] axis: one axis or multiple axis to squeeze.
     this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
     it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
@@ -1439,17 +1439,17 @@ def squeeze(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def stack(
-          source: Sequence[nn.LayerRef],
+          source: Sequence[nn.TensorRef],
           *,
           out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Stacks multiple inputs together using :func:`tf.stack`.
   This creates a new dimension for the stack.
 
   For concatenation (in feature dimension), see :class:`CopyLayer`.
 
-  :param Sequence[nn.LayerRef] source:
+  :param Sequence[nn.TensorRef] source:
   :param nn.Dim|None out_spatial_dim:
   :param str|nn.NameCtx|None name:
   :return: layer, out_spatial_dim
@@ -1469,21 +1469,21 @@ def stack(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def prefix_in_time(
-                   source: nn.LayerRef,
+                   source: nn.TensorRef,
                    *,
                    axis: nn.Dim,
                    out_dim: Optional[nn.Dim] = NotSpecified,
                    prefix: Union[float, str] = NotSpecified,
-                   repeat: Union[int, nn.LayerRef] = NotSpecified,
-                   size_base: Optional[nn.LayerRef] = NotSpecified,
-                   name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+                   repeat: Union[int, nn.TensorRef] = NotSpecified,
+                   size_base: Optional[nn.TensorRef] = NotSpecified,
+                   name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Adds some prefix in time dimension.
   This is kind of the reverse of :class:`SliceNdLayer` does.
   Also see :class:`PadLayer` for static dimensions.
   Also see :class:`PostfixInTimeLayer`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param nn.Dim|None out_dim:
   :param float|str prefix: either some constant or another layer
@@ -1511,18 +1511,18 @@ def prefix_in_time(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def postfix_in_time(
-                    source: nn.LayerRef,
+                    source: nn.TensorRef,
                     *,
                     axis: nn.Dim,
                     out_dim: Optional[nn.Dim] = NotSpecified,
-                    postfix: Union[float, int, nn.LayerRef] = NotSpecified,
+                    postfix: Union[float, int, nn.TensorRef] = NotSpecified,
                     repeat: int = NotSpecified,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+                    name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Adds some postfix in time dimension.
   Also see :class:`PrefixInTimeLayer`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param nn.Dim|None out_dim:
   :param float|int|LayerBase postfix: constant or other layer without time axis to use as postfix
@@ -1548,17 +1548,17 @@ def postfix_in_time(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def time_chunking(
-                  source: nn.LayerRef,
+                  source: nn.TensorRef,
                   *,
                   chunk_size: int,
                   chunk_step: int,
                   axis: nn.Dim,
                   out_dim: Optional[nn.Dim] = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+                  name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Performs chunking in time. See :func:`returnn.tf.native_op.chunk`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param int chunk_size:
   :param int chunk_step:
   :param nn.Dim axis:
@@ -1584,14 +1584,14 @@ def time_chunking(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def time_un_chunking(
-                     source: nn.LayerRef,
+                     source: nn.TensorRef,
                      *,
-                     chunking_layer: nn.LayerRef,
-                     name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                     chunking_layer: nn.TensorRef,
+                     name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Performs chunking in time. See :func:`TFNativeOp.chunk`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param TimeChunkingLayer chunking_layer:
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -1608,12 +1608,12 @@ def time_un_chunking(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dot(
-        source1: nn.LayerRef,
-        source2: nn.LayerRef,
+        source1: nn.TensorRef,
+        source2: nn.TensorRef,
         *,
         reduce: Union[nn.Dim, Sequence[nn.Dim]] = NotSpecified,
         debug: bool = NotSpecified,
-        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This performs a dot-product of two sources.
   The underlying matmul expects shapes (shared..., I, J) * (shared..., J, K) -> (shared..., I, K).
@@ -1638,8 +1638,8 @@ def dot(
   However, these are bad, for multiple reasons, like using integers, but also in general.
     See https://github.com/rwth-i6/returnn/issues/627 for details.
 
-  :param nn.LayerRef source1:
-  :param nn.LayerRef source2:
+  :param nn.TensorRef source1:
+  :param nn.TensorRef source2:
   :param nn.Dim|Sequence[nn.Dim] reduce: reduce axes of both sources
   :param bool debug: will print debug shapes, etc.
   :param str|nn.NameCtx|None name:
@@ -1658,20 +1658,20 @@ def dot(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def shift_axis(
-               source: nn.LayerRef,
+               source: nn.TensorRef,
                *,
                axis: nn.Dim,
                amount: int,
                pad: bool = NotSpecified,
                adjust_size_info: bool = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Shifts the dimensions in an axis around by slicing and optional padding.
   This layer may change the axis-dimension.
 
   This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis: single axis to shift
   :param int amount: number of elements to shift
                  (<0 for left-shift, >0 for right-shift)
@@ -1695,7 +1695,7 @@ def shift_axis(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def resize(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
            factor: int,
            axis: nn.Dim,
@@ -1703,12 +1703,12 @@ def resize(
            kind: str = NotSpecified,
            fill_value: Optional[Union[int, float]] = NotSpecified,
            fill_dropout: float = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Resizes the input, i.e. upsampling or downsampling.
   Supports different kinds, such as linear interpolation or nearest-neighbor.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param int factor:
   :param nn.Dim axis: the axis to resize
   :param nn.Dim|None out_dim:
@@ -1738,19 +1738,19 @@ def resize(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def remove(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
            symbol: int,
            axis: nn.Dim,
            out_dim: Optional[nn.Dim] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Currently, assumes sparse data, and removes a specific symbol from the data.
 
   It is recommended to use :class:`MaskedComputationLayer` in combination with e.g.
   a :class:CompareLayer` instead, as this provides more flexibility.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param int symbol:
   :param nn.Dim axis: the axis to operate over, to potentially remove frames
   :param nn.Dim|None out_dim: derived from the dim of axis, the reduced new dim
@@ -1774,14 +1774,14 @@ def remove(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _combine(
-             source: Sequence[nn.LayerRef],
+             source: Sequence[nn.TensorRef],
              *,
              kind: str,
              with_bias: bool = NotSpecified,
              eval: Union[str, callable] = NotSpecified,
              eval_locals: Optional[Dict[str]] = NotSpecified,
              eval_for_output_loss: bool = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Applies a binary operation, such as addition, to all sources while accumulating the partial results.
   In the first step, the binary operation is performed on the first two sources.
@@ -1790,7 +1790,7 @@ def _combine(
   Its basic working is similar to the `reduce` function used in functional programming.
   Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
 
-  :param Sequence[nn.LayerRef] source:
+  :param Sequence[nn.TensorRef] source:
   :param str kind:
     currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `logical_and`, `logical_or`, or `eval`
   :param bool with_bias: if given, will add a trainable bias tensor
@@ -1816,13 +1816,13 @@ def _combine(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _eval(
-          source: Union[nn.LayerRef, Sequence[nn.LayerRef]],
+          source: Union[nn.TensorRef, Sequence[nn.TensorRef]],
           *,
           eval: str,
           with_bias: bool = NotSpecified,
           eval_locals: Optional[Dict[str]] = NotSpecified,
           eval_for_output_loss: bool = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Evaluates some string.
   The :class:`CombineLayer` provides this functionality, thus this is just a special case of it.
@@ -1832,7 +1832,7 @@ def _eval(
   You can overwrite it by (partially) specifying `out_type`.
   `out_type` can also be a generic Python function, returning a `Data` instance.
 
-  :param nn.LayerRef|Sequence[nn.LayerRef] source:
+  :param nn.TensorRef|Sequence[nn.TensorRef] source:
   :param str eval: will eval this string. see :func:`_op_kind_eval`
   :param bool with_bias: if given, will add a trainable bias tensor
   :param dict[str]|None eval_locals: locals for eval
@@ -1855,11 +1855,11 @@ def _eval(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _compare(
-             source: Sequence[nn.LayerRef],
+             source: Sequence[nn.TensorRef],
              *,
              kind: str = NotSpecified,
              value: Optional[Union[float, int]] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Compares element-wise the tokens of all input sequences among themselves and/or with a specified given value.
   The comparisons are performed in a chain according to the order in which they are listed.
@@ -1882,7 +1882,7 @@ def _compare(
       }, "target": "classes0"}
 
 
-  :param Sequence[nn.LayerRef] source:
+  :param Sequence[nn.TensorRef] source:
   :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
     or other supported TF comparison ops
   :param float|int|None value: if specified, will also compare to this
@@ -1902,13 +1902,13 @@ def _compare(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def search_sorted(
-                  source: nn.LayerRef,
+                  source: nn.TensorRef,
                   *,
-                  sorted_sequence: nn.LayerRef,
-                  values: nn.LayerRef,
+                  sorted_sequence: nn.TensorRef,
+                  values: nn.TensorRef,
                   axis: nn.Dim,
                   side: str = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Basically wraps :func:`tf.searchsorted`.
 
@@ -1917,7 +1917,7 @@ def search_sorted(
   where each entry is the index of the value within the sorted sequence.
   All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase sorted_sequence:
   :param LayerBase values: search values
   :param nn.Dim axis: the axis along which `sorted_sequence` is sorted
@@ -1942,16 +1942,16 @@ def search_sorted(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def forced_alignment(
-                     source: nn.LayerRef,
+                     source: nn.TensorRef,
                      *,
-                     align_target: nn.LayerRef,
+                     align_target: nn.TensorRef,
                      topology: str,
                      input_type: str,
-                     name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                     name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Calculates a forced alignment, via Viterbi algorithm.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase align_target:
   :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
   :param str input_type: "log_prob" or "prob"
@@ -1973,10 +1973,10 @@ def forced_alignment(
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def sparse_softmax_cross_entropy_with_logits(
                                              *,
-                                             logits: nn.LayerRef,
-                                             targets: nn.LayerRef,
+                                             logits: nn.TensorRef,
+                                             targets: nn.TensorRef,
                                              axis: nn.Dim,
-                                             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                                             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This is a simple wrapper for tf.nn.sparse_softmax_cross_entropy_with_logits.
 
@@ -1999,7 +1999,7 @@ def sparse_softmax_cross_entropy_with_logits(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def fast_baum_welch(
-                    source: nn.LayerRef,
+                    source: nn.TensorRef,
                     *,
                     align_target: str,
                     align_target_key: Optional[str] = NotSpecified,
@@ -2009,13 +2009,13 @@ def fast_baum_welch(
                     tdp_scale: float = NotSpecified,
                     am_scale: float = NotSpecified,
                     min_prob: float = NotSpecified,
-                    staircase_seq_len_source: Optional[nn.LayerRef] = NotSpecified,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                    staircase_seq_len_source: Optional[nn.TensorRef] = NotSpecified,
+                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
   We expect that our input are +log scores, e.g. use log-softmax.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str align_target: e.g. "sprint" or "staircase"
   :param str|None align_target_key: e.g. "classes", used for e.g. align_target "ctc"
   :param dict[str] ctc_opts: used for align_target "ctc"
@@ -2048,17 +2048,17 @@ def fast_baum_welch(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def synthetic_gradient(
-                       source: nn.LayerRef,
+                       source: nn.TensorRef,
                        *,
-                       gradient: nn.LayerRef,
+                       gradient: nn.TensorRef,
                        meta_loss_scale: float = NotSpecified,
-                       name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                       name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This is a generalized way to be able to replace the true gradient with any kind of predicted gradient.
   This enabled to implement the idea from here:
     Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param LayerBase gradient:
   :param float meta_loss_scale:
   :param str|nn.NameCtx|None name:
@@ -2077,14 +2077,14 @@ def synthetic_gradient(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def tikhonov_regularization(
-                            source: nn.LayerRef,
+                            source: nn.TensorRef,
                             *,
                             meta_loss_scale: float = NotSpecified,
-                            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Adds the Tikhonov regularization as a meta-loss (see :class:`returnn.tf.util.basic.MetaLosses`).
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param float meta_loss_scale:
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -2101,15 +2101,15 @@ def tikhonov_regularization(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def print(
-          source: nn.LayerRef,
+          source: nn.TensorRef,
           *,
           summarize: Optional[int] = NotSpecified,
           extra_print_args: Union[Sequence, Sequence] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Prints the sources to console/log, via :func:`returnn.tf.util.basic.py_print`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param int|None summarize: passed to :func:`py_print`
   :param list|tuple extra_print_args:
   :param str|nn.NameCtx|None name:
@@ -2128,15 +2128,15 @@ def print(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def hdf_dump(
-             source: nn.LayerRef,
+             source: nn.TensorRef,
              *,
              filename: Union[str, callable],
-             extra: Optional[Dict[str, nn.LayerRef]] = NotSpecified,
+             extra: Optional[Dict[str, nn.TensorRef]] = NotSpecified,
              dump_whole_batches: bool = NotSpecified,
              labels: Optional[Sequence[str]] = NotSpecified,
              extend_existing_file: bool = NotSpecified,
              dump_per_run: bool = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Dumps into HDF file, compatible to :class:`HDFDataset`.
 
@@ -2150,7 +2150,7 @@ def hdf_dump(
 
   It currently uses :class:`SimpleHDFWriter` internally.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str|(()->str) filename:
   :param None|dict[str,LayerBase] extra:
   :param bool dump_whole_batches: dumps the whole batch as a single sequence into the HDF
@@ -2177,16 +2177,16 @@ def hdf_dump(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _get_last_hidden_state(
-                           source: nn.LayerRef,
+                           source: nn.TensorRef,
                            *,
                            out_dim: Optional[nn.Dim] = NotSpecified,
                            combine: str = NotSpecified,
                            key: Optional[Union[str, int]] = NotSpecified,
-                           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Will combine (concat or add or so) all the last hidden states from all sources.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim|None out_dim:
   :param str combine: "concat" or "add"
   :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
@@ -2207,11 +2207,11 @@ def _get_last_hidden_state(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_unstack(
-                source: nn.LayerRef,
+                source: nn.TensorRef,
                 *,
                 axis: nn.Dim,
                 declare_rec_time: bool = NotSpecified,
-                name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This is supposed to be used inside a :class:`RecLayer`.
   The input is supposed to be outside the rec layer (i.e. via ``base:``).
@@ -2233,7 +2233,7 @@ def rec_unstack(
   Note that it is allowed to leave both `axis` and `declare_rec_time` unset,
   in case you assign `axis` to the rec layer, and the source here has the same axis (dim tag).
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim axis:
   :param bool declare_rec_time:
   :param str|nn.NameCtx|None name:
@@ -2252,9 +2252,9 @@ def rec_unstack(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def choice(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
-           target: nn.LayerRef,
+           target: nn.TensorRef,
            beam_size: int,
            keep_beams: bool = NotSpecified,
            search: Union[NotSpecified, bool] = NotSpecified,
@@ -2268,8 +2268,8 @@ def choice(
            source_beam_sizes: Optional[Sequence[int]] = NotSpecified,
            scheduled_sampling: Optional[Dict] = NotSpecified,
            cheating: Union[bool, str] = NotSpecified,
-           explicit_search_sources: Optional[Sequence[nn.LayerRef]] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           explicit_search_sources: Optional[Sequence[nn.TensorRef]] = NotSpecified,
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This layer represents a choice to be made in search during inference,
   such as choosing the top-k outputs from a log-softmax for beam search.
@@ -2292,8 +2292,8 @@ def choice(
   Note, that the way scores are combined assumes the sources to be independent. If you want to model a dependency,
   use separate ChoiceLayers and let the input of one depend on the output of the other.
 
-  :param nn.LayerRef source:
-  :param nn.LayerRef target: target
+  :param nn.TensorRef source:
+  :param nn.TensorRef target: target
   :param int beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
   :param bool keep_beams: specifies that we keep the beam_in entries,
     i.e. we just expand, i.e. we just search on the dim. beam_size must be a multiple of beam_in.
@@ -2344,11 +2344,11 @@ def choice(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def decide(
-           source: nn.LayerRef,
+           source: nn.TensorRef,
            *,
            length_normalization: bool = NotSpecified,
            search: Union[NotSpecified, bool] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   This is kind of the counter-part to the choice layer.
   This only has an effect in search mode.
@@ -2358,7 +2358,7 @@ def decide(
   Thus, this will do a decision based on the scores.
   In will convert the data to batch-major mode.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param bool length_normalization: performed on the beam scores
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
@@ -2378,9 +2378,9 @@ def decide(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def choice_get_beam_scores(
-                           source: nn.LayerRef,
+                           source: nn.TensorRef,
                            *,
-                           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Gets beam scores from :class:`SearchChoices`.
   This requires that the source has search choices.
@@ -2390,7 +2390,7 @@ def choice_get_beam_scores(
     This layer might be deprecated in the future.
 
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -2402,14 +2402,14 @@ def choice_get_beam_scores(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def choice_get_src_beams(
-                         source: nn.LayerRef,
+                         source: nn.TensorRef,
                          *,
-                         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Gets source beam indices from :class:`SearchChoices`.
   This requires that the source has search choices.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -2421,17 +2421,17 @@ def choice_get_src_beams(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def split_batch_beam(
-                     source: nn.LayerRef,
+                     source: nn.TensorRef,
                      *,
                      beam_dim: Optional[nn.Dim] = NotSpecified,
                      search: Union[NotSpecified, bool] = NotSpecified,
-                     name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim]:
+                     name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Splits the batch dimension of the input, which includes a beam, into (batch,beam).
 
   Like :class:`DecideLayer`, this removes the beam.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim|None beam_dim:
   :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
     If not specified, it will depend on `network.search_flag`.
@@ -2454,14 +2454,14 @@ def split_batch_beam(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def positional_encoding(
-                        source: nn.LayerRef,
+                        source: nn.TensorRef,
                         *,
                         out_dim: nn.Dim,
                         axis: Union[nn.Dim, NotSpecified],
                         add_to_input: bool = NotSpecified,
                         constant: int = NotSpecified,
-                        offset: Optional[nn.LayerRef] = NotSpecified,
-                        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                        offset: Optional[nn.TensorRef] = NotSpecified,
+                        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Provides positional encoding in the form of (batch, time, n_out) or (time, batch, n_out)
   where n_out is the number of channels, if it is run outside a :class:`RecLayer`,
@@ -2474,7 +2474,7 @@ def positional_encoding(
   The positional encoding is the same as in Tensor2Tensor.
   See :func:`returnn.tf.util.basic.get_positional_encoding`.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param nn.Dim out_dim: output feature dimension
   :param nn.Dim|NotSpecified axis: if not specified, check for time_dim_axis, otherwise assume rec step
   :param bool add_to_input: will add the signal to the input
@@ -2499,9 +2499,9 @@ def positional_encoding(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def ken_lm_state(
-                 source: nn.LayerRef,
+                 source: nn.TensorRef,
                  *,
-                 state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified,
+                 state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
                  lm_file: callable,
                  vocab_file: Optional[str] = NotSpecified,
                  vocab_unknown_label: str = NotSpecified,
@@ -2510,7 +2510,7 @@ def ken_lm_state(
                  input_step_offset: int = NotSpecified,
                  dense_output: bool = NotSpecified,
                  debug: bool = NotSpecified,
-                 name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.LayerState]:
+                 name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.LayerState]:
   """
   Get next word (or subword) each frame,
   accumulates string,
@@ -2519,8 +2519,8 @@ def ken_lm_state(
   using KenLM (https://kheafield.com/code/kenlm/) (see :mod:`TFKenLM`).
   EOS (</s>) token must be used explicitly.
 
-  :param nn.LayerRef source:
-  :param nn.LayerRef|Sequence[nn.LayerRef]|NotSpecified|None state:
+  :param nn.TensorRef source:
+  :param nn.TensorRef|Sequence[nn.TensorRef]|NotSpecified|None state:
   :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
   :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
   :param str vocab_unknown_label: for the vocabulary
@@ -2554,14 +2554,14 @@ def ken_lm_state(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def edit_distance_table(
-                        source: nn.LayerRef,
+                        source: nn.TensorRef,
                         *,
-                        state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified,
+                        state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
                         axis: Union[nn.Dim, NotSpecified],
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
                         out_dim: Optional[nn.Dim] = NotSpecified,
-                        name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim, nn.LayerState]:
+                        name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
   """
   Given a source and a target, calculates the edit distance table between them.
   Source can be inside a recurrent loop.
@@ -2573,8 +2573,8 @@ def edit_distance_table(
 
   See also :class:`OptimalCompletionsLayer`.
 
-  :param nn.LayerRef source:
-  :param nn.LayerRef|Sequence[nn.LayerRef]|NotSpecified|None state:
+  :param nn.TensorRef source:
+  :param nn.TensorRef|Sequence[nn.TensorRef]|NotSpecified|None state:
   :param nn.Dim|NotSpecified axis:
   :param bool debug:
   :param int|None blank_idx: if given, will keep the same row for this source label
@@ -2602,11 +2602,11 @@ def edit_distance_table(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def optimal_completions(
-                        source: nn.LayerRef,
+                        source: nn.TensorRef,
                         *,
                         debug: bool = NotSpecified,
                         blank_idx: Optional[int] = NotSpecified,
-                        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Layer:
+                        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   We expect to get the inputs from :class:`EditDistanceTableLayer`, esp from the prev frame, like this:
   "opt_completions": {"class": "optimal_completions", "from": "prev:edit_dist_table"}.
@@ -2620,7 +2620,7 @@ def optimal_completions(
   This makes most sense when you enable beam search (even, or esp, during training).
   Note that you probably want to have this all before the last choice, where you still have more beams open.
 
-  :param nn.LayerRef source:
+  :param nn.TensorRef source:
   :param bool debug:
   :param int|None blank_idx:
   :param str|nn.NameCtx|None name:
@@ -2639,12 +2639,12 @@ def optimal_completions(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_cum_concat(
-                   source: nn.LayerRef,
+                   source: nn.TensorRef,
                    *,
-                   state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified,
+                   state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
                    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
                    axis: nn.Dim,
-                   name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Layer, nn.Dim, nn.LayerState]:
+                   name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
   """
   Concatenates all previous frames of a time-axis.
   Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
@@ -2688,8 +2688,8 @@ def rec_cum_concat(
   This way following layers use different seq lengths of `new_dim` for different loop frames,
   just like if the `T` dim would actually exist.
 
-  :param nn.LayerRef source:
-  :param nn.LayerRef|Sequence[nn.LayerRef]|NotSpecified|None state:
+  :param nn.TensorRef source:
+  :param nn.TensorRef|Sequence[nn.TensorRef]|NotSpecified|None state:
   :param nn.Dim|None out_spatial_dim:
   :param nn.Dim axis: axis to operate over, or nn.single_step_dim
   :param str|nn.NameCtx|None name:

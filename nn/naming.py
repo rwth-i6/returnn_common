@@ -1,7 +1,7 @@
 """
 All the naming logic,
 which is responsible for mapping :class:`Module` hierarchy
-and the call hierarchy (via :class:`Layer` and :class:`LayerRef`)
+and the call hierarchy (via :class:`Layer` and :class:`TensorRef`)
 and the parameters of the model
 to a RETURNN net dict.
 
@@ -37,7 +37,7 @@ def scoped(func):
         # special logic, no output layers, no subnetwork layer needed
         self.calls.append(name_ctx)
         return res
-      if isinstance(res, nn.LayerRef):
+      if isinstance(res, nn.TensorRef):
         out = copy(res, name=name_ctx.get_child("output"))
       else:
         # we return more than one layer (thus also working on other layers of the subnet, that are not output)
@@ -49,7 +49,7 @@ def scoped(func):
       subnet_layer = nn.make_layer(
         {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
         name=name_ctx, predefined_out_data=out.data)
-    if isinstance(res, nn.LayerRef):
+    if isinstance(res, nn.TensorRef):
       return subnet_layer  # maybe nicer to return subnet layer
     return res
 
@@ -112,13 +112,13 @@ class NameCtx:
                name: Optional[str] = None,
                parent: Optional[NameCtx] = NotSpecified):
     self.module = module
-    self.layer_ref = None  # type: Optional[nn.LayerRef]
-    self.layer = None  # type: Optional[nn.Layer]
+    self.layer_ref = None  # type: Optional[nn.TensorRef]
+    self.layer = None  # type: Optional[nn.Tensor]
     self._layer_abs_name_scope = None  # type: Optional[str]
     self.is_subnet_ctx = False
     self.children = {}  # type: Dict[str, NameCtx]
     self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
-    self.marked_outputs = []  # type: List[nn.LayerRef]
+    self.marked_outputs = []  # type: List[nn.TensorRef]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name  # early assign such that debug repr works later
     if not name:
@@ -160,7 +160,7 @@ class NameCtx:
     self.name = self._get_unique_name(suggested_name)
     self.parent._add_child(self)
 
-  def move_layer_ref_here(self: NameCtx, layer_ref: nn.LayerRef):
+  def move_layer_ref_here(self: NameCtx, layer_ref: nn.TensorRef):
     """
     Moves an existing layer ref (with assigned name ctx)
     to another name ctx (without assigned layer or layer ref).
@@ -179,7 +179,7 @@ class NameCtx:
     # Now reassign.
     layer_ref.name_ctx = self
     self.layer_ref = layer_ref
-    if isinstance(layer_ref, nn.Layer):
+    if isinstance(layer_ref, nn.Tensor):
       self.layer = layer_ref
 
   @property
@@ -252,7 +252,7 @@ class NameCtx:
     """
     return Net(name_ctx=self)
 
-  def make_default_output(self, ref: nn.LayerRef) -> nn.LayerRef:
+  def make_default_output(self, ref: nn.TensorRef) -> nn.TensorRef:
     """
     Assume this is a subnet, and make a default output.
     """
@@ -409,11 +409,11 @@ class NameCtx:
     """
     child = self.get_child(name)
     if not child.layer_ref:
-      layer_ref = nn.LayerRef(name_ctx=child, data=data)
+      layer_ref = nn.TensorRef(name_ctx=child, data=data)
       assert child.layer_ref is layer_ref
     return child
 
-  def get_child_layer_ref(self, name: str, *, data: nn.Data) -> nn.LayerRef:
+  def get_child_layer_ref(self, name: str, *, data: nn.Data) -> nn.TensorRef:
     """
     Get child layer ref. Makes sure it exists.
     """
@@ -500,7 +500,7 @@ class Net:
     self.name_ctx = name_ctx
 
   def _map_elem_resolve(self, obj: Any) -> Any:
-    if isinstance(obj, nn.LayerRef):
+    if isinstance(obj, nn.TensorRef):
       return obj.get_name_in_ctx(ctx=self.name_ctx)
     if isinstance(obj, Net):
       return obj.make_net_dict_raw()
@@ -508,7 +508,7 @@ class Net:
 
   def make_net_dict_raw(self) -> nn.NetDictRaw:
     """
-    Create raw net dict, not containing any :class:`LayerRef` or :class:`Net` instances anymore.
+    Create raw net dict, not containing any :class:`TensorRef` or :class:`Net` instances anymore.
     """
     net_dict = {}
     # Due to late assignments of name context parents (e.g. for Parameter),

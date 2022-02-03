@@ -25,7 +25,7 @@ def test_self_attention():
         num_heads=3)
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, *, axis: nn.Dim) -> nn.Layer:
+    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.Tensor:
       """forward"""
       return self.self_att(x, axis=axis)
 

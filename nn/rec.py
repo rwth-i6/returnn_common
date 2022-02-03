@@ -44,11 +44,11 @@ class _Rec(nn.Module):
         setattr(self, f"param_{param}", nn.Parameter(shape))
 
   @nn.scoped
-  def __call__(self, source: nn.LayerRef, *,
+  def __call__(self, source: nn.TensorRef, *,
                axis: nn.Dim,
-               state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], nn.NotSpecified]] = nn.NotSpecified,
+               state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], nn.NotSpecified]] = nn.NotSpecified,
                direction: int = 1,
-               ) -> Tuple[nn.Layer, nn.LayerState]:
+               ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     :param source:
     :param axis: nn.single_step_dim specifies to operate for a single step

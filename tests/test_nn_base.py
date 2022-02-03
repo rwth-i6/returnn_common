@@ -24,7 +24,7 @@ def test_simple_net_linear():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x) -> nn.LayerRef:
+    def __call__(self, x) -> nn.TensorRef:
       """
       Forward
       """
@@ -39,7 +39,7 @@ def test_simple_net_linear():
 def test_simple_net_arithmetic():
   class _Net(nn.Module):
     @nn.scoped
-    def __call__(self, x) -> nn.LayerRef:
+    def __call__(self, x) -> nn.TensorRef:
       """
       Forward
       """
@@ -59,7 +59,7 @@ def test_simple_net_share_params():
       self.linear2 = nn.Linear(self.dim)
 
     @nn.scoped
-    def __call__(self, x) -> nn.LayerRef:
+    def __call__(self, x) -> nn.TensorRef:
       """
       Forward
       """
@@ -84,7 +84,7 @@ def test_explicit_root_ctx_sub():
       self.dropout = dropout
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
       """
       forward
       """
@@ -95,7 +95,7 @@ def test_explicit_root_ctx_sub():
   with nn.NameCtx.new_root() as name_ctx:
     net = _Net(out_dim=nn.FeatureDim("linear-out", 13))
     out = net(nn.get_extern_data(nn.Data("data", shape=(None, 5))), name=name_ctx)
-    assert isinstance(out, nn.Layer)
+    assert isinstance(out, nn.Tensor)
     out.mark_as_default_output()
 
   config = name_ctx.get_returnn_config()
@@ -122,7 +122,7 @@ def test_root_mod_call_twice():
       self.dropout = dropout
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
       """
       forward
       """
@@ -138,9 +138,9 @@ def test_root_mod_call_twice():
     z = test_block(nn.get_extern_data(nn.Data("input2", dim_tags=[nn.batch_dim, time_dim, in_dim])))
 
     print(y)
-    assert isinstance(y, nn.LayerRef)
+    assert isinstance(y, nn.TensorRef)
     print(z)
-    assert isinstance(z, nn.LayerRef)
+    assert isinstance(z, nn.TensorRef)
 
   config = name_ctx.get_returnn_config()
   net_dict = config["network"]
@@ -157,7 +157,7 @@ def test_multiple_returns_depth_1():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    def __call__(self, x: nn.TensorRef) -> Tuple[nn.TensorRef, nn.TensorRef]:
       """
       Forward
       """
@@ -170,7 +170,7 @@ def test_multiple_returns_depth_1():
       self.sub = _SubNet()
 
     @nn.scoped
-    def __call__(self, x) -> nn.LayerRef:
+    def __call__(self, x) -> nn.TensorRef:
       """
       Forward
       """
@@ -192,7 +192,7 @@ def test_multiple_returns_depth_2():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    def __call__(self, x: nn.TensorRef) -> Tuple[nn.TensorRef, nn.TensorRef]:
       """
       Forward
       """
@@ -205,7 +205,7 @@ def test_multiple_returns_depth_2():
       self.sub = _SubSubNet()
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    def __call__(self, x: nn.TensorRef) -> Tuple[nn.TensorRef, nn.TensorRef]:
       """
       Forward
       """
@@ -218,7 +218,7 @@ def test_multiple_returns_depth_2():
       self.sub = _SubNet()
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
       """
       Forward
       """
@@ -247,7 +247,7 @@ def test_from_call_variations():
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    def __call__(self, x: nn.TensorRef) -> Tuple[nn.TensorRef, nn.TensorRef]:
       """
       Forward
       """
@@ -262,7 +262,7 @@ def test_from_call_variations():
       self.sub2 = _SubNet()
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
       """
       Forward
       """
@@ -289,7 +289,7 @@ def test_from_call_variations2():
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    def __call__(self, x: nn.TensorRef) -> Tuple[nn.TensorRef, nn.TensorRef]:
       """
       Forward
       """
@@ -304,7 +304,7 @@ def test_from_call_variations2():
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef, y: nn.LayerRef) -> Tuple[nn.LayerRef, nn.LayerRef]:
+    def __call__(self, x: nn.TensorRef, y: nn.TensorRef) -> Tuple[nn.TensorRef, nn.TensorRef]:
       """
       Forward
       """
@@ -322,7 +322,7 @@ def test_from_call_variations2():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+    def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
       """
       Forward
       """

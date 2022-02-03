@@ -22,7 +22,7 @@ class Module:
           self.activation = activation
 
         @nn.scoped
-        def __call__(self, x: nn.LayerRef) -> nn.LayerRef:
+        def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
           x_ = x
           x = layer_norm(x)
           x = self.linear(x)
@@ -109,14 +109,14 @@ class Module:
     return name
 
   @nn.scoped
-  def __call__(self, *args, **kwargs) -> Union[nn.Layer, Tuple[nn.Layer, nn.LayerState], Any]:
+  def __call__(self, *args, **kwargs) -> Union[nn.Tensor, Tuple[nn.Tensor, nn.LayerState], Any]:
     raise NotImplementedError
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
     if isinstance(value, Module):
       value._parents[(self, key)] = None
-    if isinstance(value, nn.LayerRef):
+    if isinstance(value, nn.TensorRef):
       if (self, key) not in value.parent_modules:
         value.parent_modules.append((self, key))
 
@@ -217,7 +217,7 @@ class ReturnnWrappedLayerBase(Module):
   has_variables: bool = False
 
   @staticmethod
-  def returnn_layer_get_recurrent_state(layer: nn.Layer) -> nn.LayerState:
+  def returnn_layer_get_recurrent_state(layer: nn.Tensor) -> nn.LayerState:
     """
     :returns: the recurrent state
 
@@ -255,7 +255,7 @@ class ReturnnWrappedLayerBase(Module):
   @staticmethod
   def handle_recurrent_state(args: Dict[str, Any], *,
                              axis: nn.Dim,
-                             state: Optional[Union[nn.LayerRef, Dict[str, nn.LayerRef], NotSpecified]] = NotSpecified,
+                             state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
                              ):
     """
     Update the args to include either state or initial_state,
