@@ -14,7 +14,7 @@ class TransformerEncoderLayer(nn.Module):
   Defines one layer of a standard transformer encoder
   """
   def __init__(self, output_dim: nn.Dim, *, self_attention, dim_ff: nn.Dim, dropout: float = 0.1,
-               activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu, norm_eps: float = 1e-6,
+               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu, norm_eps: float = 1e-6,
                norm_first: bool = True, norm=nn.layer_norm) -> None:
     """
     :param output_dim: output dimension, PyTorch name: d_model
@@ -37,7 +37,7 @@ class TransformerEncoderLayer(nn.Module):
     self.norm = norm
     self.dropout = dropout
 
-  def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def __call__(self, inp: nn.Tensor) -> nn.Tensor:
     """
     Two possible forward variants of encoder, defined by self.norm_first.
     The input has shape {B, T, F}.
@@ -51,11 +51,11 @@ class TransformerEncoderLayer(nn.Module):
 
     return inp
 
-  def _self_attention_block(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def _self_attention_block(self, inp: nn.Tensor) -> nn.Tensor:
     inp = self.self_attn(inp)
     return nn.dropout(inp, self.dropout, axis=inp.feature_dim)
 
-  def _feed_forward_block(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def _feed_forward_block(self, inp: nn.Tensor) -> nn.Tensor:
     inp = self.linear_ff(inp)
     inp = self.activation(inp)
     inp = nn.dropout(inp, dropout=self.dropout, axis=inp.feature_dim)
@@ -84,7 +84,7 @@ class TransformerEncoder(nn.Module):
     self.norm = norm
     self.norm_eps = norm_eps
 
-  def __call__(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def __call__(self, inp: nn.Tensor) -> nn.Tensor:
     """
     Applies every encoder layer initialized in self.layers.
     """
@@ -104,7 +104,7 @@ class TransformerDecoderLayerStep(nn.Module):
   Defines one layer of a standard transformer decoder
   """
   def __init__(self, output_dim: nn.Dim, *, enc_dec_attention, self_attention_step, dim_ff: nn.Dim,
-               dropout: float = 0.1, activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu, norm_eps: float = 1e-6,
+               dropout: float = 0.1, activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu, norm_eps: float = 1e-6,
                norm_first: bool = True, norm=nn.layer_norm):
     """
     :param output_dim: output dimension, PyTorch name: d_model
@@ -130,8 +130,8 @@ class TransformerDecoderLayerStep(nn.Module):
     self.activation = activation
     self.dropout = dropout
 
-  def __call__(self, inp: nn.LayerRef, *, memory: nn.LayerRef,
-               state: nn.LayerState) -> Tuple[nn.LayerRef, nn.LayerState]:
+  def __call__(self, inp: nn.Tensor, *, memory: nn.Tensor,
+               state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Two possible forward variants of decoder, defined by self.norm_first, inp and memory have shape {B, T, F}
     """
@@ -159,15 +159,15 @@ class TransformerDecoderLayerStep(nn.Module):
       self_attn=self.self_attn.initial_state(),
       attn=self.attn.initial_state())
 
-  def _self_attention_block(self, inp: nn.LayerRef, *, state: nn.LayerState) -> Tuple[nn.LayerRef, nn.LayerState]:
+  def _self_attention_block(self, inp: nn.Tensor, *, state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
     inp, new_state = self.self_attn(inp, state=state)
     return nn.dropout(inp, self.dropout, axis=inp.feature_dim), new_state
 
-  def _multi_head_attention_block(self, inp: nn.LayerRef, mem: nn.LayerRef) -> nn.LayerRef:
+  def _multi_head_attention_block(self, inp: nn.Tensor, mem: nn.Tensor) -> nn.Tensor:
     inp = self.attn(inp, mem, mem)
     return nn.dropout(inp, self.dropout, axis=inp.feature_dim)
 
-  def _feed_forward_block(self, inp: nn.LayerRef) -> nn.LayerRef:
+  def _feed_forward_block(self, inp: nn.Tensor) -> nn.Tensor:
     inp = self.linear_ff(inp)
     inp = self.activation(inp)
     inp = nn.dropout(inp, dropout=self.dropout, axis=inp.feature_dim)
@@ -196,8 +196,8 @@ class TransformerDecoderStep(nn.Module):
     self.norm = norm
     self.norm_eps = norm_eps
 
-  def __call__(self, inp: nn.LayerRef, *, memory: nn.LayerRef,
-               state: nn.LayerState) -> Tuple[nn.LayerRef, nn.LayerState]:
+  def __call__(self, inp: nn.Tensor, *, memory: nn.Tensor,
+               state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Applies every decoder layer initialized in self.layers.
     """
@@ -225,9 +225,9 @@ class Transformer(nn.Module):
   def __init__(self, output_dim: nn.Dim = nn.FeatureDim("output_dim", 512), num_heads: int = 8,
                num_encoder_layers: int = 6, num_decoder_layers: int = 6, dim_ff: nn.Dim = nn.FeatureDim("ff_dim", 2048),
                dropout: float = 0.1, att_dropout: float = 0.1,
-               activation: Callable[[nn.LayerRef], nn.LayerRef] = nn.relu, custom_encoder: Optional[Any] = None,
-               custom_decoder: Optional[Any] = None, custom_encoder_layer: Optional[nn.LayerRef] = None,
-               custom_decoder_layer: Optional[nn.LayerRef] = None, norm_eps: float = 1e-6, norm=nn.layer_norm,
+               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu, custom_encoder: Optional[Any] = None,
+               custom_decoder: Optional[Any] = None, custom_encoder_layer: Optional[nn.Tensor] = None,
+               custom_decoder_layer: Optional[nn.Tensor] = None, norm_eps: float = 1e-6, norm=nn.layer_norm,
                norm_first: bool = True, dec_self_attention_step=None, enc_self_attention=None,
                enc_dec_attention=None) -> None:
     """
@@ -293,8 +293,8 @@ class Transformer(nn.Module):
     self.num_heads = num_heads
     self.norm = norm
 
-  def __call__(self, source: nn.LayerRef, *, target: Optional[nn.LayerRef] = None,
-               initial_state: Optional[nn.LayerState] = None) -> Tuple[nn.LayerRef, nn.LayerState]:
+  def __call__(self, source: nn.Tensor, *, target: Optional[nn.Tensor] = None,
+               initial_state: Optional[nn.LayerState] = None) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
     """
@@ -312,7 +312,7 @@ class Transformer(nn.Module):
       outputs = loop.stack(loop.state.target)
     return outputs, loop.state
 
-  def initial_state(self, initial_target: nn.LayerRef = 0) -> nn.LayerState:
+  def initial_state(self, initial_target: nn.Tensor = 0) -> nn.LayerState:
     """
     initial state declaration
     """
