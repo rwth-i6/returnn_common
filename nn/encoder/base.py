@@ -10,7 +10,7 @@ and not how you got there.
 Automatic differentiation will automatically
 also train the encoder.
 So, for most purpose, e.g. for a decoder (see :mod:`..decoder.base`),
-you only care about some encoded vector of type :class:`TensorRef`.
+you only care about some encoded vector of type :class:`Tensor`.
 """
 
 from ... import nn
@@ -22,7 +22,7 @@ class IEncoder(nn.Module):
   """
 
   @nn.scoped
-  def __call__(self, source: nn.TensorRef) -> nn.TensorRef:
+  def __call__(self, source: nn.Tensor) -> nn.Tensor:
     """
     Encode the input
     """

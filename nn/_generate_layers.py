@@ -338,19 +338,19 @@ def setup():
         if sig.has_source_param():
           if sig.need_multiple_sources():
             print(
-              "    assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.TensorRef) for s in source)",
+              "    assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)",
               file=f)
           elif sig.support_multiple_sources():
             print(
               "    assert (\n"
-              "      isinstance(source, nn.TensorRef) or\n"
-              "      (isinstance(source, (tuple, list)) and all(isinstance(s, nn.TensorRef) for s in source)))",
+              "      isinstance(source, nn.Tensor) or\n"
+              "      (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)))",
               file=f)
           else:
-            print("    assert isinstance(source, nn.TensorRef)", file=f)
+            print("    assert isinstance(source, nn.Tensor)", file=f)
         elif sig.explicit_source_list():
           for i in range(sig.explicit_source_list()):
-            print(f"    assert isinstance(source{i + 1}, nn.TensorRef)", file=f)
+            print(f"    assert isinstance(source{i + 1}, nn.Tensor)", file=f)
         if sig.has_module_call_args() or sig.has_recurrent_state():
           if sig.has_module_call_args():
             print("    args = {", file=f)
@@ -582,15 +582,15 @@ class LayerSignature:
     Code for `source` param
     """
     if explicit_idx is not None:
-      return f"source{explicit_idx + 1}: nn.TensorRef"
+      return f"source{explicit_idx + 1}: nn.Tensor"
     assert self.has_source_param()
     s = "source: "
     if self.need_multiple_sources():
-      s += "Sequence[nn.TensorRef]"
+      s += "Sequence[nn.Tensor]"
     elif self.support_multiple_sources():
-      s += "Union[nn.TensorRef, Sequence[nn.TensorRef]]"
+      s += "Union[nn.Tensor, Sequence[nn.Tensor]]"
     else:
-      s += "nn.TensorRef"
+      s += "nn.Tensor"
     default = self.default_source()
     if default:
       s += " = " + default
@@ -601,14 +601,14 @@ class LayerSignature:
     Code for docstring of `source` param
     """
     if explicit_idx is not None:
-      return f":param nn.TensorRef source{explicit_idx + 1}:"
+      return f":param nn.Tensor source{explicit_idx + 1}:"
     s = ":param "
     if self.need_multiple_sources():
-      s += "Sequence[nn.TensorRef]"
+      s += "Sequence[nn.Tensor]"
     elif self.support_multiple_sources():
-      s += "nn.TensorRef|Sequence[nn.TensorRef]"
+      s += "nn.Tensor|Sequence[nn.Tensor]"
     else:
-      s += "nn.TensorRef"
+      s += "nn.Tensor"
     s += " source:"
     return s
 
@@ -617,14 +617,14 @@ class LayerSignature:
     Code for `state` param
     """
     assert self.has_recurrent_state()
-    return f"{param_name}: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified"
+    return f"{param_name}: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified"
 
   def get_module_call_state_docstring(self, param_name: str):
     """
     Code for docstring of `source` param
     """
     assert self.has_recurrent_state()
-    return f":param nn.TensorRef|Sequence[nn.TensorRef]|NotSpecified|None {param_name}:"
+    return f":param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None {param_name}:"
 
   def has_module_init_args(self) -> bool:
     """
@@ -732,7 +732,7 @@ class LayerSignature:
         inspect.Parameter(
           name="target",
           kind=inspect.Parameter.KEYWORD_ONLY),
-        param_type_s="nn.TensorRef",
+        param_type_s="nn.Tensor",
         docstring="target")
     for name, param in self.inspect_init_sig.parameters.items():
       # Ignore a number of params which are handled explicitly.
@@ -800,7 +800,7 @@ class LayerSignature:
           param_type_s = re.sub(r"\bDim\|str\b", "nn.Dim", param_type_s)
           param_type_s = re.sub(r"\bstr\|Dim\b", "nn.Dim", param_type_s)
           param_type_s = re.sub(r"\b(?<!nn\.)Dim\b", "nn.Dim", param_type_s)
-          param_type_s = re.sub(r"\bTensorRef\b", "nn.TensorRef", param_type_s)
+          param_type_s = re.sub(r"\bTensor\b", "nn.Tensor", param_type_s)
         if param.inspect_param.default != param.inspect_param.empty and param_name in {"axis", "axes"}:
           if "None" not in param_type_s:
             param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)
@@ -821,14 +821,14 @@ class LayerSignature:
 
       class _NnDummyScope:
         Dim = "nn.Dim"
-        TensorRef = "nn.TensorRef"
+        Tensor = "nn.Tensor"
 
       res_t = eval(res_t_s, {
         "typing": typing,
         "Optional": Optional, "Union": Union,
         "List": List, "Tuple": Tuple, "Sequence": Sequence,
         "Set": Set, "Dict": Dict,
-        "Dim": "nn.Dim", "TensorRef": "nn.TensorRef", "NotSpecified": NotSpecified,
+        "Dim": "nn.Dim", "Tensor": "nn.Tensor", "NotSpecified": NotSpecified,
         "nn": _NnDummyScope})
 
       def _convert(t) -> str:
@@ -841,8 +841,8 @@ class LayerSignature:
         if isinstance(t, str):
           return t
         if isinstance(t, typing.ForwardRef):
-          if t.__forward_arg__ in {"TensorRef", "nn.TensorRef"}:
-            return "nn.TensorRef"
+          if t.__forward_arg__ in {"Tensor", "nn.Tensor"}:
+            return "nn.Tensor"
           return t.__forward_arg__
         if typing.get_origin(t) == Union:
           return "|".join(_convert(t_) for t_ in typing.get_args(t))
@@ -1074,7 +1074,7 @@ class LayerSignature:
         return True
       if not self.param_type_s:
         return False
-      return "LayerBase" in self.param_type_s or "TensorRef" in self.param_type_s
+      return "LayerBase" in self.param_type_s or "Tensor" in self.param_type_s
 
     def get_module_param_name(self):
       """
@@ -1142,7 +1142,7 @@ class LayerSignature:
           s = re.sub(r"\btuple\b", "Sequence", s)
           s = re.sub(r"\bset\b", "Set", s)
           s = re.sub(r"\bdict\b", "Dict", s)
-          s = re.sub(r"\bLayerBase\b", "nn.TensorRef", s)
+          s = re.sub(r"\bLayerBase\b", "nn.Tensor", s)
           s = re.sub(r",(?=\S)", ", ", s)
           if "|" in s:
             assert "," not in s  # should be inside brackets and thus replaced above
@@ -1190,9 +1190,9 @@ class LayerSignature:
       Param type
       """
       if self.returnn_name == "reuse_params":
-        return "Optional[Union[nn.TensorRef, Dict[str, Any]]]"
+        return "Optional[Union[nn.Tensor, Dict[str, Any]]]"
       if self.returnn_name == "chunking_layer":
-        return "nn.TensorRef"
+        return "nn.Tensor"
       if self.returnn_name == "unit":
         return "str"
       if self.returnn_name == "max_seq_len":

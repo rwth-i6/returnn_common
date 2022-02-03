@@ -17,7 +17,7 @@ else:
 def test_split_glu():
   class _Net(nn.Module):
     @nn.scoped
-    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.Tensor:
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """forward"""
       a, b = nn.split(x, axis=axis, out_dims=[axis // 2, axis // 2])
       return a * nn.sigmoid(b)

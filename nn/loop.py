@@ -72,11 +72,11 @@ class Loop:
     self._entered_scope = False
     self._exited_scope = False
     self._state = _LoopStateHolder(loop=self)
-    self.unstacked_refs = []  # type: List[nn.TensorRef]
-    self.outputs = []  # type: List[nn.TensorRef]
+    self.unstacked_refs = []  # type: List[nn.Tensor]
+    self.outputs = []  # type: List[nn.Tensor]
     self._has_given_axis = bool(axis)
     self.axis = axis
-    self.end_ref = None  # type: Optional[nn.TensorRef]
+    self.end_ref = None  # type: Optional[nn.Tensor]
 
   def __repr__(self):
     return f"<{self.__class__.__name__} {self.name_ctx.get_abs_name_repr()}>"
@@ -126,9 +126,9 @@ class Loop:
     for key, value in initial_state.items():
       self._state[key] = value
 
-  def unstack(self, source: nn.TensorRef, *,
+  def unstack(self, source: nn.Tensor, *,
               name: Optional[str] = None
-              ) -> nn.TensorRef:
+              ) -> nn.Tensor:
     """
     Unrolls over the specified axis, and provides each frame in each loop iteration.
     The axis can be specified globally for the :class:`Loop` instance (recommended)
@@ -140,7 +140,7 @@ class Loop:
     self.unstacked_refs.append(res)
     return res
 
-  def stack(self, source: nn.TensorRef, *, name: Optional[str] = None) -> nn.TensorRef:
+  def stack(self, source: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
     """
     Accumulates the frames of source within the loop,
     to make it accessible outside the loop.
@@ -160,7 +160,7 @@ class Loop:
     self.outputs.append(res)
     return res
 
-  def last(self, source: nn.TensorRef, *, name: Optional[str] = None) -> nn.TensorRef:
+  def last(self, source: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
     """
     Gets the last value from source.
     """
@@ -172,7 +172,7 @@ class Loop:
         {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
         name=name or sub_layer_name.replace("/", "_"))
 
-  def end(self, source: nn.TensorRef, *, include_eos: bool) -> nn.TensorRef:
+  def end(self, source: nn.Tensor, *, include_eos: bool) -> nn.Tensor:
     """
     For loops with dynamic ending condition (which might not use unstack),
     this defines the ending condition.
@@ -210,12 +210,12 @@ class LoopModule(nn.Module):
       predefined_out_data=out.data.copy_add_dim_by_tag(self.loop.axis, unbroadcast=True, axis=0))
 
 
-class PrevTensorRef(nn.TensorRef):
+class PrevTensorRef(nn.Tensor):
   """
   Refers to a layer from the previous loop iteration.
   """
   @classmethod
-  def get_prev_ref(cls, *, cur_layer_name_ctx: nn.NameCtx, initial: nn.TensorRef) -> PrevTensorRef:
+  def get_prev_ref(cls, *, cur_layer_name_ctx: nn.NameCtx, initial: nn.Tensor) -> PrevTensorRef:
     """
     Create prev ref.
     """
@@ -233,7 +233,7 @@ class PrevTensorRef(nn.TensorRef):
 
   def __init__(self, *, name_ctx: nn.NameCtx, cur_layer_name_ctx: nn.NameCtx, data: nn.Data):
     # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
-    super().__init__(name_ctx=name_ctx, data=data)
+    super().__init__(name_ctx=name_ctx, data=data, is_ref=True)
     self.cur_layer_name_ctx = cur_layer_name_ctx
 
 
@@ -285,7 +285,7 @@ class _LoopState:
   It can also represent some nested hierarchy of states.
   """
 
-  def __init__(self, *, name: str, loop: Loop, initial: Union[nn.TensorRef, Any]):
+  def __init__(self, *, name: str, loop: Loop, initial: Union[nn.Tensor, Any]):
     """
     :param name:
     :param loop:
@@ -317,8 +317,8 @@ class _LoopState:
     nest.assert_same_structure(self.name_ctx, value)
     self.assigned_value = value
 
-    def _map_ref_to_name_ctx(layer_ref: nn.TensorRef, name_ctx: nn.NameCtx, initial: nn.TensorRef):
-      assert isinstance(layer_ref, nn.TensorRef)
+    def _map_ref_to_name_ctx(layer_ref: nn.Tensor, name_ctx: nn.NameCtx, initial: nn.Tensor):
+      assert isinstance(layer_ref, nn.Tensor)
       assert isinstance(name_ctx, nn.NameCtx)
 
       # Potential optimization for RETURNN layers.
@@ -365,7 +365,7 @@ class _LoopState:
     nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
   @staticmethod
-  def _map_name_ctx_to_prev_layer_ref(name_ctx: nn.NameCtx, initial: nn.TensorRef) -> PrevTensorRef:
+  def _map_name_ctx_to_prev_layer_ref(name_ctx: nn.NameCtx, initial: nn.Tensor) -> PrevTensorRef:
     assert isinstance(name_ctx, nn.NameCtx)
     return PrevTensorRef.get_prev_ref(cur_layer_name_ctx=name_ctx, initial=initial)
 
@@ -379,7 +379,7 @@ class _LoopState:
       return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx, self.initial)
     return self.assigned_value
 
-  def _map_name_ctx_to_last_layer_ref(self, name_ctx: nn.NameCtx) -> nn.TensorRef:
+  def _map_name_ctx_to_last_layer_ref(self, name_ctx: nn.NameCtx) -> nn.Tensor:
     assert isinstance(name_ctx, nn.NameCtx)
     assert name_ctx.layer_ref, f"{self.loop} state {name_ctx} not assigned?"
     assert self.loop.name_ctx.layer_ref, f"{self.loop} not yet exited?"

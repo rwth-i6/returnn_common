@@ -82,7 +82,7 @@ class Context:
     self.blank_idx = self.num_labels_nb
 
 
-TensorRef = str
+Tensor = str
 LayerDict = Dict[str, Any]
 
 
@@ -101,7 +101,7 @@ class IEncoder(_IMaker):
   """
   Represents an encoder.
   """
-  def make(self, source: TensorRef) -> LayerDict:
+  def make(self, source: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -113,10 +113,10 @@ class IDecoderSlowRnn(_IMaker):
   Represents SlowRNN.
   """
   def make(self, *,
-           prev_sparse_label_nb: TensorRef,
-           prev_emit: TensorRef,
-           unmasked_sparse_label_nb_seq: Optional[TensorRef] = None,
-           prev_fast_rnn: TensorRef, encoder: TensorRef) -> LayerDict:
+           prev_sparse_label_nb: Tensor,
+           prev_emit: Tensor,
+           unmasked_sparse_label_nb_seq: Optional[Tensor] = None,
+           prev_fast_rnn: Tensor, encoder: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -135,10 +135,10 @@ class DecoderSlowRnnLstmIndependent(IDecoderSlowRnn):
       embed_dim=embed_dim, embed_dropout=embed_dropout)
 
   def make(self, *,
-           prev_sparse_label_nb: TensorRef,
-           prev_emit: TensorRef,
-           unmasked_sparse_label_nb_seq: Optional[TensorRef] = None,
-           prev_fast_rnn: TensorRef, encoder: TensorRef) -> LayerDict:
+           prev_sparse_label_nb: Tensor,
+           prev_emit: Tensor,
+           unmasked_sparse_label_nb_seq: Optional[Tensor] = None,
+           prev_fast_rnn: Tensor, encoder: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -154,7 +154,7 @@ class IDecoderFastRnn(_IMaker):
   """
   FastRNN
   """
-  def make(self, *, prev_label_wb: TensorRef, encoder: TensorRef, slow_rnn: TensorRef) -> LayerDict:
+  def make(self, *, prev_label_wb: Tensor, encoder: Tensor, slow_rnn: Tensor) -> LayerDict:
     """
     prev_label_wb and encoder use the same time dim (T) (or none).
     slow_rnn can use the same (unmasked) (or none) or a different (U+1) (maybe in full-sum setting).
@@ -174,7 +174,7 @@ class DecoderFastRnnOnlyReadout(IDecoderFastRnn):
     self.readout_dropout = readout_dropout
     self.readout_l2 = readout_l2
 
-  def make(self, *, prev_label_wb: TensorRef, encoder: TensorRef, slow_rnn: TensorRef) -> LayerDict:
+  def make(self, *, prev_label_wb: Tensor, encoder: Tensor, slow_rnn: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -195,7 +195,7 @@ class IDecoderLogProbSeparateNb(_IMaker):
   """
   Log prob separate without blank.
   """
-  def make(self, fast_rnn: TensorRef) -> LayerDict:
+  def make(self, fast_rnn: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -210,7 +210,7 @@ class DecoderLogProbSeparateNb(IDecoderLogProbSeparateNb):
     super().__init__(**kwargs)
     self.dropout = dropout
 
-  def make(self, fast_rnn: TensorRef) -> LayerDict:
+  def make(self, fast_rnn: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -223,7 +223,7 @@ class IDecoderLogProbSeparateWb(_IMaker):
   """
   Log prob with blank.
   """
-  def make(self, fast_rnn: TensorRef, log_prob_nb: TensorRef) -> LayerDict:
+  def make(self, fast_rnn: Tensor, log_prob_nb: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -234,7 +234,7 @@ class DecoderLogProbSeparateWb(IDecoderLogProbSeparateWb):
   """
   Log prob with blank, separately modelled with sigmoid.
   """
-  def make(self, fast_rnn: TensorRef, log_prob_nb: TensorRef) -> LayerDict:
+  def make(self, fast_rnn: Tensor, log_prob_nb: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -281,7 +281,7 @@ class Decoder(_IMaker):
       log_prob_separate_wb = DecoderLogProbSeparateWb(ctx=self.ctx)
     self.log_prob_separate_wb = log_prob_separate_wb
 
-  def make(self, encoder: TensorRef):
+  def make(self, encoder: Tensor):
     """
     Make layer dict.
     """
@@ -395,7 +395,7 @@ class EncoderBLstmCnnSpecAug(IEncoder):
       time_reduction=time_reduction, with_specaugment=with_specaugment,
       l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
-  def make(self, source: TensorRef) -> LayerDict:
+  def make(self, source: Tensor) -> LayerDict:
     """
     Make layer dict.
     """
@@ -494,7 +494,7 @@ def _make_decoder(
     log_prob_separate_wb=DecoderLogProbSeparateWb(ctx=ctx))
 
 
-def make_ctc_loss(src: TensorRef, *, target: TargetConfig):
+def make_ctc_loss(src: Tensor, *, target: TargetConfig):
   """
   Make CTC loss.
   """
@@ -554,7 +554,7 @@ class LinearCombine(_IMaker):
     self.dropout = dropout
     self.l2 = l2
 
-  def make(self, inputs: Dict[str, TensorRef]) -> LayerDict:
+  def make(self, inputs: Dict[str, Tensor]) -> LayerDict:
     """
     Make layer dict.
     """
@@ -576,7 +576,7 @@ class LinearCombine(_IMaker):
     }
 
 
-def _base(name: TensorRef) -> TensorRef:
+def _base(name: Tensor) -> Tensor:
   return f"base:{name}"
 
 

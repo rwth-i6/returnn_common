@@ -14,7 +14,7 @@ def zeros(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
   return nn.constant(value=0., shape=shape, dtype=dtype, name=name or "zeros")
 
 
-def zeros_like(value: nn.TensorRef, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+def zeros_like(value: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   zeros with shape and dtype from value. But there is no dependency on value in the computation graph.
   """

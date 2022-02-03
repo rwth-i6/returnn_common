@@ -26,7 +26,7 @@ class Random(nn.Module):
   def uniform(self,
               shape, dtype=None,
               *,
-              minval: Union[int, float, nn.TensorRef] = 0, maxval: Union[int, float, nn.TensorRef]
+              minval: Union[int, float, nn.Tensor] = 0, maxval: Union[int, float, nn.Tensor]
               ) -> nn.Tensor:
     """uniform"""
     return self(distribution="uniform", shape=shape, dtype=dtype, minval=minval, maxval=maxval)
@@ -34,8 +34,8 @@ class Random(nn.Module):
   def normal(self,
              shape: Sequence[nn.Dim], dtype=None,
              *,
-             mean: Union[int, float, nn.TensorRef],
-             stddev: Union[int, float, nn.TensorRef],
+             mean: Union[int, float, nn.Tensor],
+             stddev: Union[int, float, nn.Tensor],
              ) -> nn.Tensor:
     """normal"""
     return self(distribution="normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)
@@ -43,8 +43,8 @@ class Random(nn.Module):
   def truncated_normal(self,
                        shape: Sequence[nn.Dim], dtype=None,
                        *,
-                       mean: Union[int, float, nn.TensorRef],
-                       stddev: Union[int, float, nn.TensorRef],
+                       mean: Union[int, float, nn.Tensor],
+                       stddev: Union[int, float, nn.Tensor],
                        ) -> nn.Tensor:
     """truncated normal"""
     return self(distribution="truncated_normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)

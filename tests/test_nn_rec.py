@@ -22,7 +22,7 @@ def test_simple_net_lstm():
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
     @nn.scoped
-    def __call__(self, x: nn.TensorRef, *, axis: nn.Dim) -> nn.TensorRef:
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
       """

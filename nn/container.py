@@ -7,7 +7,7 @@ from .. import nn
 from typing import Iterable, Iterator, Union, Dict, Callable
 
 
-_UnaryFuncT = Callable[[nn.TensorRef], nn.TensorRef]
+_UnaryFuncT = Callable[[nn.Tensor], nn.Tensor]
 _ModT = Union[nn.Module, _UnaryFuncT]
 
 
@@ -73,7 +73,7 @@ class Sequential(ModuleList):
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
   @nn.scoped
-  def __call__(self, inp, **kwargs) -> nn.TensorRef:
+  def __call__(self, inp, **kwargs) -> nn.Tensor:
     """
     Forward
     """
@@ -82,7 +82,7 @@ class Sequential(ModuleList):
     return inp
 
 
-def sequential(source: nn.TensorRef, *modules) -> nn.TensorRef:
+def sequential(source: nn.Tensor, *modules) -> nn.Tensor:
   """
   Wraps ``Sequential(*modules)(source)``
   """

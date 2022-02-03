@@ -15,7 +15,7 @@ from .. import nn
 
 
 @nn.scoped
-def cross_entropy(*, target: nn.TensorRef, estimated: nn.TensorRef, estimated_type: str,
+def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: str,
                   axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
   Cross entropy H(target,estimated) (https://en.wikipedia.org/wiki/Cross_entropy).

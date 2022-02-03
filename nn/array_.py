@@ -7,7 +7,7 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-def expand_dim(source: nn.TensorRef, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:
+def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:
   """
   Expand the source by the given dimension,
   which should be 1.
@@ -47,7 +47,7 @@ def expand_dim(source: nn.TensorRef, *, dim: nn.Dim, name: Optional[str] = None)
     raise ValueError(f"{dim} is not a spatial or feature dim")
 
 
-def concat(*sources: Tuple[nn.TensorRef, nn.Dim],
+def concat(*sources: Tuple[nn.Tensor, nn.Dim],
            allow_broadcast=False,
            name: Optional[str] = None) -> nn.Tensor:
   """
@@ -60,7 +60,7 @@ def concat(*sources: Tuple[nn.TensorRef, nn.Dim],
 
 
 def cum_concat_step(
-      source: nn.TensorRef, *, state: nn.LayerState,
+      source: nn.Tensor, *, state: nn.LayerState,
       out_spatial_dim: Optional[nn.Dim] = None,
       name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
   """
@@ -73,10 +73,10 @@ def cum_concat_step(
     state=state, out_spatial_dim=out_spatial_dim, name=name)
 
 
-def split(source: nn.TensorRef, *,
+def split(source: nn.Tensor, *,
           axis: nn.Dim,
           out_dims: Union[List[nn.Dim], Tuple[nn.Dim, ...]],
-          name: Optional[str] = None) -> Tuple[nn.TensorRef, ...]:
+          name: Optional[str] = None) -> Tuple[nn.Tensor, ...]:
   """
   Split the input on the specified axis (by default feature).
   Basically a wrapper around tf.split.
@@ -95,7 +95,7 @@ def split(source: nn.TensorRef, *,
 
 
 def window(
-      source: nn.TensorRef, *,
+      source: nn.Tensor, *,
       axis: nn.Dim,
       window_dim: nn.Dim,
       window_left: Optional[int] = NotSpecified,
@@ -117,7 +117,7 @@ def window(
 
 
 def window_step(
-      source: nn.TensorRef, *, state: nn.LayerState,
+      source: nn.Tensor, *, state: nn.LayerState,
       window_dim: nn.Dim,
       name: Optional[str] = None) -> Tuple[nn.Tensor, nn.LayerState]:
   """

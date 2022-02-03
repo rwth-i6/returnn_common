@@ -21,7 +21,7 @@ def test_batch_norm():
       self.bn = nn.BatchNorm(use_mask=False)
 
     @nn.scoped
-    def __call__(self, x: nn.TensorRef) -> nn.Tensor:
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """forward"""
       return self.bn(x)
 

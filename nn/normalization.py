@@ -8,7 +8,7 @@ from .. import nn
 
 
 @nn.scoped
-def moments(x: nn.TensorRef, axis: Union[nn.Dim, Sequence[nn.Dim]]) -> Tuple[nn.Tensor, nn.Tensor]:
+def moments(x: nn.Tensor, axis: Union[nn.Dim, Sequence[nn.Dim]]) -> Tuple[nn.Tensor, nn.Tensor]:
   """
   :param x: input
   :param axis: the axis to be reduced, to calculate statistics over
@@ -95,7 +95,7 @@ class BatchNorm(nn.Module):
       self.beta = nn.Parameter([in_dim])
 
   @nn.scoped
-  def __call__(self, source: nn.TensorRef) -> nn.Tensor:
+  def __call__(self, source: nn.Tensor) -> nn.Tensor:
     source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
     # We wrap the RETURNN layer because we want efficient handling if possible,
     # which is potentially the use of a fused op,

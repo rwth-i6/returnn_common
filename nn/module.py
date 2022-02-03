@@ -22,7 +22,7 @@ class Module:
           self.activation = activation
 
         @nn.scoped
-        def __call__(self, x: nn.TensorRef) -> nn.TensorRef:
+        def __call__(self, x: nn.Tensor) -> nn.Tensor:
           x_ = x
           x = layer_norm(x)
           x = self.linear(x)
@@ -116,7 +116,7 @@ class Module:
     super().__setattr__(key, value)
     if isinstance(value, Module):
       value._parents[(self, key)] = None
-    if isinstance(value, nn.TensorRef):
+    if isinstance(value, nn.Tensor):
       if (self, key) not in value.parent_modules:
         value.parent_modules.append((self, key))
 
@@ -255,7 +255,7 @@ class ReturnnWrappedLayerBase(Module):
   @staticmethod
   def handle_recurrent_state(args: Dict[str, Any], *,
                              axis: nn.Dim,
-                             state: Optional[Union[nn.TensorRef, Dict[str, nn.TensorRef], NotSpecified]] = NotSpecified,
+                             state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
                              ):
     """
     Update the args to include either state or initial_state,

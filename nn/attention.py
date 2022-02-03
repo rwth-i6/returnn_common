@@ -7,8 +7,8 @@ from .. import nn
 
 
 @nn.scoped
-def dot_attention(query: nn.TensorRef, keys: nn.TensorRef, values: nn.TensorRef, *,
-                  key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.1) -> nn.TensorRef:
+def dot_attention(query: nn.Tensor, keys: nn.Tensor, values: nn.Tensor, *,
+                  key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.1) -> nn.Tensor:
   """
   Calculates attention over the given axis, for given key dim.
   Any other unrelated axes do not matter here.
@@ -53,7 +53,7 @@ class GenericSelfAttention(nn.Module):
       "v_accum": nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.value_dim_per_head])})
 
   @nn.scoped
-  def __call__(self, source: nn.TensorRef, *, axis: nn.Dim,
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim,
                causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     """forward"""
@@ -92,7 +92,7 @@ class SelfAttention(GenericSelfAttention):
   Classic self attention on sequence level
   """
   @nn.scoped
-  def __call__(self, source: nn.TensorRef, *, axis: nn.Dim) -> nn.Tensor:
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
     out, _ = super().__call__(source, axis=axis, causal=False)
     return out
@@ -103,7 +103,7 @@ class CausalSelfAttention(GenericSelfAttention):
   Classic causal self attention
   """
   @nn.scoped
-  def __call__(self, source: nn.TensorRef, *, axis: nn.Dim, state: Optional[nn.LayerState] = None
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """forward"""
     out, state = super().__call__(source, causal=True, axis=axis, state=state)

@@ -78,7 +78,7 @@ class Decoder(nn.Module):
     self.log_prob_separate_wb = log_prob_separate_wb
 
   @nn.scoped
-  def __call__(self, encoder: nn.TensorRef) -> nn.TensorRef:
+  def __call__(self, encoder: nn.Tensor) -> nn.Tensor:
     """
     Make one decoder step (train and/or recognition).
     """
@@ -95,12 +95,12 @@ class IDecoderLabelSyncRnn(nn.Module):
   """
   @nn.scoped
   def __call__(self, *,
-               prev_sparse_label_nb: nn.TensorRef,
-               prev_emit: nn.TensorRef,
-               unmasked_sparse_label_nb_seq: Optional[nn.TensorRef] = None,
-               prev_step_sync_rnn: nn.TensorRef,
-               encoder: nn.TensorRef  # TODO enc ctx?
-               ) -> nn.TensorRef:
+               prev_sparse_label_nb: nn.Tensor,
+               prev_emit: nn.Tensor,
+               unmasked_sparse_label_nb_seq: Optional[nn.Tensor] = None,
+               prev_step_sync_rnn: nn.Tensor,
+               encoder: nn.Tensor  # TODO enc ctx?
+               ) -> nn.Tensor:
     """
     Make layer dict.
     """
@@ -116,9 +116,9 @@ class IDecoderStepSyncRnn(nn.Module):
   """
   @nn.scoped
   def __call__(self, *,
-               prev_label_wb: nn.TensorRef,
-               encoder: nn.TensorRef,  # TODO enc ctx. or not? need full encoder for full-sum case...
-               label_sync_rnn: nn.TensorRef) -> nn.TensorRef:
+               prev_label_wb: nn.Tensor,
+               encoder: nn.Tensor,  # TODO enc ctx. or not? need full encoder for full-sum case...
+               label_sync_rnn: nn.Tensor) -> nn.Tensor:
     """
     prev_label_wb and encoder use the same time dim (T) (or none).
     label_sync_rnn can use the same (unmasked) (or none) or a different (U+1) (maybe in full-sum setting).
@@ -132,7 +132,7 @@ class IDecoderLogProbSeparateNb(nn.Module):
   """
   Log prob separate without blank.
   """
-  def __call__(self, step_sync_rnn: nn.TensorRef) -> nn.TensorRef:
+  def __call__(self, step_sync_rnn: nn.Tensor) -> nn.Tensor:
     """
     Make log-prob distribution over labels (without blank).
 
@@ -146,7 +146,7 @@ class IDecoderLogProbSeparateWb(nn.Module):
   Log prob with blank.
   """
   @nn.scoped
-  def __call__(self, step_sync_rnn: nn.TensorRef, log_prob_nb: nn.TensorRef) -> nn.TensorRef:
+  def __call__(self, step_sync_rnn: nn.Tensor, log_prob_nb: nn.Tensor) -> nn.Tensor:
     """
     Make layer dict.
     """
