@@ -79,7 +79,8 @@ class ConformerConvSubsample(nn.Module):
 
   def __init__(
         self, *, filter_sizes: List[Tuple[int, int]], out_dims: List[nn.Dim], dropout: float,
-        pool_sizes: Optional[List[Tuple[int, int]]] = None, activation: Callable[[nn.TensorRef], nn.TensorRef] = nn.relu,
+        pool_sizes: Optional[List[Tuple[int, int]]] = None,
+        activation: Callable[[nn.TensorRef], nn.TensorRef] = nn.relu,
         padding: str = 'same'):
     """
     :param filter_sizes: a list of filter sizes for the conv layer
