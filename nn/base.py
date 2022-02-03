@@ -31,7 +31,7 @@ Code example::
         self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 1024))
 
       @nn.scoped
-      def __call__(self, x: nn.TensorRef) -> nn.Layer:
+      def __call__(self, x: nn.TensorRef) -> nn.Tensor:
         y = self.lstm(x)
         return y
 
