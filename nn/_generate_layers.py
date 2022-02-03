@@ -241,6 +241,10 @@ def setup():
   for layer_class in layer_classes:
     sig = LayerSignature(layer_class, signatures)
     signatures[layer_class] = sig
+    if layer_class == LayerBase:
+      # We now don't have any Modules at all anymore, all is functional, so we don't need the base class.
+      # We might want to clean up this later maybe but for now I leave the remaining logic in.
+      continue
     cls_str = get_module_class_name_for_layer_class(sig)
     if layer_class != LayerBase:
       cls_base_str = get_module_class_name_for_layer_class(sig.derived_layer())
