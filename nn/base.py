@@ -368,7 +368,9 @@ class Parameter(Tensor):
       raise ValueError(f"shape {shape} dims must be unique")
     # Note: At creation time, we don't know the name yet.
     # The name will be inferred by the parent modules and the attribute chain.
-    name_ctx = nn.NameCtx(name="parameter", parent=None)  # this is incomplete and will be configured later
+    # The name_ctx object will be completed by this information later.
+    # See Tensor.get_name_in_ctx().
+    name_ctx = nn.NameCtx(name="parameter", parent=None)
     data = Data("parameter", dim_tags=list(shape), dtype=dtype)
     layer_dict = {"class": "variable", "shape": list(shape)}
     if dtype is not None:
