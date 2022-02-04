@@ -67,6 +67,7 @@ class Module:
   such as epsilon
   although there are no strict rules.
   """
+  # layer_name_scope is for the name_scope in RETURNN.
   layer_name_scope = NotSpecified  # type: Union[NotSpecified, str]
 
   def __init__(self):
