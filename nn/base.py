@@ -245,6 +245,14 @@ class Tensor:
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_layer_ref(other)], kind="truediv", name="truediv")
 
+  def __floordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    from ._generated_layers import _eval
+    return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
+
+  def __mod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    from ._generated_layers import _eval
+    return _eval([self, nn.convert_to_layer_ref(other)], eval="source(0) % source(1)", name="mod")
+
   def __radd__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="add", name="add")
@@ -260,6 +268,14 @@ class Tensor:
   def __rtruediv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _combine
     return _combine([nn.convert_to_layer_ref(other), self], kind="truediv", name="truediv")
+
+  def __rfloordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    from ._generated_layers import _eval
+    return _eval([nn.convert_to_layer_ref(other), self], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
+
+  def __rmod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    from ._generated_layers import _eval
+    return _eval([nn.convert_to_layer_ref(other), self], eval="source(0) % source(1)", name="mod")
 
   def __neg__(self) -> Tensor:
     from ._generated_layers import _eval
@@ -298,10 +314,6 @@ class Tensor:
   def __floor__(self) -> Tensor:
     from ._generated_layers import _eval
     return _eval(self, eval="tf.math.floor(source(0))", name="floor")
-
-  def __floordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
 
   def __eq__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _compare
