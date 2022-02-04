@@ -499,6 +499,9 @@ class Net:
   def __init__(self, *, name_ctx: NameCtx):
     self.name_ctx = name_ctx
 
+  def __repr__(self):
+    return f"Net{self.name_ctx!r}"
+
   def _map_elem_resolve(self, obj: Any) -> Any:
     if isinstance(obj, nn.Tensor):
       return obj.get_name_in_ctx(ctx=self.name_ctx)
