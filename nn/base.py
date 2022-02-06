@@ -179,7 +179,10 @@ class Tensor:
       if parent_module.calls:
         parent_name_ctx = parent_module.calls[0]
         sub_name = attr
-        expected_layer_abs_name_scope = parent_name_ctx.layer_abs_name_scope + "/" + attr
+        expected_layer_abs_name_scope = parent_name_ctx.layer_abs_name_scope
+        if expected_layer_abs_name_scope:
+          expected_layer_abs_name_scope += "/"
+        expected_layer_abs_name_scope += attr
         if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
           sub_name = parent_name_ctx.name + "_" + sub_name
           while not parent_name_ctx.can_access_children_from_root:
