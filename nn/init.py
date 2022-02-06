@@ -4,8 +4,9 @@ Common parameter initialization functions.
 https://github.com/rwth-i6/returnn/wiki/Parameter-initialization
 """
 
-from .. import nn
+from typing import Sequence
 import math
+from .. import nn
 
 
 class VarianceScaling:
@@ -41,7 +42,7 @@ class VarianceScaling:
         "Argument `distribution` should be one of ('normal', 'uniform', 'truncated_normal', 'untruncated_normal'). "
         f"Received: {self.distribution}")
 
-  def __call__(self, shape, dtype=None) -> nn.Tensor:
+  def __call__(self, shape: Sequence[nn.Dim], dtype=None) -> nn.Tensor:
     if dtype is None:
       dtype = self.dtype
     scale = self.scale
@@ -105,7 +106,7 @@ class HeUniform(He):
   distribution = "uniform"
 
 
-def _compute_fans(shape):
+def _compute_fans(shape: Sequence[nn.Dim]):
   """Computes the number of input and output units for a weight shape.
 
   Args:
@@ -114,6 +115,7 @@ def _compute_fans(shape):
   Returns:
     A tuple of integer scalars (fan_in, fan_out).
   """
+  shape = [dim.dimension for dim in shape]
   if len(shape) < 1:  # Just to avoid errors for constants.
     fan_in = fan_out = 1
   elif len(shape) == 1:
@@ -129,4 +131,4 @@ def _compute_fans(shape):
       receptive_field_size *= dim
     fan_in = shape[-2] * receptive_field_size
     fan_out = shape[-1] * receptive_field_size
-  return int(fan_in), int(fan_out)
+  return fan_in, fan_out

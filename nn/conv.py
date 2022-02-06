@@ -60,8 +60,10 @@ class _ConvOrTransposedConv(nn.Module):
     self.filter = nn.Parameter(
       self.filter_size +
       ([self.in_dim, self.out_dim_inner] if not self._transposed else [self.out_dim_inner, self.in_dim]))
+    self.filter.initial = nn.init.Glorot()
     if self.with_bias:
       self.bias = nn.Parameter([self.out_dim_inner])
+      self.bias.initial = 0.
 
   def _call_nd1(self, source: nn.Tensor, *,
                 in_spatial_dim: nn.Dim, out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.Tensor, nn.Dim]:

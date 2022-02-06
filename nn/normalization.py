@@ -89,10 +89,14 @@ class BatchNorm(nn.Module):
   def _lazy_init(self, in_dim: nn.Dim):
     self.in_dim = in_dim
     self.running_mean = nn.Parameter([in_dim], auxiliary=True)
+    self.running_mean.initial = 0.
     self.running_variance = nn.Parameter([in_dim], auxiliary=True)
+    self.running_variance.initial = 1.
     if self.affine:
       self.gamma = nn.Parameter([in_dim])
+      self.gamma.initial = 1.
       self.beta = nn.Parameter([in_dim])
+      self.beta.initial = 0.
 
   @nn.scoped
   def __call__(self, source: nn.Tensor) -> nn.Tensor:

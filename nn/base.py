@@ -391,7 +391,9 @@ class Parameter(Tensor):
     return self.layer_dict.get("init_by_layer")
 
   @initial.setter
-  def initial(self, value: Optional[nn.Tensor]):
+  def initial(self, value: Optional[Union[nn.Tensor, nn.init.VarianceScaling]]):
+    if isinstance(value, nn.init.VarianceScaling):
+      value = value(self.data.dim_tags)
     self.layer_dict["init_by_layer"] = value
 
 
