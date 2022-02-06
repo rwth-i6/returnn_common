@@ -41,6 +41,7 @@ def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
     engine.train()
   else:
     _dummy_forward_net_returnn(engine=engine, dataset=dataset)
+  return engine
 
 
 def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: returnn.datasets.Dataset):
