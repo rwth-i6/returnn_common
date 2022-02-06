@@ -145,7 +145,8 @@ class CondModule(nn.Module):
     assert isinstance(true_value, nn.Tensor)  # not implemented otherwise
     return nn.make_layer(
       {
-        "class": "cond", "from": [], "condition": self.cond.condition,
+        "class": "cond", "from": [], "name_scope": "",
+        "condition": self.cond.condition,
         "true_layer": {
           "class": "subnetwork", "from": [], "subnetwork": self.cond.true_branch_name_ctx.make_net()},
         "false_layer": {

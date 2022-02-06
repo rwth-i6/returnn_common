@@ -178,15 +178,26 @@ class Tensor:
         continue  # might have been reset later...
       if parent_module.calls:
         parent_name_ctx = parent_module.calls[0]
+        sub_name = attr
         expected_layer_abs_name_scope = parent_name_ctx.layer_abs_name_scope + "/" + attr
-        if self.require_global_access:
+        if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
+          sub_name = parent_name_ctx.name + "_" + sub_name
           while not parent_name_ctx.can_access_children_from_root:
             parent_name_ctx = parent_name_ctx.parent
-          expected_layer_abs_name_scope
-          # TODO ... adapt layer_name_scope
-        self.name_ctx.assign_parent(parent_name_ctx, attr)
-        if self.name_ctx.name != attr:
-          self.layer_dict["name_scope"]
+        self.name_ctx.assign_parent(parent_name_ctx, sub_name)
+        layer_abs_name_scope_effective = self.name_ctx.layer_abs_name_scope_effective
+        if layer_abs_name_scope_effective != expected_layer_abs_name_scope:
+          common = os.path.commonpath([layer_abs_name_scope_effective, expected_layer_abs_name_scope])
+          if common:
+            assert layer_abs_name_scope_effective[:len(common) + 1] == common + "/"
+            rem_effective = layer_abs_name_scope_effective[len(common) + 1:]
+            assert expected_layer_abs_name_scope[:len(common) + 1] == common + "/"
+            rem_expected = expected_layer_abs_name_scope[len(common) + 1:]
+          else:
+            rem_effective = layer_abs_name_scope_effective
+            rem_expected = expected_layer_abs_name_scope
+          assert "/" not in rem_effective
+          self.layer_dict["name_scope"] = rem_expected
         break
     assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
 
@@ -498,7 +509,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
-  if name_ctx.module:
+  if name_ctx.module and name_ctx.module.has_parameters:
     # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
     # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
     if name_ctx.is_root:
@@ -510,7 +521,6 @@ def make_layer(layer_dict: LayerDictRaw, *,
       if layer_abs_name_scope_parent:
         layer_abs_name_scope_parent += "/"
       layer_abs_name_scope_default = layer_abs_name_scope_parent + name_ctx.name
-      # TODO is this really correct? see NameCtx.layer_abs_name_scope
       if layer_abs_name_scope_default != name_ctx.layer_abs_name_scope:  # default does not match what we require
         assert "name_scope" not in layer_dict
         if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope:

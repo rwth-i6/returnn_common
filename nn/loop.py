@@ -205,7 +205,7 @@ class LoopModule(nn.Module):
     name_ctx = self.loop.name_ctx
     out = name_ctx.children["output"].layer_ref
     return nn.make_layer(
-      {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts},
+      {"class": "rec", "from": [], "name_scope": "", "unit": name_ctx.make_net(), **self.loop.extra_opts},
       name=name_ctx,
       predefined_out_data=out.data.copy_add_dim_by_tag(self.loop.axis, unbroadcast=True, axis=0))
 

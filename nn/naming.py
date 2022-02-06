@@ -315,6 +315,29 @@ class NameCtx:
     return debug_name
 
   @property
+  def layer_abs_name_scope_effective(self) -> str:
+    """
+    :return: abs TF name scope which will be used by RETURNN for this layer
+    """
+    if not self.parent:  # root
+      return ""
+    prefix = self.parent.layer_abs_name_scope_effective
+    if prefix:
+      prefix += "/"
+    if self.layer and self.layer.layer_dict.get("name_scope", None) is not None:
+      name_scope = self.layer.layer_dict["name_scope"]
+      assert isinstance(name_scope, str)
+      if name_scope == "":
+        return prefix[:-1]
+      elif name_scope.startswith("/"):
+        return name_scope[1:]
+      else:
+        return prefix + name_scope
+    if self.virtual:
+      return prefix[:-1]
+    return prefix + self.name
+
+  @property
   def layer_abs_name_scope(self) -> str:
     """
     :return: layer abs name scope, i.e. the TF name scope of variables
@@ -361,9 +384,11 @@ class NameCtx:
       postfix = (join_str + cache[module]) if module in cache else ""
       queue_ext = []
       for parent, attr in module.parents_with_attr():
+        assert isinstance(parent, nn.Module)
         if parent in cache:
           continue
         for call in parent.calls:
+          assert isinstance(call, nn.NameCtx)
           if call.root is root:  # same name ctx hierarchy
             assert call.is_root or call.layer_abs_name_scope is not None
             if call.is_root or call.layer_abs_name_scope == "":
