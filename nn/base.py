@@ -399,7 +399,7 @@ class Parameter(Tensor):
     # See Tensor.get_name_in_ctx().
     name_ctx = nn.NameCtx(name="parameter", parent=None)
     data = Data("parameter", dim_tags=list(shape), dtype=dtype)
-    layer_dict = {"class": "variable", "shape": list(shape)}
+    layer_dict = {"class": "variable", "shape": list(shape), "param_name": "param"}
     if dtype is not None:
       layer_dict["dtype"] = dtype
     if auxiliary and trainable is None:
