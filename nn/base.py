@@ -81,6 +81,7 @@ class Tensor:
   or via :func:`make_layer` for directly wrapping some RETURNN layer,
   or via :func:`get_extern_data` for external data.
   """
+  require_global_access = False
 
   def __init__(self, *,
                name_ctx: nn.NameCtx,
@@ -169,6 +170,26 @@ class Tensor:
     """
     return self.get_name_in_ctx(ctx=nn.NameCtx.current_ctx())
 
+  def _assign_parent(self):
+    assert not self.name_ctx.parent
+    assert self.parent_modules  # cannot assign parent without parent modules
+    for parent_module, attr in self.parent_modules:
+      if getattr(parent_module, attr, None) is not self:
+        continue  # might have been reset later...
+      if parent_module.calls:
+        parent_name_ctx = parent_module.calls[0]
+        expected_layer_abs_name_scope = parent_name_ctx.layer_abs_name_scope + "/" + attr
+        if self.require_global_access:
+          while not parent_name_ctx.can_access_children_from_root:
+            parent_name_ctx = parent_name_ctx.parent
+          expected_layer_abs_name_scope
+          # TODO ... adapt layer_name_scope
+        self.name_ctx.assign_parent(parent_name_ctx, attr)
+        if self.name_ctx.name != attr:
+          self.layer_dict["name_scope"]
+        break
+    assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
+
   def get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
     """
     :return: RETURNN layer name in the given name context.
@@ -178,14 +199,7 @@ class Tensor:
       # such as for Parameter, which might be created outside a name context,
       # or in an unrelated name context.
       # We caught this case here, and now assign some parent.
-      assert self.parent_modules  # cannot assign parent without parent modules
-      for parent_module, attr in self.parent_modules:
-        if getattr(parent_module, attr, None) is not self:
-          continue  # might have been reset later...
-        if parent_module.calls:
-          self.name_ctx.assign_parent(parent_module.calls[0], attr)
-          break
-      assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
+      self._assign_parent()
     return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:
@@ -346,6 +360,8 @@ class Parameter(Tensor):
   aka ``tf.Variable`` in TensorFlow,
   wrapping to ``VariableLayer`` in RETURNN.
   """
+  require_global_access = True
+
   def __init__(self, shape: Sequence[Dim], dtype: Optional[str] = None,
                *,
                trainable: Optional[bool] = None,
@@ -482,7 +498,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
-  if name_ctx.module and name_ctx.module.has_parameters:
+  if name_ctx.module:
     # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
     # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
     if name_ctx.is_root:
@@ -494,6 +510,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
       if layer_abs_name_scope_parent:
         layer_abs_name_scope_parent += "/"
       layer_abs_name_scope_default = layer_abs_name_scope_parent + name_ctx.name
+      # TODO is this really correct? see NameCtx.layer_abs_name_scope
       if layer_abs_name_scope_default != name_ctx.layer_abs_name_scope:  # default does not match what we require
         assert "name_scope" not in layer_dict
         if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope:
