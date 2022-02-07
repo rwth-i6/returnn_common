@@ -37,7 +37,11 @@ def test_rec_ff():
       return y
 
   config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  dummy_run_net(config)
+  engine = dummy_run_net(config)
+  params = engine.network.get_params_list()
+  print(params)
+  assert len(params) == 2
+  assert_equal(params[0].name, "rec_linear/bias/param:0")
 
 
 def test_lstm_default_name():
