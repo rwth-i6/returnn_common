@@ -6,6 +6,41 @@ and the parameters of the model
 to a RETURNN net dict.
 
 The main class is :class:`NameCtx`.
+
+Note on the different type of name hierarchies in RETURNN and here in RETURNN-common:
+
+- RETURNN layer name hierarchy.
+  The root scope corresponds to the root :class:`TFNetwork`.
+  "base:" is used to go one level up in the hierarchy relative to the current scope,
+  similar as ".." for OS directories.
+  Sub layers can exist depending on the type of parent layer.
+  Most naturally this is the case for the :class:`SubnetworkLayer` but also other layers can have sub layers
+  such as :class:`RecLayer` or more custom like :class:`SplitLayer`.
+  Sub layers can usually always access all parent or base layers but not necessarily the other way around.
+  E.g. sub layers of :class:`CondLayer` can not be accessed from outside (currently).
+  Some layer names correspond to special layers which are not defined by the user, such as "data:...".
+
+- TensorFlow name scope hierarchy (and variable scope hierarchy, which is mostly the same).
+  RETURNN mostly keeps the TF name scope consistent with the RETURNN layer name hierarchy, with some exceptions:
+  - Layer names with special symbols (including "/") or which are not valid TF name scope names
+    are escaped.
+  - The ``name_scope`` option in each layer can overwrite the TF name scope.
+    It can either overwrite another absolute TF name scope or a relative TF name scope.
+
+- :class:`NameCtx` hierarchy, which mostly corresponds to the RETURNN layer name hierarchy.
+  It also covers special layers (such as "data:...") and virtual subnetworks
+  (which do not consume a new level, such as the true/false branching subnetworks of :class:`CondLayer`).
+
+- The :class:`Module` hierarchy.
+  Submodules are via attributes of the parent module and the attribute names define the hierarchy.
+  :class:`Parameter`s must be attributes of modules and their TF name scope is defined
+  by the module hierarchy such that different ways to access the parameter will not lead to different TF name scopes
+  (see https://github.com/rwth-i6/returnn_common/issues/25).
+  See :func:`Module.layer_abs_name_scope`.
+  This is applied to all modules which have parameters, via :func:`make_layer`,
+  and to :class:`Parameter`s itself, via :func:`Tensor._assign_parent`.
+  This is applied by setting ``name_scope`` in the corresponding layer.
+
 """
 
 from __future__ import annotations
@@ -71,6 +106,8 @@ class NameCtx:
 
   A name ctx thus can have a parent name ctx (if it is not the root),
   and potentially child name contexts.
+
+  See the documentation on name hierarchies for RETURNN and RETURNN-common in the module docstring at the top.
   """
 
   stack = []  # type: List[NameCtx]
