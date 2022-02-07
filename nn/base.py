@@ -386,13 +386,22 @@ class Parameter(Tensor):
     self.auxiliary = auxiliary
 
   @property
-  def initial(self) -> Optional[nn.Tensor]:
+  def initial(self) -> Optional[Union[nn.Tensor, RawTensorTypes]]:
     """initial value of the parameter"""
+    if "init" in self.layer_dict:
+      return self.layer_dict["init"]
     return self.layer_dict.get("init_by_layer")
 
   @initial.setter
-  def initial(self, value: Optional[nn.Tensor]):
-    self.layer_dict["init_by_layer"] = value
+  def initial(self, value: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.VarianceScaling]]):
+    if isinstance(value, nn.init.VarianceScaling):
+      value = value(self.data.dim_tags)
+    if value is None or isinstance(value, nn.Tensor):
+      self.layer_dict.pop("init", None)
+      self.layer_dict["init_by_layer"] = value
+    else:
+      self.layer_dict.pop("init_by_layer", None)
+      self.layer_dict["init"] = value
 
 
 class LayerState(dict):

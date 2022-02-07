@@ -27,8 +27,10 @@ class Linear(nn.Module):
     if in_dim == self.out_dim:
       self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")
     self.weight = nn.Parameter((self.in_dim, self.out_dim_inner))
+    self.weight.initial = nn.init.Glorot()
     if self.with_bias:
       self.bias = nn.Parameter((self.out_dim_inner,))
+      self.bias.initial = 0.
 
   @nn.scoped
   def __call__(self, source: nn.Tensor) -> nn.Tensor:

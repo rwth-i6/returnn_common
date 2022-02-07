@@ -41,7 +41,9 @@ class _Rec(nn.Module):
       self.in_dim = in_dim
       for param, shape_func in self.param_list:
         shape = shape_func()
-        setattr(self, f"param_{param}", nn.Parameter(shape))
+        param_ = nn.Parameter(shape)
+        param_.initial = nn.init.Glorot()
+        setattr(self, f"param_{param}", param_)
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *,
@@ -67,6 +69,7 @@ class _Rec(nn.Module):
     reuse_params = {}
     for param, shape_func in self.param_list:
       param_ = getattr(self, f"param_{param}")
+      assert isinstance(param_, nn.Parameter)
       shape = shape_func()
       reuse_params[param] = {"layer_output": param_, "shape": shape}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
