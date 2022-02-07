@@ -342,9 +342,11 @@ class NameCtx:
     """
     :return: layer abs name scope, i.e. the TF name scope of variables
 
-    TODO: this mixes up two things:
-      - what layer abs name scope we want to use (_get_abs_canonical_name)
-      - what layer abs name scope we effectively get (using the parent name ctx hierarchy)
+    Note this mixes up two things:
+      - what layer abs name scope we want to use via module hierarchy (_get_abs_canonical_name)
+      - what layer abs name scope we want via Module.layer_name_scope
+
+    Also see :func:`layer_abs_name_scope_effective`.
     """
     if self._layer_abs_name_scope is not None:
       return self._layer_abs_name_scope
