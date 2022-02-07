@@ -17,7 +17,8 @@ from .. import nn
 
 def scoped(func):
   """
-  Decorator to create a new scope (subnetwork) for the function.
+  Decorator to create a new scope (subnetwork) for the function
+  or module method.
 
   This is usually used for the ``__call__`` method of a module
   or for pure functions.
@@ -355,13 +356,13 @@ class NameCtx:
     """
     :param str join_str: maybe "." is more common for attrib chains.
       however, we use "/" as default, to make this consistent to :func:`get_abs_name`.
-    :return: unique absolute layer name for the module (module) hierarchy.
+    :return: unique absolute layer name for the module hierarchy.
       https://github.com/rwth-i6/returnn_common/issues/25
     """
-    assert self.module, f"{self} is not assigned to a module (module)"
+    assert self.module, f"{self} is not assigned to a module"
     root = self.root
     root_module = root.module  # might be None
-    assert root_module, f"root name ctx {self.root} is not assigned to a module (module)"
+    assert root_module, f"root name ctx {self.root} is not assigned to a module"
     if root_module is self.module:
       return ""  # special case
     # Do a depth-first search through the parents, starting from self.module, until we find root_module.
@@ -490,7 +491,7 @@ class NameCtx:
           break
       if self.parent.module in cache:
         return cache[self.parent.module]
-    # Check parent module (or module), and use this attrib name.
+    # Check parent module, and use this attrib name.
     # First check if we can find any attr which is not yet reserved.
     for parent, attr in self.module.parents_with_attr():
       if attr not in reserved_names:
