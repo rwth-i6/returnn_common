@@ -110,12 +110,16 @@ class NameCtx:
                module: Optional[nn.Module] = None,
                suggested_name: Optional[str] = None,
                name: Optional[str] = None,
+               virtual: bool = False,
+               can_access_children: bool = True,
                parent: Optional[NameCtx] = NotSpecified):
     self.module = module
     self.layer_ref = None  # type: Optional[nn.Tensor]
     self.layer = None  # type: Optional[nn.Tensor]
     self._layer_abs_name_scope = None  # type: Optional[str]
     self.is_subnet_ctx = False
+    self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
+    self.can_access_children = can_access_children  # from outside
     self.children = {}  # type: Dict[str, NameCtx]
     self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
     self.marked_outputs = []  # type: List[nn.Tensor]
@@ -198,6 +202,18 @@ class NameCtx:
     :return: whether this is a root ctx
     """
     return not self.parent
+
+  @property
+  def can_access_children_from_root(self):
+    """
+    :return: whether can_access_children for self and all parents
+    """
+    name = self
+    while name:
+      if not name.can_access_children:
+        return False
+      name = name.parent
+    return True
 
   def extend_reserved_names(self, names: Set[str]):
     """
@@ -292,28 +308,47 @@ class NameCtx:
     elif len(ls) == 1 and ls[0].name is None:
       debug_name = "/"
     else:
-      debug_name = "/".join(repr(ctx.name) if i > 0 or ctx.name is not None else '' for i, ctx in enumerate(ls))
+      debug_name = "/".join(
+        (repr(ctx.name) if not ctx.virtual else f"({ctx.name!r})")
+        if i > 0 or ctx.name is not None else ''
+        for i, ctx in enumerate(ls))
     return debug_name
+
+  @property
+  def layer_abs_name_scope_effective(self) -> str:
+    """
+    :return: abs TF name scope which will be used by RETURNN for this layer
+    """
+    if not self.parent:  # root
+      return ""
+    prefix = self.parent.layer_abs_name_scope_effective
+    if prefix:
+      prefix += "/"
+    if self.layer and self.layer.layer_dict.get("name_scope", None) is not None:
+      name_scope = self.layer.layer_dict["name_scope"]
+      assert isinstance(name_scope, str)
+      if name_scope == "":
+        return prefix[:-1]
+      elif name_scope.startswith("/"):
+        return name_scope[1:]
+      else:
+        return prefix + name_scope
+    if self.virtual:
+      return prefix[:-1]
+    return prefix + self.name
 
   @property
   def layer_abs_name_scope(self) -> str:
     """
-    :return: layer abs name scope, i.e. the TF name scope of variables
+    :return: expected layer abs name scope, i.e. the TF name scope of variables.
+      This uses the module hierarchy (:func:`_get_abs_canonical_name`).
+
+    Also see :func:`layer_abs_name_scope_effective`.
     """
     if self._layer_abs_name_scope is not None:
       return self._layer_abs_name_scope
     assert self.module
-    if self.module.layer_name_scope is not NotSpecified:
-      assert isinstance(self.module.layer_name_scope, str)
-      if self.module.layer_name_scope == "":
-        self._layer_abs_name_scope = self.parent.layer_abs_name_scope
-      else:
-        parent_prefix = self.parent.layer_abs_name_scope
-        if parent_prefix:
-          parent_prefix += "/"
-        self._layer_abs_name_scope = parent_prefix + self.module.layer_name_scope
-    else:
-      self._layer_abs_name_scope = self._get_abs_canonical_name()
+    self._layer_abs_name_scope = self._get_abs_canonical_name()
     return self._layer_abs_name_scope
 
   def _get_abs_canonical_name(self, join_str="/") -> str:
@@ -338,9 +373,11 @@ class NameCtx:
       postfix = (join_str + cache[module]) if module in cache else ""
       queue_ext = []
       for parent, attr in module.parents_with_attr():
+        assert isinstance(parent, nn.Module)
         if parent in cache:
           continue
         for call in parent.calls:
+          assert isinstance(call, nn.NameCtx)
           if call.root is root:  # same name ctx hierarchy
             assert call.is_root or call.layer_abs_name_scope is not None
             if call.is_root or call.layer_abs_name_scope == "":
@@ -377,8 +414,8 @@ class NameCtx:
     max_common_len = min(len(ctx_scope_abs), len(self_name_abs))
     while common_len < max_common_len and ctx_scope_abs[common_len] is self_name_abs[common_len]:
       common_len += 1
-    prefix = "base:" * (len(ctx_scope_abs) - common_len)
-    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:]])
+    prefix = "".join(["base:" for ctx in reversed(ctx_scope_abs[common_len:]) if not ctx.virtual])
+    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:] if not ctx.virtual])
     return prefix + postfix
 
   def get_name_in_current_ctx(self) -> str:
@@ -498,6 +535,9 @@ class Net:
   """
   def __init__(self, *, name_ctx: NameCtx):
     self.name_ctx = name_ctx
+
+  def __repr__(self):
+    return f"Net{self.name_ctx!r}"
 
   def _map_elem_resolve(self, obj: Any) -> Any:
     if isinstance(obj, nn.Tensor):

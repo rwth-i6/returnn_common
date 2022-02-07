@@ -81,6 +81,7 @@ class Tensor:
   or via :func:`make_layer` for directly wrapping some RETURNN layer,
   or via :func:`get_extern_data` for external data.
   """
+  require_global_access = False
 
   def __init__(self, *,
                name_ctx: nn.NameCtx,
@@ -169,6 +170,40 @@ class Tensor:
     """
     return self.get_name_in_ctx(ctx=nn.NameCtx.current_ctx())
 
+  def _assign_parent(self):
+    assert not self.name_ctx.parent
+    assert self.parent_modules  # cannot assign parent without parent modules
+    for parent_module, attr in self.parent_modules:
+      if getattr(parent_module, attr, None) is not self:
+        continue  # might have been reset later...
+      if parent_module.calls:
+        parent_name_ctx = parent_module.calls[0]
+        sub_name = attr
+        expected_layer_abs_name_scope = parent_name_ctx.layer_abs_name_scope
+        if expected_layer_abs_name_scope:
+          expected_layer_abs_name_scope += "/"
+        expected_layer_abs_name_scope += attr
+        if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
+          sub_name = parent_name_ctx.name + "_" + sub_name
+          while not parent_name_ctx.can_access_children_from_root:
+            parent_name_ctx = parent_name_ctx.parent
+        self.name_ctx.assign_parent(parent_name_ctx, sub_name)
+        layer_abs_name_scope_effective = self.name_ctx.layer_abs_name_scope_effective
+        if layer_abs_name_scope_effective != expected_layer_abs_name_scope:
+          common = os.path.commonpath([layer_abs_name_scope_effective, expected_layer_abs_name_scope])
+          if common:
+            assert layer_abs_name_scope_effective[:len(common) + 1] == common + "/"
+            rem_effective = layer_abs_name_scope_effective[len(common) + 1:]
+            assert expected_layer_abs_name_scope[:len(common) + 1] == common + "/"
+            rem_expected = expected_layer_abs_name_scope[len(common) + 1:]
+          else:
+            rem_effective = layer_abs_name_scope_effective
+            rem_expected = expected_layer_abs_name_scope
+          assert "/" not in rem_effective
+          self.layer_dict["name_scope"] = rem_expected
+        break
+    assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
+
   def get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
     """
     :return: RETURNN layer name in the given name context.
@@ -178,14 +213,7 @@ class Tensor:
       # such as for Parameter, which might be created outside a name context,
       # or in an unrelated name context.
       # We caught this case here, and now assign some parent.
-      assert self.parent_modules  # cannot assign parent without parent modules
-      for parent_module, attr in self.parent_modules:
-        if getattr(parent_module, attr, None) is not self:
-          continue  # might have been reset later...
-        if parent_module.calls:
-          self.name_ctx.assign_parent(parent_module.calls[0], attr)
-          break
-      assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
+      self._assign_parent()
     return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:
@@ -346,6 +374,8 @@ class Parameter(Tensor):
   aka ``tf.Variable`` in TensorFlow,
   wrapping to ``VariableLayer`` in RETURNN.
   """
+  require_global_access = True
+
   def __init__(self, shape: Sequence[Dim], dtype: Optional[str] = None,
                *,
                trainable: Optional[bool] = None,
@@ -372,7 +402,7 @@ class Parameter(Tensor):
     # See Tensor.get_name_in_ctx().
     name_ctx = nn.NameCtx(name="parameter", parent=None)
     data = Data("parameter", dim_tags=list(shape), dtype=dtype)
-    layer_dict = {"class": "variable", "shape": list(shape)}
+    layer_dict = {"class": "variable", "shape": list(shape), "param_name": "param"}
     if dtype is not None:
       layer_dict["dtype"] = dtype
     if auxiliary and trainable is None:
@@ -490,13 +520,13 @@ def make_layer(layer_dict: LayerDictRaw, *,
     else:
       # The parent name ctx RETURNN layer will also have the right name_scope set,
       # so this layers name scope default is simply based on that.
-      layer_abs_name_scope_parent = name_ctx.parent.layer_abs_name_scope
+      layer_abs_name_scope_parent = name_ctx.parent.layer_abs_name_scope_effective
       if layer_abs_name_scope_parent:
         layer_abs_name_scope_parent += "/"
       layer_abs_name_scope_default = layer_abs_name_scope_parent + name_ctx.name
       if layer_abs_name_scope_default != name_ctx.layer_abs_name_scope:  # default does not match what we require
         assert "name_scope" not in layer_dict
-        if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope:
+        if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope_effective:
           layer_dict["name_scope"] = ""
         elif name_ctx.layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
           layer_dict["name_scope"] = name_ctx.layer_abs_name_scope[len(layer_abs_name_scope_parent):]

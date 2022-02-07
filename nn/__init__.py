@@ -5,6 +5,7 @@ All code which are supposed to build models (the net dict, or parts of it).
 from .base import *
 from .naming import *
 from .module import *
+from .cond import *
 from .loop import *
 from ._generated_layers import *
 from .const import *
