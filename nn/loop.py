@@ -192,7 +192,6 @@ class LoopModule(nn.Module):
   This module is used internally by :class:`Loop` to create the RETURNN :class:`RecLayer` for the loop.
   This module would not be directly used by the user.
   """
-  layer_name_scope = ""
 
   def __init__(self, loop: Loop):
     super(LoopModule, self).__init__()

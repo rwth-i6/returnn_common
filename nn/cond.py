@@ -139,7 +139,6 @@ class CondModule(nn.Module):
   This module is used internally by :class:`Cond` to create the RETURNN :class:`CondLayer` for the conditional code.
   This module would not be directly used by the user.
   """
-  layer_name_scope = ""
 
   def __init__(self, cond: Cond):
     super(CondModule, self).__init__()

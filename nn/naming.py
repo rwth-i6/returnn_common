@@ -340,28 +340,15 @@ class NameCtx:
   @property
   def layer_abs_name_scope(self) -> str:
     """
-    :return: layer abs name scope, i.e. the TF name scope of variables
-
-    Note this mixes up two things:
-      - what layer abs name scope we want to use via module hierarchy (_get_abs_canonical_name)
-      - what layer abs name scope we want via Module.layer_name_scope
+    :return: expected layer abs name scope, i.e. the TF name scope of variables.
+      This uses the module hierarchy (:func:`_get_abs_canonical_name`).
 
     Also see :func:`layer_abs_name_scope_effective`.
     """
     if self._layer_abs_name_scope is not None:
       return self._layer_abs_name_scope
     assert self.module
-    if self.module.layer_name_scope is not NotSpecified:
-      assert isinstance(self.module.layer_name_scope, str)
-      if self.module.layer_name_scope == "":
-        self._layer_abs_name_scope = self.parent.layer_abs_name_scope
-      else:
-        parent_prefix = self.parent.layer_abs_name_scope
-        if parent_prefix:
-          parent_prefix += "/"
-        self._layer_abs_name_scope = parent_prefix + self.module.layer_name_scope
-    else:
-      self._layer_abs_name_scope = self._get_abs_canonical_name()
+    self._layer_abs_name_scope = self._get_abs_canonical_name()
     return self._layer_abs_name_scope
 
   def _get_abs_canonical_name(self, join_str="/") -> str:
