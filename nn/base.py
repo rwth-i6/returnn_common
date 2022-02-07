@@ -520,13 +520,13 @@ def make_layer(layer_dict: LayerDictRaw, *,
     else:
       # The parent name ctx RETURNN layer will also have the right name_scope set,
       # so this layers name scope default is simply based on that.
-      layer_abs_name_scope_parent = name_ctx.parent.layer_abs_name_scope
+      layer_abs_name_scope_parent = name_ctx.parent.layer_abs_name_scope_effective
       if layer_abs_name_scope_parent:
         layer_abs_name_scope_parent += "/"
       layer_abs_name_scope_default = layer_abs_name_scope_parent + name_ctx.name
       if layer_abs_name_scope_default != name_ctx.layer_abs_name_scope:  # default does not match what we require
         assert "name_scope" not in layer_dict
-        if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope:
+        if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope_effective:
           layer_dict["name_scope"] = ""
         elif name_ctx.layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
           layer_dict["name_scope"] = name_ctx.layer_abs_name_scope[len(layer_abs_name_scope_parent):]
