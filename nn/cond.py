@@ -17,10 +17,20 @@ class Cond:
   Example::
 
       with Cond(cond) as cond_obj:
+        cond_obj.true = mod_true_case(x)
+        cond_obj.false = mod_false_case(x)
+        y = cond_obj.result
+
+  Corresponds to::
+
+      if cond:
         y = mod_true_case(x)
-        cond_obj.else(y)
+      else:
         y = mod_false_case(x)
-        y = cond_obj.end(y)
+
+  The context scope has two states corresponding to the True and False computation branch.
+  The initial state is the True branch.
+  Assigning ``cond_obj.true`` has the side effect of switching the computation to the False branch.
   """
 
   def __init__(self, condition: nn.Tensor, *, name: str = "cond"):
