@@ -82,6 +82,6 @@ def random_truncated_normal(
   return Random().truncated_normal(shape=shape, dtype=dtype, mean=mean, stddev=stddev)
 
 
-def random_bernoulli(self, shape: Sequence[nn.Dim], dtype=None, *, p: Union[float, nn.Tensor]) -> nn.Tensor:
+def random_bernoulli(shape: Sequence[nn.Dim], dtype=None, *, p: Union[float, nn.Tensor]) -> nn.Tensor:
   """Random Bernoulli"""
   return Random().bernoulli(shape=shape, dtype=dtype, p=p)
