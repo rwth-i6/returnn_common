@@ -515,9 +515,10 @@ def make_layer(layer_dict: LayerDictRaw, *,
     else:
       with name_ctx:
         return make_layer(
-          layer_dict=layer_dict, predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info)
+          layer_dict=layer_dict, predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info,
+          name=name_ctx)
   else:
-    name_ctx = nn.NameCtx.top()
+    raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
