@@ -151,6 +151,15 @@ class Tensor:
         return dim
     return None
 
+  @property
+  def batch_dim(self) -> Optional[Dim]:
+    """
+    :return: batch dim
+    """
+    if self.data.have_batch_axis():
+      return self.data.dim_tags[self.data.batch_dim_axis]
+    return None
+
   def verify_out_shape(self, out_shape: OutShapeType):
     """
     Verify out_shape via :func:`Data.verify_out_shape`.
