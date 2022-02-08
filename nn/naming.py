@@ -623,6 +623,16 @@ class ReturnnDimTagsProxy:
       *(f"  {key!r}: {value.dim_repr()}," for key, value in self.dim_refs_by_name.items()),
       "}"])
 
+  def copy(self):
+    """
+    :return: creates a shallow copy
+    :rtype: ReturnnDimTagsProxy
+    """
+    new = ReturnnDimTagsProxy()
+    new.dim_refs_by_name = self.dim_refs_by_name.copy()
+    new.dim_tags_to_ref = self.dim_tags_to_ref.copy()
+    return new
+
   def py_code_str(self):
     """
     :return: Python code
