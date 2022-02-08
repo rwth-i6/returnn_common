@@ -11,6 +11,7 @@ from ._generated_layers import *
 from .const import *
 from .math_ import *
 from .array_ import *
+from .rand import *
 from .utils import *
 from .normalization import *
 from .loss import *
