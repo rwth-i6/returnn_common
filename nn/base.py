@@ -287,8 +287,8 @@ class Tensor:
     return _combine([self, nn.convert_to_layer_ref(other)], kind="floordiv", name="floordiv")
 
   def __mod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval([self, nn.convert_to_layer_ref(other)], eval="source(0) % source(1)", name="mod")
+    from ._generated_layers import _combine
+    return _combine([self, nn.convert_to_layer_ref(other)], kind="mod", name="mod")
 
   def __radd__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _combine
@@ -311,8 +311,8 @@ class Tensor:
     return _combine([nn.convert_to_layer_ref(other), self], kind="floordiv", name="floordiv")
 
   def __rmod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval([nn.convert_to_layer_ref(other), self], eval="source(0) % source(1)", name="mod")
+    from ._generated_layers import _combine
+    return _combine([nn.convert_to_layer_ref(other), self], kind="mod", name="mod")
 
   def __neg__(self) -> Tensor:
     return nn.neg(self)
@@ -323,13 +323,13 @@ class Tensor:
 
   def __pow__(self, other: Union[RawTensorTypes, Tensor], modulo=None) -> Tensor:
     assert modulo is None
-    from ._generated_layers import _eval
-    return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.pow(source(0), source(1))", name="pow")
+    from ._generated_layers import _combine
+    return _combine([self, nn.convert_to_layer_ref(other)], kind="pow", name="pow")
 
   def __rpow__(self, other: Union[RawTensorTypes, Tensor], modulo=None) -> Tensor:
     assert modulo is None
-    from ._generated_layers import _eval
-    return _eval([nn.convert_to_layer_ref(other), self], eval="tf.math.pow(source(0), source(1))", name="pow")
+    from ._generated_layers import _combine
+    return _combine([nn.convert_to_layer_ref(other), self], kind="pow", name="pow")
 
   def __and__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _combine
