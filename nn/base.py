@@ -283,8 +283,8 @@ class Tensor:
     return _combine([self, nn.convert_to_layer_ref(other)], kind="truediv", name="truediv")
 
   def __floordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval([self, nn.convert_to_layer_ref(other)], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
+    from ._generated_layers import _combine
+    return _combine([self, nn.convert_to_layer_ref(other)], kind="floordiv", name="floordiv")
 
   def __mod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _eval
@@ -307,8 +307,8 @@ class Tensor:
     return _combine([nn.convert_to_layer_ref(other), self], kind="truediv", name="truediv")
 
   def __rfloordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval([nn.convert_to_layer_ref(other), self], eval="tf.math.floordiv(source(0), source(1))", name="floordiv")
+    from ._generated_layers import _combine
+    return _combine([nn.convert_to_layer_ref(other), self], kind="floordiv", name="floordiv")
 
   def __rmod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _eval
