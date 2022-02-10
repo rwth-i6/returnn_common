@@ -21,6 +21,16 @@ def abs(x: nn.Tensor) -> nn.Tensor:
   return _activation(x, activation="abs")
 
 
+def ceil(x: nn.Tensor) -> nn.Tensor:
+  """ceil"""
+  return _activation(x, activation="ceil")
+
+
+def floor(x: nn.Tensor) -> nn.Tensor:
+  """floor"""
+  return _activation(x, activation="floor")
+
+
 def relu(x: nn.Tensor) -> nn.Tensor:
   """ReLU"""
   return _activation(x, activation="relu")

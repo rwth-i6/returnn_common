@@ -344,12 +344,10 @@ class Tensor:
     return nn.abs(self)
 
   def __ceil__(self) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval(self, eval="tf.math.ceil(source(0))", name="ceil")
+    return nn.ceil(self)
 
   def __floor__(self) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval(self, eval="tf.math.floor(source(0))", name="floor")
+    return nn.floor(self)
 
   def __eq__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     from ._generated_layers import _compare
