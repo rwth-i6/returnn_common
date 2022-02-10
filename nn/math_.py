@@ -133,7 +133,8 @@ def swish(x: nn.Tensor) -> nn.Tensor:
 
 def squared_difference(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
   """wraps tf.math.squared_difference"""
-  return _eval([a, b], eval="tf.math.squared_difference(source(0), source(1))", name=name or "squared_difference")
+  from ._generated_layers import _combine
+  return _combine([a, b], kind="squared_difference", name=name or "squared_difference")
 
 
 # softmax already provided via generated layers
