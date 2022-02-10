@@ -3,9 +3,8 @@ Some basic math functions
 (potential activation functions).
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 from .. import nn
-from ._generated_layers import _eval
 
 
 def identity(x: nn.Tensor) -> nn.Tensor:
@@ -82,7 +81,7 @@ def safe_exp(x: nn.Tensor, *, eps: float = 1e-7) -> nn.Tensor:
 
   Note that the default eps is higher than the default in RETURNN.
   """
-  return _eval(x, eval=f"safe_exp(source(0), eps={eps!r})", name="safe_exp")
+  return _activation(x, "safe_exp", opts=dict(eps=eps))
 
 
 def log(x: nn.Tensor) -> nn.Tensor:
@@ -98,7 +97,7 @@ def safe_log(x: nn.Tensor, *, eps: float = 1e-7, use_fake_grad: bool = True) -> 
 
   Note that the default eps is higher than the default in RETURNN.
   """
-  return _eval(x, eval=f"safe_log(source(0), eps={eps!r}, use_fake_grad={use_fake_grad!r})", name="safe_log")
+  return _activation(x, "safe_log", opts=dict(eps=eps, use_fake_grad=use_fake_grad))
 
 
 def tanh(x: nn.Tensor) -> nn.Tensor:
@@ -147,13 +146,16 @@ def log_softmax(x: nn.Tensor, *, axis: nn.Dim, **kwargs) -> nn.Tensor:
   return nn.softmax(x, axis=axis, log_space=True, **kwargs)
 
 
-def _activation(x: nn.Tensor, activation: str) -> nn.Tensor:
+def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]] = None) -> nn.Tensor:
   """
   RETURNN ActivationLayer.
   Only for internal use.
   If anything is missing here in this module, please just add it.
   """
-  return nn.make_layer({"class": "activation", "from": x, "activation": activation}, name=activation)
+  d = {"class": "activation", "from": x, "activation": activation}
+  if opts:
+    d["opts"] = opts
+  return nn.make_layer(d, name=activation)
 
 
 def cumsum(
