@@ -341,8 +341,7 @@ class Tensor:
     return _combine([self, nn.convert_to_layer_ref(other)], kind="logical_or", name="logical_or")
 
   def __abs__(self) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval(self, eval="tf.abs(source(0))", name="abs")
+    return nn.abs(self)
 
   def __ceil__(self) -> Tensor:
     from ._generated_layers import _eval

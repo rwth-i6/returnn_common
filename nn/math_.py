@@ -16,6 +16,11 @@ def identity(x: nn.Tensor) -> nn.Tensor:
   return x
 
 
+def abs(x: nn.Tensor) -> nn.Tensor:
+  """abs"""
+  return _activation(x, activation="abs")
+
+
 def relu(x: nn.Tensor) -> nn.Tensor:
   """ReLU"""
   return _activation(x, activation="relu")
