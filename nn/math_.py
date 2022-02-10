@@ -26,6 +26,11 @@ def neg(x: nn.Tensor) -> nn.Tensor:
   return _activation(x, activation="negative")
 
 
+def logical_not(x: nn.Tensor) -> nn.Tensor:
+  """logical not"""
+  return _activation(x, activation="logical_not")
+
+
 def ceil(x: nn.Tensor) -> nn.Tensor:
   """ceil"""
   return _activation(x, activation="ceil")

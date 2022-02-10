@@ -318,8 +318,7 @@ class Tensor:
     return nn.neg(self)
 
   def __invert__(self) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval(self, eval="tf.logical_not(source(0))", name="invert")
+    return nn.logical_not(self)
 
   def __pow__(self, other: Union[RawTensorTypes, Tensor], modulo=None) -> Tensor:
     assert modulo is None
