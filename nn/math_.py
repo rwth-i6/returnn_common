@@ -15,6 +15,7 @@ def identity(x: nn.Tensor) -> nn.Tensor:
   return x
 
 
+# noinspection PyShadowingBuiltins
 def abs(x: nn.Tensor) -> nn.Tensor:
   """abs"""
   return _activation(x, activation="abs")
