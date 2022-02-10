@@ -315,8 +315,7 @@ class Tensor:
     return _eval([nn.convert_to_layer_ref(other), self], eval="source(0) % source(1)", name="mod")
 
   def __neg__(self) -> Tensor:
-    from ._generated_layers import _eval
-    return _eval(self, eval="-source(0)", name="neg")
+    return nn.neg(self)
 
   def __invert__(self) -> Tensor:
     from ._generated_layers import _eval
