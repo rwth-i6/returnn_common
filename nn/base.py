@@ -123,7 +123,7 @@ class Tensor:
   def __repr__(self):
     parts = [self.__class__.__name__, self.name_ctx.get_abs_name_repr()]
     if self.data:
-      parts.append(repr(self.data))
+      parts.append("[%s]" % ",".join(self.data.get_batch_axes_short_description()))
     if not self.is_ref:
       parts.append(f"via {self.name_ctx.module if self.name_ctx.module else self.layer_dict.get('class', '?')!r}")
     return f"<{' '.join(parts)}>"
