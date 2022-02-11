@@ -398,7 +398,7 @@ class Parameter(Tensor):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
     if not all(isinstance(dim.dimension, int) for dim in shape):
       raise ValueError(f"shape {shape} must be static")
-    if len(shape) != len(set(shape)):
+    if len(shape) != len(set((d, d.match_priority) for d in shape)):
       raise ValueError(f"shape {shape} dims must be unique")
     # Note: At creation time, we don't know the name yet.
     # The name will be inferred by the parent modules and the attribute chain.
