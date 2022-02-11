@@ -106,7 +106,7 @@ class Tensor:
       dim_tags.extend(data.dim_tags_set_implicit_only)  # like dim_tags_set_implicit
       assert len(dim_tags) == len(set((d, d.match_priority) for d in dim_tags)), f"duplicate dims in {name_ctx} {data}"
       if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
-        if add_out_shape_info and layer_dict["class"] not in {"constant", "variable"}:
+        if add_out_shape_info and layer_dict["class"] not in {"constant", "variable", "random"}:
           layer_dict["out_shape"] = set(dim_tags)
 
     self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
