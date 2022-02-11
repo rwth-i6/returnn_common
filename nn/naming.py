@@ -188,7 +188,12 @@ class NameCtx:
     return NameCtx(module=module, suggested_name=name)
 
   def __repr__(self):
-    return f"<{self.__class__.__name__} module:{self.module} name:{self.get_abs_name_repr()}>"
+    parts = [self.get_abs_name_repr()]
+    if self.layer_ref:
+      parts.append("[%s]" % ",".join(self.layer_ref.data.get_batch_axes_short_description()))
+    if self.module:
+      parts.append(f"module:{self.module}")
+    return f"<{self.__class__.__name__} {' '.join(parts)}>"
 
   def __hash__(self):
     return hash(id(self))
