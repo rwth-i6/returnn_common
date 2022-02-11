@@ -36,6 +36,29 @@ def test_simple_net_linear():
   dummy_run_net(config)
 
 
+def test_simple_net_linear_square_matrix():
+  # https://github.com/rwth-i6/returnn_common/issues/17
+  # https://github.com/rwth-i6/returnn/pull/871
+  class _Net(nn.Module):
+    def __init__(self):
+      super().__init__()
+      out_dim = nn.FeatureDim("linear-out", 13)
+      self.linear = nn.Linear(out_dim)
+      self.linear2 = nn.Linear(out_dim)
+
+    @nn.scoped
+    def __call__(self, x) -> nn.Tensor:
+      """
+      Forward
+      """
+      x = self.linear(x)
+      x = self.linear2(x)
+      return x
+
+  config, net_dict = dummy_config_net_dict(_Net())
+  dummy_run_net(config)
+
+
 def test_simple_net_arithmetic():
   class _Net(nn.Module):
     @nn.scoped
