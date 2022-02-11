@@ -748,10 +748,9 @@ class ReturnnDimTagsProxy:
       return key
 
     def _is_better_path(ref: ReturnnDimTagsProxy.DimRefProxy, new_path: Tuple[Any, ...]) -> bool:
-      if "out_shape" in ref.path and "out_shape" not in new_path:
-        return True
-      if "keys" in ref.path and "keys" not in new_path:
-        return True
+      for bad_key_words in ["out_shape", "random", "keys"]:
+        if bad_key_words in ref.path and bad_key_words not in new_path:
+          return True
       return False
 
     def _map(path, value):
