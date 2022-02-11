@@ -99,6 +99,15 @@ def check_in_feature_dim_lazy_init(
   return source
 
 
+def dim_match_priority_when_needed(dim: nn.Dim, *other_dims: nn.Dim) -> nn.Dim:
+  """
+  :return: maybe copy of dim with higher match_priority if needed to distinguish from other_dims
+  """
+  if dim in other_dims:
+    return dim.copy(match_priority=1)
+  return dim
+
+
 def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.Tensor] = None, sparse: bool = False) -> nn.Tensor:
   """
   range [0,dim-1] for dim

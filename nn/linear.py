@@ -14,7 +14,6 @@ class Linear(nn.Module):
   def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None, with_bias=True):
     super().__init__()
     self.out_dim = out_dim
-    self.out_dim_inner = out_dim
     self.in_dim = in_dim
     self.weight = None  # type: Optional[nn.Parameter]
     self.with_bias = with_bias
@@ -24,12 +23,10 @@ class Linear(nn.Module):
 
   def _lazy_init(self, in_dim: nn.Dim):
     self.in_dim = in_dim
-    if in_dim == self.out_dim:
-      self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")
-    self.weight = nn.Parameter((self.in_dim, self.out_dim_inner))
+    self.weight = nn.Parameter((nn.dim_match_priority_when_needed(self.in_dim, self.out_dim), self.out_dim))
     self.weight.initial = nn.init.Glorot()
     if self.with_bias:
-      self.bias = nn.Parameter((self.out_dim_inner,))
+      self.bias = nn.Parameter((self.out_dim,))
       self.bias.initial = 0.
 
   @nn.scoped
@@ -38,6 +35,4 @@ class Linear(nn.Module):
     out = nn.dot(source, self.weight, reduce=self.in_dim)
     if self.with_bias:
       out += self.bias
-    if self.out_dim_inner != self.out_dim:
-      out, _ = nn.reinterpret_new_dim(out, in_dim=self.out_dim_inner, out_dim=self.out_dim)
     return out

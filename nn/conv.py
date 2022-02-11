@@ -31,7 +31,6 @@ class _ConvOrTransposedConv(nn.Module):
     """
     super().__init__()
     self.out_dim = out_dim
-    self.out_dim_inner = out_dim
     if isinstance(filter_size, (int, nn.Dim)):
       if self.nd in (None, 1):
         filter_size = [filter_size]
@@ -55,14 +54,14 @@ class _ConvOrTransposedConv(nn.Module):
 
   def _lazy_init(self, in_dim: nn.Dim):
     self.in_dim = in_dim
-    if in_dim == self.out_dim:
-      self.out_dim_inner = self.out_dim.copy(same_as_self=False, description=f"{self}:out-dim-inner")
     self.filter = nn.Parameter(
       self.filter_size +
-      ([self.in_dim, self.out_dim_inner] if not self._transposed else [self.out_dim_inner, self.in_dim]))
+      ([nn.dim_match_priority_when_needed(self.in_dim, self.out_dim), self.out_dim]
+       if not self._transposed
+       else [self.out_dim, nn.dim_match_priority_when_needed(self.in_dim, self.out_dim)]))
     self.filter.initial = nn.init.Glorot()
     if self.with_bias:
-      self.bias = nn.Parameter([self.out_dim_inner])
+      self.bias = nn.Parameter([self.out_dim])
       self.bias.initial = 0.
 
   def _call_nd1(self, source: nn.Tensor, *,
@@ -121,7 +120,7 @@ class _Conv(_ConvOrTransposedConv):
     layer_dict = {
       "class": "conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
-      "out_dim": self.out_dim_inner, "out_spatial_dims": out_spatial_dims,
+      "out_dim": self.out_dim, "out_spatial_dims": out_spatial_dims,
       "filter_size": self.filter_size, "padding": self.padding}
     if self.strides:
       layer_dict["strides"] = self.strides
@@ -233,7 +232,7 @@ class _TransposedConv(_ConvOrTransposedConv):
     layer_dict = {
       "class": "transposed_conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
-      "out_dim": self.out_dim_inner, "out_spatial_dims": out_spatial_dims,
+      "out_dim": self.out_dim, "out_spatial_dims": out_spatial_dims,
       "filter_size": self.filter_size, "padding": self.padding}
     if self.remove_padding:
       layer_dict["remove_padding"] = self.remove_padding
