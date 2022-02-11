@@ -615,7 +615,7 @@ class ReturnnDimTagsProxy:
 
   def __init__(self):
     self.dim_refs_by_name = {}  # type: Dict[str, ReturnnDimTagsProxy.DimRefProxy]
-    self.dim_tags_to_ref = {}  # type: Dict[nn.Dim, ReturnnDimTagsProxy.DimRefProxy]
+    self.dim_refs_by_tag = {}  # type: Dict[nn.Dim, ReturnnDimTagsProxy.DimRefProxy]
 
   def __repr__(self):
     return "\n".join([
@@ -629,7 +629,7 @@ class ReturnnDimTagsProxy:
     """
     new = ReturnnDimTagsProxy()
     new.dim_refs_by_name = self.dim_refs_by_name.copy()
-    new.dim_tags_to_ref = self.dim_tags_to_ref.copy()
+    new.dim_refs_by_tag = self.dim_refs_by_tag.copy()
     return new
 
   def py_code_str(self):
@@ -648,6 +648,8 @@ class ReturnnDimTagsProxy:
       return "batch_dim"
     if dim == nn.single_step_dim:
       return "single_step_dim"
+    if dim.match_priority:
+      return f"{self.dim_ref_repr(dim.copy(match_priority=0))}.copy(match_priority={dim.match_priority})"
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         return str(dim.derived_from_op.attribs["value"])
@@ -657,7 +659,7 @@ class ReturnnDimTagsProxy:
         return f"{self.dim_ref_repr(a)}.div_left({self.dim_ref_repr(b)})"
       op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
       return f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
-    ref = self.dim_tags_to_ref[dim]
+    ref = self.dim_refs_by_tag[dim]
     return ref.py_id_name()
 
   class DimRefProxy:
@@ -687,10 +689,18 @@ class ReturnnDimTagsProxy:
       return re.sub(r"[^a-zA-Z0-9_]", "_", self.name) + "_dim"
 
     def dim_repr(self):
-      """dim repr"""
+      """
+      Dim repr, used for serialization of all registered dim tags.
+      Any derived dims or special dims will not be registered and instead be represented
+      with the same derivation referencing other registered dim tags.
+      See :func:`ReturnnDimTagsProxy.dim_ref_repr`.
+      """
       dim = self.dim
-      # We assume FeatureDim, SpatialDim and Dim are imported.
+      assert not dim.is_batch_dim()
       assert dim.can_be_used_as_dim()
+      assert not dim.derived_from_op
+      assert not dim.match_priority
+      # We assume FeatureDim, SpatialDim and Dim are imported.
       if dim.kind == nn.Dim.Types.Feature:
         return f"FeatureDim({dim.description!r}, {dim.dimension})"
       if dim.kind == nn.Dim.Types.Spatial:
@@ -755,10 +765,14 @@ class ReturnnDimTagsProxy:
             _map(path + (value.derived_from_op.kind, i), child)
           # No need to register this.
           return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
+        if value.match_priority != 0:
+          _map(path, value.copy(match_priority=0))  # Register the dim tag without match_priority.
+          # Now return the custom proxy for the dim tag with match_priority. No need to register this.
+          return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
         name = '.'.join(str(key) for key in path + (value.description,))
         assert name not in self.dim_refs_by_name
-        if value in self.dim_tags_to_ref:
-          ref = self.dim_tags_to_ref[value]
+        if value in self.dim_refs_by_tag:
+          ref = self.dim_refs_by_tag[value]
           if _is_better_path(ref, path):
             # Prefer path without "out_shape". Use new name.
             del self.dim_refs_by_name[ref.name]
@@ -768,7 +782,7 @@ class ReturnnDimTagsProxy:
           return ref
         ref = ReturnnDimTagsProxy.DimRefProxy(dim=value, name=name, path=path, parent=self)
         self.dim_refs_by_name[name] = ref
-        self.dim_tags_to_ref[value] = ref
+        self.dim_refs_by_tag[value] = ref
         return ref
       if isinstance(value, dict):
         return {
