@@ -32,7 +32,7 @@ def test_simple_net_lstm():
   config, net_dict = dummy_config_net_dict(_Net(), with_axis=True)
   assert "lstm" in net_dict
   extern_data_data_dim_tags_2_input_dim = config["extern_data_data_dim_tags_2_input_dim"]
-  network_lstm_subnetwork_rec_out_dim_lstm_out_dim = config["network_lstm_subnetwork_random_shape_0_lstm_out_dim"]
+  network_lstm_subnetwork_rec_out_dim_lstm_out_dim = config["network_lstm_subnetwork_rec_out_dim_lstm_out_dim"]
   lstm_subnet = net_dict["lstm"]["subnetwork"]
   param_input_weights_shape = lstm_subnet["param_W"]["shape"]
   param_rec_weights_shape = lstm_subnet["param_W_re"]["shape"]
