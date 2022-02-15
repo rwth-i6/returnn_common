@@ -20,5 +20,7 @@ from .conv import *
 from .rec import *
 from .container import *
 from .attention import *
+from .transformer import *
+from .conformer import *
 
 from . import init
