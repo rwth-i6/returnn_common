@@ -24,7 +24,10 @@ def test_nn_transformer_search():
       output_dim=input_dim, dim_ff=input_dim * 4,
       num_heads=2, num_encoder_layers=2, num_decoder_layers=2,
       target_vocab=target_dim)
-    out, _ = transformer(data, source_spatial_axis=time_dim, search=True, beam_size=3, eos_symbol=0, name=name_ctx)
+    out, _ = transformer(
+      data, source_spatial_axis=time_dim,
+      search=True, beam_size=3, max_seq_len=10,
+      eos_symbol=0, name=name_ctx)
     out.mark_as_default_output()
 
   config_code = name_ctx.get_returnn_config_serialized()
