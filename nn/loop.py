@@ -327,7 +327,7 @@ class _LoopState:
 
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
-      if isinstance(layer_ref, nn.Tensor):
+      if layer_ref.layer_dict:
         if layer_ref.layer_dict["class"] == "get_last_hidden_state":
           used_state_eliminate_optimization = False
           key = layer_ref.layer_dict.get("key", "state")
@@ -357,6 +357,16 @@ class _LoopState:
               f" and https://github.com/rwth-i6/returnn/issues/732.")
 
         else:  # class != get_last_hidden_state
+
+          if layer_ref.layer_dict["class"] == "cum_concat":
+            layer_state_opt = layer_ref.layer_dict.get("state")
+            if isinstance(layer_state_opt, nn.LayerState) and set(layer_state_opt.keys()) == {"state"}:
+              layer_state = layer_state_opt.state
+              if isinstance(layer_state, PrevTensorRef) and layer_state.cur_layer_name_ctx is name_ctx:
+                # The 'state' argument refers to "prev:..." of itself.
+                # This is redundant, so we don't need to pass it.
+                layer_ref.layer_dict.pop("state")
+
           assert "initial_state" not in layer_ref.layer_dict
           assert "initial_output" not in layer_ref.layer_dict
           layer_ref.layer_dict["initial_output"] = initial
