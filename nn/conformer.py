@@ -5,7 +5,7 @@ Ref: https://arxiv.org/abs/2005.08100
 
 from typing import Tuple, List, Callable, Optional
 from .. import nn
-import copy
+import copy as _copy
 
 
 class ConformerPositionwiseFeedForward(nn.Module):
@@ -218,7 +218,7 @@ class ConformerEncoder(nn.Module):
 
     self.linear = nn.Linear(self.out_dim, with_bias=False)
 
-    self.layers = nn.Sequential(copy.deepcopy(encoder_layer) for _ in range(num_layers))
+    self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
   @nn.scoped
   def __call__(self, inp: nn.Tensor, *,
