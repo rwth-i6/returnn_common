@@ -86,8 +86,8 @@ class GenericSelfAttention(nn.Module):
       assert causal is None or causal
       assert state
       new_state = nn.LayerState()
-      k, _, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim)
-      v, _, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim)
+      k, _, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=expand_dim, name="k_accum")
+      v, _, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=expand_dim, name="v_accum")
     else:
       new_state = None
       assert not state
