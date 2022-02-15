@@ -4,7 +4,7 @@ Transformer Modules
 
 from __future__ import annotations
 
-import copy
+import copy as _copy
 from typing import Optional, Any, Union, Callable, Tuple
 from .. import nn
 
@@ -13,9 +13,14 @@ class TransformerEncoderLayer(nn.Module):
   """
   Defines one layer of a standard transformer encoder
   """
-  def __init__(self, output_dim: nn.Dim, *, self_attention, dim_ff: nn.Dim, dropout: float = 0.1,
-               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu, norm_eps: float = 1e-6,
-               norm_first: bool = True, norm=nn.layer_norm) -> None:
+  def __init__(self, output_dim: nn.Dim, *,
+               self_attention: Union[nn.SelfAttention, Any],
+               dim_ff: nn.Dim,
+               dropout: float = 0.1,
+               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
+               norm_eps: float = 1e-6,
+               norm_first: bool = True,
+               norm=nn.layer_norm) -> None:
     """
     :param output_dim: output dimension, PyTorch name: d_model
     :param self_attention: module which does self attention
@@ -27,7 +32,7 @@ class TransformerEncoderLayer(nn.Module):
     :param norm: normalization function
     """
     super().__init__()
-    self.self_attn = copy.deepcopy(self_attention)
+    self.self_attn = _copy.deepcopy(self_attention)
 
     self.linear_ff = nn.Linear(dim_ff)
     self.linear_out = nn.Linear(output_dim)
@@ -37,22 +42,23 @@ class TransformerEncoderLayer(nn.Module):
     self.norm = norm
     self.dropout = dropout
 
-  def __call__(self, inp: nn.Tensor) -> nn.Tensor:
+  @nn.scoped
+  def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """
     Two possible forward variants of encoder, defined by self.norm_first.
     The input has shape {B, T, F}.
     """
     if self.norm_first:
-      inp = inp + self._self_attention_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim))
+      inp = inp + self._self_attention_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), axis=axis)
       inp = inp + self._feed_forward_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim))
     else:
-      inp = self.norm(inp + self._self_attention_block(inp), epsilon=self.norm_eps, in_dim=inp.feature_dim)
+      inp = self.norm(inp + self._self_attention_block(inp, axis=axis), epsilon=self.norm_eps, in_dim=inp.feature_dim)
       inp = self.norm(inp + self._feed_forward_block(inp), epsilon=self.norm_eps, in_dim=inp.feature_dim)
 
     return inp
 
-  def _self_attention_block(self, inp: nn.Tensor) -> nn.Tensor:
-    inp = self.self_attn(inp)
+  def _self_attention_block(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+    inp = self.self_attn(inp, axis=axis)
     return nn.dropout(inp, self.dropout, axis=inp.feature_dim)
 
   def _feed_forward_block(self, inp: nn.Tensor) -> nn.Tensor:
@@ -84,14 +90,15 @@ class TransformerEncoder(nn.Module):
     self.norm = norm
     self.norm_eps = norm_eps
 
-  def __call__(self, inp: nn.Tensor) -> nn.Tensor:
+  @nn.scoped
+  def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """
     Applies every encoder layer initialized in self.layers.
     """
     output = inp
 
     for mod in self.layers:
-      output = mod(output)
+      output = mod(output, axis=axis)
 
     if self.norm is not None:
       output = self.norm(output, epsilon=self.norm_eps, in_dim=output.feature_dim)
@@ -99,26 +106,32 @@ class TransformerEncoder(nn.Module):
     return output
 
 
-class TransformerDecoderLayerStep(nn.Module):
+class TransformerDecoderLayer(nn.Module):
   """
   Defines one layer of a standard transformer decoder
   """
-  def __init__(self, output_dim: nn.Dim, *, enc_dec_attention, self_attention_step, dim_ff: nn.Dim,
-               dropout: float = 0.1, activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu, norm_eps: float = 1e-6,
-               norm_first: bool = True, norm=nn.layer_norm):
+  def __init__(self, output_dim: nn.Dim, *,
+               enc_dec_attention: nn.AttentionFunc,
+               causal_self_attention: Union[nn.CausalSelfAttention, Any],
+               dim_ff: nn.Dim,
+               dropout: float = 0.1,
+               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
+               norm_eps: float = 1e-6,
+               norm_first: bool = True,
+               norm=nn.layer_norm):
     """
     :param output_dim: output dimension, PyTorch name: d_model
-    :param enc_dec_attention: module which does encoder decoder attention
-    :param self_attention_step: module which does stepwise self attention
+    :param enc_dec_attention: module or func which does encoder decoder attention
+    :param causal_self_attention: module or func which does causal self attention
     :param dim_ff: dimension of feedforward layer, PyTorch name: dim_feedforward
-    :param dropout: Dropout value, PyTorch name: dropout
+    :param dropout: Dropout value
     :param activation: activation function
     :param norm_eps: Epsilon value for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
     :param norm: normalization function
     """
     super().__init__()
-    self.self_attn = copy.deepcopy(self_attention_step)
+    self.self_attn = _copy.deepcopy(causal_self_attention)
     self.attn = enc_dec_attention
 
     self.linear_ff = nn.Linear(dim_ff)
@@ -130,41 +143,46 @@ class TransformerDecoderLayerStep(nn.Module):
     self.activation = activation
     self.dropout = dropout
 
-  def __call__(self, inp: nn.Tensor, *, memory: nn.Tensor,
+  @nn.scoped
+  def __call__(self, inp: nn.Tensor, *,
+               axis: nn.Dim,
+               memory: nn.Tensor,
+               memory_spatial_axis: nn.Dim,
                state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Two possible forward variants of decoder, defined by self.norm_first, inp and memory have shape {B, T, F}
     """
     if self.norm_first:
       x_, new_state = self._self_attention_block(
-        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), state=state)
+        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), axis=axis, state=state)
       inp = inp + x_
       inp = inp + self._multi_head_attention_block(
-        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), memory)
+        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), mem=memory, mem_axis=memory_spatial_axis)
       inp = inp + self._feed_forward_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim))
     else:
-      x_, new_state = self._self_attention_block(inp, state=state)
+      x_, new_state = self._self_attention_block(inp, axis=axis, state=state)
       inp = self.norm(inp + x_, epsilon=self.norm_eps, in_dim=inp.feature_dim)
       inp = self.norm(
-        inp + self._multi_head_attention_block(inp, memory), epsilon=self.norm_eps, in_dim=inp.feature_dim)
+        inp + self._multi_head_attention_block(inp, mem=memory, mem_axis=memory_spatial_axis),
+        epsilon=self.norm_eps, in_dim=inp.feature_dim)
       inp = self.norm(inp + self._feed_forward_block(inp), epsilon=self.norm_eps, in_dim=inp.feature_dim)
 
     return inp, new_state
 
-  def initial_state(self) -> nn.LayerState:
+  def default_initial_state(self) -> nn.LayerState:
     """
     initial state declaration
     """
     return nn.LayerState(
-      self_attn=self.self_attn.initial_state(),
-      attn=self.attn.initial_state())
+      self_attn=self.self_attn.default_initial_state())
 
-  def _self_attention_block(self, inp: nn.Tensor, *, state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
-    inp, new_state = self.self_attn(inp, state=state)
+  def _self_attention_block(self,
+                            inp: nn.Tensor, *, axis: nn.Dim, state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
+    inp, new_state = self.self_attn(inp, axis=axis, state=state)
     return nn.dropout(inp, self.dropout, axis=inp.feature_dim), new_state
 
-  def _multi_head_attention_block(self, inp: nn.Tensor, mem: nn.Tensor) -> nn.Tensor:
-    inp = self.attn(inp, mem, mem)
+  def _multi_head_attention_block(self, inp: nn.Tensor, *, mem: nn.Tensor, mem_axis: nn.Dim) -> nn.Tensor:
+    inp = self.attn(query=inp, keys=mem, values=mem, axis=mem_axis, key_dim=inp.feature_dim)
     return nn.dropout(inp, self.dropout, axis=inp.feature_dim)
 
   def _feed_forward_block(self, inp: nn.Tensor) -> nn.Tensor:
@@ -176,12 +194,15 @@ class TransformerDecoderLayerStep(nn.Module):
     return inp
 
 
-class TransformerDecoderStep(nn.Module):
+class TransformerDecoder(nn.Module):
   """
-  Defines the full Decoder of the standard transformer
+  Defines the full decoder of the standard transformer
   """
-  def __init__(self, decoder_layer: Union[TransformerDecoderLayerStep, Any], num_layers: int,
-               norm=nn.layer_norm, norm_eps: float = 1e-6):
+  def __init__(self, *,
+               decoder_layer: Union[TransformerDecoderLayer, Any],
+               num_layers: int,
+               norm=nn.layer_norm,
+               norm_eps: float = 1e-6):
     """
     :param decoder_layer: Decoder layer to be stacked num_layers times
     :param num_layers: Number of layers
@@ -196,7 +217,11 @@ class TransformerDecoderStep(nn.Module):
     self.norm = norm
     self.norm_eps = norm_eps
 
-  def __call__(self, inp: nn.Tensor, *, memory: nn.Tensor,
+  @nn.scoped
+  def __call__(self, inp: nn.Tensor, *,
+               axis: nn.Dim,
+               memory: nn.Tensor,
+               memory_spatial_axis: nn.Dim,
                state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Applies every decoder layer initialized in self.layers.
@@ -204,18 +229,19 @@ class TransformerDecoderStep(nn.Module):
     output = inp
 
     for key, mod in self.layers.named_children():
-      output, state[key] = mod(output, memory=memory, state=state[key])
+      output, state[key] = mod(
+        output, axis=axis, memory=memory, memory_spatial_axis=memory_spatial_axis, state=state[key])
 
     if self.norm is not None:
       output = self.norm(output, epsilon=self.norm_eps, in_dim=output.feature_dim)
 
     return output, state
 
-  def initial_state(self) -> nn.LayerState:
+  def default_initial_state(self) -> nn.LayerState:
     """
     initial state declaration
     """
-    return nn.LayerState({key: mod.initial_state() for (key, mod) in self.layers.named_children()})
+    return nn.LayerState({key: mod.default_initial_state() for (key, mod) in self.layers.named_children()})
 
 
 class Transformer(nn.Module):
@@ -238,13 +264,14 @@ class Transformer(nn.Module):
                norm_eps: float = 1e-6,
                norm=nn.layer_norm,
                norm_first: bool = True,
-               dec_self_attention_step=None,
+               dec_causal_self_attention=None,
                enc_self_attention=None,
                enc_dec_attention=None
                ) -> None:
     """
     Default parameters as in the original paper https://arxiv.org/pdf/1706.03762.pdf only modification to this is
     norm_first which would be False in the paper, but empirically performs better with True, thus being True by default.
+
     :param output_dim: output dimension, PyTorch name: d_model
     :param num_heads: number heads, PyTorch name: nhead
     :param num_encoder_layers: Number of encoder layers
@@ -262,7 +289,7 @@ class Transformer(nn.Module):
     :param norm_eps: Epsilon value for layer normalization
     :param norm: function for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
-    :param dec_self_attention_step: module which does stepwise self attention for the decoder
+    :param dec_causal_self_attention: module which does stepwise self attention for the decoder
     :param enc_self_attention: module which does self attention for the encoder
     :param enc_dec_attention: module which does encoder decoder attention
     """
@@ -289,15 +316,15 @@ class Transformer(nn.Module):
       if custom_decoder_layer is not None:
         decoder_layer = custom_decoder_layer
       else:
-        if dec_self_attention_step is None:
-          dec_self_attention_step = nn.SelfAttention(
+        if dec_causal_self_attention is None:
+          dec_causal_self_attention = nn.CausalSelfAttention(
             key_dim_total=output_dim, value_dim_total=output_dim, num_heads=num_heads, att_dropout=att_dropout)
         if enc_dec_attention is None:
           enc_dec_attention = nn.dot_attention
-        decoder_layer = TransformerDecoderLayerStep(
+        decoder_layer = TransformerDecoderLayer(
           output_dim=output_dim, dim_ff=dim_ff, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
-          norm_first=norm_first, self_attention_step=dec_self_attention_step, enc_dec_attention=enc_dec_attention)
-      self.decoder = TransformerDecoderStep(
+          norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=enc_dec_attention)
+      self.decoder = TransformerDecoder(
         decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm, norm_eps=norm_eps)
 
     self.norm_eps = norm_eps
@@ -305,19 +332,25 @@ class Transformer(nn.Module):
     self.num_heads = num_heads
     self.norm = norm
 
-  def __call__(self, source: nn.Tensor, *, target: Optional[nn.Tensor] = None,
+  @nn.scoped
+  def __call__(self, source: nn.Tensor, *,
+               source_spatial_axis: nn.Dim,
+               target: Optional[nn.Tensor] = None,
                initial_state: Optional[nn.LayerState] = None,
-               search: bool, beam_size: Optional[int] = None, eos_symbol: Optional[int] = None,
+               search: bool, beam_size: Optional[int] = None,
+               eos_symbol: Optional[int] = None,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
     """
-    memory = self.encoder(source)
+    memory = self.encoder(source, axis=source_spatial_axis)
     if not initial_state:
-      initial_state = self.initial_state()
+      initial_state = self.default_initial_state()
     with nn.Loop() as loop:
       loop.state = initial_state
-      logits, loop.state.decoder = self.decoder(loop.state.target, memory=memory, state=loop.state.decoder)
+      logits, loop.state.decoder = self.decoder(
+        loop.state.target, axis=nn.single_step_dim,
+        memory=memory, memory_spatial_axis=source_spatial_axis, state=loop.state.decoder)
       target = loop.unstack(target) if target is not None else None
       if search:
         loop.state.target = nn.choice(logits, input_type="logits", target=target, search=True, beam_size=beam_size)
@@ -328,10 +361,10 @@ class Transformer(nn.Module):
       outputs = loop.stack(loop.state.target)
     return outputs, loop.state
 
-  def initial_state(self, initial_target: nn.Tensor = 0) -> nn.LayerState:
+  def default_initial_state(self, initial_target: nn.Tensor = 0) -> nn.LayerState:
     """
     initial state declaration
     """
     return nn.LayerState(
       target=initial_target,
-      decoder=self.decoder.initial_state())
+      decoder=self.decoder.default_initial_state())
