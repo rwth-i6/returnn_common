@@ -227,8 +227,11 @@ class ReturnnWrappedLayerBase(Module):
     # Note that this is actually layer specific.
     # We try to use a number of heuristics to get it right for the common cases.
     name = f"{layer.name_ctx.name}_state"
+    layer_class = layer.layer_dict["class"]
+    if layer_class == "cum_concat":
+      return nn.LayerState(layer)  # the layer output itself is its state
     out_dim = layer.layer_dict["out_dim"]
-    if layer.layer_dict["class"] == "rec" and isinstance(layer.layer_dict["unit"], str):
+    if layer_class == "rec" and isinstance(layer.layer_dict["unit"], str):
       if "lstm" in layer.layer_dict["unit"].lower():
         h = _get_last_hidden_state(layer, out_dim=out_dim, key="h", name=f"{name}_h")
         c = _get_last_hidden_state(layer, out_dim=out_dim, key="c", name=f"{name}_c")
