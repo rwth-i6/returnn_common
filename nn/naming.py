@@ -278,7 +278,7 @@ class NameCtx:
         data_key: {
           key: getattr(data, key)
           for key in [*data.get_kwargs(include_special_axes=False).keys(), "available_for_inference"]
-          if key not in {"name"}}
+          if key not in {"name", "batch"}}
         for (data_key, data) in self.extern_data.items()},
       "network": net_dict,
     }
