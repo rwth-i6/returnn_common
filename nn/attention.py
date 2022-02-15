@@ -65,9 +65,9 @@ class GenericSelfAttention(nn.Module):
     For causal attention.
     """
     expand_dim = nn.SpatialDim("self_att_expand_dim_init", 0)
-    return nn.LayerState({
-      "k_accum": nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.key_dim_per_head]),
-      "v_accum": nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.value_dim_per_head])})
+    return nn.LayerState(
+      k_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.key_dim_per_head])),
+      v_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.value_dim_per_head])))
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim,
