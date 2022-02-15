@@ -325,9 +325,6 @@ class _LoopState:
       assert isinstance(layer_ref, nn.Tensor)
       assert isinstance(name_ctx, nn.NameCtx)
 
-      if initial.layer_dict and initial.layer_dict["class"] == "constant":
-        initial = initial.layer_dict["value"]
-
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
       if layer_ref.layer_dict:
@@ -369,6 +366,11 @@ class _LoopState:
                 # The 'state' argument refers to "prev:..." of itself.
                 # This is redundant, so we don't need to pass it.
                 layer_ref.layer_dict.pop("state")
+
+            # Note: Only do this optimization for the cum_concat layer because otherwise
+            # we might rely on the intial output shape.
+            if initial.layer_dict and initial.layer_dict["class"] == "constant":
+              initial = initial.layer_dict["value"]
 
           assert "initial_state" not in layer_ref.layer_dict
           assert "initial_output" not in layer_ref.layer_dict
