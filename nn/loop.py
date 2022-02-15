@@ -52,7 +52,7 @@ class Loop:
   """
 
   def __init__(self, *,
-               max_seq_len: Optional[Union[str, int, callable]] = NotSpecified,
+               max_seq_len: Optional[Union[nn.Tensor, str, int, callable]] = NotSpecified,
                optimize_move_layers_out: Optional[bool] = NotSpecified,
                unroll: bool = NotSpecified,
                axis: Optional[nn.Dim] = NotSpecified,
@@ -64,7 +64,8 @@ class Loop:
       axis = nn.SpatialDim(f"{name}-dim")
     self.extra_opts = {
       key: value for (key, value) in locals().items()
-      if value is not NotSpecified and key not in {"self", "__class__", "name"}}
+      if value is not NotSpecified and value is not None
+      and key not in {"self", "__class__", "name"}}
     self.layer_module = LoopModule(loop=self)
     self.name_ctx = nn.NameCtx(module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx())
     self.name_ctx.is_subnet_ctx = True
