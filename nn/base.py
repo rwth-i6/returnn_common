@@ -102,6 +102,8 @@ class Tensor:
       assert layer_dict is not None
       if not data:
         data = _data_from_layer_dict(layer_dict)
+      if data.have_batch_axis() and not data.batch and name_ctx.root.global_batch:
+        data.batch = name_ctx.root.global_batch
       dim_tags = list(data.dim_tags)
       dim_tags.extend(data.dim_tags_set_implicit_only)  # like dim_tags_set_implicit
       assert len(dim_tags) == len(set((d, d.match_priority) for d in dim_tags)), f"duplicate dims in {name_ctx} {data}"
@@ -565,6 +567,11 @@ def get_extern_data(data: Data) -> Tensor:
     scope.extern_data[data.name] = data
   else:
     assert scope.extern_data[data.name] is data
+  if data.have_batch_axis():
+    if not scope.global_batch:
+      scope.global_batch = data.batch if data.batch else nn.BatchInfo.make_global_batch_info(-1)
+    if not data.batch:
+      data.batch = scope.global_batch
   root_layer_name = f"data:{data.name}"
   return _get_special_layer(root_layer_name, scope=scope, data=data)
 
