@@ -336,6 +336,8 @@ class Transformer(nn.Module):
       self.decoder = TransformerDecoder(
         decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm, norm_eps=norm_eps)
 
+    self.output_projection = nn.Linear(target_vocab)
+
     self.norm_eps = norm_eps
     self.output_dim = output_dim
     self.num_heads = num_heads
@@ -357,9 +359,10 @@ class Transformer(nn.Module):
     loop.state = initial_state if initial_state else self.default_initial_state()
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
-      logits, loop.state.decoder = self.decoder(
+      output, loop.state.decoder = self.decoder(
         prev_target_embed, axis=nn.single_step_dim,
         memory=memory, memory_spatial_axis=source_spatial_axis, state=loop.state.decoder)
+      logits = self.output_projection(output)
       target = loop.unstack(target) if target is not None else None
       if search:
         loop.state.target = nn.choice(logits, input_type="logits", target=target, search=True, beam_size=beam_size)
