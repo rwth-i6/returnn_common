@@ -348,14 +348,16 @@ class Transformer(nn.Module):
                source_spatial_axis: nn.Dim,
                target: Optional[nn.Tensor] = None,
                initial_state: Optional[nn.LayerState] = None,
-               search: bool, beam_size: Optional[int] = None,
+               search: bool,
+               beam_size: Optional[int] = None,
+               max_seq_len: Optional[Union[nn.Tensor, int]] = None,
                eos_symbol: Optional[int] = None,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
     """
     memory = self.encoder(source, axis=source_spatial_axis)
-    loop = nn.Loop()
+    loop = nn.Loop(max_seq_len=max_seq_len)
     loop.state = initial_state if initial_state else self.default_initial_state()
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
