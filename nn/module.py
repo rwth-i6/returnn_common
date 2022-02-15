@@ -83,7 +83,7 @@ class Module:
   def __repr__(self):
     return f"<{self.__class__.__name__}>"
 
-  def default_initial_state(self) -> nn.LayerState:
+  def default_initial_state(self) -> Optional[nn.LayerState]:
     """
     :return: default initial state, to be used if the module (layer) has recurrent (hidden) state.
       When a module has recurrent state,
@@ -91,7 +91,7 @@ class Module:
       and to accept the ``state`` argument with a :class:`LayerState` with the same nested structure.
       This can be a nested structure and should match the structure of the ``state`` argument and returned value.
     """
-    raise OptionalNotImplementedError
+    return None
 
   def get_default_name(self) -> str:
     """
