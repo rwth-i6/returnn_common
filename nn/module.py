@@ -4,7 +4,7 @@ Base module class, :class:`Module`.
 
 from __future__ import annotations
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator
-from returnn.util.basic import NotSpecified, OptionalNotImplementedError
+from returnn.util.basic import NotSpecified
 from .. import nn
 
 
