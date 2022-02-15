@@ -64,6 +64,11 @@ class GenericSelfAttention(nn.Module):
     """
     For causal attention.
     """
+    # Note: This dim tag is wrong. It should match to the expand_dim inside __call__.
+    # So the dim tag itself should be part of the layer state, and we need to define the initial value of it here.
+    # This is not really supported, in various ways, also including RETURNN.
+    # We just keep this code in place to be prepared for that.
+    # The reason it works right now is that we do an optimization where we replace zero init state by 0.
     expand_dim = nn.SpatialDim("self_att_expand_dim_init", 0)
     return nn.LayerState(
       k_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.key_dim_per_head])),
