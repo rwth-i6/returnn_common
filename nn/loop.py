@@ -76,6 +76,8 @@ class Loop:
     self.outputs = []  # type: List[nn.Tensor]
     self._has_given_axis = bool(axis)
     self.axis = axis
+    self.control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Loop)
+    self.control_flow_ctx.loop_spatial_dim = axis
     self.end_ref = None  # type: Optional[nn.Tensor]
 
   def __repr__(self):
