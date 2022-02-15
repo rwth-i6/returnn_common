@@ -2,8 +2,15 @@
 Attention, self-attention, auto-regressive self-attention
 """
 
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, Protocol
 from .. import nn
+
+
+class AttentionFunc(Protocol):
+  """Protocol defining a generic attention function"""
+  def __call__(self,
+               query: nn.Tensor, keys: nn.Tensor, values: nn.Tensor, *,
+               key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.1): ...
 
 
 @nn.scoped
