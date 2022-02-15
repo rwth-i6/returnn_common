@@ -346,8 +346,9 @@ class Transformer(nn.Module):
     memory = self.encoder(source, axis=source_spatial_axis)
     if not initial_state:
       initial_state = self.default_initial_state()
-    with nn.Loop() as loop:
-      loop.state = initial_state
+    loop = nn.Loop()
+    loop.state = initial_state
+    with loop:
       logits, loop.state.decoder = self.decoder(
         loop.state.target, axis=nn.single_step_dim,
         memory=memory, memory_spatial_axis=source_spatial_axis, state=loop.state.decoder)
