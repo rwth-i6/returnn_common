@@ -2,8 +2,18 @@
 Attention, self-attention, auto-regressive self-attention
 """
 
-from typing import Tuple, Union, Optional, Protocol
+from typing import Tuple, Union, Optional
 from .. import nn
+
+try:
+  from typing import Protocol
+except ImportError:
+  try:
+    from typing_extensions import Protocol
+  except ImportError:
+    class Protocol:
+      """dummy"""
+      pass
 
 
 class AttentionFunc(Protocol):

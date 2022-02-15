@@ -58,7 +58,7 @@ jobs:
         echo "pip: $(type pip)"
 
         pip install --user --upgrade pip setuptools wheel
-        pip install --user typing | cat
+        pip install --user typing typing_extensions | cat
 
         # pip install --user -r requirements.txt | cat
         pip install --user --upgrade tensorflow==${{ matrix.tf-version }} | cat
