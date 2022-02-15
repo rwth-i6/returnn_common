@@ -1,5 +1,8 @@
 """
 Transformer Modules
+
+The API is partly inspired from:
+https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
 """
 
 from __future__ import annotations
@@ -152,15 +155,16 @@ class TransformerDecoderLayer(nn.Module):
     """
     Two possible forward variants of decoder, defined by self.norm_first, inp and memory have shape {B, T, F}
     """
+    new_state = nn.LayerState()
     if self.norm_first:
-      x_, new_state = self._self_attention_block(
-        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), axis=axis, state=state)
+      x_, new_state.self_attn = self._self_attention_block(
+        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), axis=axis, state=state.self_attn)
       inp = inp + x_
       inp = inp + self._multi_head_attention_block(
         self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), mem=memory, mem_axis=memory_spatial_axis)
       inp = inp + self._feed_forward_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim))
     else:
-      x_, new_state = self._self_attention_block(inp, axis=axis, state=state)
+      x_, new_state.self_attn = self._self_attention_block(inp, axis=axis, state=state.self_attn)
       inp = self.norm(inp + x_, epsilon=self.norm_eps, in_dim=inp.feature_dim)
       inp = self.norm(
         inp + self._multi_head_attention_block(inp, mem=memory, mem_axis=memory_spatial_axis),
@@ -250,6 +254,8 @@ class Transformer(nn.Module):
   """
   def __init__(self,
                output_dim: nn.Dim = nn.FeatureDim("output_dim", 512),
+               *,
+               target_vocab: nn.Dim,
                num_heads: int = 8,
                num_encoder_layers: int = 6,
                num_decoder_layers: int = 6,
@@ -310,6 +316,9 @@ class Transformer(nn.Module):
       self.encoder = TransformerEncoder(
         encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm, norm_eps=norm_eps)
 
+    self.target_vocab = target_vocab
+    self.target_embedding = nn.Linear(output_dim)
+
     if custom_decoder is not None:
       self.decoder = custom_decoder
     else:
@@ -344,13 +353,12 @@ class Transformer(nn.Module):
     Forward step of Transformer
     """
     memory = self.encoder(source, axis=source_spatial_axis)
-    if not initial_state:
-      initial_state = self.default_initial_state()
     loop = nn.Loop()
-    loop.state = initial_state
+    loop.state = initial_state if initial_state else self.default_initial_state()
     with loop:
+      prev_target_embed = self.target_embedding(loop.state.target)
       logits, loop.state.decoder = self.decoder(
-        loop.state.target, axis=nn.single_step_dim,
+        prev_target_embed, axis=nn.single_step_dim,
         memory=memory, memory_spatial_axis=source_spatial_axis, state=loop.state.decoder)
       target = loop.unstack(target) if target is not None else None
       if search:
@@ -362,10 +370,10 @@ class Transformer(nn.Module):
       outputs = loop.stack(loop.state.target)
     return outputs, loop.state
 
-  def default_initial_state(self, initial_target: nn.Tensor = 0) -> nn.LayerState:
+  def default_initial_state(self, initial_target_bos_symbol: int = 0) -> nn.LayerState:
     """
     initial state declaration
     """
     return nn.LayerState(
-      target=initial_target,
+      target=nn.constant(value=initial_target_bos_symbol, shape=[nn.batch_dim], sparse_dim=self.target_vocab),
       decoder=self.decoder.default_initial_state())
