@@ -172,6 +172,7 @@ class Loop:
     with self.name_ctx.parent:  # need to be outside the loop
       return nn.make_layer(
         {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
+        predefined_out_data=source.data,
         name=name or sub_layer_name.replace("/", "_"))
 
   def end(self, source: nn.Tensor, *, include_eos: bool) -> nn.Tensor:
