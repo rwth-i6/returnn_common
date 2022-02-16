@@ -15,6 +15,15 @@ def convert_to_layer_ref(x: Union[nn.Tensor, int, float, complex, bool, str]) ->
   return nn.constant(value=x)
 
 
+def constant_value(x: nn.Tensor) -> Optional[Union[int, float, complex, bool, str]]:
+  """
+  If the tensor is a constant, return its value.
+  """
+  if x.layer_dict and x.layer_dict["class"] == "constant":
+    return x.layer_dict["value"]
+  return None
+
+
 def where(cond: nn.Tensor,
           true_: Union[nn.Tensor, float, int],
           false_: Union[nn.Tensor, float, int],
