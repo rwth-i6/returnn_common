@@ -247,6 +247,10 @@ class Tensor:
     if loss_scale is not None:
       assert "loss_scale" not in self.layer_dict
       self.layer_dict["loss_scale"] = loss_scale
+    # Add it to the root name scope marked_losses list.
+    # Note that this logic might change.
+    scope = nn.NameCtx.current_ctx().root
+    scope.marked_losses.append(self)
 
   def mark_as_output(self):
     """
@@ -264,6 +268,7 @@ class Tensor:
 
     :return: the "output" layer.
     """
+    self.mark_as_output()
     return nn.NameCtx.current_ctx().make_default_output(self)
 
   def _sis_hash(self):

@@ -162,6 +162,7 @@ class NameCtx:
     self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
     self.global_batch = None  # type: Optional[nn.BatchInfo]
     self.marked_outputs = []  # type: List[nn.Tensor]
+    self.marked_losses = []  # type: List[nn.Tensor]
     self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
     self.name = name  # early assign such that debug repr works later
     if not name:
