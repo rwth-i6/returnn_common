@@ -1781,7 +1781,7 @@ def _eval(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _compare(
-             source: Sequence[nn.Tensor],
+             source: Union[nn.Tensor, Sequence[nn.Tensor]],
              *,
              kind: str = NotSpecified,
              value: Optional[Union[float, int]] = NotSpecified,
@@ -1808,7 +1808,7 @@ def _compare(
       }, "target": "classes0"}
 
 
-  :param Sequence[nn.Tensor] source:
+  :param nn.Tensor|Sequence[nn.Tensor] source:
   :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
     or other supported TF comparison ops
   :param float|int|None value: if specified, will also compare to this
