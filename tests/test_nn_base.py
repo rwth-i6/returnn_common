@@ -164,6 +164,8 @@ def test_root_mod_call_twice():
     assert isinstance(y, nn.Tensor)
     print(z)
     assert isinstance(z, nn.Tensor)
+    y.mark_as_output()
+    z.mark_as_output()
 
   config = name_ctx.get_returnn_config()
   net_dict = config["network"]
