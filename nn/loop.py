@@ -68,6 +68,7 @@ class Loop:
       and key not in {"self", "__class__", "name"}}
     self.layer_module = LoopModule(loop=self)
     self.name_ctx = nn.NameCtx(module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx())
+    self.name_ctx.custom_layer_name_scope = ""
     self.name_ctx.is_subnet_ctx = True
     self.name_ctx.extend_reserved_names({"output", "end"})
     self._entered_scope = False
@@ -214,7 +215,6 @@ class LoopModule(nn.Module):
     Makes layer dict for this loop, i.e. a RecLayer.
     """
     name_ctx = self.loop.name_ctx
-    name_ctx.custom_layer_name_scope = ""
     out = name_ctx.children["output"].layer_ref
     # self.stack already added the loop.axis dim tag to prepare the access from outside the loop.
     assert out.data.dim_tags[0] == self.loop.axis

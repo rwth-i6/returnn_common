@@ -43,6 +43,7 @@ class Cond:
     self.layer_module = CondModule(cond=self)
     self.name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx(), can_access_children=False)
+    self.name_ctx.custom_layer_name_scope = ""
     self.true_branch_name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name="true", parent=self.name_ctx, virtual=True, can_access_children=False)
     self.true_branch_name_ctx.is_subnet_ctx = True
@@ -149,7 +150,6 @@ class CondModule(nn.Module):
     Makes layer dict for this loop, i.e. a RecLayer.
     """
     name_ctx = self.cond.name_ctx
-    name_ctx.custom_layer_name_scope = ""
     # noinspection PyProtectedMember
     true_value = self.cond._true_value
     assert isinstance(true_value, nn.Tensor)  # not implemented otherwise
