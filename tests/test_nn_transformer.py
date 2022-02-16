@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
+from nose.tools import assert_equal
+from tensorflow.python.util import nest
 import typing
 
 if typing.TYPE_CHECKING:
@@ -36,5 +38,19 @@ def test_nn_transformer_search():
   dec_self_att_layer_dict = net_dict["loop"]["unit"]["state.decoder.0.self_attn.k_accum.state"]
   assert dec_self_att_layer_dict["class"] == "cum_concat"
   assert "state" not in dec_self_att_layer_dict  # optimization
+
+  collected_name_scopes = {}  # path -> name_scope
+
+  def _collect_name_scope(path, x):
+    if path and path[-1] == "name_scope":
+      collected_name_scopes[path] = x
+
+  nest.map_structure_with_tuple_paths(_collect_name_scope, net_dict)
+  assert_equal(collected_name_scopes, {
+    ('encoder', 'subnetwork', 'layers.0', 'name_scope'): 'layers/0',
+    ('encoder', 'subnetwork', 'layers.1', 'name_scope'): 'layers/1',
+    ('loop', 'name_scope'): '',
+    ('loop', 'unit', 'decoder', 'subnetwork', 'layers.0', 'name_scope'): 'layers/0',
+    ('loop', 'unit', 'decoder', 'subnetwork', 'layers.1', 'name_scope'): 'layers/1'})
 
   dummy_run_net(config)
