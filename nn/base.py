@@ -288,6 +288,8 @@ class Tensor:
         dep_list.append(x)
         dep_name_set.add(x.name_ctx)
         return
+      if isinstance(x, nn.Net):
+        _maybe_add_dep(x.name_ctx.children["output"].layer_ref)
 
     if self.layer_dict:
       nest.map_structure(_maybe_add_dep, self.layer_dict)
