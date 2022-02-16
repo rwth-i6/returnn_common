@@ -116,7 +116,7 @@ class SelfAttention(GenericSelfAttention):
   @nn.scoped
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
-    out, _ = super().__call__ (source, axis=axis, causal=False, name="")
+    out, _ = super().__call__(source, axis=axis, causal=False, name="")
     return out
 
 
