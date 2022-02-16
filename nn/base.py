@@ -110,6 +110,9 @@ class Tensor:
       if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
         if add_out_shape_info and layer_dict["class"] not in {"constant", "variable", "random"}:
           layer_dict["out_shape"] = set(dim_tags)
+      if name_ctx.custom_layer_name_scope is not None:
+        assert "name_scope" not in layer_dict
+        layer_dict["name_scope"] = name_ctx.custom_layer_name_scope
 
     self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
     self.name_ctx = name_ctx
@@ -552,27 +555,6 @@ def make_layer(layer_dict: LayerDictRaw, *,
     raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
-
-  if name_ctx.module and name_ctx.module.has_parameters:
-    # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
-    # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
-    if name_ctx.is_root:
-      pass  # nothing to do
-    else:
-      # The parent name ctx RETURNN layer will also have the right name_scope set,
-      # so this layers name scope default is simply based on that.
-      layer_abs_name_scope_parent = name_ctx.parent.layer_abs_name_scope_effective
-      if layer_abs_name_scope_parent:
-        layer_abs_name_scope_parent += "/"
-      layer_abs_name_scope_default = layer_abs_name_scope_parent + name_ctx.name
-      if layer_abs_name_scope_default != name_ctx.layer_abs_name_scope:  # default does not match what we require
-        assert "name_scope" not in layer_dict
-        if name_ctx.layer_abs_name_scope == name_ctx.parent.layer_abs_name_scope_effective:
-          layer_dict["name_scope"] = ""
-        elif name_ctx.layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
-          layer_dict["name_scope"] = name_ctx.layer_abs_name_scope[len(layer_abs_name_scope_parent):]
-        else:  # must use absolute
-          layer_dict["name_scope"] = "/" + name_ctx.layer_abs_name_scope
 
   name_ctx.is_subnet_ctx = False
   layer = Tensor(

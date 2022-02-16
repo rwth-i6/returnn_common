@@ -214,11 +214,12 @@ class LoopModule(nn.Module):
     Makes layer dict for this loop, i.e. a RecLayer.
     """
     name_ctx = self.loop.name_ctx
+    name_ctx.custom_layer_name_scope = ""
     out = name_ctx.children["output"].layer_ref
     # self.stack already added the loop.axis dim tag to prepare the access from outside the loop.
     assert out.data.dim_tags[0] == self.loop.axis
     return nn.make_layer(
-      {"class": "rec", "from": [], "name_scope": "", "unit": name_ctx.make_net(), **self.loop.extra_opts},
+      {"class": "rec", "from": [], "unit": name_ctx.make_net(), **self.loop.extra_opts},
       name=name_ctx,
       predefined_out_data=out.data)
 

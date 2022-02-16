@@ -175,6 +175,8 @@ class NameCtx:
     self.name = name
     if self.parent:
       self.parent._add_child(self)
+    self.custom_layer_name_scope = None  # type: Optional[str]
+    self._assign_layer_name_scope()
 
   @classmethod
   def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: nn.Module) -> NameCtx:
@@ -210,6 +212,7 @@ class NameCtx:
     self.parent = parent
     self.name = self._get_unique_name(suggested_name)
     self.parent._add_child(self)
+    self._assign_layer_name_scope()
 
   def move_layer_ref_here(self: NameCtx, layer_ref: nn.Tensor):
     """
@@ -268,6 +271,34 @@ class NameCtx:
     """
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
+
+  def _assign_layer_name_scope(self):
+    # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
+    # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
+    # The parent name ctx RETURNN layer will also have the right name_scope set,
+    # so this layers name scope default is simply based on that.
+    # Note that parameters could be assigned lazily at some later point.
+    if not self.parent or not self.module:
+      return
+    if self._layer_abs_name_scope is None:
+      if self._get_abs_canonical_name(try_run=True) is None:  # not yet well defined, so try later
+        return
+    assert self.custom_layer_name_scope is None
+    layer_abs_name_scope_parent = self.parent.layer_abs_name_scope_effective
+    if layer_abs_name_scope_parent:
+      layer_abs_name_scope_parent += "/"
+    layer_abs_name_scope_default = layer_abs_name_scope_parent + self.name
+    if layer_abs_name_scope_default != self.layer_abs_name_scope:  # default does not match what we require
+      if self.layer_abs_name_scope == self.parent.layer_abs_name_scope_effective:
+        self.custom_layer_name_scope = ""
+      elif self.layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
+        self.custom_layer_name_scope = self.layer_abs_name_scope[len(layer_abs_name_scope_parent):]
+      else:  # must use absolute
+        self.custom_layer_name_scope = "/" + self.layer_abs_name_scope
+    if self.layer:
+      assert self.layer.layer_dict.get("name_scope", None) is None
+      if self.custom_layer_name_scope is not None:
+        self.layer.layer_dict["name_scope"] = self.custom_layer_name_scope
 
   def _remove_unused(self):
     # Collect all used tensor names.
@@ -403,8 +434,10 @@ class NameCtx:
     prefix = self.parent.layer_abs_name_scope_effective
     if prefix:
       prefix += "/"
-    if self.layer and self.layer.layer_dict.get("name_scope", None) is not None:
-      name_scope = self.layer.layer_dict["name_scope"]
+    if self.layer:
+      assert self.layer.layer_dict.get("name_scope", None) == self.custom_layer_name_scope
+    if self.custom_layer_name_scope is not None:
+      name_scope = self.custom_layer_name_scope
       assert isinstance(name_scope, str)
       if name_scope == "":
         return prefix[:-1]
@@ -430,7 +463,7 @@ class NameCtx:
     self._layer_abs_name_scope = self._get_abs_canonical_name()
     return self._layer_abs_name_scope
 
-  def _get_abs_canonical_name(self, join_str="/") -> str:
+  def _get_abs_canonical_name(self, *, join_str="/", try_run: bool = False) -> Optional[str]:
     """
     :param str join_str: maybe "." is more common for attrib chains.
       however, we use "/" as default, to make this consistent to :func:`get_abs_name`.
@@ -469,6 +502,8 @@ class NameCtx:
       if root_module in cache:
         break
     if root_module not in cache:
+      if try_run:
+        return None
       err_msgs = []
       for module, name in cache.items():
         err_msgs.append(f"  {module}: {name}\n")

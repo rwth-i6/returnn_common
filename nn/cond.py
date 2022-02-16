@@ -149,12 +149,13 @@ class CondModule(nn.Module):
     Makes layer dict for this loop, i.e. a RecLayer.
     """
     name_ctx = self.cond.name_ctx
+    name_ctx.custom_layer_name_scope = ""
     # noinspection PyProtectedMember
     true_value = self.cond._true_value
     assert isinstance(true_value, nn.Tensor)  # not implemented otherwise
     return nn.make_layer(
       {
-        "class": "cond", "from": [], "name_scope": "",
+        "class": "cond", "from": [],
         "condition": self.cond.condition,
         "true_layer": {
           "class": "subnetwork", "from": [], "subnetwork": self.cond.true_branch_name_ctx.make_net()},
