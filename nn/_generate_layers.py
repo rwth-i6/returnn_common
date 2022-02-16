@@ -112,7 +112,7 @@ LayersSupportingMultipleSources = {
   "eval", "combine", "compare", "stack"
 }
 
-LayersNeedingMultipleSources = LayersSupportingMultipleSources.copy() - {"eval"}
+LayersNeedingMultipleSources = LayersSupportingMultipleSources.copy() - {"eval", "compare"}
 
 LayersExplicitFixedMultipleSources = {
   "dot": 2,
