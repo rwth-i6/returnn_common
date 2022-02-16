@@ -116,7 +116,7 @@ class SelfAttention(GenericSelfAttention):
   @nn.scoped
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
-    out, _ = super().__call__(source, axis=axis, causal=False)
+    out, _ = super().__call__ (source, axis=axis, causal=False, name="")
     return out
 
 
@@ -128,5 +128,5 @@ class CausalSelfAttention(GenericSelfAttention):
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """forward"""
-    out, state = super().__call__(source, causal=True, axis=axis, state=state)
+    out, state = super().__call__(source, causal=True, axis=axis, state=state, name="")
     return out, state
