@@ -49,7 +49,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Callable
 from returnn.tf.util.data import *  # Dim, Data, and others
 # noinspection PyProtectedMember
 from returnn.tf.util.data import _MarkedDim
@@ -121,6 +121,7 @@ class Tensor:
     self.data = data
     self.layer_dict = layer_dict
     self.is_ref = is_ref
+    self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
   def __repr__(self):
     parts = [self.__class__.__name__, self.name_ctx.get_abs_name_repr()]
