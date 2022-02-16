@@ -18,7 +18,7 @@ def test_concat():
 
     @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
-      return nn.concat((x, x.feature_dim), (x * 2, x.feature_dim))
+      return nn.concat((x, x.feature_dim), (x * 2., x.feature_dim))
 
   config, net_dict = dummy_config_net_dict(net=_Net())
   dummy_run_net(config)
