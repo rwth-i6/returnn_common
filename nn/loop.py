@@ -107,7 +107,9 @@ class Loop:
     finally:
       self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
     if not exc_type:
-      self.layer_module()  # create the rec layer itself
+      res = self.layer_module()  # create the rec layer itself
+      if self.end_ref is not None:
+        res.extra_dependencies.append(self.end_ref)
 
   @property
   def has_entered_scope(self) -> bool:
@@ -246,6 +248,10 @@ class PrevTensorRef(nn.Tensor):
     # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
     super().__init__(name_ctx=name_ctx, data=data, is_ref=True)
     self.cur_layer_name_ctx = cur_layer_name_ctx
+
+  def get_dependencies(self) -> List[nn.Tensor]:
+    """dependencies"""
+    return super(PrevTensorRef, self).get_dependencies() + [self.cur_layer_name_ctx.layer_ref]
 
 
 class _LoopStateHolder:

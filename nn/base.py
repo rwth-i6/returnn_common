@@ -121,6 +121,7 @@ class Tensor:
     self.data = data
     self.layer_dict = layer_dict
     self.is_ref = is_ref
+    self.extra_dependencies = []  # type: List[Tensor]
     self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
   def __repr__(self):
@@ -269,8 +270,32 @@ class Tensor:
 
     :return: the "output" layer.
     """
-    self.mark_as_output()
-    return nn.NameCtx.current_ctx().make_default_output(self)
+    res = nn.NameCtx.current_ctx().make_default_output(self)
+    res.mark_as_output()
+    return res
+
+  def get_dependencies(self) -> List[nn.Tensor]:
+    """
+    :return: list of tensors this tensor depends on
+    """
+    dep_list = []
+    dep_name_set = set()
+
+    def _maybe_add_dep(x):
+      if isinstance(x, nn.Tensor):
+        if x.name_ctx in dep_name_set:
+          return
+        dep_list.append(x)
+        dep_name_set.add(x.name_ctx)
+        return
+
+    if self.layer_dict:
+      nest.map_structure(_maybe_add_dep, self.layer_dict)
+    if self.name_ctx.children and "output" in self.name_ctx.children:
+      _maybe_add_dep(self.name_ctx.children["output"].layer_ref)
+    if self.name_ctx.parent and self.name_ctx.parent.layer_ref:
+      _maybe_add_dep(self.name_ctx.parent.layer_ref)
+    return dep_list + self.extra_dependencies
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
