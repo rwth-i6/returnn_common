@@ -267,10 +267,42 @@ class NameCtx:
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
 
+  def _remove_unused(self):
+    # Collect all used tensor names.
+    used_names = {self}  # type: Set[nn.NameCtx]
+    queue = list(self.marked_outputs + self.marked_losses)  # type: List[nn.Tensor]
+    while queue:
+      tensor = queue.pop(0)
+      if tensor.name_ctx is used_names:
+        continue
+      used_names.add(tensor.name_ctx)
+      for dep in tensor.get_dependencies():
+        if dep.name_ctx not in used_names:
+          queue.append(dep)
+
+    # Go through all names in the hierarchy and remove unused.
+    visited = set()  # type: Set[nn.NameCtx]
+    queue = [self]  # type: List[nn.NameCtx]
+    while queue:
+      name_ctx = queue.pop(0)
+      if name_ctx in visited:
+        continue
+      visited.add(name_ctx)
+      if name_ctx not in used_names:
+        assert name_ctx.parent
+        name_ctx.parent.children.pop(name_ctx.name)
+        if name_ctx.layer_ref:
+          for hook in name_ctx.layer_ref.remove_unused_cleanup_hooks:
+            hook(name_ctx.layer_ref)
+      else:
+        for child in name_ctx.children.values():
+          queue.append(child)
+
   def get_returnn_config(self) -> Dict[str, Any]:
     """
     :return: config dict updates for returnn
     """
+    self._remove_unused()
     assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
     net_dict = self.make_net().make_net_dict_raw()
     return {
