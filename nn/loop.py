@@ -376,8 +376,9 @@ class _LoopState:
 
             # Note: Only do this optimization for the cum_concat layer because otherwise
             # we might rely on the intial output shape.
-            if initial.layer_dict and initial.layer_dict["class"] == "constant":
-              initial = initial.layer_dict["value"]
+            initial_const = nn.constant_value(initial)
+            if initial_const is not None:
+              initial = initial_const
 
           assert "initial_state" not in layer_ref.layer_dict
           assert "initial_output" not in layer_ref.layer_dict
