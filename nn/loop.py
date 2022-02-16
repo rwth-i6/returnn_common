@@ -75,6 +75,7 @@ class Loop:
     self._state = _LoopStateHolder(loop=self)
     self.unstacked_refs = []  # type: List[nn.Tensor]
     self.outputs = []  # type: List[nn.Tensor]
+    self._last_frames = {}  # type: Dict[nn.NameCtx, nn.Tensor]  # inner name -> outer
     self._has_given_axis = bool(axis)
     self.axis = axis
     self.control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Loop)
@@ -168,13 +169,18 @@ class Loop:
     Gets the last value from source.
     """
     assert isinstance(source, nn.Tensor)
+    if source.name_ctx in self._last_frames:
+      return self._last_frames[source.name_ctx]
     source.layer_dict["need_last"] = True
     sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
     with self.name_ctx.parent:  # need to be outside the loop
-      return nn.make_layer(
+      res = nn.make_layer(
         {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
         predefined_out_data=source.data,
         name=name or sub_layer_name.replace("/", "_"))
+      res.remove_unused_cleanup_hooks.append(lambda _: source.layer_dict.pop("need_last"))
+      self._last_frames[source.name_ctx] = res
+      return res
 
   def end(self, source: nn.Tensor, *, include_eos: bool) -> nn.Tensor:
     """
