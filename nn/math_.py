@@ -159,6 +159,31 @@ def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]]
   return nn.make_layer(d, name=activation)
 
 
+def compare(a: nn.Tensor, b: nn.Tensor, *, kind: str) -> nn.Tensor:
+  """
+  compare a and b
+  """
+  a_const = nn.constant_value(a)
+  b_const = nn.constant_value(b)
+  if a_const is not None and b_const is not None:
+    import operator
+    res_const = {
+      "equal": operator.eq, "not_equal": operator.ne,
+      "less": operator.lt, "less_equal": operator.le,
+      "greater": operator.gt, "greater_equal": operator.ge}[kind](a_const, b_const)
+    return nn.constant(value=res_const, dtype="bool", name="const_" + kind)
+  from ._generated_layers import _compare
+  if b_const is not None:
+    return _compare(a, kind=kind, value=b_const, name=kind)
+  if a_const is not None:
+    kind_rev = {
+      "equal": "equal", "not_equal": "not_equal",
+      "less": "greater", "less_equal": "greater_equal",
+      "greater": "less", "greater_equal": "less_equal"}[kind]
+    return _compare(b, kind=kind_rev, value=a_const, name=kind)
+  return _compare([a, b], kind=kind, name=kind)
+
+
 def cumsum(
       x: nn.Tensor, *,
       axis: nn.Dim,

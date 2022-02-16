@@ -360,28 +360,22 @@ class Tensor:
     return nn.floor(self)
 
   def __eq__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _compare
-    return _compare([self, nn.convert_to_layer_ref(other)], kind="equal", name="equal")
+    return nn.compare(self, nn.convert_to_layer_ref(other), kind="equal")
 
   def __ne__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _compare
-    return _compare([self, nn.convert_to_layer_ref(other)], kind="not_equal", name="not_equal")
+    return nn.compare(self, nn.convert_to_layer_ref(other), kind="not_equal")
 
   def __lt__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _compare
-    return _compare([self, nn.convert_to_layer_ref(other)], kind="less", name="less")
+    return nn.compare(self, nn.convert_to_layer_ref(other), kind="less")
 
   def __le__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _compare
-    return _compare([self, nn.convert_to_layer_ref(other)], kind="less_equal", name="less_equal")
+    return nn.compare(self, nn.convert_to_layer_ref(other), kind="less_equal")
 
   def __gt__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _compare
-    return _compare([self, nn.convert_to_layer_ref(other)], kind="greater", name="greater")
+    return nn.compare(self, nn.convert_to_layer_ref(other), kind="greater")
 
   def __ge__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _compare
-    return _compare([self, nn.convert_to_layer_ref(other)], kind="greater_equal", name="greater_equal")
+    return nn.compare(self, nn.convert_to_layer_ref(other), kind="greater_equal")
 
 
 class Parameter(Tensor):
