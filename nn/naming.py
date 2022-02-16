@@ -61,6 +61,8 @@ def scoped(func):
   assert callable(func)
 
   def _wrapper(*args, name: Optional[Union[str, nn.NameCtx]] = None, **kwargs):
+    if name == "":
+      return func(*args, **kwargs)
     if args and isinstance(args[0], nn.Module):
       self = args[0]
     else:
