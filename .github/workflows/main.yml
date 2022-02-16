@@ -21,6 +21,7 @@ jobs:
           - 2.3.0
         action:
           - TEST=hello
+          - TEST=nn_array
           - TEST=nn_attention
           - TEST=nn_base
           - TEST=nn_container
