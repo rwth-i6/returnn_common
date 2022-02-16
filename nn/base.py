@@ -261,7 +261,10 @@ class Tensor:
     assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
     scope = nn.NameCtx.current_ctx()
     assert scope.parent is None, f"{self} mark_as_output only makes sense at the top level"
-    self.layer_dict["is_output_layer"] = True
+    if self.name_ctx is scope.children.get("output"):
+      pass  # not needed
+    else:
+      self.layer_dict["is_output_layer"] = True
     scope.marked_outputs.append(self)
 
   def mark_as_default_output(self) -> Tensor:
