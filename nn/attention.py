@@ -79,7 +79,7 @@ class GenericSelfAttention(nn.Module):
                causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     """forward"""
-    expand_dim = nn.SpatialDim("self_att_expand_dim")
+    expand_dim = nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:self_att_expand_dim")
     qkv = self.qkv(source)
     qkv = nn.split_dims(
       qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head), name="qkv_split_dims")
