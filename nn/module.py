@@ -197,6 +197,9 @@ class Functional(Module):
     assert callable(func)
     self.func = func
 
+  def __repr__(self):
+    return f"{self.__class__.__name__}({self.func.__name__})"
+
   def get_default_name(self) -> str:
     """default name"""
     return self.func.__qualname__
