@@ -837,6 +837,8 @@ class ReturnnDimTagsProxy:
       assert dim not in self.dim_refs_by_tag
       name_ = dim.description
       name_ = re.sub(r"[^a-zA-Z0-9_]", "_", name_)
+      if name_.endswith("_dim"):
+        name_ = name_[:-len("_dim")]
       if name_ not in self.dim_refs_by_name:
         return name_
       i = 0
