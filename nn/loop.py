@@ -200,6 +200,18 @@ class Loop:
     self.end_ref = copy(source, name=self.name_ctx.get_child("end"))
     return self.end_ref
 
+  @property
+  def max_seq_len(self) -> Optional[nn.Tensor]:
+    """max seq length in case the length is dynamic via :func:`end`"""
+    return self.extra_opts.get("max_seq_len_via")
+
+  @max_seq_len.setter
+  def max_seq_len(self, value: Optional[nn.Tensor]):
+    if value is None:
+      self.extra_opts.pop("max_seq_len_via", None)
+    else:
+      self.extra_opts["max_seq_len_via"] = value
+
 
 class LoopModule(nn.Module):
   """
