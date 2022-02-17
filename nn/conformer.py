@@ -64,7 +64,7 @@ class ConformerConvBlock(nn.Module):
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> nn.Tensor:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
-    x_act = nn.glu(x_conv1, axis=inp.feature_dim)
+    x_act = nn.glu(x_conv1)
     x_depthwise_conv, _ = self.depthwise_conv(x_act, in_spatial_dim=in_spatial_dim)
     x_normed = self.norm(x_depthwise_conv)
     x_swish = nn.swish(x_normed)
@@ -188,7 +188,7 @@ class ConformerEncoderLayer(nn.Module):
 
     # Conv
     x_conv_ln = nn.layer_norm(x_mhsa_out, in_dim=inp.feature_dim)
-    x_conv = self.conv_block(x_conv_ln)
+    x_conv = self.conv_block(x_conv_ln, in_spatial_dim=axis)
     x_conv_out = nn.dropout(x_conv, axis=inp.feature_dim, dropout=self.dropout) + x_mhsa_out
 
     # FFN
@@ -259,5 +259,5 @@ class ConformerEncoder(nn.Module):
       inp, in_spatial_dim=in_spatial_dim, out_spatial_dim=out_spatial_dim)
     x_linear = self.linear(x_subsample)
     x = nn.dropout(x_linear, axis=self.linear.out_dim, dropout=self.dropout)
-    x = self.layers(x, in_spatial_dim=out_spatial_dim)
+    x = self.layers(x, axis=out_spatial_dim)
     return x, out_spatial_dim
