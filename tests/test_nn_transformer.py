@@ -28,7 +28,8 @@ def test_nn_transformer_search():
       target_vocab=target_dim)
     out, _ = transformer(
       data, source_spatial_axis=time_dim,
-      search=True, beam_size=3, max_seq_len=10,
+      search=True, beam_size=3,
+      max_seq_len=nn.reduce(nn.length(data, axis=time_dim), mode="max", axis=nn.batch_dim),
       eos_symbol=0, name=name_ctx)
     out.mark_as_default_output()
 
