@@ -2195,7 +2195,7 @@ def rec_unstack(
 def choice(
            source: nn.Tensor,
            *,
-           target: nn.Tensor,
+           target: Optional[nn.Tensor] = NotSpecified,
            beam_size: int,
            keep_beams: bool = NotSpecified,
            search: Union[NotSpecified, bool] = NotSpecified,
@@ -2235,7 +2235,7 @@ def choice(
   use separate ChoiceLayers and let the input of one depend on the output of the other.
 
   :param nn.Tensor source:
-  :param nn.Tensor target: target
+  :param nn.Tensor|None target: target
   :param int beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
   :param bool keep_beams: specifies that we keep the beam_in entries,
     i.e. we just expand, i.e. we just search on the dim. beam_size must be a multiple of beam_in.

@@ -179,6 +179,10 @@ PerLayerMandatoryArgs = {
   "split_batch_beam": {"beam_dim"},
 }
 
+PerLayerOptionalArgs = {
+  "choice": {"target": "None"},
+}
+
 FunctionNameMap = {
   "source": "external_data",  # but not used actually because blacklisted
   "norm": "normalize",
@@ -904,6 +908,11 @@ class LayerSignature:
         continue
       if name in PerLayerMandatoryArgs.get(self.layer_class.layer_class, ()):
         param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)  # make not optional
+      if name in PerLayerOptionalArgs.get(self.layer_class.layer_class, ()):
+        opt_value_s = PerLayerOptionalArgs[self.layer_class.layer_class][name]
+        param.inspect_param = param.inspect_param.replace(default=opt_value_s)  # make optional
+        if opt_value_s == "None":
+          param.param_type_s += "|None"
       if name in {"axis", "axes"} or (param.param_type_s and "Dim" in param.param_type_s):
         self._handle_axis_like_arg(param)
     if "window_size" in self.params and "window_dim" in self.params:
