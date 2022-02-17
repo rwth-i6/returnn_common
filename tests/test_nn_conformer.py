@@ -1,0 +1,44 @@
+"""
+Test nn.conformer.
+"""
+
+from __future__ import annotations
+
+from . import _setup_test_env  # noqa
+from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
+from nose.tools import assert_equal
+from tensorflow.python.util import nest
+import typing
+
+if typing.TYPE_CHECKING:
+  from .. import nn
+else:
+  from returnn_common import nn  # noqa
+
+
+def test_nn_conformer():
+  with nn.NameCtx.new_root() as name_ctx:
+    time_dim = nn.SpatialDim("time")
+    input_dim = nn.FeatureDim("input", 10)
+    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
+    conformer = nn.ConformerEncoder(
+      out_dim=nn.FeatureDim("out", 14), dim_ff=nn.FeatureDim("ff", 17),
+      num_heads=2, num_layers=2)
+    out, _ = conformer(data, in_spatial_dim=time_dim, name=name_ctx)
+    out.mark_as_default_output()
+
+  config_code = name_ctx.get_returnn_config_serialized()
+  config, net_dict = config_net_dict_via_serialized(config_code)
+
+  collected_name_scopes = {}  # path -> name_scope
+
+  def _collect_name_scope(path, x):
+    if path and path[-1] == "name_scope":
+      collected_name_scopes[path] = x
+
+  nest.map_structure_with_tuple_paths(_collect_name_scope, net_dict)
+  assert_equal(collected_name_scopes, {
+    ('conv_subsample_layer', 'subnetwork', 'conv_layers.0', 'name_scope'): 'conv_layers/0',
+    ('conv_subsample_layer', 'subnetwork', 'conv_layers.1', 'name_scope'): 'conv_layers/1'})
+
+  dummy_run_net(config)
