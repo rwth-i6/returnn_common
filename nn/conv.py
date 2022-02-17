@@ -129,13 +129,13 @@ class _Conv(_ConvOrTransposedConv):
         for i, s in enumerate(self.filter_size)]
       for i in range(len(self.filter_size)):
         s = 1 if not self.strides else self.strides[i]
-        if self.filter_size[i] == s == 1 or (s == 1 and self.padding.lower() == "same"):
+        if self.filter_size[i].dimension == s == 1 or (s == 1 and self.padding.lower() == "same"):
           out_spatial_dims[i] = in_spatial_dims[i]
     layer_dict = {
       "class": "conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
       "out_dim": self.out_dim, "out_spatial_dims": out_spatial_dims,
-      "filter_size": self.filter_size, "padding": self.padding}
+      "filter_size": [d.dimension for d in self.filter_size], "padding": self.padding}
     if self.strides:
       layer_dict["strides"] = self.strides
     if self.dilation_rate:
@@ -248,14 +248,14 @@ class _TransposedConv(_ConvOrTransposedConv):
         nn.SpatialDim(f"{nn.NameCtx.current_ctx().layer_abs_name_scope}:out-spatial-dim{i}")
         for i, s in enumerate(self.filter_size)]
       for i in range(len(self.filter_size)):
-        s = self.filter_size[i] if not self.strides else self.strides[i]
-        if self.filter_size[i] == s == 1 or (s == 1 and self.padding.lower() == "same"):
+        s = self.filter_size[i].dimension if not self.strides else self.strides[i]
+        if self.filter_size[i].dimension == s == 1 or (s == 1 and self.padding.lower() == "same"):
           out_spatial_dims[i] = in_spatial_dims[i]
     layer_dict = {
       "class": "transposed_conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
       "out_dim": self.out_dim, "out_spatial_dims": out_spatial_dims,
-      "filter_size": self.filter_size, "padding": self.padding}
+      "filter_size": [d.dimension for d in self.filter_size], "padding": self.padding}
     if self.remove_padding:
       layer_dict["remove_padding"] = self.remove_padding
     if self.output_padding:
