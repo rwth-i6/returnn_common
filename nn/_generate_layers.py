@@ -492,7 +492,9 @@ def setup():
           elif in_dim_arg:
             print(f"    {out_dim_arg} = {in_dim_arg}.copy(same_as_self=False, description={out_dim_arg!r})", file=f)
           else:
-            print(f"    {out_dim_arg} = nn.SpatialDim({out_dim_arg!r})", file=f)
+            print(
+              f"    {out_dim_arg} = nn.SpatialDim("
+              f"f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg!r})", file=f)
 
       if sig.has_recurrent_state() or mod_args:
         print("  args = {", file=f)

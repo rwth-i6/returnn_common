@@ -599,7 +599,7 @@ def range(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim('out_spatial_dim')
+    out_spatial_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
   args = {
     'limit': limit,
     'start': start,
@@ -679,7 +679,7 @@ def range_from_length(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim('out_spatial_dim')
+    out_spatial_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
   args = {
     'dtype': dtype,
     'sparse': sparse,
@@ -781,7 +781,7 @@ def rec_window(
   :return: layer, (window_dim, out_spatial_dim), out_state
   """
   if window_dim is None or window_dim is NotSpecified:
-    window_dim = nn.SpatialDim('window_dim')
+    window_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:window_dim')
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
   args = {
@@ -898,7 +898,7 @@ def merge_dims(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.SpatialDim('out_dim')
+    out_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'axes': axes,
     'out_dim': out_dim,
@@ -1379,7 +1379,7 @@ def stack(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim('out_spatial_dim')
+    out_spatial_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
   args = {
     'out_spatial_dim': out_spatial_dim,
     }
@@ -2400,7 +2400,7 @@ def split_batch_beam(
   :return: layer, beam_dim
   """
   if beam_dim is None or beam_dim is NotSpecified:
-    beam_dim = nn.SpatialDim('beam_dim')
+    beam_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:beam_dim')
   args = {
     'beam_dim': beam_dim,
     'search': search,
