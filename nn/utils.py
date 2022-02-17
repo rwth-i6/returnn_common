@@ -93,15 +93,24 @@ def reinterpret_new_dim(source: nn.Tensor, *, in_dim: nn.Dim, out_dim: Optional[
 
 
 def check_in_feature_dim_lazy_init(
-      source: nn.Tensor, in_dim: Optional[nn.Dim], lazy_init: Callable[[nn.Dim], Any]) -> nn.Tensor:
+      source: nn.Tensor, in_dim: Optional[nn.Dim], mod_in_dim: Optional[nn.Dim],
+      lazy_init: Callable[[nn.Dim], Any]) -> nn.Tensor:
   """
   This is a helper function for modules which want to lazily support assigning the in_dim.
   """
-  if in_dim:
-    if in_dim in source.shape:
+  if mod_in_dim:
+    if in_dim:
+      if in_dim != mod_in_dim:
+        raise ValueError(f"in_dim {in_dim} does not match module in_dim {mod_in_dim}")
+    if mod_in_dim in source.shape:
       return source  # all fine
-    raise ValueError(f"{source} does not have feature dim {in_dim}")
+    raise ValueError(f"{source} does not have feature dim {mod_in_dim}")
   # Not yet initialized.
+  if in_dim:
+    if in_dim not in source.shape:
+      raise ValueError(f"invalid in_dim {in_dim} for {source}")
+    lazy_init(in_dim)
+    return source
   if not source.feature_dim:
     raise ValueError(f"{source} has no feature dim. define the in_dim explicitly")
   lazy_init(source.feature_dim)

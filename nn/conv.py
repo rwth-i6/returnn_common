@@ -65,10 +65,13 @@ class _ConvOrTransposedConv(nn.Module):
       self.bias.initial = 0.
 
   def _call_nd1(self, source: nn.Tensor, *,
-                in_spatial_dim: nn.Dim, out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.Tensor, nn.Dim]:
+                in_dim: Optional[nn.Dim] = None,
+                in_spatial_dim: nn.Dim,
+                out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.Tensor, nn.Dim]:
     assert self.nd == 1
     out, (out_spatial_dim,) = self.__call__(
-      source, in_spatial_dims=[in_spatial_dim], out_spatial_dims=[out_spatial_dim] if out_spatial_dim else None)
+      source, in_dim=in_dim, in_spatial_dims=[in_spatial_dim],
+      out_spatial_dims=[out_spatial_dim] if out_spatial_dim else None)
     return out, out_spatial_dim
 
 
@@ -112,9 +115,11 @@ class _Conv(_ConvOrTransposedConv):
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *,
-               in_spatial_dims: Sequence[nn.Dim], out_spatial_dims: Optional[Sequence[nn.Dim]] = None
+               in_dim: Optional[nn.Dim] = None,
+               in_spatial_dims: Sequence[nn.Dim],
+               out_spatial_dims: Optional[Sequence[nn.Dim]] = None
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
-    source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
+    source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     if not out_spatial_dims:
       out_spatial_dims = [nn.SpatialDim(f"out-spatial-dim{i}") for i, s in enumerate(self.filter_size)]
     layer_dict = {
@@ -224,9 +229,11 @@ class _TransposedConv(_ConvOrTransposedConv):
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *,
-               in_spatial_dims: Sequence[nn.Dim], out_spatial_dims: Optional[Sequence[nn.Dim]] = None
+               in_dim: Optional[nn.Dim] = None,
+               in_spatial_dims: Sequence[nn.Dim],
+               out_spatial_dims: Optional[Sequence[nn.Dim]] = None
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
-    source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
+    source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     if not out_spatial_dims:
       out_spatial_dims = [nn.SpatialDim(f"out-spatial-dim{i}") for i, s in enumerate(self.filter_size)]
     layer_dict = {

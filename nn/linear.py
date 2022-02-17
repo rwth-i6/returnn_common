@@ -30,8 +30,8 @@ class Linear(nn.Module):
       self.bias.initial = 0.
 
   @nn.scoped
-  def __call__(self, source: nn.Tensor) -> nn.Tensor:
-    source = nn.check_in_feature_dim_lazy_init(source, self.in_dim, self._lazy_init)
+  def __call__(self, source: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
+    source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     out = nn.dot(source, self.weight, reduce=self.in_dim)
     if self.with_bias:
       out += self.bias
