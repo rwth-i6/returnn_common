@@ -82,7 +82,7 @@ def test_rec_simple_iter():
       Forward
       """
       # https://github.com/rwth-i6/returnn_common/issues/16
-      loop = nn.Loop(max_seq_len=10)
+      loop = nn.Loop(max_seq_len=nn.constant(value=10))
       loop.state.i = nn.zeros([nn.batch_dim])
       with loop:
         loop.state.i = loop.state.i + 1.
