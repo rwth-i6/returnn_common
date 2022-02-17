@@ -13,6 +13,7 @@ from .math_ import *
 from .array_ import *
 from .rand import *
 from .utils import *
+from .search import *
 from .normalization import *
 from .loss import *
 from .linear import *

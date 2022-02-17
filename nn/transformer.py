@@ -356,17 +356,18 @@ class Transformer(nn.Module):
   @nn.scoped
   def __call__(self, source: nn.Tensor, *,
                source_spatial_axis: nn.Dim,
-               target: Optional[nn.Tensor] = None,
+               target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
                initial_state: Optional[nn.LayerState] = None,
-               search: bool,
-               beam_size: Optional[int] = None,
-               max_seq_len: Optional[Union[nn.Tensor, int]] = None,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
     """
     memory = self.encoder(source, axis=source_spatial_axis)
-    loop = nn.Loop(max_seq_len=max_seq_len)
+    search = None
+    if isinstance(target, nn.SearchFuncInterface):
+      search = target
+      target = None
+    loop = nn.Loop()
     loop.state = initial_state if initial_state else self.default_initial_state()
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
@@ -376,7 +377,8 @@ class Transformer(nn.Module):
       logits = self.output_projection(output)
       target = loop.unstack(target) if target is not None else None
       if search:
-        loop.state.target = nn.choice(logits, input_type="logits", target=target, search=True, beam_size=beam_size)
+        search.apply_loop(loop)
+        loop.state.target = search.choice(output=logits, output_type="logits")
         loop.end(loop.state.target == self.target_eos_symbol, include_eos=False)
       else:
         assert target is not None
