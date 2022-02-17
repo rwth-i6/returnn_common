@@ -23,7 +23,7 @@ def test_nn_transformer_search():
     target_dim = nn.FeatureDim("target", 7)
     data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
     transformer = nn.Transformer(
-      output_dim=input_dim, dim_ff=input_dim * 4,
+      out_dim=input_dim, dim_ff=input_dim * 4,
       num_heads=2, num_encoder_layers=2, num_decoder_layers=2,
       target_vocab=target_dim)
     out, _ = transformer(
