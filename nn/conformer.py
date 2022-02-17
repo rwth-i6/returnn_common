@@ -205,26 +205,49 @@ class ConformerEncoder(nn.Module):
   Represents Conformer encoder architecture
   """
 
-  def __init__(self, *, num_layers: int, encoder_layer: Optional[Union[ConformerEncoderLayer, Any]] = None):
+  def __init__(self,
+               out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
+               *,
+               num_layers: int,
+               dim_ff: nn.Dim = nn.NotSpecified,
+               activation_ff: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
+               dropout: float = 0.1,
+               conv_kernel_size: int = 32,
+               conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
+               num_heads: int = 8,
+               att_dropout: float = 0.1,
+               custom_encoder_layer: Optional[Union[ConformerEncoderLayer, Any]] = None):
     """
+    :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
-    :param encoder_layer: an instance of :class:`ConformerEncoderLayer`
+    :param dim_ff: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
+    :param activation_ff: activation funtion for feed-forward network
+    :param dropout: the dropout value for the FF block
+    :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
+    :param conv_norm: used for the conv block. Batch norm originally
+    :param num_heads: the number of attention heads
+    :param att_dropout: attention dropout value
+    :param custom_encoder_layer: an instance of :class:`ConformerEncoderLayer` or similar
     """
     super().__init__()
 
-    if encoder_layer is None:
-      encoder_layer = ConformerEncoderLayer()
-
-    self.dropout = encoder_layer.dropout
-    self.out_dim = encoder_layer.out_dim
+    self.out_dim = out_dim
+    self.dropout = dropout
 
     self.conv_subsample_layer = ConformerConvSubsample(
       filter_sizes=[(3, 3), (3, 3)],
       pool_sizes=[(2, 2), (2, 2)],
       out_dims=[self.out_dim.copy(same_as_self=False, description="intermediate"), self.out_dim],
-      dropout=self.dropout)
+      dropout=dropout)
 
     self.linear = nn.Linear(self.out_dim, with_bias=False)
+
+    if custom_encoder_layer:
+      encoder_layer = custom_encoder_layer
+    else:
+      encoder_layer = ConformerEncoderLayer(
+        out_dim=out_dim, dim_ff=dim_ff, activation_ff=activation_ff, dropout=dropout,
+        conv_kernel_size=conv_kernel_size, conv_norm=conv_norm, num_heads=num_heads, att_dropout=att_dropout)
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
