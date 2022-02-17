@@ -32,37 +32,34 @@ def test_split_glu():
 
   config, net_dict = config_net_dict_via_serialized(name_ctx.get_returnn_config_serialized())
   batch_dim = nn.batch_dim
-  extern_data_data_dim_tags_1_time_dim = config["extern_data_data_dim_tags_1_time_dim"]
-  extern_data_data_dim_tags_2_feature_dim = config["extern_data_data_dim_tags_2_feature_dim"]
+  time_dim = config["time_dim"]
+  feature_dim = config["feature_dim"]
   assert_equal(
     net_dict,
     {
       'split': {
         'class': 'split',
         'from': 'data:data',
-        'axis': extern_data_data_dim_tags_2_feature_dim,
-        'out_dims': [
-          extern_data_data_dim_tags_2_feature_dim // 2,
-          extern_data_data_dim_tags_2_feature_dim // 2
-        ],
-        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim}
+        'axis': feature_dim,
+        'out_dims': [feature_dim // 2, feature_dim // 2],
+        'out_shape': {batch_dim, time_dim, feature_dim}
       },
       'sigmoid': {
         'class': 'activation',
         'from': 'split/1',
         'activation': 'sigmoid',
-        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim // 2}
+        'out_shape': {batch_dim, time_dim, feature_dim // 2}
       },
       'mul': {
         'class': 'combine',
         'from': ['split/0', 'sigmoid'],
         'kind': 'mul',
-        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim // 2}
+        'out_shape': {batch_dim, time_dim, feature_dim // 2}
       },
       'output': {
         'class': 'copy',
         'from': 'mul',
-        'out_shape': {batch_dim, extern_data_data_dim_tags_1_time_dim, extern_data_data_dim_tags_2_feature_dim // 2}
+        'out_shape': {batch_dim, time_dim, feature_dim // 2}
       }
     })
   dummy_run_net(config)
