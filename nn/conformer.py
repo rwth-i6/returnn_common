@@ -3,9 +3,9 @@ Conformer code.
 Ref: https://arxiv.org/abs/2005.08100
 """
 
-from typing import Tuple, List, Callable, Optional
-from .. import nn
+from typing import Tuple, List, Callable, Optional, Union, Any
 import copy as _copy
+from .. import nn
 
 
 class ConformerPositionwiseFeedForward(nn.Module):
@@ -46,11 +46,11 @@ class ConformerConvBlock(nn.Module):
       FF -> GLU -> depthwise conv -> BN -> Swish -> FF
   """
 
-  def __init__(self, out_dim: nn.Dim, *, kernel_size: int, batch_norm: nn.BatchNorm):
+  def __init__(self, out_dim: nn.Dim, *, kernel_size: int, norm: Union[nn.BatchNorm, Any]):
     """
     :param out_dim: output feature dimension
     :param kernel_size: kernel size of depthwise convolution
-    :param batch_norm:
+    :param norm: Batch norm originally
     """
     super().__init__()
 
@@ -58,7 +58,7 @@ class ConformerConvBlock(nn.Module):
     self.depthwise_conv = nn.Conv1d(
       out_dim=out_dim, filter_size=kernel_size, groups=out_dim.dimension, padding='same')
     self.positionwise_conv2 = nn.Linear(out_dim)
-    self.batch_norm = batch_norm
+    self.norm = norm
 
   @nn.scoped
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> nn.Tensor:
@@ -66,8 +66,8 @@ class ConformerConvBlock(nn.Module):
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.glu(x_conv1, axis=inp.feature_dim)
     x_depthwise_conv, _ = self.depthwise_conv(x_act, in_spatial_dim=in_spatial_dim)
-    x_bn = self.batch_norm(x_depthwise_conv)
-    x_swish = nn.swish(x_bn)
+    x_normed = self.norm(x_depthwise_conv)
+    x_swish = nn.swish(x_normed)
     x_conv2 = self.positionwise_conv2(x_swish)
     return x_conv2
 
@@ -132,38 +132,43 @@ class ConformerEncoderLayer(nn.Module):
 
   def __init__(
         self,
-        *,
-        conv_kernel_size: int = 32,
-        activation_ff: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
         out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
-        num_heads: int = 8,
-        dim_ff: nn.Dim = nn.FeatureDim("conformer-enc-default-ff-dim", 2048),
+        *,
+        dim_ff: nn.Dim = nn.NotSpecified,
+        activation_ff: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
         dropout: float = 0.1,
+        conv_kernel_size: int = 32,
+        conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
+        num_heads: int = 8,
         att_dropout: float = 0.1,
-        batch_norm: nn.BatchNorm):
+        ):
     """
-    :param conv_kernel_size: the kernel size of depthwise convolution
-    :param activation_ff: activation funtion for feed-forward network
-    :param dim_ff: the dimension of feed-forward layers
-    :param dropout: the dropout value
-    :param att_dropout: attention dropout value
     :param out_dim: the output feature dimension
+    :param dim_ff: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
+    :param activation_ff: activation funtion for feed-forward network
+    :param dropout: the dropout value for the FF block
+    :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
+    :param conv_norm: used for the conv block. Batch norm originally
     :param num_heads: the number of attention heads
-    :param batch_norm:
+    :param att_dropout: attention dropout value
     """
     super().__init__()
 
     self.dropout = dropout
     self.out_dim = out_dim
 
+    if dim_ff is nn.NotSpecified:
+      dim_ff = out_dim * 4
     self.ffn1 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
     self.ffn2 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
 
+    if conv_norm is nn.NotSpecified:
+      conv_norm = nn.BatchNorm()
     self.conv_block = ConformerConvBlock(
-      out_dim=out_dim, kernel_size=conv_kernel_size, batch_norm=batch_norm)
+      out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
 
     self.self_att = nn.SelfAttention(
       key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
@@ -200,12 +205,15 @@ class ConformerEncoder(nn.Module):
   Represents Conformer encoder architecture
   """
 
-  def __init__(self, encoder_layer: ConformerEncoderLayer, num_layers: int):
+  def __init__(self, *, num_layers: int, encoder_layer: Optional[Union[ConformerEncoderLayer, Any]] = None):
     """
-    :param encoder_layer: an instance of :class:`ConformerEncoderLayer`
     :param num_layers: the number of encoder layers
+    :param encoder_layer: an instance of :class:`ConformerEncoderLayer`
     """
     super().__init__()
+
+    if encoder_layer is None:
+      encoder_layer = ConformerEncoderLayer()
 
     self.dropout = encoder_layer.dropout
     self.out_dim = encoder_layer.out_dim
