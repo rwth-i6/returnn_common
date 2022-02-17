@@ -256,6 +256,8 @@ class Transformer(nn.Module):
                output_dim: nn.Dim = nn.FeatureDim("output_dim", 512),
                *,
                target_vocab: nn.Dim,
+               target_bos_symbol: int = 0,
+               target_eos_symbol: int = 0,
                num_heads: Union[nn.Dim, int] = 8,
                num_encoder_layers: int = 6,
                num_decoder_layers: int = 6,
@@ -279,6 +281,9 @@ class Transformer(nn.Module):
     norm_first which would be False in the paper, but empirically performs better with True, thus being True by default.
 
     :param output_dim: output dimension, PyTorch name: d_model
+    :param target_vocab:
+    :param target_bos_symbol: beginning of sentence/sequence symbol
+    :param target_eos_symbol: end of sentence/sequence symbol
     :param num_heads: number heads, PyTorch name: nhead
     :param num_encoder_layers: Number of encoder layers
     :param num_decoder_layers: Number of decoder layers
@@ -320,6 +325,8 @@ class Transformer(nn.Module):
         encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm, norm_eps=norm_eps)
 
     self.target_vocab = target_vocab
+    self.target_bos_symbol = target_bos_symbol
+    self.target_eos_symbol = target_eos_symbol
     self.target_embedding = nn.Linear(output_dim)
 
     if custom_decoder is not None:
@@ -354,7 +361,6 @@ class Transformer(nn.Module):
                search: bool,
                beam_size: Optional[int] = None,
                max_seq_len: Optional[Union[nn.Tensor, int]] = None,
-               eos_symbol: Optional[int] = None,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
@@ -371,17 +377,17 @@ class Transformer(nn.Module):
       target = loop.unstack(target) if target is not None else None
       if search:
         loop.state.target = nn.choice(logits, input_type="logits", target=target, search=True, beam_size=beam_size)
-        loop.end(loop.state.target == eos_symbol, include_eos=False)
+        loop.end(loop.state.target == self.target_eos_symbol, include_eos=False)
       else:
         assert target is not None
         loop.state.target = target
       outputs = loop.stack(loop.state.target)
     return outputs, loop.state
 
-  def default_initial_state(self, initial_target_bos_symbol: int = 0) -> nn.LayerState:
+  def default_initial_state(self) -> nn.LayerState:
     """
     initial state declaration
     """
     return nn.LayerState(
-      target=nn.constant(value=initial_target_bos_symbol, shape=[nn.batch_dim], sparse_dim=self.target_vocab),
+      target=nn.constant(value=self.target_bos_symbol, shape=[nn.batch_dim], sparse_dim=self.target_vocab),
       decoder=self.decoder.default_initial_state())
