@@ -765,7 +765,7 @@ class ReturnnDimTagsProxy:
     """
     def __init__(self, *, dim: nn.Dim, name: Optional[str], path: Tuple[Any, ...], parent: ReturnnDimTagsProxy):
       self.dim = dim
-      self.name = name
+      self.name = name  # None, or valid Python identifier
       self.path = path
       self.parent = parent
       self.debug_idx = len(parent.dim_refs_by_name)
@@ -782,8 +782,7 @@ class ReturnnDimTagsProxy:
       :return: valid Python identifier
       """
       assert self.name
-      import re
-      return re.sub(r"[^a-zA-Z0-9_]", "_", self.name) + "_dim"
+      return self.name + "_dim"
 
     def dim_repr(self):
       """
@@ -825,7 +824,7 @@ class ReturnnDimTagsProxy:
 
     :return: new config
     """
-    # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
+    import re
 
     def _sort_key(value):
       if isinstance(value, ReturnnDimTagsProxy.DimRefProxy):
@@ -834,24 +833,20 @@ class ReturnnDimTagsProxy:
         return value.debug_idx
       return value
 
-    def _map_dict_key_to_path_elem_key(key):
-      if isinstance(key, nn.Dim):
-        return '_dim'  # description will be added to the name as well
-      return key
+    def _unique_name(dim: nn.Dim) -> str:
+      assert dim not in self.dim_refs_by_tag
+      name_ = dim.description
+      name_ = re.sub(r"[^a-zA-Z0-9_]", "_", name_)
+      if name_ not in self.dim_refs_by_name:
+        return name_
+      i = 0
+      while True:
+        name__ = f"{name_}_{i}"
+        if name__ not in self.dim_refs_by_name:
+          return name__
+        i += 1
 
-    def _map_dict_key_to_path_elem_value(key):
-      if isinstance(key, nn.Dim):
-        return key.description
-      return key
-
-    def _is_better_path(ref: ReturnnDimTagsProxy.DimRefProxy, new_path: Tuple[Any, ...]) -> bool:
-      for bad_key_words in ["out_shape", "random", "keys"]:
-        if all(bad_key_words not in part for part in ref.path if isinstance(part, str)):
-          continue
-        if all(bad_key_words not in part for part in new_path if isinstance(part, str)):
-          return True
-      return False
-
+    # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
     def _map(path, value):
       if isinstance(value, nn.Dim):
         if value in {nn.batch_dim, nn.single_step_dim}:
@@ -867,25 +862,17 @@ class ReturnnDimTagsProxy:
           _map(path, value.copy(match_priority=0))  # Register the dim tag without match_priority.
           # Now return the custom proxy for the dim tag with match_priority. No need to register this.
           return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
-        name = '.'.join(str(key) for key in path + (value.description,))
-        assert name not in self.dim_refs_by_name
         if value in self.dim_refs_by_tag:
-          ref = self.dim_refs_by_tag[value]
-          if _is_better_path(ref, path):
-            # Prefer path without "out_shape". Use new name.
-            del self.dim_refs_by_name[ref.name]
-            self.dim_refs_by_name[name] = ref
-            ref.name = name
-            ref.path = path
-          return ref
+          return self.dim_refs_by_tag[value]
+        name = _unique_name(value)
+        assert name not in self.dim_refs_by_name
         ref = ReturnnDimTagsProxy.DimRefProxy(dim=value, name=name, path=path, parent=self)
         self.dim_refs_by_name[name] = ref
         self.dim_refs_by_tag[value] = ref
         return ref
       if isinstance(value, dict):
         return {
-          _map(path + ("keys", _map_dict_key_to_path_elem_key(key)), key): (
-            _map(path + (_map_dict_key_to_path_elem_value(key),), value_))
+          _map(path + (key, "key"), key): _map(path + (key, "value"), value_)
           for key, value_ in value.items()}
       if isinstance(value, list):
         return [_map(path + (i,), value_) for i, value_ in enumerate(value)]
@@ -895,7 +882,7 @@ class ReturnnDimTagsProxy:
         # noinspection PyProtectedMember,PyUnresolvedReferences,PyArgumentList
         return type(value)(*(_map(path + (key,), getattr(value, key)) for key in value._fields))
       if isinstance(value, set):
-        values = [_map(path + ('_',), value_) for value_ in value]
+        values = [_map(path + (value,), value_) for value_ in value]
         values.sort(key=_sort_key)  # this should be possible now because it would be some sortable proxies
         return ReturnnDimTagsProxy.SetProxy(values)
       return value
