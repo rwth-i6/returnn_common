@@ -62,8 +62,10 @@ def gelu(x: nn.Tensor) -> nn.Tensor:
 
 
 @nn.scoped
-def glu(x: nn.Tensor, axis: nn.Dim) -> nn.Tensor:
+def glu(x: nn.Tensor, *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """GLU https://arxiv.org/abs/1612.08083"""
+  if axis is None:
+    axis = x.feature_dim
   from . import split
   a, b = split(x, axis=axis, out_dims=[axis // 2, axis // 2])
   return a * sigmoid(b)
