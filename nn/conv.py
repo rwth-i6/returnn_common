@@ -69,8 +69,8 @@ class _ConvOrTransposedConv(nn.Module):
                 in_spatial_dim: nn.Dim,
                 out_spatial_dim: Optional[nn.Dim] = None) -> Tuple[nn.Tensor, nn.Dim]:
     assert self.nd == 1
-    out, (out_spatial_dim,) = super().__call__(
-      source, in_dim=in_dim, in_spatial_dims=[in_spatial_dim],
+    out, (out_spatial_dim,) = self.__class__.__base__.__call__(
+      self, source, in_dim=in_dim, in_spatial_dims=[in_spatial_dim],
       out_spatial_dims=[out_spatial_dim] if out_spatial_dim else None)
     return out, out_spatial_dim
 
