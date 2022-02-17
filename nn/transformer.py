@@ -256,7 +256,7 @@ class Transformer(nn.Module):
                output_dim: nn.Dim = nn.FeatureDim("output_dim", 512),
                *,
                target_vocab: nn.Dim,
-               num_heads: int = 8,
+               num_heads: Union[nn.Dim, int] = 8,
                num_encoder_layers: int = 6,
                num_decoder_layers: int = 6,
                dim_ff: nn.Dim = nn.FeatureDim("ff_dim", 2048),
@@ -300,6 +300,9 @@ class Transformer(nn.Module):
     :param enc_dec_attention: module which does encoder decoder attention
     """
     super().__init__()
+
+    if isinstance(num_heads, int):
+      num_heads = nn.SpatialDim("num_heads", num_heads)
 
     if custom_encoder is not None:
       self.encoder = custom_encoder
