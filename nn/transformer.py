@@ -261,7 +261,7 @@ class Transformer(nn.Module):
                num_heads: Union[nn.Dim, int] = 8,
                num_encoder_layers: int = 6,
                num_decoder_layers: int = 6,
-               dim_ff: nn.Dim = nn.FeatureDim("ff_dim", 2048),
+               dim_ff: nn.Dim = nn.NotSpecified,
                dropout: float = 0.1,
                att_dropout: float = 0.1,
                activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
@@ -287,7 +287,7 @@ class Transformer(nn.Module):
     :param num_heads: number heads, PyTorch name: nhead
     :param num_encoder_layers: Number of encoder layers
     :param num_decoder_layers: Number of decoder layers
-    :param dim_ff: dimension of feedforward layer, PyTorch name: dim_feedforward
+    :param dim_ff: dimension of feedforward layer, PyTorch name: dim_feedforward. 4 * out_dim by default.
     :param dropout: Dropout value, PyTorch name: dropout
     :param att_dropout: dropout value for attention
     :param activation: activation function
@@ -340,6 +340,8 @@ class Transformer(nn.Module):
             key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
         if enc_dec_attention is None:
           enc_dec_attention = nn.dot_attention
+        if dim_ff is nn.NotSpecified:
+          dim_ff = out_dim * 4
         decoder_layer = TransformerDecoderLayer(
           out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=enc_dec_attention)
