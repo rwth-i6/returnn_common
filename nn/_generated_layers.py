@@ -1210,7 +1210,7 @@ def _pool(
   """
   if out_spatial_dims is None or out_spatial_dims is NotSpecified:
     out_spatial_dims = [
-      d.copy(same_as_self=False, description=f'out_spatial_dims{i}')
+      d.copy(same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dims{i}')
       for i, d in enumerate(in_spatial_dims)]
   args = {
     'mode': mode,

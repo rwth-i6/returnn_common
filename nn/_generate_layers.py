@@ -486,7 +486,8 @@ def setup():
             assert in_dim_arg is not None
             print(
               f"    {out_dim_arg} = [\n"
-              f"      d.copy(same_as_self=False, description=f{out_dim_arg + '{i}'!r})\n"
+              f"      d.copy(same_as_self=False,"
+              f" description=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg + '{i}'!r})\n"
               f"      for i, d in enumerate({in_dim_arg})]", file=f)
           elif in_dim_arg:
             print(f"    {out_dim_arg} = {in_dim_arg}.copy(same_as_self=False, description={out_dim_arg!r})", file=f)
