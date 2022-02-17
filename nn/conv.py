@@ -120,6 +120,9 @@ class _Conv(_ConvOrTransposedConv):
                out_spatial_dims: Optional[Sequence[nn.Dim]] = None
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
+    for in_spatial_dim in in_spatial_dims:
+      if in_spatial_dim not in source.shape:
+        raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
     if not out_spatial_dims:
       out_spatial_dims = [
         nn.SpatialDim(f"{nn.NameCtx.current_ctx().layer_abs_name_scope}:out-spatial-dim{i}")
