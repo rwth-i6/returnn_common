@@ -237,7 +237,7 @@ class ConformerEncoder(nn.Module):
     self.conv_subsample_layer = ConformerConvSubsample(
       filter_sizes=[(3, 3), (3, 3)],
       pool_sizes=[(2, 2), (2, 2)],
-      out_dims=[self.out_dim.copy(same_as_self=False, description="intermediate"), self.out_dim],
+      out_dims=[self.out_dim.copy(same_as_self=False, description="intermediate_out_sub_sample"), self.out_dim],
       dropout=dropout)
 
     self.linear = nn.Linear(self.out_dim, with_bias=False)
