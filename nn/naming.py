@@ -229,12 +229,33 @@ class NameCtx:
     if layer_ref.name_ctx.parent:
       old_name_ctx = layer_ref.name_ctx.parent.children.pop(layer_ref.name_ctx.name)
       assert old_name_ctx is layer_ref.name_ctx
+    old_name_ctx = layer_ref.name_ctx
 
     # Now reassign.
     layer_ref.name_ctx = self
     self.layer_ref = layer_ref
-    if isinstance(layer_ref, nn.Tensor):
+    if layer_ref.layer_dict:
       self.layer = layer_ref
+    self.module = old_name_ctx.module
+    if self.module:
+      for i, call in enumerate(self.module.calls):
+        if call is old_name_ctx:
+          self.module.calls[i] = self
+    self.children = old_name_ctx.children
+    for child in self.children.values():
+      child.parent = self
+
+    if layer_ref.layer_dict:
+      def _check_layer_opt_value(v):
+        if isinstance(v, nn.Net):
+          assert v.name_ctx is old_name_ctx
+          v.name_ctx = self
+      nest.map_structure(_check_layer_opt_value, layer_ref.layer_dict)
+
+    # Make sure the name scope is correct.
+    self.custom_layer_name_scope = None
+    self._layer_abs_name_scope = None
+    self._assign_layer_name_scope()
 
   @property
   def root(self) -> NameCtx:
