@@ -127,6 +127,10 @@ class _Conv(_ConvOrTransposedConv):
       out_spatial_dims = [
         nn.SpatialDim(f"{nn.NameCtx.current_ctx().layer_abs_name_scope}:out-spatial-dim{i}")
         for i, s in enumerate(self.filter_size)]
+      for i in range(len(self.filter_size)):
+        s = 1 if not self.strides else self.strides[i]
+        if self.filter_size[i] == s == 1 or (s == 1 and self.padding.lower() == "same"):
+          out_spatial_dims[i] = in_spatial_dims[i]
     layer_dict = {
       "class": "conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
@@ -240,7 +244,13 @@ class _TransposedConv(_ConvOrTransposedConv):
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     if not out_spatial_dims:
-      out_spatial_dims = [nn.SpatialDim(f"out-spatial-dim{i}") for i, s in enumerate(self.filter_size)]
+      out_spatial_dims = [
+        nn.SpatialDim(f"{nn.NameCtx.current_ctx().layer_abs_name_scope}:out-spatial-dim{i}")
+        for i, s in enumerate(self.filter_size)]
+      for i in range(len(self.filter_size)):
+        s = self.filter_size[i] if not self.strides else self.strides[i]
+        if self.filter_size[i] == s == 1 or (s == 1 and self.padding.lower() == "same"):
+          out_spatial_dims[i] = in_spatial_dims[i]
     layer_dict = {
       "class": "transposed_conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
