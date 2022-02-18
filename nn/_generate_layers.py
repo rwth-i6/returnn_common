@@ -47,6 +47,7 @@ BlacklistLayerClassNames = {
   "linear",
   "conv",
   "transposed_conv",
+  "pool",
   "rec",
   "self_attention",
   "concat_attention",

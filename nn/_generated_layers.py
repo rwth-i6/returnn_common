@@ -1188,60 +1188,6 @@ def cast(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def _pool(
-          source: nn.Tensor,
-          *,
-          mode: str,
-          pool_size: Sequence[int],
-          padding: str = NotSpecified,
-          dilation_rate: Union[Sequence[int], int] = NotSpecified,
-          strides: Optional[Union[Sequence[int], int]] = NotSpecified,
-          in_dim: Optional[nn.Dim] = NotSpecified,
-          in_spatial_dims: Sequence[nn.Dim],
-          out_dim: Optional[nn.Dim] = NotSpecified,
-          out_spatial_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
-  """
-  A generic N-D pooling layer.
-  This would usually be done after a convolution for down-sampling.
-
-  :param nn.Tensor source:
-  :param str mode: "max" or "avg"
-  :param tuple[int] pool_size: shape of the window of each reduce
-  :param str padding: "valid" or "same"
-  :param tuple[int]|int dilation_rate:
-  :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
-  :param nn.Dim|None in_dim:
-  :param Sequence[nn.Dim] in_spatial_dims:
-  :param nn.Dim|None out_dim:
-  :param Sequence[nn.Dim]|None out_spatial_dims:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_spatial_dims
-  """
-  if out_spatial_dims is None or out_spatial_dims is NotSpecified:
-    out_spatial_dims = [
-      d.copy(same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dims{i}')
-      for i, d in enumerate(in_spatial_dims)]
-  args = {
-    'mode': mode,
-    'pool_size': pool_size,
-    'padding': padding,
-    'dilation_rate': dilation_rate,
-    'strides': strides,
-    'in_dim': in_dim,
-    'in_spatial_dims': in_spatial_dims,
-    'out_dim': out_dim,
-    'out_spatial_dims': out_spatial_dims,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'pool',
-    'from': source,
-    **args}, name=name or 'pool')
-  return layer, out_spatial_dims
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def dct(
         source: nn.Tensor,
         *,
