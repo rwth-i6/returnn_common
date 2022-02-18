@@ -323,12 +323,26 @@ def _pool_nd(
     pool_size = [pool_size] * nd
   assert isinstance(pool_size, (list, tuple))
   assert len(pool_size) == nd
-  from ._generated_layers import _pool
-  return _pool(
-    source=source, mode=mode, pool_size=pool_size, padding=padding,
-    dilation_rate=dilation_rate, strides=strides,
-    in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims,
-    name=name)
+
+  if out_spatial_dims is None or out_spatial_dims is nn.NotSpecified:
+    out_spatial_dims = [
+      d.copy(same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dims{i}')
+      for i, d in enumerate(in_spatial_dims)]
+  args = {
+    'mode': mode,
+    'pool_size': pool_size,
+    'padding': padding,
+    'dilation_rate': dilation_rate,
+    'strides': strides,
+    'in_spatial_dims': in_spatial_dims,
+    'out_spatial_dims': out_spatial_dims,
+    }
+  args = {key: value for (key, value) in args.items() if value is not nn.NotSpecified}
+  layer = nn.make_layer({
+    'class': 'pool',
+    'from': source,
+    **args}, name=name or 'pool')
+  return layer, out_spatial_dims
 
 
 def pool1d(
