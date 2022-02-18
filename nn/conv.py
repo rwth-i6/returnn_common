@@ -124,13 +124,13 @@ class _Conv(_ConvOrTransposedConv):
       if in_spatial_dim not in source.shape:
         raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
     if not out_spatial_dims:
-      out_spatial_dims = [
-        nn.SpatialDim(f"{nn.NameCtx.current_ctx().layer_abs_name_scope}:out-spatial-dim{i}")
-        for i, s in enumerate(self.filter_size)]
-      for i in range(len(self.filter_size)):
-        s = 1 if not self.strides else self.strides[i]
-        if self.filter_size[i].dimension == s == 1 or (s == 1 and self.padding.lower() == "same"):
-          out_spatial_dims[i] = in_spatial_dims[i]
+      out_spatial_dims = _default_out_spatial_dims(
+        description_prefix=nn.NameCtx.current_ctx().layer_abs_name_scope,
+        in_spatial_dims=in_spatial_dims,
+        filter_size=[d.dimension for d in self.filter_size],
+        strides=1 if not self.strides else self.strides,
+        dilation_rate=1 if not self.dilation_rate else self.dilation_rate,
+        padding=self.padding)
     layer_dict = {
       "class": "conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
@@ -325,9 +325,13 @@ def _pool_nd(
   assert len(pool_size) == nd
 
   if out_spatial_dims is None or out_spatial_dims is nn.NotSpecified:
-    out_spatial_dims = [
-      d.copy(same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dims{i}')
-      for i, d in enumerate(in_spatial_dims)]
+    out_spatial_dims = _default_out_spatial_dims(
+      description_prefix=nn.NameCtx.current_ctx().get_abs_name(),
+      in_spatial_dims=in_spatial_dims,
+      filter_size=pool_size,
+      strides=pool_size if not strides or strides is nn.NotSpecified else strides,
+      dilation_rate=1 if dilation_rate is nn.NotSpecified else dilation_rate,
+      padding="valid" if padding is nn.NotSpecified else padding)
   args = {
     'mode': mode,
     'pool_size': pool_size,
@@ -439,3 +443,37 @@ def pool3d(
     dilation_rate=dilation_rate, strides=strides,
     in_spatial_dims=in_spatial_dims, out_spatial_dims=out_spatial_dims,
     name=name)
+
+
+def _default_out_spatial_dims(*,
+                              description_prefix: str,
+                              in_spatial_dims: Sequence[nn.Dim],
+                              filter_size: Union[Sequence[int], int],
+                              strides: Union[Sequence[int], int],
+                              dilation_rate: Union[Sequence[int], int],
+                              padding: str,
+                              ) -> Sequence[nn.Dim]:
+  from returnn.tf.layers.basic import ConvLayer
+  nd = len(in_spatial_dims)
+  if isinstance(filter_size, int):
+    filter_size = [filter_size] * nd
+  if isinstance(strides, int):
+    strides = [strides] * nd
+  if isinstance(dilation_rate, int):
+    dilation_rate = [dilation_rate] * nd
+  assert nd == len(in_spatial_dims) == len(filter_size) == len(strides) == len(dilation_rate)
+  assert padding.lower() in ("valid", "same")
+  out_spatial_dims = [
+    nn.SpatialDim(f"{description_prefix}:out-spatial-dim{i}")
+    for i in range(nd)]
+  for i in range(nd):
+    if filter_size[i] == strides[i] == 1 or (strides[i] == 1 and padding.lower() == "same"):
+      out_spatial_dims[i] = in_spatial_dims[i]
+    elif in_spatial_dims[i].dimension is not None:
+      out_spatial_dims[i].dimension = ConvLayer.calc_out_dim(
+        in_dim=in_spatial_dims[i].dimension,
+        filter_size=filter_size[i],
+        stride=strides[i],
+        dilation_rate=dilation_rate[i],
+        padding=padding)
+  return out_spatial_dims
