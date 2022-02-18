@@ -13,6 +13,7 @@ class _ConvOrTransposedConv(nn.Module):
   """
   nd: Optional[int] = None
   _transposed: bool
+  groups: Optional[int] = None
 
   def __init__(self,
                out_dim: nn.Dim,
@@ -54,11 +55,13 @@ class _ConvOrTransposedConv(nn.Module):
 
   def _lazy_init(self, in_dim: nn.Dim):
     self.in_dim = in_dim
+    filter_in_dim = in_dim
+    if self.groups is not None and self.groups > 1:
+      filter_in_dim //= self.groups
+    filter_in_dim = nn.dim_match_priority_when_needed(filter_in_dim, self.out_dim)
     self.filter = nn.Parameter(
       self.filter_size +
-      ([nn.dim_match_priority_when_needed(self.in_dim, self.out_dim), self.out_dim]
-       if not self._transposed
-       else [self.out_dim, nn.dim_match_priority_when_needed(self.in_dim, self.out_dim)]))
+      ([filter_in_dim, self.out_dim] if not self._transposed else [self.out_dim, filter_in_dim]))
     self.filter.initial = nn.init.Glorot()
     if self.with_bias:
       self.bias = nn.Parameter([self.out_dim])
