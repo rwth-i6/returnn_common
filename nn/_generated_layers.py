@@ -164,7 +164,8 @@ def slice(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'axis': axis,
     'slice_start': slice_start,
@@ -214,7 +215,8 @@ def slice_nd(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
+    out_spatial_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
   args = {
     'start': start,
     'size': size,
@@ -783,7 +785,8 @@ def rec_window(
   if window_dim is None or window_dim is NotSpecified:
     window_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:window_dim')
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
+    out_spatial_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
   args = {
     'window_dim': window_dim,
     'window_left': window_left,
@@ -898,7 +901,13 @@ def merge_dims(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+    if any(d.is_batch_dim() for d in axes):
+      kind = nn.Dim.Types.Batch
+    elif any(d.is_feature_dim() for d in axes):
+      kind = nn.Dim.Types.Feature
+    else:
+      kind = nn.Dim.Types.Spatial
+    out_dim = nn.Dim(kind=kind, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'axes': axes,
     'out_dim': out_dim,
@@ -1112,7 +1121,8 @@ def repeat(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'repetitions': repetitions,
     'axis': axis,
@@ -1417,7 +1427,8 @@ def prefix_in_time(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'axis': axis,
     'out_dim': out_dim,
@@ -1455,7 +1466,8 @@ def postfix_in_time(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'axis': axis,
     'out_dim': out_dim,
@@ -1491,7 +1503,8 @@ def time_chunking(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'chunk_size': chunk_size,
     'chunk_step': chunk_step,
@@ -1643,7 +1656,8 @@ def resize(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'factor': factor,
     'axis': axis,
@@ -1682,7 +1696,8 @@ def remove(
   :return: layer, out_dim
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'symbol': symbol,
     'axis': axis,
@@ -2545,7 +2560,8 @@ def edit_distance_table(
   :return: layer, out_dim, out_state
   """
   if out_dim is None or out_dim is NotSpecified:
-    out_dim = axis.copy(same_as_self=False, description='out_dim')
+    out_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
   args = {
     'axis': axis,
     'debug': debug,
@@ -2658,7 +2674,8 @@ def rec_cum_concat(
   :return: layer, out_spatial_dim, out_state
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = axis.copy(same_as_self=False, description='out_spatial_dim')
+    out_spatial_dim = axis.copy(
+      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
   args = {
     'out_spatial_dim': out_spatial_dim,
     'axis': axis,

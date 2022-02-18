@@ -481,6 +481,8 @@ def setup():
             in_dim_arg = "in_spatial_dim"
           if out_dim_arg == "out_spatial_dims" and "in_spatial_dims" in sig.params:
             in_dim_arg = "in_spatial_dims"
+          if not in_dim_arg and "axes" in sig.params:
+            in_dim_arg = "axes"
 
           if "Sequence" in param.param_type_s:
             assert in_dim_arg is not None
@@ -489,8 +491,22 @@ def setup():
               f"      d.copy(same_as_self=False,"
               f" description=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg + '{i}'!r})\n"
               f"      for i, d in enumerate({in_dim_arg})]", file=f)
+          elif in_dim_arg == "axes":
+            print(
+              f"    if any(d.is_batch_dim() for d in axes):\n"
+              f"      kind = nn.Dim.Types.Batch\n"
+              f"    elif any(d.is_feature_dim() for d in axes):\n"
+              f"      kind = nn.Dim.Types.Feature\n"
+              f"    else:\n"
+              f"      kind = nn.Dim.Types.Spatial\n"
+              f"    {out_dim_arg} = nn.Dim(kind=kind, description"
+              f"=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg!r})", file=f)
+            pass
           elif in_dim_arg:
-            print(f"    {out_dim_arg} = {in_dim_arg}.copy(same_as_self=False, description={out_dim_arg!r})", file=f)
+            print(
+              f"    {out_dim_arg} = {in_dim_arg}.copy(\n"
+              f"      same_as_self=False, description"
+              f"=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg!r})", file=f)
           else:
             print(
               f"    {out_dim_arg} = nn.SpatialDim("
