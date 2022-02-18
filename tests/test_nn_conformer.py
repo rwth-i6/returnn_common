@@ -17,6 +17,15 @@ else:
 
 
 def test_nn_conformer():
+  # This test needs a huge stack size currently, due to the way RETURNN layer construction works currently.
+  # On RETURNN side, there is the option flat_net_construction to solve this,
+  # however, it's experimental and also does not work for this case.
+  # https://github.com/rwth-i6/returnn/issues/957
+  # https://stackoverflow.com/a/16248113/133374
+  import resource, sys
+  resource.setrlimit(resource.RLIMIT_STACK, (2 ** 29, -1))
+  sys.setrecursionlimit(10 ** 6)
+
   with nn.NameCtx.new_root() as name_ctx:
     time_dim = nn.SpatialDim("time")
     input_dim = nn.FeatureDim("input", 10)
