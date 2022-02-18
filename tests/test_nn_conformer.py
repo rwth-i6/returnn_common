@@ -22,7 +22,8 @@ def test_nn_conformer():
   # however, it's experimental and also does not work for this case.
   # https://github.com/rwth-i6/returnn/issues/957
   # https://stackoverflow.com/a/16248113/133374
-  import resource, sys
+  import resource
+  import sys
   resource.setrlimit(resource.RLIMIT_STACK, (2 ** 29, -1))
   sys.setrecursionlimit(10 ** 6)
 
