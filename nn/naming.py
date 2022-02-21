@@ -747,6 +747,8 @@ class ReturnnDimTagsProxy:
       return "single_step_dim"
     if dim.match_priority:
       return f"{self.dim_ref_repr(dim.copy(match_priority=0))}.copy(match_priority={dim.match_priority})"
+    if not dim.derived_from_op and dim.get_same_base().derived_from_op:
+      dim = dim.get_same_base()
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         return str(dim.derived_from_op.attribs["value"])
