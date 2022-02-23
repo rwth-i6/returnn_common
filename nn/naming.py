@@ -716,9 +716,9 @@ class ReturnnDimTagsProxy:
 
   def __repr__(self):
     return "\n".join([
-      "{",
-      *(f"  {key!r}: {value.dim_repr()}," for key, value in self.dim_refs_by_name.items()),
-      "}"])
+      f"<{self.__class__.__name__}:",
+      *(f"  {value.py_id_name()} = {value.dim_repr()}" for key, value in self.dim_refs_by_name.items()),
+      ">"])
 
   def copy(self) -> ReturnnDimTagsProxy:
     """
@@ -782,6 +782,10 @@ class ReturnnDimTagsProxy:
 
     def ref_repr(self) -> str:
       """ref repr"""
+      # Fast path and priority for dims which are registered.
+      ref = self.parent.dim_refs_by_tag.get(self.dim)
+      if ref:
+        return ref.py_id_name()
       return self.parent.dim_ref_repr(self.dim, brackets=False)
 
     def py_id_name(self) -> str:
@@ -801,7 +805,8 @@ class ReturnnDimTagsProxy:
       dim = self.dim
       assert not dim.is_batch_dim()
       assert dim.can_be_used_as_dim()
-      assert not dim.derived_from_op
+      if dim.derived_from_op:
+        return self.parent.dim_ref_repr(self.dim, brackets=False)
       assert not dim.match_priority
       # We assume FeatureDim, SpatialDim and Dim are imported.
       if dim.kind == nn.Dim.Types.Feature:
@@ -856,7 +861,7 @@ class ReturnnDimTagsProxy:
         i += 1
 
     # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
-    def _map(path, value):
+    def _map(path, value, *, direct=True):
       if isinstance(value, nn.Dim):
         if value in {nn.batch_dim, nn.single_step_dim}:
           # No need to register this.
@@ -869,9 +874,13 @@ class ReturnnDimTagsProxy:
         if value.derived_from_op:
           # Make sure all the inputs are registered.
           for i, child in enumerate(value.derived_from_op.inputs):
-            _map(path + (value.derived_from_op.kind, i), child)
+            _map(path + (value.derived_from_op.kind, i), child, direct=False)
           # No need to register this.
-          return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
+          if not direct:
+            return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
+          # However, pass on to register this anyway.
+          # While this would not be explicitly needed, as we can directly refer to it,
+          # this is still nicer to see all dim tags explicitly.
         if value in self.dim_refs_by_tag:
           return self.dim_refs_by_tag[value]
         name = _unique_name(value)
