@@ -861,15 +861,16 @@ class ReturnnDimTagsProxy:
         if value in {nn.batch_dim, nn.single_step_dim}:
           # No need to register this.
           return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
+        if value.match_priority != 0:
+          _map(path, value.copy(match_priority=0))  # Register the dim tag without match_priority.
+          # Now return the custom proxy for the dim tag with match_priority. No need to register this.
+          return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
+        value = value.get_same_base()
         if value.derived_from_op:
           # Make sure all the inputs are registered.
           for i, child in enumerate(value.derived_from_op.inputs):
             _map(path + (value.derived_from_op.kind, i), child)
           # No need to register this.
-          return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
-        if value.match_priority != 0:
-          _map(path, value.copy(match_priority=0))  # Register the dim tag without match_priority.
-          # Now return the custom proxy for the dim tag with match_priority. No need to register this.
           return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
         if value in self.dim_refs_by_tag:
           return self.dim_refs_by_tag[value]
