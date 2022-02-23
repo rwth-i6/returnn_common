@@ -737,7 +737,7 @@ class ReturnnDimTagsProxy:
       *(f"{value.py_id_name()} = {value.dim_repr()}\n" for key, value in self.dim_refs_by_name.items()),
       ])
 
-  def dim_ref_repr(self, dim: nn.Dim, *, brackets: bool = True) -> str:
+  def dim_ref_repr(self, dim: nn.Dim, *, brackets: bool = True, prefer_ref: bool = True) -> str:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
     """
@@ -749,6 +749,9 @@ class ReturnnDimTagsProxy:
       return f"{self.dim_ref_repr(dim.copy(match_priority=0))}.copy(match_priority={dim.match_priority})"
     if not dim.derived_from_op and dim.get_same_base().derived_from_op:
       dim = dim.get_same_base()
+    ref = self.dim_refs_by_tag.get(dim)
+    if prefer_ref and ref:
+      return ref.py_id_name()
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
         v = dim.derived_from_op.attribs["value"]
@@ -763,7 +766,7 @@ class ReturnnDimTagsProxy:
       op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
       s = f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
       return f"({s})" if brackets else s
-    ref = self.dim_refs_by_tag[dim]
+    assert ref, f"no ref for {dim}"
     return ref.py_id_name()
 
   class DimRefProxy:
@@ -782,10 +785,6 @@ class ReturnnDimTagsProxy:
 
     def ref_repr(self) -> str:
       """ref repr"""
-      # Fast path and priority for dims which are registered.
-      ref = self.parent.dim_refs_by_tag.get(self.dim)
-      if ref:
-        return ref.py_id_name()
       return self.parent.dim_ref_repr(self.dim, brackets=False)
 
     def py_id_name(self) -> str:
@@ -806,7 +805,7 @@ class ReturnnDimTagsProxy:
       assert not dim.is_batch_dim()
       assert dim.can_be_used_as_dim()
       if dim.derived_from_op:
-        return self.parent.dim_ref_repr(self.dim, brackets=False)
+        return self.parent.dim_ref_repr(self.dim, brackets=False, prefer_ref=False)
       assert not dim.match_priority
       # We assume FeatureDim, SpatialDim and Dim are imported.
       if dim.kind == nn.Dim.Types.Feature:
