@@ -737,7 +737,7 @@ class ReturnnDimTagsProxy:
       *(f"{value.py_id_name()} = {value.dim_repr()}\n" for key, value in self.dim_refs_by_name.items()),
       ])
 
-  def dim_ref_repr(self, dim: nn.Dim) -> str:
+  def dim_ref_repr(self, dim: nn.Dim, *, brackets: bool = True) -> str:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
     """
@@ -751,13 +751,18 @@ class ReturnnDimTagsProxy:
       dim = dim.get_same_base()
     if dim.derived_from_op:
       if dim.derived_from_op.kind == "constant":
-        return str(dim.derived_from_op.attribs["value"])
-      if dim.derived_from_op.kind == "truediv_left":
+        v = dim.derived_from_op.attribs["value"]
+        if v < 0 and brackets:
+          return f"({v})"
+        return str(v)
+      func_map = {"truediv_left": "div_left", "ceildiv_left": "ceildiv_left", "ceildiv_right": "ceildiv_right"}
+      if dim.derived_from_op.kind in func_map:
         assert len(dim.derived_from_op.inputs) == 2
         a, b = dim.derived_from_op.inputs
-        return f"{self.dim_ref_repr(a)}.div_left({self.dim_ref_repr(b)})"
+        return f"{self.dim_ref_repr(a)}.{func_map[dim.derived_from_op.kind]}({self.dim_ref_repr(b)})"
       op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
-      return f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
+      s = f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
+      return f"({s})" if brackets else s
     ref = self.dim_refs_by_tag[dim]
     return ref.py_id_name()
 
@@ -777,7 +782,7 @@ class ReturnnDimTagsProxy:
 
     def ref_repr(self) -> str:
       """ref repr"""
-      return self.parent.dim_ref_repr(self.dim)
+      return self.parent.dim_ref_repr(self.dim, brackets=False)
 
     def py_id_name(self) -> str:
       """
