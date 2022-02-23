@@ -733,9 +733,30 @@ class ReturnnDimTagsProxy:
     """
     :return: Python code
     """
-    return "".join([
-      *(f"{value.py_id_name()} = {value.dim_repr()}\n" for key, value in self.dim_refs_by_name.items()),
-      ])
+    # We cannot just iterate through self.dim_refs_by_name in insertion order
+    # because the derived_from_op references tags might only be referenced later.
+    visited = set()  # type: Set[str]  # names of already visited tags
+    lines = []
+
+    def _visit_tag_deps(tag: nn.Dim):
+      if tag.derived_from_op:
+        for tag_ in tag.derived_from_op.inputs:
+          if tag_ in self.dim_refs_by_tag:
+            _visit_ref(self.dim_refs_by_tag[tag_])  # make sure to visit it first
+          else:
+            _visit_tag_deps(tag_)
+
+    def _visit_ref(ref: ReturnnDimTagsProxy.DimRefProxy):
+      _visit_tag_deps(ref.dim)
+      if ref.name in visited:
+        return
+      visited.add(ref.name)
+      lines.append(f"{ref.py_id_name()} = {ref.dim_repr()}\n")
+
+    for _, value in self.dim_refs_by_name.items():
+      _visit_ref(value)
+
+    return "".join(lines)
 
   def dim_ref_repr(self, dim: nn.Dim, *, brackets: bool = True, prefer_ref: bool = True) -> str:
     """
