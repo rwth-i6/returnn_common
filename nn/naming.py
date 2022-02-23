@@ -871,6 +871,8 @@ class ReturnnDimTagsProxy:
       name_ = re.sub(r"[^a-zA-Z0-9_]", "_", name_)
       if name_.endswith("_dim"):
         name_ = name_[:-len("_dim")]
+      if not name_ or name_[:1].isdigit():
+        name_ = "_" + name_
       if name_ not in self.dim_refs_by_name:
         return name_
       i = 0
