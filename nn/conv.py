@@ -380,7 +380,8 @@ def pool1d(
   out, (out_spatial_dim,) = _pool_nd(
     source=source, nd=1, mode=mode, pool_size=pool_size, padding=padding,
     dilation_rate=dilation_rate, strides=strides, in_spatial_dims=[in_spatial_dim],
-    out_spatial_dims=[out_spatial_dim], name=name)
+    out_spatial_dims=[out_spatial_dim] if out_spatial_dim is not nn.NotSpecified else nn.NotSpecified,
+    name=name)
   return out, out_spatial_dim
 
 
