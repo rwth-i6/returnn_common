@@ -24,7 +24,10 @@ def test_nn_conformer():
   # https://stackoverflow.com/a/16248113/133374
   import resource
   import sys
-  resource.setrlimit(resource.RLIMIT_STACK, (2 ** 29, -1))
+  try:
+    resource.setrlimit(resource.RLIMIT_STACK, (2 ** 29, -1))
+  except Exception as exc:
+    print(f"resource.setrlimit {type(exc).__name__}: {exc}")
   sys.setrecursionlimit(10 ** 6)
 
   with nn.NameCtx.new_root() as name_ctx:
