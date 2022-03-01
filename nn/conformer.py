@@ -134,7 +134,7 @@ class ConformerEncoderLayer(nn.Module):
         self,
         out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
         *,
-        dim_ff: nn.Dim = nn.NotSpecified,
+        ff_dim: nn.Dim = nn.NotSpecified,
         activation_ff: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
         dropout: float = 0.1,
         conv_kernel_size: int = 32,
@@ -144,7 +144,7 @@ class ConformerEncoderLayer(nn.Module):
         ):
     """
     :param out_dim: the output feature dimension
-    :param dim_ff: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
+    :param ff_dim: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
     :param activation_ff: activation funtion for feed-forward network
     :param dropout: the dropout value for the FF block
     :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
@@ -157,13 +157,13 @@ class ConformerEncoderLayer(nn.Module):
     self.dropout = dropout
     self.out_dim = out_dim
 
-    if dim_ff is nn.NotSpecified:
-      dim_ff = out_dim * 4
+    if ff_dim is nn.NotSpecified:
+      ff_dim = out_dim * 4
     self.ffn1 = ConformerPositionwiseFeedForward(
-      out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
+      out_dim=out_dim, dim_ff=ff_dim, dropout=dropout, activation=activation_ff)
 
     self.ffn2 = ConformerPositionwiseFeedForward(
-      out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation_ff)
+      out_dim=out_dim, dim_ff=ff_dim, dropout=dropout, activation=activation_ff)
 
     if conv_norm is nn.NotSpecified:
       conv_norm = nn.BatchNorm(use_mask=False)
@@ -209,7 +209,7 @@ class ConformerEncoder(nn.Module):
                out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
                *,
                num_layers: int,
-               dim_ff: nn.Dim = nn.NotSpecified,
+               ff_dim: nn.Dim = nn.NotSpecified,
                activation_ff: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
                dropout: float = 0.1,
                conv_kernel_size: int = 32,
@@ -220,7 +220,7 @@ class ConformerEncoder(nn.Module):
     """
     :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
-    :param dim_ff: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
+    :param ff_dim: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
     :param activation_ff: activation funtion for feed-forward network
     :param dropout: the dropout value for the FF block
     :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
@@ -246,7 +246,7 @@ class ConformerEncoder(nn.Module):
       encoder_layer = custom_encoder_layer
     else:
       encoder_layer = ConformerEncoderLayer(
-        out_dim=out_dim, dim_ff=dim_ff, activation_ff=activation_ff, dropout=dropout,
+        out_dim=out_dim, ff_dim=ff_dim, activation_ff=activation_ff, dropout=dropout,
         conv_kernel_size=conv_kernel_size, conv_norm=conv_norm, num_heads=num_heads, att_dropout=att_dropout)
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))

@@ -18,7 +18,7 @@ class TransformerEncoderLayer(nn.Module):
   """
   def __init__(self, out_dim: nn.Dim, *,
                self_attention: Union[nn.SelfAttention, Any],
-               dim_ff: nn.Dim,
+               ff_dim: nn.Dim,
                dropout: float = 0.1,
                activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                norm_eps: float = 1e-6,
@@ -27,7 +27,7 @@ class TransformerEncoderLayer(nn.Module):
     """
     :param out_dim: output dimension, PyTorch name: d_model
     :param self_attention: module which does self attention
-    :param dim_ff: dimension of feedforward layer, PyTorch name: dim_feedforward
+    :param ff_dim: dimension of feedforward layer, PyTorch name: dim_feedforward
     :param dropout: Dropout value, PyTorch name: dropout
     :param activation: activation function
     :param norm_eps: Epsilon value for layer normalization
@@ -37,7 +37,7 @@ class TransformerEncoderLayer(nn.Module):
     super().__init__()
     self.self_attn = _copy.deepcopy(self_attention)
 
-    self.linear_ff = nn.Linear(dim_ff)
+    self.linear_ff = nn.Linear(ff_dim)
     self.linear_out = nn.Linear(out_dim)
     self.activation = activation
     self.norm_first = norm_first
@@ -116,7 +116,7 @@ class TransformerDecoderLayer(nn.Module):
   def __init__(self, out_dim: nn.Dim, *,
                enc_dec_attention: nn.AttentionFunc,
                causal_self_attention: Union[nn.CausalSelfAttention, Any],
-               dim_ff: nn.Dim,
+               ff_dim: nn.Dim,
                dropout: float = 0.1,
                activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                norm_eps: float = 1e-6,
@@ -126,7 +126,7 @@ class TransformerDecoderLayer(nn.Module):
     :param out_dim: output dimension, PyTorch name: d_model
     :param enc_dec_attention: module or func which does encoder decoder attention
     :param causal_self_attention: module or func which does causal self attention
-    :param dim_ff: dimension of feedforward layer, PyTorch name: dim_feedforward
+    :param ff_dim: dimension of feedforward layer, PyTorch name: dim_feedforward
     :param dropout: Dropout value
     :param activation: activation function
     :param norm_eps: Epsilon value for layer normalization
@@ -137,7 +137,7 @@ class TransformerDecoderLayer(nn.Module):
     self.self_attn = _copy.deepcopy(causal_self_attention)
     self.attn = enc_dec_attention
 
-    self.linear_ff = nn.Linear(dim_ff)
+    self.linear_ff = nn.Linear(ff_dim)
     self.linear_out = nn.Linear(out_dim)
 
     self.norm = norm
@@ -253,7 +253,7 @@ class Transformer(nn.Module):
   Standard Transformer Module
   """
   def __init__(self,
-               out_dim: nn.Dim = nn.FeatureDim("output_dim", 512),
+               out_dim: nn.Dim = nn.FeatureDim("transformer_default_output_dim", 512),
                *,
                target_vocab: nn.Dim,
                target_bos_symbol: int = 0,
@@ -261,7 +261,7 @@ class Transformer(nn.Module):
                num_heads: Union[nn.Dim, int] = 8,
                num_encoder_layers: int = 6,
                num_decoder_layers: int = 6,
-               dim_ff: nn.Dim = nn.NotSpecified,
+               ff_dim: nn.Dim = nn.NotSpecified,
                dropout: float = 0.1,
                att_dropout: float = 0.1,
                activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
@@ -287,7 +287,7 @@ class Transformer(nn.Module):
     :param num_heads: number heads, PyTorch name: nhead
     :param num_encoder_layers: Number of encoder layers
     :param num_decoder_layers: Number of decoder layers
-    :param dim_ff: dimension of feedforward layer, PyTorch name: dim_feedforward. 4 * out_dim by default.
+    :param ff_dim: dimension of feedforward layer, PyTorch name: dim_feedforward. 4 * out_dim by default.
     :param dropout: Dropout value, PyTorch name: dropout
     :param att_dropout: dropout value for attention
     :param activation: activation function
@@ -319,7 +319,7 @@ class Transformer(nn.Module):
           enc_self_attention = nn.SelfAttention(
             key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
         encoder_layer = TransformerEncoderLayer(
-          out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
+          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, self_attention=enc_self_attention)
       self.encoder = TransformerEncoder(
         encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm, norm_eps=norm_eps)
@@ -340,10 +340,10 @@ class Transformer(nn.Module):
             key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
         if enc_dec_attention is None:
           enc_dec_attention = nn.dot_attention
-        if dim_ff is nn.NotSpecified:
-          dim_ff = out_dim * 4
+        if ff_dim is nn.NotSpecified:
+          ff_dim = out_dim * 4
         decoder_layer = TransformerDecoderLayer(
-          out_dim=out_dim, dim_ff=dim_ff, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
+          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=enc_dec_attention)
       self.decoder = TransformerDecoder(
         decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm, norm_eps=norm_eps)
