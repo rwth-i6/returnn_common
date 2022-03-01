@@ -14,11 +14,11 @@ class ConformerPositionwiseFeedForward(nn.Module):
       FF -> Activation -> Dropout -> FF
   """
 
-  def __init__(self, out_dim: nn.Dim, *, dim_ff: nn.Dim, dropout: float,
+  def __init__(self, out_dim: nn.Dim, *, ff_dim: nn.Dim, dropout: float,
                activation: Callable[[nn.Tensor], nn.Tensor]):
     """
     :param out_dim: output feature dimension
-    :param dim_ff: dimension of the feed-forward layers
+    :param ff_dim: dimension of the feed-forward layers
     :param dropout: dropout value
     :param activation: activation function
     """
@@ -27,7 +27,7 @@ class ConformerPositionwiseFeedForward(nn.Module):
     self.dropout = dropout
     self.activation = activation
 
-    self.linear_ff = nn.Linear(dim_ff)
+    self.linear_ff = nn.Linear(ff_dim)
     self.linear_out = nn.Linear(out_dim)
 
   @nn.scoped
@@ -160,10 +160,10 @@ class ConformerEncoderLayer(nn.Module):
     if ff_dim is nn.NotSpecified:
       ff_dim = out_dim * 4
     self.ffn1 = ConformerPositionwiseFeedForward(
-      out_dim=out_dim, dim_ff=ff_dim, dropout=dropout, activation=activation_ff)
+      out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=activation_ff)
 
     self.ffn2 = ConformerPositionwiseFeedForward(
-      out_dim=out_dim, dim_ff=ff_dim, dropout=dropout, activation=activation_ff)
+      out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=activation_ff)
 
     if conv_norm is nn.NotSpecified:
       conv_norm = nn.BatchNorm(use_mask=False)
