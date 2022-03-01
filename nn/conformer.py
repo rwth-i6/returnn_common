@@ -64,7 +64,7 @@ class ConformerConvBlock(nn.Module):
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
-    x_act = nn.glu(x_conv1)
+    x_act = nn.gating(x_conv1)
     x_depthwise_conv, _ = self.depthwise_conv(x_act, in_spatial_dim=axis)
     x_normed = self.norm(x_depthwise_conv)
     x_swish = nn.swish(x_normed)

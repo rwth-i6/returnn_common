@@ -61,16 +61,6 @@ def gelu(x: nn.Tensor) -> nn.Tensor:
   return _activation(x, activation="gelu")
 
 
-@nn.scoped
-def glu(x: nn.Tensor, *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
-  """GLU https://arxiv.org/abs/1612.08083"""
-  if axis is None:
-    axis = x.feature_dim
-  from . import split
-  a, b = split(x, axis=axis, out_dims=[axis // 2, axis // 2])
-  return a * sigmoid(b)
-
-
 def exp(x: nn.Tensor) -> nn.Tensor:
   """exp. see also :func:`safe_exp`"""
   return _activation(x, activation="exp")
@@ -159,6 +149,17 @@ def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]]
   if opts:
     d["opts"] = opts
   return nn.make_layer(d, name=activation)
+
+
+@nn.scoped
+def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
+           gate_func=nn.sigmoid, act_func=identity) -> nn.Tensor:
+  """Like in gated linear unit (GLU): https://arxiv.org/abs/1612.08083"""
+  if axis is None:
+    axis = x.feature_dim
+  from . import split
+  a, b = split(x, axis=axis, out_dims=[axis // 2, axis // 2])
+  return act_func(a) * gate_func(b)
 
 
 def compare(a: nn.Tensor, b: nn.Tensor, *, kind: str) -> nn.Tensor:
