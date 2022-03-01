@@ -153,7 +153,7 @@ def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]]
 
 @nn.scoped
 def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
-           gate_func=nn.sigmoid, act_func=identity) -> nn.Tensor:
+           gate_func=sigmoid, act_func=identity) -> nn.Tensor:
   """Like in gated linear unit (GLU): https://arxiv.org/abs/1612.08083"""
   if axis is None:
     axis = x.feature_dim
