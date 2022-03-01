@@ -19,8 +19,8 @@ class TransformerEncoderLayer(nn.Module):
   def __init__(self, out_dim: nn.Dim, *,
                self_attention: Union[nn.SelfAttention, Any],
                ff_dim: nn.Dim,
+               ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                dropout: float = 0.1,
-               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                norm_eps: float = 1e-6,
                norm_first: bool = True,
                norm=nn.layer_norm) -> None:
@@ -28,8 +28,8 @@ class TransformerEncoderLayer(nn.Module):
     :param out_dim: output dimension, PyTorch name: d_model
     :param self_attention: module which does self attention
     :param ff_dim: dimension of feedforward layer, PyTorch name: dim_feedforward
+    :param ff_activation: activation function
     :param dropout: Dropout value, PyTorch name: dropout
-    :param activation: activation function
     :param norm_eps: Epsilon value for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
     :param norm: normalization function
@@ -39,7 +39,7 @@ class TransformerEncoderLayer(nn.Module):
 
     self.linear_ff = nn.Linear(ff_dim)
     self.linear_out = nn.Linear(out_dim)
-    self.activation = activation
+    self.activation = ff_activation
     self.norm_first = norm_first
     self.norm_eps = norm_eps
     self.norm = norm
@@ -117,8 +117,8 @@ class TransformerDecoderLayer(nn.Module):
                enc_dec_attention: nn.AttentionFunc,
                causal_self_attention: Union[nn.CausalSelfAttention, Any],
                ff_dim: nn.Dim,
+               ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                dropout: float = 0.1,
-               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                norm_eps: float = 1e-6,
                norm_first: bool = True,
                norm=nn.layer_norm):
@@ -127,8 +127,8 @@ class TransformerDecoderLayer(nn.Module):
     :param enc_dec_attention: module or func which does encoder decoder attention
     :param causal_self_attention: module or func which does causal self attention
     :param ff_dim: dimension of feedforward layer, PyTorch name: dim_feedforward
+    :param ff_activation: activation function
     :param dropout: Dropout value
-    :param activation: activation function
     :param norm_eps: Epsilon value for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
     :param norm: normalization function
@@ -143,7 +143,7 @@ class TransformerDecoderLayer(nn.Module):
     self.norm = norm
     self.norm_first = norm_first
     self.norm_eps = norm_eps
-    self.activation = activation
+    self.activation = ff_activation
     self.dropout = dropout
 
   @nn.scoped
@@ -262,9 +262,9 @@ class Transformer(nn.Module):
                num_encoder_layers: int = 6,
                num_decoder_layers: int = 6,
                ff_dim: nn.Dim = nn.NotSpecified,
+               ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                dropout: float = 0.1,
                att_dropout: float = 0.1,
-               activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                custom_encoder: Optional[Union[TransformerEncoder, Any]] = None,
                custom_decoder: Optional[Union[TransformerDecoder, Any]] = None,
                custom_encoder_layer: Optional[Union[TransformerEncoderLayer, Any]] = None,
@@ -288,9 +288,9 @@ class Transformer(nn.Module):
     :param num_encoder_layers: Number of encoder layers
     :param num_decoder_layers: Number of decoder layers
     :param ff_dim: dimension of feedforward layer, PyTorch name: dim_feedforward. 4 * out_dim by default.
+    :param ff_activation: activation function
     :param dropout: Dropout value, PyTorch name: dropout
     :param att_dropout: dropout value for attention
-    :param activation: activation function
     :param custom_encoder: Custom Encoder to replace the standard encoder
     :param custom_decoder: Custom Decoder to replace the standard decoder
     :param custom_encoder_layer: Custom Encoder layer to replace the standard layer if custom_encoder and
@@ -319,7 +319,7 @@ class Transformer(nn.Module):
           enc_self_attention = nn.SelfAttention(
             key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
         encoder_layer = TransformerEncoderLayer(
-          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
+          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, self_attention=enc_self_attention)
       self.encoder = TransformerEncoder(
         encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm, norm_eps=norm_eps)
@@ -343,7 +343,7 @@ class Transformer(nn.Module):
         if ff_dim is nn.NotSpecified:
           ff_dim = out_dim * 4
         decoder_layer = TransformerDecoderLayer(
-          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=activation, norm_eps=norm_eps, norm=norm,
+          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=enc_dec_attention)
       self.decoder = TransformerDecoder(
         decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm, norm_eps=norm_eps)
