@@ -154,7 +154,14 @@ def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]]
 @nn.scoped
 def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
            gate_func=sigmoid, act_func=identity) -> nn.Tensor:
-  """Like in gated linear unit (GLU): https://arxiv.org/abs/1612.08083"""
+  """
+  Like in gated linear unit (GLU): https://arxiv.org/abs/1612.08083
+  GLU refers also to the linear transformation before the gating -- this is why this function is not called GLU.
+  GLU uses gate_func=sigmoid and act_func=identity (the defaults here).
+
+  There are other potential gating variants you might be interested at.
+  See for example: https://arxiv.org/abs/2002.05202, e.g. gate_func=gelu.
+  """
   if axis is None:
     axis = x.feature_dim
   from . import split
