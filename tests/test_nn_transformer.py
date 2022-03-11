@@ -36,7 +36,8 @@ def test_nn_transformer_search():
   config_code = name_ctx.get_returnn_config_serialized()
   config, net_dict = config_net_dict_via_serialized(config_code)
 
-  dec_self_att_layer_dict = net_dict["loop"]["unit"]["state.decoder.0.self_attn.k_accum.state"]
+  dec_self_att_layer_dict = (
+    net_dict["loop"]["unit"]["decoder"]["subnetwork"]["layers.0"]["subnetwork"]["self_attn"]["subnetwork"]["k_accum"])
   assert dec_self_att_layer_dict["class"] == "cum_concat"
   assert "state" not in dec_self_att_layer_dict  # optimization
 
