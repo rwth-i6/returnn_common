@@ -395,7 +395,7 @@ class _LoopState:
                 layer_ref.layer_dict.pop("state")
 
             # Note: Only do this optimization for the cum_concat layer because otherwise
-            # we might rely on the intial output shape.
+            # we might rely on the initial output shape.
             initial_const = nn.constant_value(initial)
             if initial_const is not None:
               initial = initial_const
