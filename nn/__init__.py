@@ -20,6 +20,7 @@ from .linear import *
 from .conv import *
 from .rec import *
 from .container import *
+from .masked_computation import *
 from .attention import *
 from .transformer import *
 from .conformer import *
