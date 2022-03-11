@@ -234,8 +234,7 @@ class NameCtx:
     # Now reassign.
     layer_ref.name_ctx = self
     self.layer_ref = layer_ref
-    if layer_ref.layer_dict:
-      self.layer = layer_ref
+    self.layer = layer_ref if layer_ref.layer_dict else None
     self.module = old_name_ctx.module
     if self.module:
       for i, call in enumerate(self.module.calls):
