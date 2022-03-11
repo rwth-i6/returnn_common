@@ -267,6 +267,17 @@ class PrevTensorRef(nn.Tensor):
     """dependencies"""
     return super(PrevTensorRef, self).get_dependencies() + [self.cur_layer_name_ctx.layer_ref]
 
+  def assign_new_cur_layer_name_ctx(self, cur_layer_name_ctx: nn.NameCtx):
+    """
+    Changes self.name_ctx to new name_ctx.
+    """
+    prev_layer_name = f"prev:{cur_layer_name_ctx.name}"
+    assert prev_layer_name not in cur_layer_name_ctx.parent.children
+    prev_layer_name_ctx = cur_layer_name_ctx.parent.get_child(prev_layer_name)
+    prev_layer_name_ctx.move_layer_ref_here(self)
+    assert self.name_ctx is prev_layer_name_ctx
+    self.cur_layer_name_ctx = cur_layer_name_ctx
+
 
 class _LoopStateHolder:
   def __init__(self, loop: Loop):
@@ -407,9 +418,16 @@ class _LoopState:
       else:  # layer_ref not Layer
         raise NotImplementedError(f"{self}.assign to {layer_ref} but layer expected")
 
-      name_ctx.move_layer_ref_here(layer_ref)
+      # Note: We assume this has been used before in get() -> PrevTensorRef.get_prev_ref().
+      prev_name_ctx = name_ctx.parent.children.get(f"prev:{name_ctx.name}")
+      if prev_name_ctx:  # might not exist if we have never accessed the prev state
+        prev_ref = prev_name_ctx.layer_ref
+        assert isinstance(prev_ref, PrevTensorRef), f"{name_ctx, prev_name_ctx}"
+        prev_ref.assign_new_cur_layer_name_ctx(layer_ref.name_ctx)
 
-    nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
+      return layer_ref.name_ctx
+
+    self.name_ctx = nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
   @staticmethod
   def _map_name_ctx_to_prev_layer_ref(name_ctx: nn.NameCtx, initial: nn.Tensor) -> PrevTensorRef:
