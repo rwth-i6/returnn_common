@@ -366,7 +366,17 @@ class _LoopState:
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
       if layer_ref.layer_dict:
-        if layer_ref.layer_dict["class"] in {"cum_concat", "rec"}:
+        _do_const_initial_value_opt = False
+        _const_initial_value_opt_layer_white_list = {"cum_concat", "rec"}
+        if layer_ref.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
+          _do_const_initial_value_opt = True
+        elif layer_ref.layer_dict["class"] == "get_last_hidden_state":
+          src = layer_ref.layer_dict["from"]
+          assert isinstance(src, nn.Tensor)
+          if src.layer_dict:
+            if src.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
+              _do_const_initial_value_opt = True
+        if _do_const_initial_value_opt:
           # Note: Only do this optimization for some layers because otherwise
           # we might rely on the initial output shape.
           initial_const = nn.constant_value(initial)
