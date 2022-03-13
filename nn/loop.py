@@ -388,7 +388,7 @@ class _LoopState:
           key = layer_ref.layer_dict.get("key", "state")
           src = layer_ref.layer_dict["from"]
           assert isinstance(src, nn.Tensor)
-          src_state_opt = src.layer_dict.get("state")
+          src_state_opt = src.layer_dict.get("state") if src.layer_dict else None
           if isinstance(src_state_opt, nn.LayerState):
             src_state_for_key = src_state_opt.get(key)
             if isinstance(src_state_for_key, PrevTensorRef):
