@@ -7,6 +7,7 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, dummy_config_net_dict
 
 import typing
+from nose.tools import assert_equal
 
 if typing.TYPE_CHECKING:
   from .. import nn
@@ -37,4 +38,8 @@ def test_masked_computation_lstm():
       return y
 
   config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  dummy_run_net(config)
+  engine = dummy_run_net(config)
+  params = engine.network.get_params_list()
+  print(params)
+  assert len(params) == 3
+  assert_equal(params[0].name, "lstm/param_W/param:0")
