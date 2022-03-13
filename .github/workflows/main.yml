@@ -29,6 +29,7 @@ jobs:
           - TEST=nn_conv
           - TEST=nn_loop
           - TEST=nn_loss
+          - TEST=nn_masked_computation
           - TEST=nn_math
           - TEST=nn_normalization
           - TEST=nn_rec
