@@ -366,6 +366,13 @@ class _LoopState:
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
       if layer_ref.layer_dict:
+        if layer_ref.layer_dict["class"] in {"cum_concat", "rec"}:
+          # Note: Only do this optimization for some layers because otherwise
+          # we might rely on the initial output shape.
+          initial_const = nn.constant_value(initial)
+          if initial_const is not None:
+            initial = initial_const
+
         if layer_ref.layer_dict["class"] == "get_last_hidden_state":
           used_state_eliminate_optimization = False
           key = layer_ref.layer_dict.get("key", "state")
@@ -404,12 +411,6 @@ class _LoopState:
                 # The 'state' argument refers to "prev:..." of itself.
                 # This is redundant, so we don't need to pass it.
                 layer_ref.layer_dict.pop("state")
-
-            # Note: Only do this optimization for the cum_concat layer because otherwise
-            # we might rely on the initial output shape.
-            initial_const = nn.constant_value(initial)
-            if initial_const is not None:
-              initial = initial_const
 
           assert "initial_state" not in layer_ref.layer_dict
           assert "initial_output" not in layer_ref.layer_dict
