@@ -210,13 +210,20 @@ def stochastic_depth(
       func: Callable[[], nn.Tensor],
       p: float, mode: str = "batch") -> nn.Tensor:
   """
-  Implements the Stochastic Depth from `"Deep Networks with Stochastic Depth"
-  <https://arxiv.org/abs/1603.09382>`_ used for randomly dropping residual
-  branches of residual architectures.
+  Implements Stochastic Depth (sometimes also called "layer drop")
+  for randomly dropping residual branches of residual architectures.
 
   Code adopted from here: https://github.com/pytorch/vision/blob/main/torchvision/ops/stochastic_depth.py
 
   Only applied when in training.
+
+  For some further discussion, also see: https://github.com/rwth-i6/returnn_common/issues/99
+  Relevant papers:
+  - `"Deep Networks with Stochastic Depth" <https://arxiv.org/abs/1603.09382>`__
+  - `"Very Deep Self-Attention Networks for End-to-End Speech Recognition" <https://arxiv.org/abs/1904.13377>`__
+  - `"Reducing Transformer Depth on Demand with Structured Dropout" <https://arxiv.org/abs/1909.11556>`__
+  - `"Intermediate Loss Regularization for CTC-based Speech Recognition" <https://arxiv.org/abs/1904.09751>`__
+  - `"Swin Transformer: Hierarchical Vision Transformer using Shifted Windows" <https://arxiv.org/abs/2103.14030>`__
 
   Args:
       func (() -> Tensor[...]): Module or function for input tensor or arbitrary dimensions
