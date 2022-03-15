@@ -346,6 +346,9 @@ class _LoopState:
         parent=loop.name_ctx),
       self.initial)
 
+  def __repr__(self):
+    return f"<{self.__class__.__name__} {self.name!r}>"
+
   def assign(self, value):
     """
     Assign the new value for the current iteration.
