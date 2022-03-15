@@ -3,9 +3,12 @@ Base module class, :class:`Module`.
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator, Callable, TypeVar
 from returnn.util.basic import NotSpecified
 from .. import nn
+
+
+T = TypeVar("T", bound="Module")
 
 
 class Module:
@@ -176,6 +179,13 @@ class Module:
         for name, param in _iter_params(module=child_mod, prefix=child_prefix):
           yield name, param
 
+  def parameters(self, *, recurse: bool = True) -> Iterator[nn.Parameter]:
+    """
+    Get all children parameters
+    """
+    for name, param in self.named_parameters(recurse=recurse):
+      yield param
+
   @property
   def has_parameters(self):
     """
@@ -184,6 +194,17 @@ class Module:
     for _, _ in self.named_parameters(recurse=True):
       return True
     return False
+
+  def apply(self: T, fn: Callable[[nn.Module], None]) -> T:
+    """
+    Applies the function ``fn`` to all children modules and self.
+
+    :return: self
+    """
+    for child in self.children():
+      fn(child)
+    fn(self)
+    return self
 
 
 class Functional(Module):
