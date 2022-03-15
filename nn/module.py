@@ -144,20 +144,21 @@ class Module:
                      *, recurse: bool = True, memo: Optional[Set[nn.Module]] = None, prefix: str = ''
                      ) -> Iterator[Tuple[str, nn.Module]]:
     """
-    Get all children modules
+s    Get all children modules (excluding self)
     """
     if memo is None:
       memo = set()
-    if self not in memo:
-      for name, module in vars(self).items():
-        if not isinstance(module, Module):
-          continue
-        sub_prefix = prefix + ('.' if prefix else '') + name
-        memo.add(module)
-        yield sub_prefix, module
-        if recurse:
-          for name_, mod_ in module.named_children(recurse=True, memo=memo, prefix=sub_prefix):
-            yield name_, mod_
+    for name, module in vars(self).items():
+      if not isinstance(module, Module):
+        continue
+      if module in memo:
+        continue
+      sub_prefix = prefix + ('.' if (prefix and not prefix.endswith(".")) else '') + name
+      memo.add(module)
+      yield sub_prefix, module
+      if recurse:
+        for name_, mod_ in module.named_children(recurse=True, memo=memo, prefix=sub_prefix):
+          yield name_, mod_
 
   def named_parameters(self, *, recurse: bool = True) -> Iterator[Tuple[str, nn.Parameter]]:
     """
