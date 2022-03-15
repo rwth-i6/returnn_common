@@ -62,44 +62,6 @@ def scaled_gradient(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def layer_norm(
-               source: nn.Tensor,
-               *,
-               in_dim: nn.Dim,
-               out_dim: Optional[nn.Dim] = NotSpecified,
-               epsilon: float = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Applies `layer-normalization <https://arxiv.org/abs/1607.06450>`__.
-
-  Note that we *just* normalize over the feature-dim axis here.
-  This is consistent to the default behavior of :class:`tf.keras.layers.LayerNormalization`
-  and also how it is commonly used in many models, including Transformer.
-
-  However, there are cases where it would be common to normalize over all axes except batch-dim,
-  or all axes except batch and time.
-  For a more generic variant, see :class:`NormLayer`.
-
-  :param nn.Tensor source:
-  :param nn.Dim in_dim: axis to normalize over. feature-dim by default
-  :param nn.Dim|None out_dim: just the same as in_dim
-  :param float epsilon:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'in_dim': in_dim,
-    'out_dim': out_dim,
-    'epsilon': epsilon,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'layer_norm',
-    'from': source,
-    **args}, name=name or 'layer_norm')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def math_norm(
               source: nn.Tensor,
               *,

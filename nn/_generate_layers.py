@@ -54,6 +54,7 @@ BlacklistLayerClassNames = {
   "gauss_window_attention",
   "relative_positional_encoding",
   "gating",
+  "layer_norm",
   "norm",
   "switch",
   "rand_int",  # random instead
