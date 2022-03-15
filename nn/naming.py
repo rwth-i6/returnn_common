@@ -206,9 +206,12 @@ class NameCtx:
 
   def assign_parent(self, parent: NameCtx, suggested_name: str):
     """
-    Assign parent to this name context, when it is not set yet.
+    Assign parent to this name context.
     """
-    assert not self.parent
+    if self.parent:
+      self_ = self.parent.children.pop(self.name)
+      assert self_ is self
+      self.parent = None
     self.parent = parent
     self.name = self._get_unique_name(suggested_name)
     self.parent._add_child(self)
