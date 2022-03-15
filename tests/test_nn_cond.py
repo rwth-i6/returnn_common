@@ -30,8 +30,9 @@ def test_cond():
         x = cond.result
       return x
 
-  config, net_dict = dummy_config_net_dict(net=_Net())
-  dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net)
+  dummy_run_net(config, net=net)
 
 
 def test_cond_shared_params():
@@ -48,8 +49,9 @@ def test_cond_shared_params():
         x = cond.result
       return x
 
-  config, net_dict = dummy_config_net_dict(net=_Net())
-  engine = dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net)
+  engine = dummy_run_net(config, net=net)
   params = engine.network.get_params_list()
   print(params)
   assert len(params) == 2
@@ -78,5 +80,6 @@ def test_cond_twice_shared_params():
         x = cond.result
       return x
 
-  config, net_dict = dummy_config_net_dict(net=_Net())
-  dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net)
+  dummy_run_net(config, net=net)

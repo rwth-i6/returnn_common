@@ -28,4 +28,4 @@ def test_batch_norm():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
-  dummy_run_net(config)
+  dummy_run_net(config, net=net)

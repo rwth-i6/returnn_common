@@ -3,13 +3,14 @@ Helpers for RETURNN
 """
 
 from __future__ import annotations
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
+import tensorflow as tf
 import returnn.tf.engine
 import returnn.datasets
 from .. import nn
 
 
-def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
+def dummy_run_net(config: Dict[str, Any], *, train: bool = False, net: Optional[nn.Module] = None):
   """
   Runs a couple of training iterations using some dummy dataset on the net dict.
   Use this to validate that the net dict is sane.
@@ -19,6 +20,8 @@ def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
   The dummy dataset might change at some point...
 
   Maybe this gets extended...
+
+  If net is given, it will be used for additional checks, such as whether params match.
   """
   from returnn.tf.engine import Engine
   from returnn.datasets import init_dataset
@@ -41,6 +44,10 @@ def dummy_run_net(config: Dict[str, Any], *, train: bool = False):
     engine.train()
   else:
     _dummy_forward_net_returnn(engine=engine, dataset=dataset)
+
+  if net is not None:
+    check_params(net, engine)
+
   return engine
 
 
@@ -105,3 +112,25 @@ def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Di
   config = scope
   net_dict = config["network"]
   return config, net_dict
+
+
+def check_params(net: nn.Module, engine: returnn.tf.engine.Engine):
+  """
+  Check that params match as expected.
+  """
+  rc_params = set()
+  for param in net.parameters():
+    assert isinstance(param, nn.Parameter)
+    print("param:", repr(param.name_ctx.layer_abs_name_scope_effective), param)
+    rc_params.add(param.name_ctx.layer_abs_name_scope_effective)
+
+  tf_params = set()
+  for param in engine.network.get_params_list():
+    assert isinstance(param, tf.Variable)
+    assert param.name.endswith("/param:0")
+    tf_params.add(param.name[:-len("/param:0")])
+
+  if rc_params != tf_params:
+    print("RETURNN-common params:", rc_params)
+    print("TF params:", tf_params)
+    raise Exception(f"Mismatch of params RETURNN-common {rc_params} vs TF {tf_params}")

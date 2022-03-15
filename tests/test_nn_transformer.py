@@ -55,4 +55,4 @@ def test_nn_transformer_search():
     ('loop', 'unit', 'decoder', 'subnetwork', 'layers.0', 'name_scope'): 'layers/0',
     ('loop', 'unit', 'decoder', 'subnetwork', 'layers.1', 'name_scope'): 'layers/1'})
 
-  dummy_run_net(config)
+  dummy_run_net(config, net=transformer)

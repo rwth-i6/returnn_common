@@ -4,7 +4,7 @@ Test nn.masked_computation
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, check_params
 
 import typing
 from nose.tools import assert_equal
@@ -37,8 +37,9 @@ def test_masked_computation_lstm():
         y = loop.stack(loop.state.lstm_out)
       return y
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  engine = dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  engine = dummy_run_net(config, net=net)
   params = engine.network.get_params_list()
   print(params)
   assert len(params) == 3

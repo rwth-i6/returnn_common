@@ -32,4 +32,4 @@ def test_self_attention():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net, with_axis=True)
   pprint(net_dict)
-  dummy_run_net(config)
+  dummy_run_net(config, net=net)

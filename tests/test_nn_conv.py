@@ -29,5 +29,6 @@ def test_conv1d():
       x, _ = self.conv(x, in_spatial_dim=axis)
       return x
 
-  config, net_dict = dummy_config_net_dict(_Net(), with_axis=True)
-  dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  dummy_run_net(config, net=net)

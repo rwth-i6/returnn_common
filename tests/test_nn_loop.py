@@ -36,8 +36,9 @@ def test_rec_ff():
         y = loop.stack(loop.state.h)
       return y
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  engine = dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  engine = dummy_run_net(config, net=net)
   params = engine.network.get_params_list()
   print(params)
   assert len(params) == 2
@@ -70,8 +71,9 @@ def test_rec_inner_lstm():
         y = loop.stack(y_)
       return y
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  engine = dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  engine = dummy_run_net(config, net=net)
   params = engine.network.get_params_list()
   print(params)
   assert len(params) == 3
@@ -94,8 +96,9 @@ def test_rec_simple_iter():
         y = loop.stack(loop.state.i * nn.reduce(x, mode="mean", axis=axis))
       return y
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  dummy_run_net(config, net=net)
 
 
 def test_rec_hidden():
@@ -114,8 +117,9 @@ def test_rec_hidden():
         (y, self.lstm.out_dim), (state.h, self.lstm.out_dim), (state.c, self.lstm.out_dim), allow_broadcast=True)
       return res
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  dummy_run_net(config, net=net)
 
 
 def test_rec_hidden_initial():
@@ -137,5 +141,6 @@ def test_rec_hidden_initial():
         y, state = self.lstm(y, state=state, axis=axis)
       return y
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
-  dummy_run_net(config)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  dummy_run_net(config, net=net)

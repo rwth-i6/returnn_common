@@ -40,7 +40,7 @@ def test_module_list():
   assert net_dict["ls.3"]["subnetwork"]["dot"]["from"][0] == "base:ls.2"
   assert net_dict["output"]["from"] == "ls.3"
 
-  dummy_run_net(config)
+  dummy_run_net(config, net=net)
 
 
 def test_sequential_base_case():
@@ -98,4 +98,4 @@ def test_sequential_named_case():
   assert net_dict["seq"]["subnetwork"]["three"]["subnetwork"]["dot"]["from"][0] == "base:two"
   assert net_dict["seq"]["subnetwork"]["output"]["from"] == "three"
   assert net_dict["output"]["from"] == "seq"
-  dummy_run_net(config)
+  dummy_run_net(config, net=net)

@@ -54,4 +54,4 @@ def test_nn_conformer():
     ('conv_subsample_layer', 'subnetwork', 'conv_layers.0', 'name_scope'): 'conv_layers/0',
     ('conv_subsample_layer', 'subnetwork', 'conv_layers.1', 'name_scope'): 'conv_layers/1'})
 
-  dummy_run_net(config)
+  dummy_run_net(config, net=conformer)

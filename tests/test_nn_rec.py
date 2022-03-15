@@ -29,7 +29,8 @@ def test_simple_net_lstm():
       x, _ = self.lstm(x, axis=axis)
       return x
 
-  config, net_dict = dummy_config_net_dict(_Net(), with_axis=True)
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net, with_axis=True)
   assert "lstm" in net_dict
   input_dim = config["input_dim"]
   lstm_out_dim = config["lstm_out_dim"]
@@ -38,4 +39,4 @@ def test_simple_net_lstm():
   param_rec_weights_shape = lstm_subnet["param_W_re"]["shape"]
   assert_equal(param_input_weights_shape, [input_dim, 4 * lstm_out_dim])
   assert_equal(param_rec_weights_shape, [lstm_out_dim, 4 * lstm_out_dim])
-  dummy_run_net(config)
+  dummy_run_net(config, net=net)
