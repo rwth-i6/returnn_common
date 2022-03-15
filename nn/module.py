@@ -21,13 +21,14 @@ class Module:
 
         def __init__(self, dim: nn.Dim, activation=tanh):
           super().__init__()
+          self.layer_norm = nn.LayerNorm()
           self.linear = nn.Linear(dim)
           self.activation = activation
 
         @nn.scoped
         def __call__(self, x: nn.Tensor) -> nn.Tensor:
           x_ = x
-          x = layer_norm(x)
+          x = self.layer_norm(x)
           x = self.linear(x)
           x = self.activation(x)
           return x_ + x

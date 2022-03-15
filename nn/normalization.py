@@ -22,6 +22,43 @@ def moments(x: nn.Tensor, axis: Union[nn.Dim, Sequence[nn.Dim]]) -> Tuple[nn.Ten
   return mean, variance
 
 
+class LayerNorm(nn.Module):
+  """
+  `Layer normalization <https://arxiv.org/abs/1607.06450>`__.
+
+  Note that we *just* normalize over the feature-dim axis here.
+  This is consistent to the default behavior of :class:`tf.keras.layers.LayerNormalization`
+  and also how it is commonly used in many models, including Transformer.
+
+  However, there are cases where it would be common to normalize over all axes except batch-dim,
+  or all axes except batch and time.
+  For a more generic variant, see :func:`norm`.
+  """
+  def __init__(self, *, in_dim: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None, eps: float = 1e-6):
+    super().__init__()
+    self.in_dim = in_dim
+    self.eps = eps
+    self.scale = None  # type: Optional[nn.Parameter]
+    self.bias = None  # type: Optional[nn.Parameter]
+    if in_dim:
+      self._lazy_init(in_dim)
+
+  def _lazy_init(self, in_dim: nn.Dim):
+    self.in_dim = in_dim
+    self.scale = nn.Parameter((self.in_dim,))
+    self.scale.initial = 1.
+    self.bias = nn.Parameter((self.in_dim,))
+    self.bias.initial = 0.
+
+  @nn.scoped
+  def __call__(self, x: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
+    x = nn.check_in_feature_dim_lazy_init(x, in_dim, self.in_dim, self._lazy_init)
+    mean = nn.reduce(x, axis=self.in_dim, mode="mean")
+    variance = nn.reduce(nn.squared_difference(x, mean), axis=self.in_dim, mode="mean", name="variance")
+    norm_x = (x - mean) * nn.rsqrt(variance + self.eps)
+    return norm_x * self.scale + self.bias
+
+
 class BatchNorm(nn.Module):
   """
   Batch normalization. https://arxiv.org/abs/1502.03167
