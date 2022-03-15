@@ -144,7 +144,7 @@ class Module:
                      *, recurse: bool = True, memo: Optional[Set[nn.Module]] = None, prefix: str = ''
                      ) -> Iterator[Tuple[str, nn.Module]]:
     """
-s    Get all children modules (excluding self)
+    Get all children modules (excluding self)
     """
     if memo is None:
       memo = set()
