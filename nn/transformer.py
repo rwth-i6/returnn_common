@@ -173,13 +173,6 @@ class TransformerDecoderLayer(nn.Module):
 
     return inp, new_state
 
-  def default_initial_state(self) -> nn.LayerState:
-    """
-    initial state declaration
-    """
-    return nn.LayerState(
-      self_attn=self.self_attn.default_initial_state())
-
   def _self_attention_block(self,
                             inp: nn.Tensor, *, axis: nn.Dim, state: nn.LayerState) -> Tuple[nn.Tensor, nn.LayerState]:
     inp, new_state = self.self_attn(inp, axis=axis, state=state)
@@ -232,7 +225,7 @@ class TransformerDecoder(nn.Module):
     """
     output = inp
 
-    for key, mod in self.layers.named_children():
+    for key, mod in self.layers.named_children(recurse=False):
       output, state[key] = mod(
         output, axis=axis, memory=memory, memory_spatial_axis=memory_spatial_axis, state=state[key])
 
@@ -245,7 +238,7 @@ class TransformerDecoder(nn.Module):
     """
     initial state declaration
     """
-    return nn.LayerState({key: mod.default_initial_state() for (key, mod) in self.layers.named_children()})
+    return self.layers.default_initial_state()
 
 
 class Transformer(nn.Module):

@@ -94,6 +94,13 @@ class Module:
       and to accept the ``state`` argument with a :class:`LayerState` with the same nested structure.
       This can be a nested structure and should match the structure of the ``state`` argument and returned value.
     """
+    state = nn.LayerState()
+    for key, mod in self.named_children():
+      sub_state = mod.default_initial_state()
+      if sub_state:
+        state[key] = sub_state
+    if state:
+      return state
     return None
 
   def get_default_name(self) -> str:
