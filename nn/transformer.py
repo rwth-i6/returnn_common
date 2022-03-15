@@ -23,7 +23,7 @@ class TransformerEncoderLayer(nn.Module):
                dropout: float = 0.1,
                norm_eps: float = 1e-6,
                norm_first: bool = True,
-               norm=nn.layer_norm) -> None:
+               norm=nn.LayerNorm) -> None:
     """
     :param out_dim: output dimension, PyTorch name: d_model
     :param self_attention: module which does self attention
@@ -32,7 +32,7 @@ class TransformerEncoderLayer(nn.Module):
     :param dropout: Dropout value, PyTorch name: dropout
     :param norm_eps: Epsilon value for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
-    :param norm: normalization function
+    :param norm: normalization function, e.g. nn.LayerNorm
     """
     super().__init__()
     self.self_attn = _copy.deepcopy(self_attention)
@@ -41,8 +41,9 @@ class TransformerEncoderLayer(nn.Module):
     self.linear_out = nn.Linear(out_dim)
     self.activation = ff_activation
     self.norm_first = norm_first
-    self.norm_eps = norm_eps
-    self.norm = norm
+    assert isinstance(norm, type)
+    self.self_att_norm = norm(eps=norm_eps)
+    self.ff_norm = norm()
     self.dropout = dropout
 
   @nn.scoped
@@ -52,11 +53,15 @@ class TransformerEncoderLayer(nn.Module):
     The input has shape {B, T, F}.
     """
     if self.norm_first:
-      inp = inp + self._self_attention_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), axis=axis)
-      inp = inp + self._feed_forward_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim))
+      inp = inp + self._self_attention_block(
+        self.self_att_norm(inp, in_dim=inp.feature_dim), axis=axis)
+      inp = inp + self._feed_forward_block(
+        self.ff_norm(inp, in_dim=inp.feature_dim))
     else:
-      inp = self.norm(inp + self._self_attention_block(inp, axis=axis), epsilon=self.norm_eps, in_dim=inp.feature_dim)
-      inp = self.norm(inp + self._feed_forward_block(inp), epsilon=self.norm_eps, in_dim=inp.feature_dim)
+      inp = self.self_att_norm(
+        inp + self._self_attention_block(inp, axis=axis), in_dim=inp.feature_dim)
+      inp = self.ff_norm(
+        inp + self._feed_forward_block(inp), in_dim=inp.feature_dim)
 
     return inp
 
@@ -78,11 +83,11 @@ class TransformerEncoder(nn.Module):
   Defines the full Encoder of the standard transformer
   """
   def __init__(self, encoder_layer: Union[TransformerEncoderLayer, Any], *, num_layers: int,
-               norm=nn.layer_norm, norm_eps: float = 1e-6):
+               norm=nn.LayerNorm, norm_eps: float = 1e-6):
     """
     :param encoder_layer: Encoder layer to be stacked num_layers times
     :param num_layers: Number of layers
-    :param norm: normalization function
+    :param norm: normalization function, e.g. nn.LayerNorm()
     :param norm_eps: Epsilon value for layer normalization
     """
     super().__init__()
@@ -90,8 +95,7 @@ class TransformerEncoder(nn.Module):
     self.layers = nn.ModuleList([copy.deepcopy(encoder_layer) for _ in range(num_layers)])
 
     self.num_layers = num_layers
-    self.norm = norm
-    self.norm_eps = norm_eps
+    self.norm = norm(eps=norm_eps) if isinstance(norm, type) else norm
 
   @nn.scoped
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
@@ -104,7 +108,7 @@ class TransformerEncoder(nn.Module):
       output = mod(output, axis=axis)
 
     if self.norm is not None:
-      output = self.norm(output, epsilon=self.norm_eps, in_dim=output.feature_dim)
+      output = self.norm(output, in_dim=output.feature_dim)
 
     return output
 
@@ -121,7 +125,7 @@ class TransformerDecoderLayer(nn.Module):
                dropout: float = 0.1,
                norm_eps: float = 1e-6,
                norm_first: bool = True,
-               norm=nn.layer_norm):
+               norm=nn.LayerNorm):
     """
     :param out_dim: output dimension, PyTorch name: d_model
     :param enc_dec_attention: module or func which does encoder decoder attention
@@ -131,7 +135,7 @@ class TransformerDecoderLayer(nn.Module):
     :param dropout: Dropout value
     :param norm_eps: Epsilon value for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
-    :param norm: normalization function
+    :param norm: normalization function, e.g. nn.LayerNorm()
     """
     super().__init__()
     self.self_attn = _copy.deepcopy(causal_self_attention)
@@ -140,9 +144,11 @@ class TransformerDecoderLayer(nn.Module):
     self.linear_ff = nn.Linear(ff_dim)
     self.linear_out = nn.Linear(out_dim)
 
-    self.norm = norm
+    assert isinstance(norm, type)
+    self.self_att_norm = norm(eps=norm_eps)
+    self.cross_att_norm = norm(eps=norm_eps)
+    self.ff_norm = norm(eps=norm_eps)
     self.norm_first = norm_first
-    self.norm_eps = norm_eps
     self.activation = ff_activation
     self.dropout = dropout
 
@@ -158,18 +164,20 @@ class TransformerDecoderLayer(nn.Module):
     new_state = nn.LayerState()
     if self.norm_first:
       x_, new_state.self_attn = self._self_attention_block(
-        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), axis=axis, state=state.self_attn)
+        self.self_att_norm(inp, in_dim=inp.feature_dim), axis=axis, state=state.self_attn)
       inp = inp + x_
       inp = inp + self._multi_head_attention_block(
-        self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim), mem=memory, mem_axis=memory_spatial_axis)
-      inp = inp + self._feed_forward_block(self.norm(inp, epsilon=self.norm_eps, in_dim=inp.feature_dim))
+        self.cross_att_norm(inp, in_dim=inp.feature_dim), mem=memory, mem_axis=memory_spatial_axis)
+      inp = inp + self._feed_forward_block(
+        self.ff_norm(inp, in_dim=inp.feature_dim))
     else:
       x_, new_state.self_attn = self._self_attention_block(inp, axis=axis, state=state.self_attn)
-      inp = self.norm(inp + x_, epsilon=self.norm_eps, in_dim=inp.feature_dim)
-      inp = self.norm(
+      inp = self.self_att_norm(inp + x_, in_dim=inp.feature_dim)
+      inp = self.cross_att_norm(
         inp + self._multi_head_attention_block(inp, mem=memory, mem_axis=memory_spatial_axis),
-        epsilon=self.norm_eps, in_dim=inp.feature_dim)
-      inp = self.norm(inp + self._feed_forward_block(inp), epsilon=self.norm_eps, in_dim=inp.feature_dim)
+        in_dim=inp.feature_dim)
+      inp = self.ff_norm(
+        inp + self._feed_forward_block(inp), in_dim=inp.feature_dim)
 
     return inp, new_state
 
@@ -198,7 +206,7 @@ class TransformerDecoder(nn.Module):
   def __init__(self, *,
                decoder_layer: Union[TransformerDecoderLayer, Any],
                num_layers: int,
-               norm=nn.layer_norm,
+               norm=nn.LayerNorm,
                norm_eps: float = 1e-6):
     """
     :param decoder_layer: Decoder layer to be stacked num_layers times
@@ -211,8 +219,7 @@ class TransformerDecoder(nn.Module):
     self.layers = nn.ModuleList([copy.deepcopy(decoder_layer) for _ in range(num_layers)])
 
     self.num_layers = num_layers
-    self.norm = norm
-    self.norm_eps = norm_eps
+    self.norm = norm(eps=norm_eps) if isinstance(norm, type) else norm
 
   @nn.scoped
   def __call__(self, inp: nn.Tensor, *,
@@ -230,7 +237,7 @@ class TransformerDecoder(nn.Module):
         output, axis=axis, memory=memory, memory_spatial_axis=memory_spatial_axis, state=state[key])
 
     if self.norm is not None:
-      output = self.norm(output, epsilon=self.norm_eps, in_dim=output.feature_dim)
+      output = self.norm(output, in_dim=output.feature_dim)
 
     return output, state
 
@@ -263,7 +270,7 @@ class Transformer(nn.Module):
                custom_encoder_layer: Optional[Union[TransformerEncoderLayer, Any]] = None,
                custom_decoder_layer: Optional[Union[TransformerDecoderLayer, Any]] = None,
                norm_eps: float = 1e-6,
-               norm=nn.layer_norm,
+               norm=nn.LayerNorm,
                norm_first: bool = True,
                dec_causal_self_attention=None,
                enc_self_attention=None,
@@ -343,10 +350,10 @@ class Transformer(nn.Module):
 
     self.output_projection = nn.Linear(target_vocab)
 
-    self.norm_eps = norm_eps
     self.out_dim = out_dim
     self.num_heads = num_heads
     self.norm = norm
+    self.norm_eps = norm_eps
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *,

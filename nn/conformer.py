@@ -159,43 +159,49 @@ class ConformerEncoderLayer(nn.Module):
       ff_dim = out_dim * 4
     self.ffn1 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=ff_activation)
+    self.ffn1_layer_norm = nn.LayerNorm()
 
     self.ffn2 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=ff_activation)
+    self.ffn2_layer_norm = nn.LayerNorm()
 
     if conv_norm is nn.NotSpecified:
       conv_norm = nn.BatchNorm(use_mask=False)
     self.conv_block = ConformerConvBlock(
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
+    self.conv_layer_norm = nn.LayerNorm()
 
     self.self_att = nn.SelfAttention(
       key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
+    self.self_att_layer_norm = nn.LayerNorm()
+
+    self.final_layer_norm = nn.LayerNorm()
 
   @nn.scoped
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
     # FFN
-    x_ffn1_ln = nn.layer_norm(inp, in_dim=inp.feature_dim)
+    x_ffn1_ln = self.ffn1_layer_norm(inp, in_dim=inp.feature_dim)
     x_ffn1 = self.ffn1(x_ffn1_ln)
     x_ffn1_out = 0.5 * nn.dropout(x_ffn1, axis=inp.feature_dim, dropout=self.dropout) + inp
 
     # MHSA
-    x_mhsa_ln = nn.layer_norm(x_ffn1_out, in_dim=inp.feature_dim)
+    x_mhsa_ln = self.self_att_layer_norm(x_ffn1_out, in_dim=inp.feature_dim)
     x_mhsa = self.self_att(x_mhsa_ln, axis=axis)
     x_mhsa_out = x_mhsa + x_ffn1_out
 
     # Conv
-    x_conv_ln = nn.layer_norm(x_mhsa_out, in_dim=inp.feature_dim)
+    x_conv_ln = self.conv_layer_norm(x_mhsa_out, in_dim=inp.feature_dim)
     x_conv = self.conv_block(x_conv_ln, axis=axis)
     x_conv_out = nn.dropout(x_conv, axis=inp.feature_dim, dropout=self.dropout) + x_mhsa_out
 
     # FFN
-    x_ffn2_ln = nn.layer_norm(x_conv_out, in_dim=inp.feature_dim)
+    x_ffn2_ln = self.ffn2_layer_norm(x_conv_out, in_dim=inp.feature_dim)
     x_ffn2 = self.ffn2(x_ffn2_ln)
     x_ffn2_out = 0.5 * nn.dropout(x_ffn2, axis=inp.feature_dim, dropout=self.dropout) + x_conv_out
 
     # last LN layer
-    return nn.layer_norm(x_ffn2_out, in_dim=inp.feature_dim)
+    return self.final_layer_norm(x_ffn2_out, in_dim=inp.feature_dim)
 
 
 class ConformerEncoder(nn.Module):
