@@ -95,7 +95,7 @@ class Module:
       This can be a nested structure and should match the structure of the ``state`` argument and returned value.
     """
     state = nn.LayerState()
-    for key, mod in self.named_children():
+    for key, mod in self.named_children(recurse=False):
       sub_state = mod.default_initial_state()
       if sub_state:
         state[key] = sub_state
