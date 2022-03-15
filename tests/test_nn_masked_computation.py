@@ -4,7 +4,7 @@ Test nn.masked_computation
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict, check_params
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict
 
 import typing
 from nose.tools import assert_equal
