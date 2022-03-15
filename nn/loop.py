@@ -74,6 +74,7 @@ class Loop:
     self.name_ctx.extend_reserved_names({"output", "end"})
     self._entered_scope = False
     self._exited_scope = False
+    self._exited_scope_with_exception = False
     self._state = _LoopStateHolder(loop=self)
     self.unstacked_refs = []  # type: List[nn.Tensor]
     self.outputs = []  # type: List[nn.Tensor]
@@ -95,6 +96,7 @@ class Loop:
 
   def __exit__(self, exc_type, exc_val, exc_tb):
     assert not self._exited_scope, f"{self}: cannot exit twice"
+    self._exited_scope_with_exception = bool(exc_type)
     self._exited_scope = True
     try:
       if not exc_type:
@@ -125,12 +127,15 @@ class Loop:
     """state holder inside the loop"""
     if not self._exited_scope:
       return self._state
+    if self._exited_scope_with_exception:  # nicer for debugging
+      return self._state
     # noinspection PyProtectedMember
     return self._state._get_last()
 
   @state.setter
   def state(self, initial_state: nn.LayerState):
     assert len(self._state) == 0, f"can only assign {self}.state once for the initial state"
+    assert not self._entered_scope
     for key, value in initial_state.items():
       self._state[key] = value
 
