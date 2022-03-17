@@ -366,6 +366,8 @@ class Transformer(nn.Module):
     """
     Forward step of Transformer
     """
+    assert self.out_dim in source.shape, (
+      "Input feature dimension is not matching internal transformer dimension")
     memory = self.encoder(source, axis=source_spatial_axis)
     search = None
     if isinstance(target, nn.SearchFuncInterface):
