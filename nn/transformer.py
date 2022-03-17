@@ -362,7 +362,7 @@ class Transformer(nn.Module):
                target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
                target_spatial_axis: Optional[nn.Dim] = None,
                initial_state: Optional[nn.LayerState] = None,
-               ) -> Tuple[nn.Tensor, nn.LayerState]:
+               ) -> Tuple[nn.Tensor, nn.Tensor, nn.LayerState]:
     """
     Forward step of Transformer
     """
@@ -388,7 +388,9 @@ class Transformer(nn.Module):
         assert target is not None
         loop.state.target = target
       outputs = loop.stack(loop.state.target)
-    return outputs, loop.state
+      out_logits = loop.stack(logits)
+
+    return outputs, out_logits, loop.state
 
   def default_initial_state(self) -> nn.LayerState:
     """
