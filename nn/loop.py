@@ -60,7 +60,9 @@ class Loop:
                name: str = "loop"
                ):
     super(Loop, self).__init__()
+    self._has_given_axis = True
     if not axis or axis is NotSpecified:
+      self._has_given_axis = False
       axis = nn.SpatialDim(f"{name}-dim")
     self.extra_opts = {
       {"max_seq_len": "max_seq_len_via"}.get(key, key): value
@@ -79,7 +81,6 @@ class Loop:
     self.unstacked_refs = []  # type: List[nn.Tensor]
     self.outputs = []  # type: List[nn.Tensor]
     self._last_frames = {}  # type: Dict[nn.NameCtx, nn.Tensor]  # inner name -> outer
-    self._has_given_axis = bool(axis)
     self.axis = axis
     self.control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Loop)
     self.control_flow_ctx.loop_spatial_dim = axis
@@ -149,6 +150,7 @@ class Loop:
     """
     from . import rec_unstack
     assert self._has_given_axis, "%s: unstack() requires a given axis" % self
+    assert self.axis in source.shape
     res = rec_unstack(source, axis=self.axis, name=name)
     self.unstacked_refs.append(res)
     return res
