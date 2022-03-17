@@ -763,6 +763,9 @@ class ReturnnDimTagsProxy:
 
     return "".join(lines)
 
+  def _sis_hash(self):
+    raise Exception('unexpected')
+
   def dim_ref_repr(self, dim: nn.Dim, *, brackets: bool = True, prefer_ref: bool = True) -> str:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
