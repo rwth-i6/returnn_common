@@ -360,6 +360,7 @@ class Transformer(nn.Module):
   def __call__(self, source: nn.Tensor, *,
                source_spatial_axis: nn.Dim,
                target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
+               target_spatial_axis: Optional[nn.Dim] = None,
                initial_state: Optional[nn.LayerState] = None,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
@@ -370,7 +371,7 @@ class Transformer(nn.Module):
     if isinstance(target, nn.SearchFuncInterface):
       search = target
       target = None
-    loop = nn.Loop()
+    loop = nn.Loop(axis=target_spatial_axis)
     loop.state = initial_state if initial_state else self.default_initial_state()
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
