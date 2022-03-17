@@ -309,6 +309,9 @@ class Transformer(nn.Module):
     if isinstance(num_heads, int):
       num_heads = nn.SpatialDim("num_heads", num_heads)
 
+    if ff_dim is nn.NotSpecified:
+      ff_dim = out_dim * 4
+
     if custom_encoder is not None:
       self.encoder = custom_encoder
     else:
@@ -340,8 +343,6 @@ class Transformer(nn.Module):
             key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
         if enc_dec_attention is None:
           enc_dec_attention = nn.dot_attention
-        if ff_dim is nn.NotSpecified:
-          ff_dim = out_dim * 4
         decoder_layer = TransformerDecoderLayer(
           out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=enc_dec_attention)
