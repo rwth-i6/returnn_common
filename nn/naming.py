@@ -44,7 +44,7 @@ Note on the different type of name hierarchies in RETURNN and here in RETURNN-co
 """
 
 from __future__ import annotations
-from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict
+from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Collection
 from tensorflow.python.util import nest
 from returnn.util.basic import NotSpecified
 from .. import nn
@@ -731,8 +731,9 @@ class ReturnnDimTagsProxy:
     new.dim_refs_by_tag = self.dim_refs_by_tag.copy()
     return new
 
-  def py_code_str(self):
+  def py_code_str(self, exclude_dims: Collection[ReturnnDimTagsProxy.DimRefProxy] = ()):
     """
+    :param exclude_dims: dim tags to exclude from serializing
     :return: Python code
     """
     # We cannot just iterate through self.dim_refs_by_name in insertion order
@@ -749,6 +750,8 @@ class ReturnnDimTagsProxy:
             _visit_tag_deps(tag_)
 
     def _visit_ref(ref: ReturnnDimTagsProxy.DimRefProxy):
+      if ref in exclude_dims:
+        return
       _visit_tag_deps(ref.dim)
       if ref.name in visited:
         return
