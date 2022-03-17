@@ -13,6 +13,7 @@ class Linear(nn.Module):
 
   def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None, with_bias=True):
     super().__init__()
+    assert isinstance(out_dim, nn.Dim)
     self.out_dim = out_dim
     self.in_dim = in_dim
     self.weight = None  # type: Optional[nn.Parameter]
