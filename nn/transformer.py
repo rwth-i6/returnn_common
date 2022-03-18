@@ -362,9 +362,11 @@ class Transformer(nn.Module):
                target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
                target_spatial_axis: Optional[nn.Dim] = None,
                initial_state: Optional[nn.LayerState] = None,
-               ) -> Tuple[nn.Tensor, nn.Tensor, nn.LayerState]:
+               ) -> Tuple[nn.Tensor, nn.Tensor, Optional[nn.Tensor], nn.LayerState]:
     """
     Forward step of Transformer
+
+    :return: memory (encoder output), out logits, out labels (only when doing search), final state
     """
     assert self.out_dim in source.shape, (
       f"{self}: Input {source} feature dimension is not matching internal transformer dimension {self.out_dim}")
@@ -391,10 +393,10 @@ class Transformer(nn.Module):
       else:
         assert target is not None
         loop.state.target = target
-      outputs = loop.stack(loop.state.target)
+      out_labels = loop.stack(loop.state.target) if target is None else None
       out_logits = loop.stack(logits)
 
-    return outputs, out_logits, loop.state
+    return memory, out_logits, out_labels, loop.state
 
   def default_initial_state(self) -> nn.LayerState:
     """
