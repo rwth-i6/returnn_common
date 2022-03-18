@@ -19,33 +19,34 @@ then it will perform the actual computation
 ## Usage examples
 
 ```
-import returnn_common as rc
+from returnn_common import nn
 
 
-class MyModelBlock(rc.nn.Module):
-  def __init__(self, dim: int, hidden: int, dropout: float = 0.1):
-    self.linear_out = rc.nn.Linear(dim)
-    self.linear_hidden = rc.nn.Linear(hidden)
+class MyModelBlock(nn.Module):
+  def __init__(self, dim: nn.Dim, hidden: nn.Dim, dropout: float = 0.1):
+    self.layer_norm = nn.LayerNorm()
+    self.linear_out = nn.Linear(dim)
+    self.linear_hidden = nn.Linear(hidden)
     self.dropout = dropout
 
-  def forward(self, x: rc.nn.LayerRef) -> rc.nn.Layer:
-    y = rc.nn.layer_norm(x)
+  def forward(self, x: nn.Tensor) -> nn.Tensor:
+    y = self.layer_norm(x)
     y = self.linear_hidden(y)
-    y = rc.nn.sigmoid(y)
+    y = nn.sigmoid(y)
     y = self.linear_out(x)
-    y = rc.nn.dropout(y, dropout=self.dropout)
+    y = nn.dropout(y, dropout=self.dropout)
     return x + y
 ```
 
 In case you want to have this three times separately now:
 ```
-class MyModel(rc.nn.Module):
-  def __init__(self, dim: int):
-    self.block1 = MyModelBlock(1024, 512)
-    self.block2 = MyModelBlock(1024, 512)
-    self.block3 = MyModelBlock(1024, 512)
+class MyModel(nn.Module):
+  def __init__(self, dim: nn.Dim):
+    self.block1 = MyModelBlock(dim * 2, dim)
+    self.block2 = MyModelBlock(dim * 2, dim)
+    self.block3 = MyModelBlock(dim * 2, dim)
     
-  def forward(self, x: rc.nn.LayerRef) -> rc.nn.Layer:
+  def forward(self, x: nn.Tensor) -> nn.Tensor:
     x = self.block1(x)
     x = self.block2(x)
     x = self.block3(x)
@@ -54,11 +55,11 @@ class MyModel(rc.nn.Module):
 
 Or if you want to share the parameters but run this three times:
 ```
-class MyModel(rc.nn.Module):
-  def __init__(self, dim: int):
-    self.block = MyModelBlock(1024, 512)
+class MyModel(nn.Module):
+  def __init__(self, dim: nn.Dim):
+    self.block = MyModelBlock(dim * 2, dim)
     
-  def forward(self, x: rc.nn.LayerRef) -> rc.nn.Layer:
+  def forward(self, x: nn.Tensor) -> nn.Tensor:
     x = self.block(x)
     x = self.block(x)
     x = self.block(x)
@@ -71,7 +72,7 @@ class MyModel(rc.nn.Module):
 When this is integrated as part of a Sisyphus recipe,
 the common way people use it is similar as for i6_experiments,
 i.e. you would `git clone` this repo into your `recipes` directory.
-
+See [i6_experiments](https://github.com/rwth-i6/i6_experiments).
 
 ## Usage via `returnn.import_`
 
