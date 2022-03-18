@@ -367,12 +367,14 @@ class Transformer(nn.Module):
     Forward step of Transformer
     """
     assert self.out_dim in source.shape, (
-      "Input feature dimension is not matching internal transformer dimension")
+      f"{self}: Input {source} feature dimension is not matching internal transformer dimension {self.out_dim}")
     memory = self.encoder(source, axis=source_spatial_axis)
     search = None
     if isinstance(target, nn.SearchFuncInterface):
       search = target
       target = None
+    if target is not None:
+      assert target_spatial_axis, f"{self}: Target spatial axis must be specified when target is given"
     loop = nn.Loop(axis=target_spatial_axis)
     loop.state = initial_state if initial_state else self.default_initial_state()
     with loop:
