@@ -4,6 +4,7 @@ This repo provides common building blocks for [RETURNN](https://github.com/rwth-
 such as models or networks, network creation code,
 datasets, etc.
 
+
 # `nn`: Network definitions, models
 
 RETURNN originally used dicts to define the network (model, computation graph).
@@ -71,7 +72,10 @@ class MyModel(nn.Module):
 
 When this is integrated as part of a Sisyphus recipe,
 the common way people use it is similar as for i6_experiments,
-i.e. you would `git clone` this repo into your `recipes` directory.
+i.e. you would `git clone` this repo into your `recipe` directory.
+
+## Usage as Sisyphus recipe submodule
+
 See [i6_experiments](https://github.com/rwth-i6/i6_experiments).
 
 ## Usage via `returnn.import_`
@@ -176,3 +180,11 @@ So there would be a common directory structure
 in some directory which could be some symlinks elsewhere.
 (We could also provide some scripts to simplify handling this.)
 To refer to such a file path, use the functions in `data.py`.
+
+
+# Requirements
+
+Python 3.7+.
+See [#43](https://github.com/rwth-i6/returnn_common/issues/43).
+
+Recent RETURNN (>=2022), needs behavior version >=12.
