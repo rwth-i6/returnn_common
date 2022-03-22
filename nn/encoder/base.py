@@ -13,7 +13,7 @@ So, for most purpose, e.g. for a decoder (see :mod:`..decoder.base`),
 you only care about some encoded vector of type :class:`Tensor`.
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 from abc import ABC
 from ... import nn
 
@@ -61,6 +61,11 @@ class ISeqDownsamplingEncoder(nn.Module, ABC):
   """
 
   out_dim: nn.Dim
+  # In most cases (pooling, conv), the output sequence length will bei ceildiv(input_seq_len, factor)
+  # and factor is an integer.
+  # However, this is not a hard condition.
+  # The downsampling factor only describes the linear factor in the limit.
+  downsample_factor: Union[int, float]
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
