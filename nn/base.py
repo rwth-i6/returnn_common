@@ -476,6 +476,23 @@ class Parameter(Tensor):
       self.layer_dict.pop("init_by_layer", None)
       self.layer_dict["init"] = value
 
+  @property
+  def weight_decay(self) -> float:
+    """
+    Weight decay, which is equivalent to L2 loss on the parameters for SGD.
+    On RETURNN side, whether this is handled separately or is part of the main loss,
+    can be controlled via the ``decouple_constraints`` config option.
+    https://github.com/rwth-i6/returnn_common/issues/59#issuecomment-1073913421
+    """
+    return self.layer_dict.get("L2", 0.0)
+
+  @weight_decay.setter
+  def weight_decay(self, value: Optional[float]):
+    if value:
+      self.layer_dict["L2"] = value
+    else:
+      self.layer_dict.pop("L2", None)
+
 
 class LayerState(dict):
   """
