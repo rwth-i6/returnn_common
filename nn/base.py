@@ -555,6 +555,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   """
   if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
+    assert nn.NameCtx.stack, "no nn.NameCtx defined in context"
     name_ctx = nn.NameCtx.get_from_call(module=module, name=name)
     return make_layer(
       layer_dict=layer_dict, name=name_ctx,
