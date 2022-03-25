@@ -2,7 +2,7 @@
 The base model and interface of a hybrid NN-HMM.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from .. import nn
 from .encoder import ISeqFramewiseEncoder, ISeqDownsamplingEncoder
 
@@ -18,12 +18,16 @@ class IHybridHMM(nn.Module):
   encoder: EncoderType
   out_dim: nn.Dim
 
-  def __call__(self, source: nn.Tensor, *, train: bool = False, targets: Optional[nn.Tensor] = None) -> nn.Tensor:
+  def __call__(self, source: nn.Tensor, *,
+               state: Optional[nn.LayerState] = None,
+               train: bool = False, targets: Optional[nn.Tensor] = None) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     """
     :param source: [B,T,in_dim], although not necessarily in that order. we require that time_dim_axis is set.
+    :param state: previous state
     :param train: if set, it assumes we have given a target, and it will add losses
     :param targets: only used for training. [B,T] -> out_dim sparse targets.
-    :return: posteriors, as log-prob, as [B,T',out_dim], although dims not necessarily in that order.
+    :return: (posteriors, final state),
+      posteriors as log-prob, as [B,T',out_dim], although dims not necessarily in that order.
     """
     raise NotImplementedError
 
@@ -39,9 +43,12 @@ class HybridHMM(IHybridHMM):
     self.out_dim = out_dim
     self.out_projection = nn.Linear(out_dim)
 
-  def __call__(self, source: nn.Tensor, *, train: bool = False, targets: Optional[nn.Tensor] = None) -> nn.Tensor:
+  def __call__(self, source: nn.Tensor, *,
+               state: Optional[nn.LayerState] = None,
+               train: bool = False, targets: Optional[nn.Tensor] = None) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     assert source.data.time_dim_axis is not None
     in_spatial_dim = source.data.dim_tags[source.data.time_dim_axis]
+    assert state is None, f"{self} stateful hybrid HMM not supported yet"
     if isinstance(self.encoder, ISeqFramewiseEncoder):
       encoder_output = self.encoder(source, in_spatial_dim=in_spatial_dim)
       out_spatial_dim = in_spatial_dim
@@ -54,4 +61,4 @@ class HybridHMM(IHybridHMM):
       assert out_spatial_dim in targets.shape
       ce_loss = nn.sparse_softmax_cross_entropy_with_logits(logits=out_embed, targets=targets, axis=self.out_dim)
       ce_loss.mark_as_loss()
-    return nn.log_softmax(out_embed, axis=self.out_dim)
+    return nn.log_softmax(out_embed, axis=self.out_dim), None
