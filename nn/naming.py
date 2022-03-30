@@ -112,8 +112,23 @@ class NameCtx:
   See the documentation on name hierarchies for RETURNN and RETURNN-common in the module docstring at the top.
   """
 
-  stack = []  # type: List[NameCtx]
+  _stack = []  # type: List[NameCtx]
   _ReservedNames = {"data", "output"}
+
+  @classmethod
+  def reset_default_root(cls):
+    """
+    Resets the default root name ctx.
+    """
+    cls._stack[0:1] = [cls.new_root()]
+
+  @classmethod
+  def _maybe_init_default_root(cls):
+    """
+    Initialize the default root name ctx.
+    """
+    if not cls._stack:
+      cls.reset_default_root()
 
   @classmethod
   def top(cls) -> NameCtx:
@@ -121,8 +136,9 @@ class NameCtx:
     Return the top of the stack.
     Assumes that it exists.
     """
-    assert cls.stack
-    return cls.stack[-1]
+    cls._maybe_init_default_root()
+    assert cls._stack
+    return cls._stack[-1]
 
   @classmethod
   def current_ctx(cls) -> NameCtx:
@@ -165,7 +181,7 @@ class NameCtx:
     self.global_batch = None  # type: Optional[nn.BatchInfo]  # only for the root name ctx
     self.marked_outputs = []  # type: List[nn.Tensor]
     self.marked_losses = []  # type: List[nn.Tensor]
-    self.parent = parent if parent is not NotSpecified else (self.current_ctx() if self.stack else None)
+    self.parent = parent if parent is not NotSpecified else self.current_ctx()
     self.name = name  # early assign such that debug repr works later
     if not name:
       if suggested_name:
@@ -594,12 +610,13 @@ class NameCtx:
     return self.get_child_with_layer_ref(name, data=data).layer_ref
 
   def __enter__(self):
-    self.stack.append(self)
+    self._maybe_init_default_root()
+    self._stack.append(self)
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    assert self.stack[-1] is self, f"{self}.__exit__: stack {self.stack} top is not self"
-    self.stack.pop(-1)
+    assert self._stack[-1] is self, f"{self}.__exit__: stack {self._stack} top is not self"
+    self._stack.pop(-1)
 
   def _get_suggested_name(self) -> str:
     assert self.module
