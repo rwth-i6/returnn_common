@@ -30,17 +30,17 @@ def test_nn_conformer():
     print(f"resource.setrlimit {type(exc).__name__}: {exc}")
   sys.setrecursionlimit(10 ** 6)
 
-  with nn.NameCtx.new_root() as name_ctx:
-    time_dim = nn.SpatialDim("time")
-    input_dim = nn.FeatureDim("input", 10)
-    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
-    conformer = nn.ConformerEncoder(
-      out_dim=nn.FeatureDim("out", 14), ff_dim=nn.FeatureDim("ff", 17),
-      num_heads=2, num_layers=2)
-    out, _ = conformer(data, in_spatial_dim=time_dim, name=name_ctx)
-    out.mark_as_default_output()
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  input_dim = nn.FeatureDim("input", 10)
+  data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
+  conformer = nn.ConformerEncoder(
+    out_dim=nn.FeatureDim("out", 14), ff_dim=nn.FeatureDim("ff", 17),
+    num_heads=2, num_layers=2)
+  out, _ = conformer(data, in_spatial_dim=time_dim)
+  out.mark_as_default_output()
 
-  config_code = name_ctx.get_returnn_config_serialized()
+  config_code = nn.get_returnn_config_serialized(conformer)
   config, net_dict = config_net_dict_via_serialized(config_code)
 
   collected_name_scopes = {}  # path -> name_scope

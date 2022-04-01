@@ -120,11 +120,11 @@ def test_explicit_root_ctx_sub():
 
   with nn.NameCtx.new_root() as name_ctx:
     net = _Net(out_dim=nn.FeatureDim("linear-out", 13))
-    out = net(nn.get_extern_data(nn.Data("data", shape=(None, 5))), name=name_ctx)
+    out = net(nn.get_extern_data(nn.Data("data", shape=(None, 5))))
     assert isinstance(out, nn.Tensor)
     out.mark_as_default_output()
 
-  config = name_ctx.get_returnn_config()
+  config = name_ctx.get_returnn_config(net)
   net_dict = config["network"]
   pprint(net_dict)
 
@@ -160,7 +160,7 @@ def test_root_mod_call_twice():
     test_block = TestBlock(out_dim=nn.FeatureDim("linear-out", 13))
     time_dim = nn.SpatialDim("time")
     in_dim = nn.FeatureDim("input", 5)
-    y = test_block(nn.get_extern_data(nn.Data("input1", dim_tags=[nn.batch_dim, time_dim, in_dim])), name=name_ctx)
+    y = test_block(nn.get_extern_data(nn.Data("input1", dim_tags=[nn.batch_dim, time_dim, in_dim])))
     z = test_block(nn.get_extern_data(nn.Data("input2", dim_tags=[nn.batch_dim, time_dim, in_dim])))
 
     print(y)
@@ -170,12 +170,13 @@ def test_root_mod_call_twice():
     y.mark_as_output()
     z.mark_as_output()
 
-  config = name_ctx.get_returnn_config()
+  config = name_ctx.get_returnn_config(test_block)
   net_dict = config["network"]
   pprint(net_dict)
 
-  assert "linear" in net_dict and "test_block" in net_dict
-  assert_equal(net_dict["test_block"]["name_scope"], "")
+  assert "linear" in net_dict
+  assert "test_block_0" in net_dict
+  assert_equal(net_dict["test_block_0"]["name_scope"], "")
 
 
 def test_multiple_returns_depth_1():
@@ -336,8 +337,8 @@ def test_from_call_variations2():
       """
       Forward
       """
-      assert_equal(x.get_name_in_current_ctx(), "base:sub/linear")
-      assert_equal(y.get_name_in_current_ctx(), "base:linear")
+      assert_equal(x._get_name_in_current_ctx(), "base:sub/linear")
+      assert_equal(y._get_name_in_current_ctx(), "base:linear")
       x_ = self.linear(x)
       x = self.linear2(x_)
       return x, x_
@@ -355,13 +356,13 @@ def test_from_call_variations2():
       Forward
       """
       out, add_out = self.sub(x)
-      assert_equal(out.get_name_in_current_ctx(), "sub/linear2")
-      assert_equal(add_out.get_name_in_current_ctx(), "sub/linear")
+      assert_equal(out._get_name_in_current_ctx(), "sub/linear2")
+      assert_equal(add_out._get_name_in_current_ctx(), "sub/linear")
       lin = self.linear(out)
-      assert_equal(lin.get_name_in_current_ctx(), "linear")
+      assert_equal(lin._get_name_in_current_ctx(), "linear")
       out2, add_out2 = self.sub2(add_out, lin)
-      assert_equal(out2.get_name_in_current_ctx(), "sub2/linear2")
-      assert_equal(add_out2.get_name_in_current_ctx(), "sub2/linear")
+      assert_equal(out2._get_name_in_current_ctx(), "sub2/linear2")
+      assert_equal(add_out2._get_name_in_current_ctx(), "sub2/linear")
       return out2
 
   net = _Net()

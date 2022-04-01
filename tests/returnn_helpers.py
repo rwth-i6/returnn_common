@@ -83,20 +83,20 @@ def dummy_config_net_dict(net: nn.Module, *,
   """
   :return: config, net_dict
   """
-  with nn.NameCtx.new_root() as name_ctx:
-    time_dim = nn.SpatialDim("time")
-    in_dim = nn.FeatureDim("input", in_dim)
-    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
-    opts = {}
-    if with_axis:
-      opts["axis"] = time_dim
-    out = net(data, **opts, name=name_ctx)
-    if isinstance(out, tuple):
-      out = out[0]
-    assert isinstance(out, nn.Tensor)
-    out.mark_as_default_output()
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("input", in_dim)
+  data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
+  opts = {}
+  if with_axis:
+    opts["axis"] = time_dim
+  out = net(data, **opts)
+  if isinstance(out, tuple):
+    out = out[0]
+  assert isinstance(out, nn.Tensor)
+  out.mark_as_default_output()
 
-  config_code = name_ctx.get_returnn_config_serialized()
+  config_code = nn.get_returnn_config_serialized(net)
   return config_net_dict_via_serialized(config_code)
 
 
@@ -118,11 +118,22 @@ def check_params(net: nn.Module, engine: returnn.tf.engine.Engine):
   """
   Check that params match as expected.
   """
+  # noinspection PyProtectedMember
+  from ..nn.naming import _NamePathCache
+  rc_naming = _NamePathCache()
+  rc_naming.register_module(net, [])
   rc_params = set()
   for param in net.parameters():
     assert isinstance(param, nn.Parameter)
-    print("param:", repr(param.name_ctx.layer_abs_name_scope_effective), param)
-    rc_params.add(param.name_ctx.layer_abs_name_scope_effective)
+    param_name = "/".join(rc_naming.get_name_path(param))
+    print("param:", repr(param_name), param)
+    rc_params.add(param_name)
+
+  rc_named_params = set()
+  for name, param in net.named_parameters():
+    assert isinstance(name, str)
+    assert isinstance(param, nn.Parameter)
+    rc_named_params.add(name.replace(".", "/"))
 
   tf_params = set()
   for param in engine.network.get_params_list():
@@ -134,3 +145,8 @@ def check_params(net: nn.Module, engine: returnn.tf.engine.Engine):
     print("RETURNN-common params:", rc_params)
     print("TF params:", tf_params)
     raise Exception(f"Mismatch of params RETURNN-common {rc_params} vs TF {tf_params}")
+
+  if rc_named_params != tf_params:
+    print("RETURNN-common params:", rc_params)
+    print("TF params:", tf_params)
+    raise Exception(f"Mismatch of params RETURNN-common {rc_named_params} vs TF {tf_params}")
