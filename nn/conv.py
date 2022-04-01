@@ -124,7 +124,7 @@ class _Conv(_ConvOrTransposedConv):
       if in_spatial_dim not in source.shape:
         raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
     out_spatial_dims = _default_out_spatial_dims(
-      description_prefix=nn.NameCtx.current_ctx().layer_abs_name_scope,
+      description_prefix=nn.NameCtx.current_ctx().get_abs_name(),
       in_spatial_dims=in_spatial_dims,
       filter_size=[d.dimension for d in self.filter_size],
       strides=1 if not self.strides else self.strides,
@@ -242,7 +242,7 @@ class _TransposedConv(_ConvOrTransposedConv):
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     out_spatial_dims = [
-      nn.SpatialDim(f"{nn.NameCtx.current_ctx().layer_abs_name_scope}:out-spatial-dim{i}")
+      nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:out-spatial-dim{i}")
       for i, s in enumerate(self.filter_size)]
     for i in range(len(self.filter_size)):
       s = self.filter_size[i].dimension if not self.strides else self.strides[i]

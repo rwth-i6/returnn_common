@@ -45,9 +45,26 @@ Note on the different type of name hierarchies in RETURNN and here in RETURNN-co
 
 from __future__ import annotations
 from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Collection
+import numpy
 from tensorflow.python.util import nest
 from returnn.util.basic import NotSpecified
 from .. import nn
+
+
+def get_returnn_config_serialized(root_module: nn.Module) -> str:
+  """
+  :param nn.Module root_module:
+  :return: RETURNN config string
+  :rtype: str
+  """
+  return nn.NameCtx.top().root.get_returnn_config_serialized(root_module)
+
+
+def reset_default_root_name_ctx():
+  """
+  Resets the default root name ctx. See :func:`NameCtx.reset_default_root`.
+  """
+  nn.NameCtx.reset_default_root()
 
 
 def scoped(func):
@@ -169,10 +186,13 @@ class NameCtx:
                virtual: bool = False,
                can_access_children: bool = True,
                parent: Optional[NameCtx] = NotSpecified):
+    """
+    You are not supposed to call this directly.
+    Use :func:`NameCtx.new_root` or :func:`scoped`.
+    """
     self.module = module
     self.layer_ref = None  # type: Optional[nn.Tensor]
     self.layer = None  # type: Optional[nn.Tensor]
-    self._layer_abs_name_scope = None  # type: Optional[str]
     self.is_subnet_ctx = False
     self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
     self.can_access_children = can_access_children  # from outside
@@ -191,11 +211,10 @@ class NameCtx:
     self.name = name
     if self.parent:
       self.parent._add_child(self)
-    self.custom_layer_name_scope = None  # type: Optional[str]
-    self._assign_layer_name_scope()
+    self.custom_layer_name_scope = None  # type: Optional[str]  # layer_dict name_scope will be set to this
 
   @classmethod
-  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: nn.Module) -> NameCtx:
+  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: Optional[nn.Module]) -> NameCtx:
     """
     This is used e.g. for user module or module calls.
     The name argument can either be a predefined name ctx, or a suggested name.
@@ -231,7 +250,6 @@ class NameCtx:
     self.parent = parent
     self.name = self._get_unique_name(suggested_name)
     self.parent._add_child(self)
-    self._assign_layer_name_scope()
 
   def move_layer_ref_here(self: NameCtx, layer_ref: nn.Tensor):
     """
@@ -259,9 +277,15 @@ class NameCtx:
       for i, call in enumerate(self.module.calls):
         if call is old_name_ctx:
           self.module.calls[i] = self
-    self.children = old_name_ctx.children
-    for child in self.children.values():
+    for name, child in old_name_ctx.children.items():
       child.parent = self
+      if name not in self.children:
+        self.children[name] = child
+      else:
+        name = child._get_unique_name(name)  # make sure name is unique
+        child.name = name
+        self.children[name] = child
+    old_name_ctx.children = self.children  # just in case there is some other reference to the old name ctx
 
     if layer_ref.layer_dict:
       def _check_layer_opt_value(v):
@@ -269,11 +293,6 @@ class NameCtx:
           assert v.name_ctx is old_name_ctx
           v.name_ctx = self
       nest.map_structure(_check_layer_opt_value, layer_ref.layer_dict)
-
-    # Make sure the name scope is correct.
-    self.custom_layer_name_scope = None
-    self._layer_abs_name_scope = None
-    self._assign_layer_name_scope()
 
   @property
   def root(self) -> NameCtx:
@@ -311,34 +330,6 @@ class NameCtx:
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
 
-  def _assign_layer_name_scope(self):
-    # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
-    # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
-    # The parent name ctx RETURNN layer will also have the right name_scope set,
-    # so this layers name scope default is simply based on that.
-    # Note that parameters could be assigned lazily at some later point.
-    if not self.parent or not self.module:
-      return
-    if self._layer_abs_name_scope is None:
-      if self._get_abs_canonical_name(try_run=True) is None:  # not yet well defined, so try later
-        return
-    assert self.custom_layer_name_scope is None
-    layer_abs_name_scope_parent = self.parent.layer_abs_name_scope_effective
-    if layer_abs_name_scope_parent:
-      layer_abs_name_scope_parent += "/"
-    layer_abs_name_scope_default = layer_abs_name_scope_parent + self.name
-    if layer_abs_name_scope_default != self.layer_abs_name_scope:  # default does not match what we require
-      if self.layer_abs_name_scope == self.parent.layer_abs_name_scope_effective:
-        self.custom_layer_name_scope = ""
-      elif self.layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
-        self.custom_layer_name_scope = self.layer_abs_name_scope[len(layer_abs_name_scope_parent):]
-      else:  # must use absolute
-        self.custom_layer_name_scope = "/" + self.layer_abs_name_scope
-    if self.layer:
-      assert self.layer.layer_dict.get("name_scope", None) is None
-      if self.custom_layer_name_scope is not None:
-        self.layer.layer_dict["name_scope"] = self.custom_layer_name_scope
-
   def _remove_unused(self):
     # Collect all used tensor names.
     used_names = {self}  # type: Set[nn.NameCtx]
@@ -370,13 +361,55 @@ class NameCtx:
         for child in name_ctx.children.values():
           queue.append(child)
 
-  def get_returnn_config(self) -> Dict[str, Any]:
+  def get_returnn_config(self, root_module: nn.Module) -> Dict[str, Any]:
     """
-    :return: config dict updates for returnn
+    :return: config dict updates for RETURNN
     """
+    assert self.root is self  # maybe not necessary but just assume this now
+    # We want to flatten out root_module children into the root name space.
+    # This is just for a nicer RETURNN net dict.
+    # In the usual case, most of the net definition is in the root module call,
+    # which is expected to be a subnetwork.
+    # Doing this flattening is a bit tricky:
+    # - The root namespace could still contain other stuff, and there might be name conflicts.
+    #   This is still easy to resolve by making sure the names are unique.
+    #   At this point, nothing should explicitly refer to any names.
+    # - There might be references to the output of the root module call,
+    #   e.g. for separately calculating the loss.
+    #   So the root module call output must stay valid.
+    #   Using self.root.move_layer_ref_here(...) would not really allow that the output is used
+    #   because self.root does not have a valid layer name.
+    if root_module.calls:
+      root_mod_call = root_module.calls[0]
+      assert root_mod_call.module is root_module
+      assert root_mod_call.layer_ref  # unexpected
+      assert root_mod_call.root is self.root  # just not implemented otherwise
+      if root_mod_call is not self:
+        assert not self.layer_ref  # not sure. maybe just reset?
+        assert root_mod_call.layer.layer_dict["class"] == "subnetwork"
+        sub_out = root_mod_call.children.pop("output")
+        assert sub_out.layer.layer_dict["class"] == "copy"
+        sub_real_out = sub_out.layer.layer_dict["from"]
+        assert isinstance(sub_real_out, nn.Tensor)
+        # noinspection PyProtectedMember
+        sub_out.layer._replace_by(sub_real_out)
+        # noinspection PyProtectedMember
+        root_mod_call.layer._replace_by(sub_real_out)
+        # Do not use self.move_layer_ref_here(root_mod_call.layer_ref) because we don't want the extra logic.
+        self.module = root_module
+        root_module.calls[0] = self
+        for name, child in root_mod_call.children.items():
+          child.parent = self
+          if name not in self.children:
+            self.children[name] = child
+          else:
+            name = child._get_unique_name(name)  # make sure name is unique
+            child.name = name
+            self.children[name] = child
+
     self._remove_unused()
     assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
-    net_dict = self.make_net().make_net_dict_raw()
+    net_dict = NetDictBuilderCtx(root_module=root_module).make_net_dict_raw(self.make_net())
     return {
       "behavior_version": nn.min_returnn_behavior_version,
       "extern_data": {
@@ -388,12 +421,13 @@ class NameCtx:
       "network": net_dict,
     }
 
-  def get_returnn_config_serialized(self) -> str:
+  def get_returnn_config_serialized(self, root_module: nn.Module) -> str:
     """
+    :param nn.Module root_module: there must be one root module such that all params have a well-defined name
     :return: serialized config, i.e. Python code
     """
     from ..utils.pprint import pformat
-    config = self.get_returnn_config()
+    config = self.get_returnn_config(root_module=root_module)
     dim_tags_proxy = ReturnnDimTagsProxy()
     config = dim_tags_proxy.collect_dim_tags_and_transform_config(config)
 
@@ -463,97 +497,6 @@ class NameCtx:
         for i, ctx in enumerate(ls))
     return debug_name
 
-  @property
-  def layer_abs_name_scope_effective(self) -> str:
-    """
-    :return: abs TF name scope which will be used by RETURNN for this layer
-    """
-    if not self.parent:  # root
-      return ""
-    prefix = self.parent.layer_abs_name_scope_effective
-    if prefix:
-      prefix += "/"
-    if self.layer:
-      assert self.layer.layer_dict.get("name_scope", None) == self.custom_layer_name_scope
-    if self.custom_layer_name_scope is not None:
-      name_scope = self.custom_layer_name_scope
-      assert isinstance(name_scope, str)
-      if name_scope == "":
-        return prefix[:-1]
-      elif name_scope.startswith("/"):
-        return name_scope[1:]
-      else:
-        return prefix + name_scope
-    if self.virtual:
-      return prefix[:-1]
-    return prefix + self.name
-
-  @property
-  def layer_abs_name_scope(self) -> str:
-    """
-    :return: expected layer abs name scope, i.e. the TF name scope of variables.
-      This uses the module hierarchy (:func:`_get_abs_canonical_name`).
-
-    Also see :func:`layer_abs_name_scope_effective`.
-    """
-    if self._layer_abs_name_scope is not None:
-      return self._layer_abs_name_scope
-    assert self.module
-    self._layer_abs_name_scope = self._get_abs_canonical_name()
-    return self._layer_abs_name_scope
-
-  def _get_abs_canonical_name(self, *, join_str="/", try_run: bool = False) -> Optional[str]:
-    """
-    :param str join_str: maybe "." is more common for attrib chains.
-      however, we use "/" as default, to make this consistent to :func:`get_abs_name`.
-    :return: unique absolute layer name for the module hierarchy.
-      https://github.com/rwth-i6/returnn_common/issues/25
-    """
-    assert self.module, f"{self} is not assigned to a module"
-    root = self.root
-    root_module = root.module  # might be None
-    assert root_module, f"root name ctx {self.root} is not assigned to a module"
-    if root_module is self.module:
-      return ""  # special case
-    # Do a depth-first search through the parents, starting from self.module, until we find root_module.
-    # Use depth-first instead of breadth-first to prefer the first parent when there are multiple.
-    queue = [self.module]
-    cache = {}  # module -> full name
-    while queue:
-      module = queue.pop(-1)  # depth-first
-      postfix = (join_str + cache[module]) if module in cache else ""
-      queue_ext = []
-      for parent, attr in module.parents_with_attr():
-        assert isinstance(parent, nn.Module)
-        if parent in cache:
-          continue
-        for call in parent.calls:
-          assert isinstance(call, nn.NameCtx)
-          if call.root is root:  # same name ctx hierarchy
-            assert call.is_root or call.layer_abs_name_scope is not None
-            if call.is_root or call.layer_abs_name_scope == "":
-              return attr + postfix
-            assert call.layer_abs_name_scope
-            return call.layer_abs_name_scope + join_str + attr + postfix
-        cache[parent] = attr + postfix
-        queue_ext.append(parent)
-      queue.extend(reversed(queue_ext))
-      if root_module in cache:
-        break
-    if root_module not in cache:
-      if try_run:
-        return None
-      err_msgs = []
-      for module, name in cache.items():
-        err_msgs.append(f"  {module}: {name}\n")
-      if not err_msgs:
-        err_msgs.append(f"  (None, {self.module} has no parent modules)\n")
-      raise Exception(
-        f"{self}: no abs canonical name found."
-        f" Found partial names:\n{''.join(err_msgs)}"
-        f"There must be a path of attribs from the root {root_module} to {self.module}.")
-    return cache[root_module]
-
   def get_name_in_ctx(self, ctx: NameCtx) -> str:
     """
     Get layer name valid in given scope.
@@ -618,32 +561,29 @@ class NameCtx:
     assert self._stack[-1] is self, f"{self}.__exit__: stack {self._stack} top is not self"
     self._stack.pop(-1)
 
+  def _get_parent_module(self) -> Optional[nn.Module]:
+    parent = self.parent
+    while parent:
+      if parent.module:
+        return parent.module
+      parent = parent.parent
+    return None
+
   def _get_suggested_name(self) -> str:
-    assert self.module
+    # https://github.com/rwth-i6/returnn_common/issues/125
+    assert self.module  # this function would not be used in another way
     reserved_names = set(self.parent.children.keys()) | self._ReservedNames
-    if self.parent.module:
+    parent_module = self._get_parent_module()
+    if parent_module:
       # Check parent name scope module, any attrib from there to self.module.
       # Do a depth-first search through the parents, starting from self.module,
       # until we find self.parent.module.
       # Somewhat consistent to _get_abs_canonical_name.
-      queue = [self.module]
-      cache = {}  # parent -> full attrib
-      while queue:
-        module = queue.pop(-1)  # depth-first
-        postfix = f".{cache[module]}" if module in cache else ""
-        queue_ext = []
-        for parent, attr in module.parents_with_attr():
-          if parent in cache:
-            if cache[parent] in reserved_names:
-              cache[parent] = attr + postfix  # anyway overwrite
-            continue
-          cache[parent] = attr + postfix
-          queue_ext.append(parent)
-        queue.extend(reversed(queue_ext))
-        if self.parent.module in cache:
-          break
-      if self.parent.module in cache:
-        return cache[self.parent.module]
+      cache = _NamePathCache()
+      cache.register_module(parent_module, [])
+      path = cache.get_name_path(self.module, raise_exc=False)
+      if path is not None:
+        return ".".join(path)
     # Check parent module, and use this attrib name.
     # First check if we can find any attr which is not yet reserved.
     for parent, attr in self.module.parents_with_attr():
@@ -688,6 +628,152 @@ class NameCtx:
       i += 1
 
 
+class NetDictBuilderCtx:
+  """
+  Context for building the net.
+  """
+  def __init__(self, *, root_module: nn.Module):
+    self.root_module = root_module
+    self.cache = _NamePathCache()
+    self.cache.register_module(root_module, [])
+
+  class _StackInfo:
+    def __init__(self, *,
+                 parent: Optional[NetDictBuilderCtx._StackInfo] = None,
+                 net: Net,
+                 layer_abs_name_scope_effective: str):
+      self.parent = parent
+      self.net = net
+      self.layer_abs_name_scope_effective = layer_abs_name_scope_effective
+      self.control_flow_ctx = None
+      if net.name_ctx.layer_ref is not None:
+        self.control_flow_ctx = self.net.name_ctx.layer_ref.data.control_flow_ctx
+
+    def add(self, *, net: Net, layer_abs_name_scope_effective: str) -> NetDictBuilderCtx._StackInfo:
+      """
+      :return: new stack info
+      """
+      return NetDictBuilderCtx._StackInfo(
+        parent=self, net=net,
+        layer_abs_name_scope_effective=layer_abs_name_scope_effective)
+
+    def get_parent_loop_axes(self) -> List[nn.Dim]:
+      """
+      via control flow ctx
+      """
+      dims = []
+      parent = self
+      while parent:
+        if parent.control_flow_ctx:
+          if parent.control_flow_ctx.is_loop():
+            if parent.control_flow_ctx.loop_spatial_dim is not None:
+              dims.append(parent.control_flow_ctx.loop_spatial_dim)
+        parent = parent.parent
+      return list(reversed(dims))
+
+  def make_net_dict_raw(self, net: Net, *, _stack: Optional[_StackInfo] = None) -> nn.NetDictRaw:
+    """
+    Create raw net dict, not containing any :class:`Tensor` or :class:`Net` instances anymore.
+    """
+    if _stack is None:
+      _stack = self._StackInfo(net=net, layer_abs_name_scope_effective="")
+    net_dict = {}
+    # Due to late assignments of name context parents (e.g. for Parameter),
+    # the name_ctx.children dict might change while we iterate over it.
+    # To avoid that, we iterate over a copy.
+    # We must then check if no new children were added.
+    while True:
+      children = list(net.name_ctx.children.values())
+      for sub_name_ctx in children:
+        if sub_name_ctx.name in net_dict:
+          continue
+        if sub_name_ctx.layer:
+          layer_dict = sub_name_ctx.layer.layer_dict.copy()
+          assert "class" in layer_dict
+
+          dim_tags = list(sub_name_ctx.layer_ref.data.dim_tags)
+          dim_tags.extend(sub_name_ctx.layer_ref.data.dim_tags_set_implicit_only)  # like dim_tags_set_implicit
+          for outer_dim in _stack.get_parent_loop_axes():
+            if outer_dim in dim_tags:
+              dim_tags.remove(outer_dim)
+          assert len(dim_tags) == len(set((d, d.match_priority) for d in dim_tags)), (
+            f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}")
+          if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
+            if layer_dict["class"] not in {"constant", "variable", "random"}:
+              layer_dict["out_shape"] = set(dim_tags)
+
+          assert "name_scope" not in layer_dict  # we explicitly want to assign it now (if needed)
+          if sub_name_ctx.custom_layer_name_scope is not None:
+            sub_name_scope = sub_name_ctx.custom_layer_name_scope
+            layer_dict["name_scope"] = sub_name_scope
+            assert sub_name_scope == ""  # anything else unexpected currently
+            sub_layer_abs_name_scope = _stack.layer_abs_name_scope_effective
+          else:
+            # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
+            # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
+            # The parent name ctx RETURNN layer will also have the right name_scope set,
+            # so this layers name scope default is simply based on that.
+            # Note that parameters could be assigned lazily at some later point.
+            layer_abs_name_scope_parent = _stack.layer_abs_name_scope_effective
+            if layer_abs_name_scope_parent:
+              layer_abs_name_scope_parent += "/"
+            layer_abs_name_scope_default = layer_abs_name_scope_parent + sub_name_ctx.name
+
+            sub_layer_abs_name_scope = self._expected_layer_abs_name_scope(sub_name_ctx)
+            if sub_layer_abs_name_scope is not None:
+              if layer_abs_name_scope_default != sub_layer_abs_name_scope:  # default does not match what we require
+                if sub_layer_abs_name_scope == _stack.layer_abs_name_scope_effective:
+                  layer_dict["name_scope"] = ""
+                elif sub_layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
+                  layer_dict["name_scope"] = sub_layer_abs_name_scope[len(layer_abs_name_scope_parent):]
+                else:  # must use absolute
+                  layer_dict["name_scope"] = "/" + sub_layer_abs_name_scope
+            else:
+              sub_layer_abs_name_scope = layer_abs_name_scope_default
+
+          def _map_elem_resolve(obj: Any) -> Any:
+            if isinstance(obj, nn.Tensor):
+              # noinspection PyProtectedMember
+              return obj._get_name_in_ctx(ctx=net.name_ctx)
+            if isinstance(obj, Net):
+              return self.make_net_dict_raw(
+                net=obj, _stack=_stack.add(net=obj, layer_abs_name_scope_effective=sub_layer_abs_name_scope))
+            # We assume only basic types. This is not really a restriction but just a sanity check.
+            assert isinstance(obj, (int, float, str, bool, numpy.ndarray, set, nn.Dim, type(None))), (
+              f"unexpected type {type(obj)}")
+            return obj
+
+          layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
+          net_dict[sub_name_ctx.name] = layer_dict
+      if len(net.name_ctx.children) == len(children):  # we never would delete entries, so this should be safe
+        break
+    return net_dict
+
+  def _expected_layer_abs_name_scope(self, name_ctx: NameCtx) -> Optional[str]:
+    """
+    :param NameCtx name_ctx:
+    :return: expected absolute name scope for this layer
+    """
+    if name_ctx.custom_layer_name_scope is not None:
+      if name_ctx.custom_layer_name_scope == "":
+        if name_ctx.parent:
+          return self._expected_layer_abs_name_scope(name_ctx.parent)
+        else:
+          return ""
+      raise NotImplementedError(f"custom_layer_name_scope {name_ctx.custom_layer_name_scope!r} not supported yet")
+
+    if name_ctx.layer_ref is not None:
+      name_path_tensor = self.cache.get_name_path(name_ctx.layer_ref, raise_exc=False)
+      if name_path_tensor is not None:
+        return "/".join(name_path_tensor)
+    if name_ctx.module:
+      name_path_mod = self.cache.get_name_path(name_ctx.module, raise_exc=False)
+      if name_path_mod is not None:
+        return "/".join(name_path_mod)
+
+    return None
+
+
 class Net:
   """
   Represents a RETURNN (sub) network.
@@ -698,35 +784,6 @@ class Net:
 
   def __repr__(self):
     return f"Net{self.name_ctx!r}"
-
-  def _map_elem_resolve(self, obj: Any) -> Any:
-    if isinstance(obj, nn.Tensor):
-      return obj.get_name_in_ctx(ctx=self.name_ctx)
-    if isinstance(obj, Net):
-      return obj.make_net_dict_raw()
-    return obj
-
-  def make_net_dict_raw(self) -> nn.NetDictRaw:
-    """
-    Create raw net dict, not containing any :class:`Tensor` or :class:`Net` instances anymore.
-    """
-    net_dict = {}
-    # Due to late assignments of name context parents (e.g. for Parameter),
-    # the name_ctx.children dict might change while we iterate over it.
-    # To avoid that, we iterate over a copy.
-    # We must then check if no new children were added.
-    while True:
-      children = list(self.name_ctx.children.values())
-      for sub_name_ctx in children:
-        if sub_name_ctx.name in net_dict:
-          continue
-        if sub_name_ctx.layer:
-          layer_dict = sub_name_ctx.layer.layer_dict
-          layer_dict = nest.map_structure(self._map_elem_resolve, layer_dict)
-          net_dict[sub_name_ctx.name] = layer_dict
-      if len(self.name_ctx.children) == len(children):  # we never would delete entries, so this should be safe
-        break
-    return net_dict
 
 
 class ReturnnDimTagsProxy:
@@ -961,3 +1018,114 @@ class ReturnnDimTagsProxy:
 
     config = _map((), config)
     return config
+
+
+class _NamePathCache:
+  def __init__(self):
+    self.module_to_name_path = {}  # type: Dict[nn.Module, List[str]]  # module -> full name path
+    self.tensor_to_name_path = {}  # type: Dict[NameCtx, List[str]]  # tensor (name) -> full name path
+    # (nn.Tensor is not hashable, thus use its NameCtx)
+
+  def register_module(self, module: nn.Module, name_path: List[str]):
+    """
+    Register some module (e.g. root module).
+    """
+    assert isinstance(module, nn.Module)
+    assert isinstance(name_path, list)
+    assert module not in self.module_to_name_path
+    self.module_to_name_path[module] = name_path
+
+  def get_name_path(self: _NamePathCache,
+                    child: Union[nn.Module, nn.Tensor],
+                    *,
+                    raise_exc: bool = True,
+                    ) -> Optional[List[str]]:
+    """
+    :return: unique absolute layer name for the module hierarchy.
+      https://github.com/rwth-i6/returnn_common/issues/25
+      https://github.com/rwth-i6/returnn_common/issues/125
+    """
+    assert self.module_to_name_path  # call register_module first
+    # Do a depth-first search through the parents, starting from self.module, until we find root_module.
+    # Use depth-first instead of breadth-first to prefer the first parent when there are multiple.
+    # The order is deterministic by insertion order.
+    reverse_cache = {}  # module -> full name path
+
+    if isinstance(child, nn.Tensor):
+      if child.name_ctx in self.tensor_to_name_path:
+        return self.tensor_to_name_path[child.name_ctx]
+      queue = []
+      for parent, attr in child.parent_modules:
+        assert isinstance(parent, nn.Module)
+        if getattr(parent, attr, None) is not child:
+          continue  # might have been reset later...
+        if parent in reverse_cache:
+          continue
+        reverse_cache[parent] = [attr]
+        queue.append(parent)
+      queue.reverse()
+
+    elif isinstance(child, nn.Module):
+      if child in self.module_to_name_path:
+        return self.module_to_name_path[child]
+      reverse_cache[child] = []
+      queue = [child]
+
+    else:
+      raise TypeError(f"Unexpected child type: {type(child)}")
+
+    match_to_existing_mod_cache = None  # type: Optional[nn.Module]
+    while queue and match_to_existing_mod_cache is None:
+      module = queue.pop(-1)  # depth-first
+      if module in self.module_to_name_path:
+        match_to_existing_mod_cache = module
+        break
+
+      queue_ext = []
+      for parent, attr in module.parents_with_attr():
+        assert isinstance(parent, nn.Module)
+        if parent in reverse_cache:
+          continue
+        reverse_cache[parent] = [attr] + reverse_cache[module]
+        queue_ext.append(parent)
+      queue.extend(reversed(queue_ext))
+
+    if match_to_existing_mod_cache is not None:
+      obj = match_to_existing_mod_cache
+      path = list(self.module_to_name_path[obj])
+      for attr in reverse_cache[obj]:
+        path.append(attr)
+        obj = getattr(obj, attr)
+        if isinstance(obj, nn.Module):
+          self.module_to_name_path[obj] = list(path)
+        elif isinstance(obj, nn.Tensor):
+          self.tensor_to_name_path[obj.name_ctx] = list(path)
+          assert obj is child
+        else:
+          assert False, f"Unexpected type: {type(obj)}"  # should not happen
+      assert obj is child
+      return path
+
+    if not raise_exc:
+      return None
+
+    err_msgs = []
+    for module, name in reverse_cache.items():
+      err_msgs.append(f"  {module}: {name}\n")
+    if not err_msgs:
+      err_msgs.append(f"  (None, {child} has no parent modules)\n")
+    raise Exception(
+      f"There must be a path of attribs from the root(s) {self._get_roots()} to {child}.\n"
+      f" Found partial names:\n{''.join(err_msgs)}")
+
+  def _get_roots(self) -> List[nn.Module]:
+    path_len = None
+    ls = []
+    for module, path in self.module_to_name_path.items():
+      if path_len is None:
+        path_len = len(path)
+      elif len(path) != path_len:
+        assert len(path) > path_len  # dict insertion order
+        break
+      ls.append(module)
+    return ls

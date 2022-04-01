@@ -87,7 +87,6 @@ class Tensor:
                name_ctx: nn.NameCtx,
                data: Optional[Data] = None,
                layer_dict: Optional[LayerDictRaw] = None,
-               add_out_shape_info: bool = True,
                is_ref: bool = False,
                ):
     """
@@ -104,16 +103,8 @@ class Tensor:
         data = _data_from_layer_dict(layer_dict)
       if data.have_batch_axis() and not data.batch and name_ctx.root.global_batch:
         data.batch = name_ctx.root.global_batch
-      dim_tags = list(data.dim_tags)
-      dim_tags.extend(data.dim_tags_set_implicit_only)  # like dim_tags_set_implicit
-      assert len(dim_tags) == len(set((d, d.match_priority) for d in dim_tags)), f"duplicate dims in {name_ctx} {data}"
-      if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
-        if add_out_shape_info and layer_dict["class"] not in {"constant", "variable", "random"}:
-          layer_dict["out_shape"] = set(dim_tags)
-      if name_ctx.custom_layer_name_scope is not None:
-        assert "name_scope" not in layer_dict
-        layer_dict["name_scope"] = name_ctx.custom_layer_name_scope
 
+    # Keep in sync with _move_here().
     self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
     self.name_ctx = name_ctx
     assert name_ctx.layer_ref is None
@@ -184,47 +175,36 @@ class Tensor:
     self.data.verify_out_shape(out_shape)
     return self
 
-  def get_name_in_current_ctx(self) -> str:
+  def _get_name_in_current_ctx(self) -> str:
     """
     :return: RETURNN layer name, valid in the current active name context.
     """
-    return self.get_name_in_ctx(ctx=nn.NameCtx.current_ctx())
+    return self._get_name_in_ctx(ctx=nn.NameCtx.current_ctx())
 
-  def _assign_parent(self):
+  def _assign_parent_name_ctx(self):
     assert not self.name_ctx.parent
     assert self.parent_modules  # cannot assign parent without parent modules
+    #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
+    #    when the actual name ctx parent is not so relevant.)
     for parent_module, attr in self.parent_modules:
       if getattr(parent_module, attr, None) is not self:
         continue  # might have been reset later...
+      # This code could be extended by further heuristics.
+      # The actual logic is not so important
+      # as the final name_scope is always fixed in any case.
+      # https://github.com/rwth-i6/returnn_common/issues/125
       if parent_module.calls:
         parent_name_ctx = parent_module.calls[0]
         sub_name = attr
-        expected_layer_abs_name_scope = parent_name_ctx.layer_abs_name_scope
-        if expected_layer_abs_name_scope:
-          expected_layer_abs_name_scope += "/"
-        expected_layer_abs_name_scope += attr
         if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
           sub_name = parent_name_ctx.name + "_" + sub_name
           while not parent_name_ctx.can_access_children_from_root:
             parent_name_ctx = parent_name_ctx.parent
         self.name_ctx.assign_parent(parent_name_ctx, sub_name)
-        layer_abs_name_scope_effective = self.name_ctx.layer_abs_name_scope_effective
-        if layer_abs_name_scope_effective != expected_layer_abs_name_scope:
-          common = os.path.commonpath([layer_abs_name_scope_effective, expected_layer_abs_name_scope])
-          if common:
-            assert layer_abs_name_scope_effective[:len(common) + 1] == common + "/"
-            rem_effective = layer_abs_name_scope_effective[len(common) + 1:]
-            assert expected_layer_abs_name_scope[:len(common) + 1] == common + "/"
-            rem_expected = expected_layer_abs_name_scope[len(common) + 1:]
-          else:
-            rem_effective = layer_abs_name_scope_effective
-            rem_expected = expected_layer_abs_name_scope
-          assert "/" not in rem_effective
-          self.layer_dict["name_scope"] = rem_expected
         break
     assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
 
-  def get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
+  def _get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
     """
     :return: RETURNN layer name in the given name context.
     """
@@ -233,7 +213,7 @@ class Tensor:
       # such as for Parameter, which might be created outside a name context,
       # or in an unrelated name context.
       # We caught this case here, and now assign some parent.
-      self._assign_parent()
+      self._assign_parent_name_ctx()
     return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:
@@ -304,6 +284,20 @@ class Tensor:
     if self.name_ctx.parent and self.name_ctx.parent.layer_ref:
       _maybe_add_dep(self.name_ctx.parent.layer_ref)
     return dep_list + self.extra_dependencies
+
+  def _replace_by(self, tensor: nn.Tensor):
+    """
+    Replace this tensor by the given tensor.
+    This is a workaround in case other refs point to this tensor object.
+    """
+    assert isinstance(tensor, nn.Tensor)
+    self.parent_modules = tensor.parent_modules
+    self.name_ctx = tensor.name_ctx
+    self.data = tensor.data
+    self.layer_dict = tensor.layer_dict
+    self.is_ref = tensor.is_ref
+    self.extra_dependencies = tensor.extra_dependencies
+    self.remove_unused_cleanup_hooks = tensor.extra_dependencies
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
@@ -454,7 +448,7 @@ class Parameter(Tensor):
       layer_dict["trainable"] = trainable
     super(Parameter, self).__init__(
       layer_dict=layer_dict,
-      data=data, add_out_shape_info=False,
+      data=data,
       name_ctx=name_ctx)
     self.auxiliary = auxiliary
 
@@ -531,7 +525,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, nn.NameCtx]] = None,
                module: Optional[nn.Module] = None,
                predefined_out_data: Optional[Data] = None,
-               add_out_shape_info: bool = True) -> Tensor:
+               ) -> Tensor:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
   When no name is given, this assumes that the top name ctx corresponds to this module.
@@ -551,14 +545,13 @@ def make_layer(layer_dict: LayerDictRaw, *,
   :param Module|None module: if given, will create new name scope with this module
   :param Data|None predefined_out_data: normally we can derive the out data automatically.
     If this should be skipped, you can pass this explicitly.
-  :param bool add_out_shape_info: if True, we will add the out shape info to the layer.
   """
   if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
     name_ctx = nn.NameCtx.get_from_call(module=module, name=name)
     return make_layer(
       layer_dict=layer_dict, name=name_ctx,
-      predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info)
+      predefined_out_data=predefined_out_data)
   elif isinstance(name, nn.NameCtx):
     name_ctx = name
     if nn.NameCtx.top() is name:
@@ -566,7 +559,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
     else:
       with name_ctx:
         return make_layer(
-          layer_dict=layer_dict, predefined_out_data=predefined_out_data, add_out_shape_info=add_out_shape_info,
+          layer_dict=layer_dict, predefined_out_data=predefined_out_data,
           name=name_ctx)
   else:
     raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
@@ -576,7 +569,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   name_ctx.is_subnet_ctx = False
   layer = Tensor(
     layer_dict=layer_dict, name_ctx=name_ctx,
-    data=predefined_out_data, add_out_shape_info=add_out_shape_info)
+    data=predefined_out_data)
   if name_ctx.module:
     name_ctx.module.calls.append(name_ctx)
   return layer

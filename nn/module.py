@@ -132,7 +132,8 @@ class Module:
 
   def parents_with_attr(self) -> Iterator[Tuple[nn.Module, str]]:
     """
-    Get all (immediate) parent modules, and the attrib name which points to us
+    Get all (immediate) parent modules, and the attrib name which points to us.
+    The order is deterministic by insertion order.
     """
     # We rely on deterministic order of dict.
     for parent, attr in self._parents.keys():

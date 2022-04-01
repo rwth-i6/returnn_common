@@ -22,15 +22,15 @@ def test_split_glu():
       a, b = nn.split(x, axis=axis, out_dims=[axis // 2, axis // 2])
       return a * nn.sigmoid(b)
 
-  with nn.NameCtx.new_root() as name_ctx:
-    net = _Net()
-    time_dim = nn.SpatialDim("time")
-    feat_dim = nn.FeatureDim("feature", 6)
-    data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
-    out = net(data, axis=feat_dim, name=name_ctx)
-    out.mark_as_default_output()
+  nn.reset_default_root_name_ctx()
+  net = _Net()
+  time_dim = nn.SpatialDim("time")
+  feat_dim = nn.FeatureDim("feature", 6)
+  data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
+  out = net(data, axis=feat_dim)
+  out.mark_as_default_output()
 
-  config, net_dict = config_net_dict_via_serialized(name_ctx.get_returnn_config_serialized())
+  config, net_dict = config_net_dict_via_serialized(nn.get_returnn_config_serialized(net))
   batch_dim = nn.batch_dim
   time_dim = config["time_dim"]
   feature_dim = config["feature_dim"]
