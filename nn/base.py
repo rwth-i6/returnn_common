@@ -549,18 +549,8 @@ def make_layer(layer_dict: LayerDictRaw, *,
   if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
     name_ctx = nn.NameCtx.get_from_call(module=module, name=name)
-    return make_layer(
-      layer_dict=layer_dict, name=name_ctx,
-      predefined_out_data=predefined_out_data)
   elif isinstance(name, nn.NameCtx):
     name_ctx = name
-    if nn.NameCtx.top() is name:
-      pass  # go on
-    else:
-      with name_ctx:
-        return make_layer(
-          layer_dict=layer_dict, predefined_out_data=predefined_out_data,
-          name=name_ctx)
   else:
     raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
