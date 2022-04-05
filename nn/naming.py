@@ -654,7 +654,13 @@ class NameCtx:
         return name
       if self.layer_ref and name not in reserved_names and getattr(self.parent.module, name, None) is self.layer_ref:
         return name
-      reserved_names |= set(vars(self.parent.module).keys())
+      # We might exclude all other attribs.
+      # However, e.g. "dropout" is a common attrib storing the dropout rate (float),
+      # and then when calling `nn.dropout`, it would not use that name, which is not what we want.
+      # So, we only exclude attribs which do not have non-primitive types.
+      for key, value in vars(self.parent.module).items():
+        if not isinstance(value, (int, float, str, bool, type(None))):
+          reserved_names.add(key)
     if name not in reserved_names:
       return name
     i = 0
