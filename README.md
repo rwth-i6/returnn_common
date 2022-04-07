@@ -19,7 +19,7 @@ then it will perform the actual computation
 
 ## Usage examples
 
-```
+```python
 from returnn_common import nn
 
 
@@ -40,7 +40,7 @@ class MyModelBlock(nn.Module):
 ```
 
 In case you want to have this three times separately now:
-```
+```python
 class MyModel(nn.Module):
   def __init__(self, dim: nn.Dim):
     self.block1 = MyModelBlock(dim * 2, dim)
@@ -55,7 +55,7 @@ class MyModel(nn.Module):
 ```
 
 Or if you want to share the parameters but run this three times:
-```
+```python
 class MyModel(nn.Module):
   def __init__(self, dim: nn.Dim):
     self.block = MyModelBlock(dim * 2, dim)
@@ -86,29 +86,31 @@ See [#2 for discussions on `import_` usage here](https://github.com/rwth-i6/retu
 Note that this might not be the preferred usage pattern anymore but this is up to you.
 
 Usage example for config:
-
-    from returnn.import_ import import_
-    test = import_("github.com/rwth-i6/returnn_common", "test.py", "20210602-1bc6822")
-    print(test.hello())
-
+```python
+from returnn.import_ import import_
+test = import_("github.com/rwth-i6/returnn_common", "test.py", "20210602-1bc6822")
+print(test.hello())
+```
 You can also make use of auto-completion features in your editor (e.g. PyCharm).
 Add `~/returnn/_pkg_import` to your Python paths,
 and use this alternative code:
-
-    from returnn.import_ import import_
-    import_("github.com/rwth-i6/returnn_common", ".", "20210602-1bc6822")
-    from returnn_import.github_com.rwth_i6.returnn_common.v20210302133012_01094bef2761 import test
-    print(test.hello())
+```python
+from returnn.import_ import import_
+import_("github.com/rwth-i6/returnn_common", ".", "20210602-1bc6822")
+from returnn_import.github_com.rwth_i6.returnn_common.v20210302133012_01094bef2761 import test
+print(test.hello())
+```
 
 During development of a new feature in `returnn-experiments`,
 you would use a special `None` placeholder for the version,
 such that you can directly work in the checked out repo.
 The config code looks like this:
-
-    from returnn.import_ import import_
-    import_("github.com/rwth-i6/returnn_common", ".", None)
-    from returnn_import.github_com.rwth_i6.returnn_common.dev import test
-    print(test.hello())
+```python
+from returnn.import_ import import_
+import_("github.com/rwth-i6/returnn_common", ".", None)
+from returnn_import.github_com.rwth_i6.returnn_common.dev import test
+print(test.hello())
+```
 
 You would also edit the code in `~/returnn/pkg/...`,
 and once finished, you would commit and push to `returnn_common`,
