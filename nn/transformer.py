@@ -253,9 +253,9 @@ class Transformer(nn.Module):
   Standard Transformer Module
   """
   def __init__(self,
-               out_dim: nn.Dim = nn.FeatureDim("transformer_default_output_dim", 512),
                *,
-               target_vocab: nn.Dim,
+               model_dim: nn.Dim = nn.FeatureDim("transformer_default_model_dim", 512),
+               target_dim: nn.Dim,
                target_bos_symbol: int = 0,
                target_eos_symbol: int = 0,
                num_heads: Union[nn.Dim, int] = 8,
@@ -274,14 +274,14 @@ class Transformer(nn.Module):
                norm_first: bool = True,
                dec_causal_self_attention=None,
                enc_self_attention=None,
-               enc_dec_attention=None
+               cross_attention=None
                ) -> None:
     """
     Default parameters as in the original paper https://arxiv.org/pdf/1706.03762.pdf only modification to this is
     norm_first which would be False in the paper, but empirically performs better with True, thus being True by default.
 
-    :param out_dim: output dimension, PyTorch name: d_model
-    :param target_vocab:
+    :param model_dim: model dimension, out_dim of encoder and decoder. PyTorch name: d_model
+    :param target_dim: includes the target vocab. dim for the final softmax in the decoder
     :param target_bos_symbol: beginning of sentence/sequence symbol
     :param target_eos_symbol: end of sentence/sequence symbol
     :param num_heads: number heads, PyTorch name: nhead
@@ -302,7 +302,7 @@ class Transformer(nn.Module):
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
     :param dec_causal_self_attention: module which does stepwise self attention for the decoder
     :param enc_self_attention: module which does self attention for the encoder
-    :param enc_dec_attention: module which does encoder decoder attention
+    :param cross_attention: module which does encoder decoder attention
     """
     super().__init__()
 
@@ -310,48 +310,54 @@ class Transformer(nn.Module):
       num_heads = nn.SpatialDim("num_heads", num_heads)
 
     if ff_dim is nn.NotSpecified:
-      ff_dim = out_dim * 4
+      ff_dim = model_dim * 4
 
     if custom_encoder is not None:
       self.encoder = custom_encoder
+      assert enc_self_attention is None
     else:
       if custom_encoder_layer is not None:
         encoder_layer = custom_encoder_layer
+        assert enc_self_attention is None
       else:
         if enc_self_attention is None:
           enc_self_attention = nn.SelfAttention(
-            key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
+            key_dim_total=model_dim, value_dim_total=model_dim, num_heads=num_heads, att_dropout=att_dropout)
         encoder_layer = TransformerEncoderLayer(
-          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
+          out_dim=model_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, self_attention=enc_self_attention)
       self.encoder = TransformerEncoder(
         encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm, norm_eps=norm_eps)
 
-    self.target_vocab = target_vocab
+    self.target_dim = target_dim
     self.target_bos_symbol = target_bos_symbol
     self.target_eos_symbol = target_eos_symbol
-    self.target_embedding = nn.Linear(out_dim)
+    self.target_embedding = nn.Linear(model_dim)
 
     if custom_decoder is not None:
       self.decoder = custom_decoder
+      assert dec_causal_self_attention is None
+      assert cross_attention is None
     else:
       if custom_decoder_layer is not None:
         decoder_layer = custom_decoder_layer
+        assert dec_causal_self_attention is None
+        assert cross_attention is None
       else:
         if dec_causal_self_attention is None:
           dec_causal_self_attention = nn.CausalSelfAttention(
-            key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
-        if enc_dec_attention is None:
-          enc_dec_attention = nn.dot_attention
+            key_dim_total=model_dim, value_dim_total=model_dim, num_heads=num_heads, att_dropout=att_dropout)
+        if cross_attention is None:
+          cross_attention = nn.dot_attention
         decoder_layer = TransformerDecoderLayer(
-          out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
-          norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=enc_dec_attention)
+          out_dim=model_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
+          norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=cross_attention)
       self.decoder = TransformerDecoder(
         decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm, norm_eps=norm_eps)
 
-    self.output_projection = nn.Linear(target_vocab)
+    self.output_projection = nn.Linear(target_dim)
 
-    self.out_dim = out_dim
+    self.model_dim = model_dim
     self.num_heads = num_heads
     self.norm = norm
     self.norm_eps = norm_eps
@@ -368,8 +374,8 @@ class Transformer(nn.Module):
 
     :return: memory (encoder output), out logits, out labels (only when doing search), final state
     """
-    assert self.out_dim in source.shape, (
-      f"{self}: Input {source} feature dimension is not matching internal transformer dimension {self.out_dim}")
+    assert self.model_dim in source.shape, (
+      f"{self}: Input {source} feature dimension is not matching Transformer model dimension {self.model_dim}")
     memory = self.encoder(source, axis=source_spatial_axis)
     search = None
     if isinstance(target, nn.SearchFuncInterface):
@@ -403,5 +409,5 @@ class Transformer(nn.Module):
     initial state declaration
     """
     return nn.LayerState(
-      target=nn.constant(value=self.target_bos_symbol, shape=[nn.batch_dim], sparse_dim=self.target_vocab),
+      target=nn.constant(value=self.target_bos_symbol, shape=[nn.batch_dim], sparse_dim=self.target_dim),
       decoder=self.decoder.default_initial_state())
