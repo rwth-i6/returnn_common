@@ -225,7 +225,7 @@ class ConformerEncoder(nn.Module):
     :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
     :param ff_dim: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
-    :param ff_activation: activation funtion for feed-forward network
+    :param ff_activation: activation function for feed-forward network
     :param dropout: the dropout value for the FF block
     :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
     :param conv_norm: used for the conv block. Batch norm originally
