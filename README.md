@@ -30,7 +30,7 @@ class MyModelBlock(nn.Module):
     self.linear_hidden = nn.Linear(hidden)
     self.dropout = dropout
 
-  def forward(self, x: nn.Tensor) -> nn.Tensor:
+  def __call__(self, x: nn.Tensor) -> nn.Tensor:
     y = self.layer_norm(x)
     y = self.linear_hidden(y)
     y = nn.sigmoid(y)
@@ -47,7 +47,7 @@ class MyModel(nn.Module):
     self.block2 = MyModelBlock(dim * 2, dim)
     self.block3 = MyModelBlock(dim * 2, dim)
     
-  def forward(self, x: nn.Tensor) -> nn.Tensor:
+  def __call__(self, x: nn.Tensor) -> nn.Tensor:
     x = self.block1(x)
     x = self.block2(x)
     x = self.block3(x)
@@ -60,7 +60,7 @@ class MyModel(nn.Module):
   def __init__(self, dim: nn.Dim):
     self.block = MyModelBlock(dim * 2, dim)
     
-  def forward(self, x: nn.Tensor) -> nn.Tensor:
+  def __call__(self, x: nn.Tensor) -> nn.Tensor:
     x = self.block(x)
     x = self.block(x)
     x = self.block(x)
