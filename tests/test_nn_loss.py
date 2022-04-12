@@ -32,7 +32,7 @@ def test_cross_entropy():
   mod, loss = _make_dummy_model_with_ce_out()
   loss.mark_as_default_output()
 
-  config_code = nn.get_returnn_config_serialized(mod)
+  config_code = nn.get_returnn_config().get_complete_py_code_str(mod)
   assert "sparse_softmax_cross_entropy_with_logits" in config_code
   config, net_dict = config_net_dict_via_serialized(config_code)
   dummy_run_net(config)
@@ -43,6 +43,6 @@ def test_mark_as_loss():
   mod, loss = _make_dummy_model_with_ce_out()
   loss.mark_as_loss()
 
-  config_code = nn.get_returnn_config_serialized(mod)
+  config_code = nn.get_returnn_config().get_complete_py_code_str(mod)
   config, net_dict = config_net_dict_via_serialized(config_code)
   dummy_run_net(config, train=True)

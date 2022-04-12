@@ -51,13 +51,11 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-def get_returnn_config_serialized(root_module: nn.Module) -> str:
+def get_returnn_config() -> ReturnnConfigSerializer:
   """
-  :param nn.Module root_module:
-  :return: RETURNN config string
-  :rtype: str
+  :return: RETURNN config serializer
   """
-  return nn.NameCtx.top().root.get_returnn_config_serialized(root_module)
+  return nn.NameCtx.top().root.get_returnn_config_serializer()
 
 
 def reset_default_root_name_ctx():
@@ -361,9 +359,10 @@ class NameCtx:
         for child in name_ctx.children.values():
           queue.append(child)
 
-  def get_returnn_config(self, root_module: nn.Module) -> Dict[str, Any]:
+  def prepare_for_config_serialization(self, root_module: nn.Module):
     """
-    :return: config dict updates for RETURNN
+    Prepare the name ctx for RETURNN config serialization.
+    This makes the root module maybe nicer and also removes unused entries.
     """
     assert self.root is self  # maybe not necessary but just assume this now
     # We want to flatten out root_module children into the root name space.
@@ -409,41 +408,12 @@ class NameCtx:
 
     self._remove_unused()
     assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
-    net_dict = NetDictBuilderCtx(root_module=root_module).make_net_dict_raw(self.make_net())
-    return {
-      "behavior_version": nn.min_returnn_behavior_version,
-      "extern_data": {
-        data_key: {
-          key: getattr(data, key)
-          for key in [*data.get_kwargs(include_special_axes=False).keys(), "available_for_inference"]
-          if key not in {"name", "batch"}}
-        for (data_key, data) in self.extern_data.items()},
-      "network": net_dict,
-    }
 
-  def get_returnn_config_serialized(self, root_module: nn.Module) -> str:
+  def get_returnn_config_serializer(self) -> ReturnnConfigSerializer:
     """
-    :param nn.Module root_module: there must be one root module such that all params have a well-defined name
-    :return: serialized config, i.e. Python code
+    :return: config serializer
     """
-    from ..utils.pprint import pformat
-    config = self.get_returnn_config(root_module=root_module)
-    dim_tags_proxy = ReturnnDimTagsProxy()
-    config = dim_tags_proxy.collect_dim_tags_and_transform_config(config)
-
-    code_lines = [
-      "from returnn.tf.util.data import Dim, batch_dim, single_step_dim, SpatialDim, FeatureDim\n\n",
-      "use_tensorflow = True\n",
-      f"behavior_version = {config.pop('behavior_version')}\n\n",
-      f"{dim_tags_proxy.py_code_str()}\n",
-      f"extern_data = {pformat(config.pop('extern_data'))}\n",
-      f"network = {pformat(config.pop('network'))}\n",
-    ]
-    if config:
-      for key, value in config.items():
-        code_lines.append(f"{key} = {pformat(value)}\n")
-      code_lines.append("\n")
-    return "".join(code_lines)
+    return ReturnnConfigSerializer(name_ctx=self)
 
   def make_net(self) -> Net:
     """
@@ -628,6 +598,102 @@ class NameCtx:
       i += 1
 
 
+class ReturnnConfigSerializer:
+  """
+  Serializes a RETURNN config to a string.
+
+  The config consists of generic RETURNN settings (behavior_version and maybe others)
+  generic imports (e.g. "from returnn.tf.util.data import Data, Dim, ..."),
+  dim tags, extern_data and the net dict.
+
+  It is possible to first serialize only the part for extern_data (e.g. for the root config)
+  including needed dim tags and imports,
+  and separately serialize the net dict and remaining needed dim tags.
+  """
+
+  def __init__(self, name_ctx: NameCtx):
+    self.name_ctx = name_ctx
+    self._behavior_version = nn.min_returnn_behavior_version
+    self._dim_tags_proxy = ReturnnDimTagsProxy()
+    self._base_extern_data_dim_refs = None  # type: Optional[Set[ReturnnDimTagsProxy.DimRefProxy]]
+
+  def get_complete_py_code_str(self, root_module: nn.Module):
+    """
+    :return: complete combined config as Python code str.
+      basically :func:`get_base_extern_data_py_code_str` + :func:`get_ext_net_dict_py_code_str`
+    """
+    return (
+      self.get_base_extern_data_py_code_str() +
+      self.get_ext_net_dict_py_code_str(root_module=root_module, with_imports=False))
+
+  _ImportPyCodeStr = "from returnn.tf.util.data import Dim, batch_dim, single_step_dim, SpatialDim, FeatureDim\n\n"
+
+  def get_base_extern_data_py_code_str(self) -> str:
+    """
+    :return: serialized config, i.e. Python code
+    """
+    assert self._base_extern_data_dim_refs is None  # only call once
+    from ..utils.pprint import pformat
+    extern_data_raw = self.get_extern_data_raw_dict()
+    extern_data_raw = self._dim_tags_proxy.collect_dim_tags_and_transform_config(extern_data_raw)
+    self._base_extern_data_dim_refs = set(self._dim_tags_proxy.dim_refs_by_tag.values())
+
+    code_lines = [
+      self._ImportPyCodeStr,
+      "use_tensorflow = True\n",
+      f"behavior_version = {self._behavior_version}\n\n",
+      f"{self._dim_tags_proxy.py_code_str()}\n",
+      f"extern_data = {pformat(extern_data_raw)}\n",
+    ]
+    return "".join(code_lines)
+
+  def get_ext_net_dict_py_code_str(self, root_module: nn.Module, *, with_imports: bool = True) -> str:
+    """
+    :param nn.Module root_module: there must be one root module such that all params have a well-defined name
+    :param bool with_imports: whether to include imports
+    :return: serialized config, i.e. Python code
+    """
+    from ..utils.pprint import pformat
+    dim_tags_proxy = self._dim_tags_proxy.copy()
+    net_dict = self.get_net_dict_raw_dict(root_module=root_module)
+    net_dict = dim_tags_proxy.collect_dim_tags_and_transform_config(net_dict)
+
+    code_lines = [
+      self._ImportPyCodeStr if with_imports else "",
+      f"{dim_tags_proxy.py_code_str(exclude_dims=self._base_extern_data_dim_refs)}\n",
+      f"network = {pformat(net_dict)}\n",
+    ]
+    return "".join(code_lines)
+
+  def get_net_dict_raw_dict(self, root_module: nn.Module) -> Dict[str, Any]:
+    """
+    :param nn.Module root_module: there must be one root module such that all params have a well-defined name
+    :return: raw dict
+    """
+    self.name_ctx.prepare_for_config_serialization(root_module=root_module)
+    return NetDictBuilderCtx(root_module=root_module).make_net_dict_raw(self.name_ctx.make_net())
+
+  def get_extern_data_raw_dict(self) -> Dict[str, Any]:
+    """
+    :return: raw dict
+    """
+    return {
+      data_key: {
+        key: getattr(data, key)
+        for key in [*data.get_kwargs(include_special_axes=False).keys(), "available_for_inference"]
+        if key not in {"name", "batch"}}
+      for (data_key, data) in self.name_ctx.extern_data.items()}
+
+  def get_config_raw_dict(self, root_module: nn.Module) -> Dict[str, Any]:
+    """
+    :return: raw dict
+    """
+    return {
+      "behavior_version": self._behavior_version,
+      "extern_data": self.get_extern_data_raw_dict(),
+      "network": self.get_net_dict_raw_dict(root_module=root_module)}
+
+
 class NetDictBuilderCtx:
   """
   Context for building the net.
@@ -777,7 +843,6 @@ class NetDictBuilderCtx:
 class Net:
   """
   Represents a RETURNN (sub) network.
-  It can create a net dict when needed.
   """
   def __init__(self, *, name_ctx: NameCtx):
     self.name_ctx = name_ctx
@@ -791,6 +856,68 @@ class ReturnnDimTagsProxy:
   When serialized via __repr__, this represents a dict unique_name -> dim tag.
   All usages in the network and extern_data will also get proxies when serialized point to this dict.
   """
+
+  class DimRefProxy:
+    """
+    This will be a reference to the global dim_tags __repr__.
+    """
+    def __init__(self, *, dim: nn.Dim, name: Optional[str], path: Tuple[Any, ...], parent: ReturnnDimTagsProxy):
+      self.dim = dim
+      self.name = name  # None, or valid Python identifier
+      self.path = path
+      self.parent = parent
+      self.debug_idx = len(parent.dim_refs_by_name)
+
+    def __repr__(self):
+      return self.ref_repr()
+
+    def ref_repr(self) -> str:
+      """ref repr"""
+      return self.parent.dim_ref_repr(self.dim, brackets=False)
+
+    def py_id_name(self) -> str:
+      """
+      :return: valid Python identifier
+      """
+      assert self.name
+      return self.name + "_dim"
+
+    def dim_repr(self):
+      """
+      Dim repr, used for serialization of all registered dim tags.
+      Any derived dims or special dims will not be registered and instead be represented
+      with the same derivation referencing other registered dim tags.
+      See :func:`ReturnnDimTagsProxy.dim_ref_repr`.
+      """
+      dim = self.dim
+      assert not dim.is_batch_dim()
+      assert dim.can_be_used_as_dim()
+      if dim.derived_from_op:
+        return self.parent.dim_ref_repr(self.dim, brackets=False, prefer_ref=False)
+      assert not dim.match_priority
+      # We assume FeatureDim, SpatialDim and Dim are imported.
+      if dim.kind == nn.Dim.Types.Feature:
+        return f"FeatureDim({dim.description!r}, {dim.dimension})"
+      if dim.kind == nn.Dim.Types.Spatial:
+        if dim.dimension is not None:
+          return f"SpatialDim({dim.description!r}, {dim.dimension})"
+        else:
+          return f"SpatialDim({dim.description!r})"
+      # generic fallback
+      return f"Dim(kind={dim.kind}, description={dim.description!r}, dimension={dim.dimension})"
+
+  class SetProxy:
+    """
+    This represents a set but with a predefined order.
+    We want a deterministic order in the repr such that the generated code stays deterministic.
+    """
+    def __init__(self, values: Sequence[Any]):
+      self.values = values
+
+    def __repr__(self):
+      return f"{{{', '.join(map(repr, self.values))}}}"
+
+  # --------- ReturnnDimTagsProxy ---------------
 
   def __init__(self):
     self.dim_refs_by_name = {}  # type: Dict[str, ReturnnDimTagsProxy.DimRefProxy]
@@ -877,66 +1004,6 @@ class ReturnnDimTagsProxy:
       return f"({s})" if brackets else s
     assert ref, f"no ref for {dim}"
     return ref.py_id_name()
-
-  class DimRefProxy:
-    """
-    This will be a reference to the global dim_tags __repr__.
-    """
-    def __init__(self, *, dim: nn.Dim, name: Optional[str], path: Tuple[Any, ...], parent: ReturnnDimTagsProxy):
-      self.dim = dim
-      self.name = name  # None, or valid Python identifier
-      self.path = path
-      self.parent = parent
-      self.debug_idx = len(parent.dim_refs_by_name)
-
-    def __repr__(self):
-      return self.ref_repr()
-
-    def ref_repr(self) -> str:
-      """ref repr"""
-      return self.parent.dim_ref_repr(self.dim, brackets=False)
-
-    def py_id_name(self) -> str:
-      """
-      :return: valid Python identifier
-      """
-      assert self.name
-      return self.name + "_dim"
-
-    def dim_repr(self):
-      """
-      Dim repr, used for serialization of all registered dim tags.
-      Any derived dims or special dims will not be registered and instead be represented
-      with the same derivation referencing other registered dim tags.
-      See :func:`ReturnnDimTagsProxy.dim_ref_repr`.
-      """
-      dim = self.dim
-      assert not dim.is_batch_dim()
-      assert dim.can_be_used_as_dim()
-      if dim.derived_from_op:
-        return self.parent.dim_ref_repr(self.dim, brackets=False, prefer_ref=False)
-      assert not dim.match_priority
-      # We assume FeatureDim, SpatialDim and Dim are imported.
-      if dim.kind == nn.Dim.Types.Feature:
-        return f"FeatureDim({dim.description!r}, {dim.dimension})"
-      if dim.kind == nn.Dim.Types.Spatial:
-        if dim.dimension is not None:
-          return f"SpatialDim({dim.description!r}, {dim.dimension})"
-        else:
-          return f"SpatialDim({dim.description!r})"
-      # generic fallback
-      return f"Dim(kind={dim.kind}, description={dim.description!r}, dimension={dim.dimension})"
-
-  class SetProxy:
-    """
-    This represents a set but with a predefined order.
-    We want a deterministic order in the repr such that the generated code stays deterministic.
-    """
-    def __init__(self, values: Sequence[Any]):
-      self.values = values
-
-    def __repr__(self):
-      return f"{{{', '.join(map(repr, self.values))}}}"
 
   def collect_dim_tags_and_transform_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
     """

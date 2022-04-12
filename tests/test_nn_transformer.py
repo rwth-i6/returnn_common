@@ -35,7 +35,7 @@ def test_nn_transformer_search():
         mode="max", axis=nn.batch_dim)))
   out_labels.mark_as_default_output()
 
-  config_code = nn.get_returnn_config_serialized(transformer)
+  config_code = nn.get_returnn_config().get_complete_py_code_str(transformer)
   config, net_dict = config_net_dict_via_serialized(config_code)
 
   dec_self_att_layer_dict = (

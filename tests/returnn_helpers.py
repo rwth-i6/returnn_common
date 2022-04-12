@@ -96,7 +96,7 @@ def dummy_config_net_dict(net: nn.Module, *,
   assert isinstance(out, nn.Tensor)
   out.mark_as_default_output()
 
-  config_code = nn.get_returnn_config_serialized(net)
+  config_code = nn.get_returnn_config().get_complete_py_code_str(net)
   return config_net_dict_via_serialized(config_code)
 
 

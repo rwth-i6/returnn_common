@@ -40,7 +40,7 @@ def test_nn_conformer():
   out, _ = conformer(data, in_spatial_dim=time_dim)
   out.mark_as_default_output()
 
-  config_code = nn.get_returnn_config_serialized(conformer)
+  config_code = nn.get_returnn_config().get_complete_py_code_str(conformer)
   config, net_dict = config_net_dict_via_serialized(config_code)
 
   collected_name_scopes = {}  # path -> name_scope

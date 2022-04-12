@@ -30,7 +30,7 @@ def test_split_glu():
   out = net(data, axis=feat_dim)
   out.mark_as_default_output()
 
-  config, net_dict = config_net_dict_via_serialized(nn.get_returnn_config_serialized(net))
+  config, net_dict = config_net_dict_via_serialized(nn.get_returnn_config().get_complete_py_code_str(net))
   batch_dim = nn.batch_dim
   time_dim = config["time_dim"]
   feature_dim = config["feature_dim"]
