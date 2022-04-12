@@ -55,7 +55,7 @@ def get_returnn_config() -> ReturnnConfigSerializer:
   """
   :return: RETURNN config serializer
   """
-  return nn.NameCtx.top().root.get_returnn_config_serializer()
+  return nn.NameCtx.top().root.get_returnn_config()
 
 
 def reset_default_root_name_ctx():
@@ -409,7 +409,7 @@ class NameCtx:
     self._remove_unused()
     assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
 
-  def get_returnn_config_serializer(self) -> ReturnnConfigSerializer:
+  def get_returnn_config(self) -> ReturnnConfigSerializer:
     """
     :return: config serializer
     """

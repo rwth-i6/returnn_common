@@ -124,7 +124,7 @@ def test_explicit_root_ctx_sub():
     assert isinstance(out, nn.Tensor)
     out.mark_as_default_output()
 
-  config = name_ctx.get_returnn_config_serializer().get_config_raw_dict(net)
+  config = name_ctx.get_returnn_config().get_config_raw_dict(net)
   net_dict = config["network"]
   pprint(net_dict)
 
@@ -170,7 +170,7 @@ def test_root_mod_call_twice():
     y.mark_as_output()
     z.mark_as_output()
 
-  config = name_ctx.get_returnn_config_serializer().get_config_raw_dict(test_block)
+  config = name_ctx.get_returnn_config().get_config_raw_dict(test_block)
   net_dict = config["network"]
   pprint(net_dict)
 
