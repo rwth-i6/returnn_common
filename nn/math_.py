@@ -93,6 +93,11 @@ def safe_log(x: nn.Tensor, *, eps: float = 1e-7, use_fake_grad: bool = True) -> 
   return _activation(x, "safe_log", opts=dict(eps=eps, use_fake_grad=use_fake_grad))
 
 
+def log1p(x: nn.Tensor) -> nn.Tensor:
+  """log1p"""
+  return _activation(x, activation="log1p")
+
+
 def tanh(x: nn.Tensor) -> nn.Tensor:
   """tanh"""
   return _activation(x, activation="tanh")
