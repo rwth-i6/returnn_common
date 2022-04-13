@@ -55,3 +55,20 @@ def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: st
   else:
     raise ValueError("estimated_kind must be 'probs', 'log-probs' or 'logits'")
   return -nn.dot(target, log_prob, reduce=axis)
+
+
+def kl_div(*, target: nn.Tensor, estimated: nn.Tensor):
+  """
+  Kullback-Leibler divergence (https://en.wikipedia.org/wiki/Kullback-Leibler_divergence)
+
+  L(target, estimated) = target * log(target / estimated)
+                       = target * (log(target) - log(estimated)
+  :param target: target probabilities
+  :param estimated: estimated probabilities
+  :return: KL-div
+  """
+  log_target = nn.log(target)
+  log_est = nn.log(estimated)
+  kl = target * (log_target - log_est)
+
+  return kl
