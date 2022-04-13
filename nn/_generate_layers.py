@@ -831,6 +831,7 @@ class LayerSignature:
           param_type_s = re.sub(r"\bstr\|Dim\b", "nn.Dim", param_type_s)
           param_type_s = re.sub(r"\b(?<!nn\.)Dim\b", "nn.Dim", param_type_s)
           param_type_s = re.sub(r"\bTensor\b", "nn.Tensor", param_type_s)
+          param_type_s = re.sub(r"\bLayerBase\b", "nn.Tensor", param_type_s)
         if param.inspect_param.default != param.inspect_param.empty and param_name in {"axis", "axes"}:
           if "None" not in param_type_s:
             param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)

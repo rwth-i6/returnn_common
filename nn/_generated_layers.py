@@ -166,7 +166,7 @@ def slice_nd(
   :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
 
   :param nn.Tensor source:
-  :param LayerBase start: (B,...)
+  :param nn.Tensor start: (B,...)
   :param nn.Dim|nn.Tensor size:
     We assume that this is >=0. If this might not be the case, use ``min_size=0``.
     If None, it uses the max possible size, and it becomes a dynamic axis.
@@ -219,7 +219,7 @@ def gather(
   See also :class:`GatherNdLayer`.
 
   :param nn.Tensor source:
-  :param LayerBase|int position: Layer containing the indices used to select the slices of the input from.
+  :param nn.Tensor|int position: Layer containing the indices used to select the slices of the input from.
     If another layer, must be of type ``int32`` or ``int64``.
     Can also specify a constant ``int``.
   :param nn.Dim axis: The axis into which we gather the indices into
@@ -281,7 +281,7 @@ def scatter_nd(
   In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
 
   :param nn.Tensor source:
-  :param LayerBase position: indices into first axis (excluding batch) of the output
+  :param nn.Tensor position: indices into first axis (excluding batch) of the output
   :param nn.Dim position_axis: axis in `position` to replace by the output-dim
   :param nn.Dim out_spatial_dim:
   :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
@@ -355,10 +355,10 @@ def softmax(
   :param float|None energy_factor: the energy will be scaled by this factor.
     This is like a temperature for the softmax.
     In Attention-is-all-you-need, this is set to 1/sqrt(base_ctx.dim).
-  :param LayerBase|None start: Tensor of shape (B,) indicating the start frame
-  :param LayerBase|int|None window_start: Layer with output of shape (B,) or (constant) int value indicating
+  :param nn.Tensor|None start: Tensor of shape (B,) indicating the start frame
+  :param nn.Tensor|int|None window_start: Layer with output of shape (B,) or (constant) int value indicating
     the window start.
-  :param LayerBase|int|None window_size: Layer with output of shape (B,) or (constant) int value indicating
+  :param nn.Tensor|int|None window_size: Layer with output of shape (B,) or (constant) int value indicating
     the window size.
   :param bool use_time_mask: if True, assumes dyn seq len, and use it for masking.
     By default, if dyn seq len exists, it uses it.
@@ -401,10 +401,10 @@ def seq_len_mask(
   :param nn.Tensor source:
   :param float mask_value:
   :param nn.Dim axis:
-  :param LayerBase|None seq_len_source: if not given, uses source
-  :param LayerBase|None start: Tensor of shape (B,) indicating the start frame
-  :param LayerBase|None window_start: Tensor of shape (B,) indicating the window start
-  :param LayerBase|int|None window_size:
+  :param nn.Tensor|None seq_len_source: if not given, uses source
+  :param nn.Tensor|None start: Tensor of shape (B,) indicating the start frame
+  :param nn.Tensor|None window_start: Tensor of shape (B,) indicating the window start
+  :param nn.Tensor|int|None window_size:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -495,18 +495,18 @@ def random(
 
   :param Sequence[nn.Dim] shape:
   :param str distribution: "uniform", "normal" or "truncated_normal"
-  :param int|float|LayerBase|None mean:
-  :param int|float|LayerBase|None stddev:
-  :param int|float|LayerBase|None bound: for uniform, defining the range [-bound, bound)
-  :param int|float|LayerBase|None minval: for uniform
-  :param int|float|LayerBase|None maxval: for uniform
+  :param int|float|nn.Tensor|None mean:
+  :param int|float|nn.Tensor|None stddev:
+  :param int|float|nn.Tensor|None bound: for uniform, defining the range [-bound, bound)
+  :param int|float|nn.Tensor|None minval: for uniform
+  :param int|float|nn.Tensor|None maxval: for uniform
   :param str dtype:
   :param int|list[int]|numpy.ndarray|None seed: If not given, uses self.network.random.randint,
     i.e. then it is controlled by the global seed setting, and every layer would get its own seed.
     If you specify it explicitly, make sure every :class:`RandomLayer` uses a different seed,
     otherwise you would get the same random numbers everywhere.
   :param str|tf.random.Algorithm|None algorithm: see :class:`RandomStateInitLayer`
-  :param LayerBase|None explicit_state: You can pass the state explicitly here.
+  :param nn.Tensor|None explicit_state: You can pass the state explicitly here.
     If not given, will be created automatically, and updated automatically.
     You could pass a :class:`VariableLayer` with initial value via :class:`RandomStateInitLayer`,
     or directly a :class:`RandomStateInitLayer`.
@@ -1037,11 +1037,11 @@ def unflatten_nd(
   This basically wraps :func:`returnn.tf.util.basic.unflatten_nd`.
 
   :param nn.Tensor source:
-  :param LayerBase sizes:
+  :param nn.Tensor sizes:
   :param int num_axes:
   :param nn.Dim|None in_dim:
   :param Sequence[nn.Dim]|None out_dims:
-  :param dict[int,LayerBase]|None declare_same_sizes_as:
+  :param dict[int,nn.Tensor]|None declare_same_sizes_as:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -1074,7 +1074,7 @@ def repeat(
   This layer can only be used with Tensorflow 1.15.0 or newer.
 
   :param nn.Tensor source:
-  :param LayerBase|int repetitions:
+  :param nn.Tensor|int repetitions:
     number of repetitions for each sequence and position in target axis.
     Can be [B,T] or [T,B] or some subset of that shape
   :param nn.Dim axis: (dynamic) axis for repetition (currently only time axis is supported)
@@ -1329,8 +1329,8 @@ def prefix_in_time(
   :param nn.Dim axis:
   :param nn.Dim|None out_dim:
   :param float|str prefix: either some constant or another layer
-  :param int|LayerBase repeat: how often to repeat the prefix
-  :param LayerBase|None size_base: copy seq-lens from here
+  :param int|nn.Tensor repeat: how often to repeat the prefix
+  :param nn.Tensor|None size_base: copy seq-lens from here
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
@@ -1368,7 +1368,7 @@ def postfix_in_time(
   :param nn.Tensor source:
   :param nn.Dim axis:
   :param nn.Dim|None out_dim:
-  :param float|int|LayerBase postfix: constant or other layer without time axis to use as postfix
+  :param float|int|nn.Tensor postfix: constant or other layer without time axis to use as postfix
   :param int repeat: how often to repeat the postfix
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
@@ -1779,8 +1779,8 @@ def search_sorted(
   All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
 
   :param nn.Tensor source:
-  :param LayerBase sorted_sequence:
-  :param LayerBase values: search values
+  :param nn.Tensor sorted_sequence:
+  :param nn.Tensor values: search values
   :param nn.Dim axis: the axis along which `sorted_sequence` is sorted
   :param str side: "left" or "right".
     When one of the `values` exactly matches an element of the `sorted_sequence`,
@@ -1828,7 +1828,7 @@ def forced_alignment(
   Calculates a forced alignment, via Viterbi algorithm.
 
   :param nn.Tensor source:
-  :param LayerBase align_target:
+  :param nn.Tensor align_target:
   :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
   :param str input_type: "log_prob" or "prob"
   :param str|nn.NameCtx|None name:
@@ -1856,8 +1856,8 @@ def sparse_softmax_cross_entropy_with_logits(
   """
   This is a simple wrapper for tf.nn.sparse_softmax_cross_entropy_with_logits.
 
-  :param LayerBase logits:
-  :param LayerBase targets:
+  :param nn.Tensor logits:
+  :param nn.Tensor targets:
   :param nn.Dim axis: feature dim by default
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -1890,8 +1890,8 @@ def ctc_loss(
   Output is of shape [B].
 
   :param nn.Tensor source:
-  :param LayerBase logits: (before softmax). shape [B,T,D]
-  :param LayerBase targets: sparse. shape [B,T]
+  :param nn.Tensor logits: (before softmax). shape [B,T,D]
+  :param nn.Tensor targets: sparse. shape [B,T]
   :param int blank_index:
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -1935,7 +1935,7 @@ def fast_baum_welch(
   :param float tdp_scale:
   :param float am_scale:
   :param float min_prob: clips the minimum prob (value in [0,1])
-  :param LayerBase|None staircase_seq_len_source:
+  :param nn.Tensor|None staircase_seq_len_source:
   :param str|nn.NameCtx|None name:
   :return: layer
   """
@@ -1970,7 +1970,7 @@ def synthetic_gradient(
     Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
 
   :param nn.Tensor source:
-  :param LayerBase gradient:
+  :param nn.Tensor gradient:
   :param float meta_loss_scale:
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -2063,7 +2063,7 @@ def hdf_dump(
 
   :param nn.Tensor source:
   :param str|(()->str) filename:
-  :param None|dict[str,LayerBase] extra:
+  :param None|dict[str,nn.Tensor] extra:
   :param bool dump_whole_batches: dumps the whole batch as a single sequence into the HDF
   :param list[str]|None labels:
   :param bool extend_existing_file: True also means we expect that it exists
@@ -2230,7 +2230,7 @@ def choice(
   :param dict|None scheduled_sampling:
   :param bool|str cheating: if True, will always add the true target in the beam.
     if "exclusive", enables cheating_exclusive. see :func:`returnn.tf.util.basic.beam_search`.
-  :param list[LayerBase]|None explicit_search_sources: will mark it as an additional dependency.
+  :param list[nn.Tensor]|None explicit_search_sources: will mark it as an additional dependency.
     You might use these also in custom_score_combine.
   :param str|nn.NameCtx|None name:
   :return: layer
@@ -2411,7 +2411,7 @@ def positional_encoding(
   :param nn.Dim|NotSpecified axis: if not specified, check for time_dim_axis, otherwise assume rec step
   :param bool add_to_input: will add the signal to the input
   :param int constant: if positive, always output the corresponding positional encoding.
-  :param None|LayerBase offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
+  :param None|nn.Tensor offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
   :param str|nn.NameCtx|None name:
   :return: layer
   """
