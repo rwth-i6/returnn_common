@@ -57,6 +57,7 @@ def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: st
   return -nn.dot(target, log_prob, reduce=axis)
 
 
+@nn.scoped
 def kl_div(*, target: nn.Tensor, target_type: str,
            estimated: nn.Tensor, estimated_type: str,
            axis: Optional[nn.Dim] = None) -> nn.Tensor:
