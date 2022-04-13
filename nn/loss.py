@@ -101,7 +101,6 @@ def kl_div(*, target: nn.Tensor, target_type: str,
   # Using nn.exp(log_target) instead of target (but not nn.safe_exp!)
   # to avoid calculating softmax twice (efficiency)
   # (because nn.safe_log(target) = log_softmax(...), so a separate softmax calculation).
-  log_target = nn.safe_log(target)
   kl = nn.dot(nn.exp(log_target), log_target - log_est, reduce=axis)
 
   return kl
