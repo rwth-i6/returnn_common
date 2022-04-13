@@ -193,17 +193,27 @@ def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float],
 def label_smoothing(source: nn.Tensor, smoothing: Union[nn.Tensor, float],
                     *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
-  label smoothing
+  Label smoothing, often used for cross entropy.
+
+  In case of sparse data, it will become dense (via :func:`smooth_one_hot`)
+  and the target label will get probability (1 - smoothing).
   """
   if not axis:
     assert source.feature_dim
     axis = source.feature_dim
   if source.data.sparse:
     assert source.data.sparse_dim == axis
-    return smooth_one_hot(source, label_prob=1. - smoothing + smoothing / axis.dimension)
+    return smooth_one_hot(source, label_prob=1. - smoothing)
   else:
     assert axis in source.shape
-    return source * (1. - smoothing) + smoothing / axis.dimension
+    # Make it consistent to the sparse case.
+    # Value of 1.0 should result in (1 - smoothing).
+    # Value of 0.0 should result in smoothing / (dim - 1).
+    # Sum over all should still remain 1.0.
+    dim = source.data.sparse_dim.dimension
+    floor_prob = smoothing / (dim - 1)
+    factor = 1. - dim * floor_prob
+    return source * factor + floor_prob
 
 
 def stochastic_depth(
