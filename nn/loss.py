@@ -105,3 +105,15 @@ def kl_div(*, target: nn.Tensor, target_type: str,
   kl = nn.dot(nn.exp(log_target), log_target - log_est, reduce=axis)
 
   return kl
+
+
+@nn.scoped
+def mean_squared_difference(a: nn.Tensor, b: nn.Tensor, *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
+  """
+  Mean squared difference between two tensors,
+  i.e. mean_{axis}( (a - b) ** 2 ), where axis is the feature dim by default.
+  """
+  if not axis:
+    assert a.feature_dim
+    axis = a.feature_dim
+  return nn.reduce(nn.squared_difference(a, b), mode="mean", axis=axis)
