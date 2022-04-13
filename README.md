@@ -36,7 +36,7 @@ class MyModelBlock(nn.Module):
     y = self.linear_hidden(y)
     y = nn.sigmoid(y)
     y = self.linear_out(y)
-    y = nn.dropout(y, dropout=self.dropout, axis=[nn.batch_dim])
+    y = nn.dropout(y, dropout=self.dropout, axis=nn.any_feature_dim)
     return x + y
 ```
 
