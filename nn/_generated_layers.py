@@ -1875,7 +1875,6 @@ def sparse_softmax_cross_entropy_with_logits(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def ctc_loss(
-             source: nn.Tensor,
              *,
              logits: nn.Tensor,
              targets: nn.Tensor,
@@ -1889,7 +1888,6 @@ def ctc_loss(
 
   Output is of shape [B].
 
-  :param nn.Tensor source:
   :param nn.Tensor logits: (before softmax). shape [B,T,D]
   :param nn.Tensor targets: sparse. shape [B,T]
   :param int blank_index:
@@ -1904,7 +1902,6 @@ def ctc_loss(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return nn.make_layer({
     'class': 'ctc_loss',
-    'from': source,
     **args}, name=name or 'ctc_loss')
 
 
