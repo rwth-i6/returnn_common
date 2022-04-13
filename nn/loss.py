@@ -57,18 +57,32 @@ def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: st
   return -nn.dot(target, log_prob, reduce=axis)
 
 
-def kl_div(*, target: nn.Tensor, estimated: nn.Tensor):
+def kl_div(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: str, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
   Kullback-Leibler divergence (https://en.wikipedia.org/wiki/Kullback-Leibler_divergence)
 
   L(target, estimated) = target * log(target / estimated)
                        = target * (log(target) - log(estimated)
-  :param target: target probabilities
-  :param estimated: estimated probabilities
+  :param target: probs, normalized. can also be sparse
+  :param estimated: probs, log-probs or logits, specified via ``estimated_type``
+  :param estimated_type: "probs", "log-probs" or "logits"
+  :param axis: the axis to reduce over
   :return: KL-div
   """
-  log_target = nn.log(target)
-  log_est = nn.log(estimated)
+  if not axis:
+    assert target.feature_dim
+    axis = target.feature_dim
+
+  if estimated_type == "probs":
+    log_est = nn.safe_log(estimated)
+  elif estimated_type == "log-probs":
+    log_est = estimated
+  elif estimated_type == "logits":
+    log_est = nn.log_softmax(estimated, axis=axis)
+  else:
+    raise ValueError("estimated_kind must be 'probs', 'log-probs' or 'logits'")
+
+  log_target = nn.safe_log(target)
   kl = target * (log_target - log_est)
 
   return kl
