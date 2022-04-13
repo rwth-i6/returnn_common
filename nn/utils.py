@@ -6,9 +6,9 @@ from typing import Optional, Union, Sequence, Tuple, Callable, Any
 from .. import nn
 
 
-def convert_to_layer_ref(x: Union[nn.Tensor, int, float, complex, bool, str]) -> nn.Tensor:
+def convert_to_tensor(x: Union[nn.Tensor, int, float, complex, bool, str]) -> nn.Tensor:
   """
-  In case it is not a layer ref yet, it will make some constant.
+  In case it is not a :class:`Tensor` yet, it will make some constant.
   """
   if isinstance(x, nn.Tensor):
     return x

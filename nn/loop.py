@@ -342,7 +342,7 @@ class _LoopState:
     """
     super(_LoopState, self).__init__()
     assert initial is not None
-    initial = nest.map_structure(nn.convert_to_layer_ref, initial)
+    initial = nest.map_structure(nn.convert_to_tensor, initial)
     self.initial = initial
     self.loop = loop
     self.name = name
