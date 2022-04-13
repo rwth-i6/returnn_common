@@ -8,6 +8,12 @@ But they can also be used in other context when needed.
 There is no reduction on batch or spatial axes.
 E.g. cross_entropy just reduces the feature axis.
 
+Reduction on batch or spatial axes is not necessary
+and should *not* be done when this is used as a loss function
+because RETURNN will handle the proper accumulation.
+
+To use some tensor as a loss in RETURNN,
+call :func:`nn.Tensor.mark_as_loss`.
 """
 
 from typing import Optional, Union
