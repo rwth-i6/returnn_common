@@ -286,6 +286,7 @@ def masked(x: nn.Tensor, *, mask: nn.Tensor, name: str = "masked") -> nn.Tensor:
 
   :param x: apply mask to this tensor. for example [B,T,D]
   :param mask: boolean tensor. has a subset of the same dims as x. for example [B,T]
+  :param name:
   :return: masked tensor, for example [B,T',D], where T' is potentially shorter than T.
   """
   return nn.make_layer({
