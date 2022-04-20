@@ -298,20 +298,25 @@ def masked(x: nn.Tensor, *, mask: nn.Tensor, name: str = "masked") -> nn.Tensor:
 def ctc_greedy_decode(logits: nn.Tensor, *,
                       spatial_dim: nn.Dim,
                       feature_dim: Optional[nn.Dim] = None,
-                      blank_idx: int) -> nn.Tensor:
+                      blank_index: int = -1) -> nn.Tensor:
   """
+  Also see :func:`nn.ctc_loss`.
+
   :param logits: non-normalized (or actually does not matter, as we will take argmax). for example [B,T,D]
   :param spatial_dim:
   :param feature_dim:
-  :param blank_idx:
+  :param blank_index:
   :return: greedy decoded. for example [B,T'] -> D.
   """
   if feature_dim is None:
     feature_dim = logits.feature_dim
+  if blank_index < 0:
+    blank_index += feature_dim.dimension
+  assert 0 <= blank_index < feature_dim.dimension
   argmax = nn.reduce(logits, axis=feature_dim, mode="argmax")
   shift_right = nn.shift_axis(argmax, axis=spatial_dim, amount=1, pad_value=-1, adjust_size_info=False)
   unique_mask = argmax != shift_right
-  non_blank_mask = argmax != blank_idx
+  non_blank_mask = argmax != blank_index
   mask = unique_mask & non_blank_mask
   decoded = nn.masked(argmax, mask=mask)
   return decoded
