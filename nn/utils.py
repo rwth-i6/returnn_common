@@ -278,3 +278,39 @@ def stochastic_depth(
     return cond_train.result
   else:
     raise ValueError(f"mode {mode!r} invalid")
+
+
+def masked(x: nn.Tensor, *, mask: nn.Tensor, name: str = "masked") -> nn.Tensor:
+  """
+  Like tf.boolean_mask.
+
+  :param x: apply mask to this tensor. for example [B,T,D]
+  :param mask: boolean tensor. has a subset of the same dims as x. for example [B,T]
+  :return: masked tensor, for example [B,T',D], where T' is potentially shorter than T.
+  """
+  return nn.make_layer({
+    "class": "masked_computation", "from": x, "mask": mask,
+    "unit": {"class": "copy", "from": "data"}}, name=name)
+
+
+@nn.scoped
+def ctc_greedy_decode(logits: nn.Tensor, *,
+                      spatial_dim: nn.Dim,
+                      feature_dim: Optional[nn.Dim] = None,
+                      blank_idx: int) -> nn.Tensor:
+  """
+  :param logits: non-normalized (or actually does not matter, as we will take argmax). for example [B,T,D]
+  :param spatial_dim:
+  :param feature_dim:
+  :param blank_idx:
+  :return: greedy decoded. for example [B,T'] -> D.
+  """
+  if feature_dim is None:
+    feature_dim = logits.feature_dim
+  argmax = nn.reduce(logits, axis=feature_dim, mode="argmax")
+  shift_right = nn.shift_axis(argmax, axis=spatial_dim, amount=1, pad_value=-1, adjust_size_info=False)
+  unique_mask = argmax != shift_right
+  non_blank_mask = argmax != blank_idx
+  mask = unique_mask & non_blank_mask
+  decoded = nn.masked(argmax, mask=mask)
+  return decoded
