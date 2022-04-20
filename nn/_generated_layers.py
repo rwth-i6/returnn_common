@@ -2491,7 +2491,6 @@ def ken_lm_state(
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def edit_distance(
-                  source: nn.Tensor,
                   *,
                   a: nn.Tensor,
                   b: nn.Tensor,
@@ -2503,7 +2502,6 @@ def edit_distance(
   or in case of words, word error rate (WER),
   or in case of characters, character error rate (CER).
 
-  :param nn.Tensor source:
   :param nn.Tensor a:
   :param nn.Tensor b:
   :param nn.Dim|None a_spatial_dim:
@@ -2520,7 +2518,6 @@ def edit_distance(
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
   return nn.make_layer({
     'class': 'edit_distance',
-    'from': source,
     **args}, name=name or 'edit_distance')
 
 

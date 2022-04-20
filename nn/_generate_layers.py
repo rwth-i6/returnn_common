@@ -109,6 +109,7 @@ LayersWithoutSourceArg = {
   "range", "rand_int", "random", "random_state_init",
   "ctc_loss",
   "sparse_softmax_cross_entropy_with_logits",
+  "edit_distance",
 }
 
 LayersSupportingMultipleSources = {
