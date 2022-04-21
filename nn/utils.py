@@ -82,7 +82,8 @@ def stop_gradient(source: nn.Tensor, name: Optional[str] = None) -> nn.Tensor:
 def reinterpret_new_dim(source: nn.Tensor, *, in_dim: nn.Dim, out_dim: Optional[nn.Dim] = None,
                         name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
-  :return: source with in_dim replaced by out_dim
+  :return: source with in_dim replaced by out_dim.
+    this does not work for the sparse_dim. see :func:`reinterpret_set_sparse_dim` for that case.
   """
   if not out_dim:
     out_dim = in_dim.copy(same_as_self=False, description="new-dim")
@@ -90,6 +91,15 @@ def reinterpret_new_dim(source: nn.Tensor, *, in_dim: nn.Dim, out_dim: Optional[
     {"class": "reinterpret_data", "set_dim_tags": {in_dim: out_dim}, "from": source},
     name=name or "new_dim")
   return out, out_dim
+
+
+def reinterpret_set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str = "set_sparse_dim") -> nn.Tensor:
+  """
+  :return: source with sparse_dim set to out_dim
+  """
+  return nn.make_layer(
+    {"class": "reinterpret_data", "set_sparse_dim": out_dim, "from": source},
+    name=name)
 
 
 def check_in_feature_dim_lazy_init(
@@ -327,4 +337,6 @@ def ctc_greedy_decode(logits: nn.Tensor, *,
   non_blank_mask = argmax != blank_index
   mask = unique_mask & non_blank_mask
   decoded, out_spatial_dim = nn.gather_by_mask(argmax, mask=mask, in_spatial_dim=in_spatial_dim)
+  decoded_sparse_dim = feature_dim.sub_left(1) if blank_index == 0 else feature_dim - 1
+  decoded = nn.reinterpret_set_sparse_dim(decoded, decoded_sparse_dim)
   return decoded, out_spatial_dim
