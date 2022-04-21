@@ -605,6 +605,14 @@ def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
   return layer.name_ctx.get_child_layer_ref(name, data=data)
 
 
+class ReturnnConstructTemplateException(Exception):
+  """
+  In :func:`_data_from_layer_dict`, when we call layer_class.get_out_data_from_opts,
+  we potentially can get errors, often due to user mistakes.
+  We wrap those errors in this exception for better reporting.
+  """
+
+
 def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
   """
   Use RETURNN layer_class.get_out_data_from_opts to get the :class:`Data`.
@@ -681,6 +689,13 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
 
   # noinspection PyProtectedMember
   layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
-  out_data = layer_class.get_out_data_from_opts(**layer_desc)
+  try:
+    out_data = layer_class.get_out_data_from_opts(**layer_desc)
+  except Exception as exc:
+    msg = f"Failed to call {layer_class.__name__}.get_out_data_from_opts(\n"
+    for key, value in layer_desc.items():
+      msg += f"  {key}={value!r},\n"
+    msg += ")"
+    raise ReturnnConstructTemplateException(msg) from exc
 
   return out_data
