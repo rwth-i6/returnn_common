@@ -280,33 +280,41 @@ def stochastic_depth(
     raise ValueError(f"mode {mode!r} invalid")
 
 
-def masked(x: nn.Tensor, *, mask: nn.Tensor, name: str = "masked") -> nn.Tensor:
+def gather_by_mask(x: nn.Tensor, *,
+                   mask: nn.Tensor,
+                   in_spatial_dim: nn.Dim,
+                   name: str = "masked"
+                   ) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Like tf.boolean_mask.
 
   :param x: apply mask to this tensor. for example [B,T,D]
   :param mask: boolean tensor. has a subset of the same dims as x. for example [B,T]
+  :param in_spatial_dim: dim to mask/compress
   :param name:
-  :return: masked tensor, for example [B,T',D], where T' is potentially shorter than T.
+  :return: (masked_tensor, out_spatial_dim), for example [B,T',D], where T' is potentially shorter than T.
   """
+  out_spatial_dim = nn.Dim(description=(in_spatial_dim.description or "unknown") + ":masked", kind=in_spatial_dim.kind)
   return nn.make_layer({
     "class": "masked_computation", "from": x, "mask": mask,
-    "unit": {"class": "copy", "from": "data"}}, name=name)
+    "in_spatial_dim": in_spatial_dim, "out_spatial_dim": out_spatial_dim,
+    "unit": {"class": "copy", "from": "data"}}, name=name), out_spatial_dim
 
 
 @nn.scoped
 def ctc_greedy_decode(logits: nn.Tensor, *,
-                      spatial_dim: nn.Dim,
+                      in_spatial_dim: nn.Dim,
                       feature_dim: Optional[nn.Dim] = None,
-                      blank_index: int = -1) -> nn.Tensor:
+                      blank_index: int = -1
+                      ) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Also see :func:`nn.ctc_loss`.
 
   :param logits: non-normalized (or actually does not matter, as we will take argmax). for example [B,T,D]
-  :param spatial_dim:
+  :param in_spatial_dim:
   :param feature_dim:
   :param blank_index:
-  :return: greedy decoded. for example [B,T'] -> D.
+  :return: (greedy_decoded, out_spatial_dim). for example [B,T'] -> D.
   """
   if feature_dim is None:
     feature_dim = logits.feature_dim
@@ -314,9 +322,9 @@ def ctc_greedy_decode(logits: nn.Tensor, *,
     blank_index += feature_dim.dimension
   assert 0 <= blank_index < feature_dim.dimension
   argmax = nn.reduce(logits, axis=feature_dim, mode="argmax")
-  shift_right = nn.shift_axis(argmax, axis=spatial_dim, amount=1, pad_value=-1, adjust_size_info=False)
+  shift_right = nn.shift_axis(argmax, axis=in_spatial_dim, amount=1, pad_value=-1, adjust_size_info=False)
   unique_mask = argmax != shift_right
   non_blank_mask = argmax != blank_index
   mask = unique_mask & non_blank_mask
-  decoded = nn.masked(argmax, mask=mask)
-  return decoded
+  decoded, out_spatial_dim = nn.gather_by_mask(argmax, mask=mask, in_spatial_dim=in_spatial_dim)
+  return decoded, out_spatial_dim
