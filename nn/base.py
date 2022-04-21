@@ -693,8 +693,8 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
     out_data = layer_class.get_out_data_from_opts(**layer_desc)
   except Exception as exc:
     msg = f"Failed to call {layer_class.__name__}.get_out_data_from_opts(\n"
-    for key, value in layer_desc.items():
-      msg += f"  {key}={value!r},\n"
+    for key, v in layer_desc.items():
+      msg += f"  {key}={v!r},\n"
     msg += ")"
     raise ReturnnConstructTemplateException(msg) from exc
 
