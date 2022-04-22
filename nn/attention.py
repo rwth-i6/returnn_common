@@ -79,7 +79,8 @@ class GenericSelfAttention(nn.Module):
                causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     """forward"""
-    hist_dim = nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:history")
+    hist_dim = nn.SpatialDim(
+      f"{nn.NameCtx.current_ctx().get_abs_name()}:{'history' if causal or axis == nn.single_step_dim else 'attention'}")
     qkv = self.qkv(source)
     qkv = nn.split_dims(
       qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head), name="qkv_split_dims")
