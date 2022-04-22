@@ -222,16 +222,16 @@ class Tensor:
     """
     return self.name_ctx.get_abs_name()
 
-  def mark_as_loss(self, loss_scale: Optional[float] = 1.0):
+  def mark_as_loss(self, scale: Optional[float] = 1.0):
     """
     Mark this as a loss.
     """
     assert not self.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
     assert "loss" not in self.layer_dict
     self.layer_dict["loss"] = "as_is"
-    if loss_scale is not None:
+    if scale is not None:
       assert "loss_scale" not in self.layer_dict
-      self.layer_dict["loss_scale"] = loss_scale
+      self.layer_dict["loss_scale"] = scale
     # Add it to the root name scope marked_losses list.
     # Note that this logic might change.
     scope = nn.NameCtx.current_ctx().root
