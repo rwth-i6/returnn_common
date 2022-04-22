@@ -230,6 +230,9 @@ class Tensor:
     and it is used for reporting per batch or per epoch,
     and for learning rate scheduling.
 
+    This currently uses :class:`AsIsLoss` in RETURNN
+    but this is an implementation detail and might change.
+
     :param scale: scale the loss by this factor for the training optimizer
       (but not for any reporting). setting to 0.0 has the effect that this loss is not used by the optimizer.
     :param as_error: if True, this loss is reported as an error instead of a loss,
