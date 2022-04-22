@@ -227,6 +227,7 @@ class Tensor:
                    as_error: bool = False,
                    use_normalized_loss: bool = False,
                    use_flatten_frames: bool = True,
+                   custom_inv_norm_factor: Optional[nn.Tensor] = None,
                    ):
     """
     Mark this as a loss.
@@ -253,6 +254,19 @@ class Tensor:
     :param bool use_normalized_loss: the loss used in optimization will be normalized.
       E.g. if the overall normalization is sum(loss)/sum(num_frames), this is also what the optimizer will use,
       otherwise the optimizer will just use sum(loss).
+    :param custom_inv_norm_factor:
+      The standard norm factor is 1/sum(target_seq_len) if the target has a time-axis,
+      or 1/sum(output_seq_len) if there is no target and the output has a time-axis,
+      or 1 otherwise. (See :func:`Loss.init` for details.)
+      This is used for proper normalization of accumulated loss/error per epoch
+      and also proper normalization per batch for reporting,
+      no matter if use_normalized_loss is True or False.
+      If you want to change this norm factor, you can set this.
+      As a function, it takes (self=self, output=output, layer=layer) and returns a float scalar.
+      This here is the inverse of the norm factor.
+      Here we also allow to pass any shape, and it will automatically be reduced via sum.
+      So you could simply pass target_seq_len directly here.
+      Basically, for all reporting, it uses sum(loss) * sum(custom_inv_norm_factor).
     """
     assert not self.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
     assert "loss" not in self.layer_dict
@@ -267,6 +281,8 @@ class Tensor:
       loss_opts["use_normalized_loss"] = True
     if not use_flatten_frames:
       loss_opts["use_flatten_frames"] = False
+    if custom_inv_norm_factor is not None:
+      loss_opts["custom_inv_norm_factor"] = custom_inv_norm_factor
     if loss_opts:
       self.layer_dict["loss_opts"] = loss_opts
     # Add it to the root name scope marked_losses list.
