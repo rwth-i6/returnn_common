@@ -101,7 +101,6 @@ class ConformerConvSubsample(nn.Module):
     for filter_size, out_dim in zip(filter_sizes, out_dims):
       self.conv_layers.append(
         nn.Conv2d(filter_size=filter_size, out_dim=out_dim, padding=padding))
-    self.out_dim = out_dims[-1]
 
   @nn.scoped
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
@@ -119,8 +118,8 @@ class ConformerConvSubsample(nn.Module):
           pool_size=self.pool_sizes[i], padding='same', mode='max')
       if self.dropout:
         x = nn.dropout(x, axis=in_dim, dropout=self.dropout)
-    out, out_spatial_dim = nn.merge_dims(x, axes=in_spatial_dims)
-    return out, out_spatial_dim
+    out, _ = nn.merge_dims(x, axes=[in_spatial_dims[-1], in_dim])
+    return out, in_spatial_dims[0]
 
 
 class ConformerEncoderLayer(nn.Module):
@@ -241,7 +240,7 @@ class ConformerEncoder(nn.Module):
     self.conv_subsample_layer = ConformerConvSubsample(
       filter_sizes=[(3, 3), (3, 3)],
       pool_sizes=[(2, 2), (2, 2)],
-      out_dims=[self.out_dim.copy(same_as_self=False, description="intermediate_out_sub_sample"), self.out_dim],
+      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
       dropout=dropout)
 
     self.linear = nn.Linear(self.out_dim, with_bias=False)
