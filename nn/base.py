@@ -222,7 +222,12 @@ class Tensor:
     """
     return self.name_ctx.get_abs_name()
 
-  def mark_as_loss(self, *, scale: Optional[float] = 1.0, as_error: bool = False):
+  def mark_as_loss(self, *,
+                   scale: Optional[float] = 1.0,
+                   as_error: bool = False,
+                   use_normalized_loss: bool = False,
+                   use_flatten_frames: bool = True,
+                   ):
     """
     Mark this as a loss.
     This has the effect that it is specially handled by RETURNN.
@@ -238,6 +243,16 @@ class Tensor:
     :param as_error: if True, this loss is reported as an error instead of a loss,
       and not used by the training optimizer.
       This is by convention sth like the frame-error or edit-distance, and usually not differentiable anyway.
+    :param bool use_flatten_frames: If True, will use :func:`returnn.tf.util.basic.flatten_with_seq_len_mask`,
+      i.e. a "packed" sequence with the padded frames removed, and accumulates over that.
+      This can be more efficient, also because it will further optimize incoming computations
+      and e.g. skip softmax computations right before on the padded frames.
+      This can also avoid issues with inf/nan in some cases.
+      If False, it will mask the loss to 0 in the padded frames and accumulate over that.
+      Typically, setting this to True (default) is both more efficient and better.
+    :param bool use_normalized_loss: the loss used in optimization will be normalized.
+      E.g. if the overall normalization is sum(loss)/sum(num_frames), this is also what the optimizer will use,
+      otherwise the optimizer will just use sum(loss).
     """
     assert not self.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
     assert "loss" not in self.layer_dict
@@ -248,6 +263,10 @@ class Tensor:
       loss_opts["scale"] = scale
     if as_error:
       loss_opts["as_error"] = True
+    if use_normalized_loss:
+      loss_opts["use_normalized_loss"] = True
+    if not use_flatten_frames:
+      loss_opts["use_flatten_frames"] = False
     if loss_opts:
       self.layer_dict["loss_opts"] = loss_opts
     # Add it to the root name scope marked_losses list.
