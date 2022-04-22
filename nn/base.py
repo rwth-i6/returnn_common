@@ -229,9 +229,12 @@ class Tensor:
     assert not self.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
     assert "loss" not in self.layer_dict
     self.layer_dict["loss"] = "as_is"
-    if scale is not None:
+    loss_opts = {}
+    if scale is not None and scale != 1:
       assert "loss_scale" not in self.layer_dict
-      self.layer_dict["loss_scale"] = scale
+      loss_opts["scale"] = scale
+    if loss_opts:
+      self.layer_dict["loss_opts"] = loss_opts
     # Add it to the root name scope marked_losses list.
     # Note that this logic might change.
     scope = nn.NameCtx.current_ctx().root
