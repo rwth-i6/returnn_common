@@ -222,7 +222,7 @@ class Tensor:
     """
     return self.name_ctx.get_abs_name()
 
-  def mark_as_loss(self, scale: Optional[float] = 1.0):
+  def mark_as_loss(self, *, scale: Optional[float] = 1.0, as_error: bool = False):
     """
     Mark this as a loss.
     """
@@ -233,6 +233,8 @@ class Tensor:
     if scale is not None and scale != 1:
       assert "loss_scale" not in self.layer_dict
       loss_opts["scale"] = scale
+    if as_error:
+      loss_opts["as_error"] = True
     if loss_opts:
       self.layer_dict["loss_opts"] = loss_opts
     # Add it to the root name scope marked_losses list.
