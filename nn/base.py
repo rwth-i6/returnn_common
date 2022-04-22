@@ -255,6 +255,8 @@ class Tensor:
   def mark_as_output(self):
     """
     Mark this as an output.
+    This has the effect that RETURNN will in any case construct the corresponding layer.
+    Also see :func:`mark_as_default_output`.
     """
     assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
     scope = nn.NameCtx.current_ctx()
@@ -268,6 +270,8 @@ class Tensor:
   def mark_as_default_output(self) -> Tensor:
     """
     Mark this as the default output, i.e. create the "output" layer with a reference to this.
+    This has the effect that RETURNN will in any case construct the corresponding layer,
+    and it is the default output layer for forwarding and potential other tasks.
 
     :return: the "output" layer.
     """

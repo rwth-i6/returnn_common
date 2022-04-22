@@ -423,7 +423,7 @@ class NameCtx:
 
   def make_default_output(self, ref: nn.Tensor) -> nn.Tensor:
     """
-    Assume this is a subnet, and make a default output.
+    Assume this is a subnet, or the root net, and make a default output.
     """
     from . import copy
     assert self.is_subnet_ctx
