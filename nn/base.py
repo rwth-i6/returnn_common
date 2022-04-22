@@ -225,6 +225,16 @@ class Tensor:
   def mark_as_loss(self, *, scale: Optional[float] = 1.0, as_error: bool = False):
     """
     Mark this as a loss.
+    This has the effect that it is specially handled by RETURNN.
+    Specifically, the optimizer can use it in training,
+    and it is used for reporting per batch or per epoch,
+    and for learning rate scheduling.
+
+    :param scale: scale the loss by this factor for the training optimizer
+      (but not for any reporting). setting to 0.0 has the effect that this loss is not used by the optimizer.
+    :param as_error: if True, this loss is reported as an error instead of a loss,
+      and not used by the training optimizer.
+      This is by convention sth like the frame-error or edit-distance, and usually not differentiable anyway.
     """
     assert not self.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
     assert "loss" not in self.layer_dict
