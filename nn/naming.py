@@ -191,7 +191,7 @@ class NameCtx:
     self.module = module
     self.layer_ref = None  # type: Optional[nn.Tensor]
     self.layer = None  # type: Optional[nn.Tensor]
-    self.is_subnet_ctx = False
+    self.is_subnet_ctx = False  # if this is active in the context, it says whether it can have children
     self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
     self.can_access_children = can_access_children  # from outside
     self.children = {}  # type: Dict[str, NameCtx]
