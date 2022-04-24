@@ -608,7 +608,6 @@ class NameCtx:
     assert self.is_root
     import tensorflow as tf
     tf.compat.v1.enable_eager_execution()
-    self.global_batch
     self.debug_eager_mode = True
 
 
