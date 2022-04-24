@@ -642,10 +642,10 @@ def get_extern_data(data: Data) -> Tensor:
     if not data.batch:
       data.batch = scope.global_batch
   root_layer_name = f"data:{data.name}"
-  return _get_special_layer(root_layer_name, scope=scope, data=data)
+  return _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
 
 
-def _get_special_layer(name: str, *, scope: Optional[nn.NameCtx] = None, data: Data) -> Tensor:
+def _get_raw_layer_by_name(name: str, *, scope: Optional[nn.NameCtx] = None, data: Data) -> Tensor:
   """
   Special layer can be "data:..." or whatever.
   """
