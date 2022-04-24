@@ -526,6 +526,12 @@ class Parameter(Tensor):
     else:
       self.layer_dict.pop("init_by_layer", None)
       self.layer_dict["init"] = value
+    if nn.NameCtx.current_ctx().root.debug_eager_mode:
+      if isinstance(value, nn.Tensor):
+        assert value.data.placeholder is not None
+        self.data.placeholder = value.data.placeholder
+      else:
+        self.data.placeholder = tf.broadcast_to(tf.convert_to_tensor(value), self.data.batch_shape)
 
   @property
   def weight_decay(self) -> float:
@@ -638,11 +644,54 @@ def get_extern_data(data: Data) -> Tensor:
     assert scope.extern_data[data.name] is data
   if data.have_batch_axis():
     if not scope.global_batch:
-      scope.global_batch = data.batch if data.batch else nn.BatchInfo.make_global_batch_info(-1)
+      if data.batch:
+        scope.global_batch = data.batch
+      elif scope.root.debug_eager_mode:
+        scope.global_batch = nn.BatchInfo.make_global_batch_info(
+          tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
+      else:
+        scope.global_batch = nn.BatchInfo.make_global_batch_info(-1)
     if not data.batch:
       data.batch = scope.global_batch
   root_layer_name = f"data:{data.name}"
-  return _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
+  out = _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
+  if scope.root.debug_eager_mode:
+    out.data.placeholder = _make_random_tf_tensor_for_returnn_data(out.data)
+  return out
+
+
+def _make_random_tf_tensor_for_returnn_data(data: Data) -> tf.Tensor:
+  shape = []
+  for dim in data.dim_tags:
+    if dim.is_batch_dim():
+      assert data.batch
+      shape.append(data.batch.dim)
+    elif dim.dimension is not None:
+      shape.append(dim.dimension)
+    else:
+      dim.complete_dyn_size()
+      if dim.dyn_size_ext is None:
+        assert data.batch
+        dim.dyn_size_ext = Data(
+          name=f"{data.name}_dummy_dyn_size_ext", dim_tags=[nn.batch_dim], dtype=data.size_dtype, batch=data.batch)
+      if dim.dyn_size_ext.placeholder is None:
+        dim.dyn_size_ext.placeholder = _make_random_tf_tensor_for_returnn_data(dim.dyn_size_ext)
+      shape.append(tf.reduce_max(dim.dyn_size_ext.placeholder))
+  dtype = tf.as_dtype(data.dtype)
+  if dtype.is_integer:
+    if data.sparse:
+      return tf.random.uniform(shape=shape, dtype=dtype, minval=0, maxval=data.dim)
+    else:
+      c = abs(hash(data.name)) % 21 + 3
+      shape = tf.convert_to_tensor(shape)
+      c_tf = tf.constant(c, name="dummy_random_const", dtype=dtype)
+      rnd = tf.broadcast_to(c_tf, shape)
+      rnd_diff = tf.random.uniform(shape=shape, minval=0, maxval=2 ** 31 - 1, dtype=dtype)
+      rnd_diff = rnd_diff % tf.reshape(tf.minimum(tf.range(0, tf.size(rnd), dtype=dtype) + 1, c_tf - 2), shape)
+      rnd = tf.clip_by_value(rnd - rnd_diff, 1, c_tf)
+      return rnd
+  assert dtype.is_floating  # not implemented otherwise
+  return tf.random.normal(shape=shape, dtype=dtype)
 
 
 def _get_raw_layer_by_name(name: str, *, scope: Optional[nn.NameCtx] = None, data: Data) -> Tensor:
@@ -684,6 +733,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
   })
   BehaviorVersion.set(min_returnn_behavior_version)
   ctx = nn.NameCtx.top()
+  root_ctx = ctx.root
   inside_rec_time_dim = None
   control_flow_ctx = None
   while ctx:
@@ -754,5 +804,15 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
       msg += f"  {key}={v!r},\n"
     msg += ")"
     raise ReturnnConstructTemplateException(msg) from exc
+
+  if root_ctx.debug_eager_mode:
+    # See TFNetwork._create_layer.
+    layer_desc["output"] = out_data
+    out_data = layer_class.fixup_out_data(**layer_desc)
+    out_data.sanity_check(ignore_placeholder=True)
+    layer = layer_class(**layer_desc)
+    layer.post_init(layer_desc)
+    layer.output.sanity_check()
+    out_data = layer.output
 
   return out_data

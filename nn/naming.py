@@ -197,6 +197,7 @@ class NameCtx:
     self.children = {}  # type: Dict[str, NameCtx]
     self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
     self.global_batch = None  # type: Optional[nn.BatchInfo]  # only for the root name ctx
+    self.debug_eager_mode = False  # only for the root name ctx
     self.marked_outputs = []  # type: List[nn.Tensor]
     self.marked_losses = []  # type: List[nn.Tensor]
     self.parent = parent if parent is not NotSpecified else self.current_ctx()
@@ -596,6 +597,19 @@ class NameCtx:
       if name_ not in reserved_names:
         return name_
       i += 1
+
+  def enable_debug_eager_mode(self):
+    """
+    For debugging.
+
+    Enables TF eager mode.
+    Also, all layers will directly be created, and then due to TF eager mode directly evaluated.
+    """
+    assert self.is_root
+    import tensorflow as tf
+    tf.compat.v1.enable_eager_execution()
+    self.global_batch
+    self.debug_eager_mode = True
 
 
 class ReturnnConfigSerializer:

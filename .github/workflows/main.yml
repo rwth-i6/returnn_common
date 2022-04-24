@@ -27,6 +27,7 @@ jobs:
           - TEST=nn_conformer
           - TEST=nn_container
           - TEST=nn_conv
+          - TEST=nn_debug_eager_mode
           - TEST=nn_loop
           - TEST=nn_loss
           - TEST=nn_masked_computation
