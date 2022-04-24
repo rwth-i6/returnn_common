@@ -709,7 +709,16 @@ def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
   Like the "{layer}/{name}" syntax in RETURNN.
   Normally this should only be needed for internal usage.
   """
-  return layer.name_ctx.get_child_layer_ref(name, data=data)
+  out = layer.name_ctx.get_child_layer_ref(name, data=data)
+  if layer.name_ctx.root.debug_eager_mode:
+    assert layer.debug_layer
+    import returnn.tf.layers.base
+    assert isinstance(layer.debug_layer, returnn.tf.layers.base.LayerBase)
+    sub_layer = layer.debug_layer.get_sub_layer(name)
+    assert sub_layer and sub_layer.output.dim_tags == out.data.dim_tags
+    out.debug_layer = sub_layer
+    out.data = sub_layer.output
+  return out
 
 
 class ReturnnConstructTemplateException(Exception):
