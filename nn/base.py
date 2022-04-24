@@ -95,16 +95,6 @@ class Tensor:
     :param is_ref: in RETURNN, there can be references to special layers, like "data:..." or "prev:...",
       which are not layers themselves, i.e. we do not have a layer dict for them.
     """
-    if is_ref:
-      assert layer_dict is None
-    else:  # not is_ref (default)
-      assert layer_dict is not None
-      if not data:
-        data = _data_from_layer_dict(layer_dict)
-      if data.have_batch_axis() and not data.batch and name_ctx.root.global_batch:
-        data.batch = name_ctx.root.global_batch
-
-    # Keep in sync with _move_here().
     self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
     self.name_ctx = name_ctx
     assert name_ctx.layer_ref is None
@@ -112,6 +102,17 @@ class Tensor:
     assert name_ctx.layer is None
     if not is_ref:
       name_ctx.layer = self
+    self.debug_layer = None
+
+    if is_ref:
+      assert layer_dict is None
+    else:  # not is_ref (default)
+      assert layer_dict is not None
+      if not data:
+        data = _data_from_layer_dict(layer_dict, tensor=self)
+      if data.have_batch_axis() and not data.batch and name_ctx.root.global_batch:
+        data.batch = name_ctx.root.global_batch
+
     self.data = data
     self.layer_dict = layer_dict
     self.is_ref = is_ref
@@ -719,7 +720,7 @@ class ReturnnConstructTemplateException(Exception):
   """
 
 
-def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
+def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
   """
   Use RETURNN layer_class.get_out_data_from_opts to get the :class:`Data`.
   For this function, we need to set up some dummy network and dummy source layers.
@@ -814,5 +815,6 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw) -> Data:
     layer.post_init(layer_desc)
     layer.output.sanity_check()
     out_data = layer.output
+    tensor.debug_layer = layer
 
   return out_data
