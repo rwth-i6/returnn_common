@@ -2,6 +2,8 @@
 All code which are supposed to build models (the net dict, or parts of it).
 """
 
+from . import _absolute_import_fixup  # noqa
+
 from .base import *
 from .naming import *
 from .module import *
