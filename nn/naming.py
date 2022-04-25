@@ -177,6 +177,36 @@ class NameCtx:
     ctx.is_subnet_ctx = True
     return ctx
 
+  @classmethod
+  def inner_loop(cls) -> Optional[nn.Loop]:
+    """
+    :return: the most inner loop in the current context, if there is one
+      E.g. you can use it to access the outer spatial dim.
+    """
+    ctx = cls.top()
+    while ctx:
+      mod = ctx.module
+      if isinstance(mod, nn.LoopModule):
+        return mod.loop
+      ctx = ctx.parent
+    return None
+
+  @classmethod
+  def inner_control_flow(cls) -> Optional[nn.ControlFlowContext]:
+    """
+    :return: the most inner loop in the current context, if there is one
+      E.g. you can use it to access the outer spatial dim.
+    """
+    ctx = cls.top()
+    while ctx:
+      mod = ctx.module
+      if isinstance(mod, nn.LoopModule):
+        return mod.loop.control_flow_ctx
+      if isinstance(mod, nn.CondModule):
+        return mod.cond.control_flow_ctx
+      ctx = ctx.parent
+    return None
+
   def __init__(self, *,
                module: Optional[nn.Module] = None,
                suggested_name: Optional[str] = None,

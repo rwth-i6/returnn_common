@@ -48,10 +48,12 @@ class Cond:
       module=self.layer_module, suggested_name="true", parent=self.name_ctx, virtual=True, can_access_children=False)
     self.true_branch_name_ctx.is_subnet_ctx = True
     self.true_branch_name_ctx.extend_reserved_names({"output"})
+    self.true_branch_control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Cond)
     self.false_branch_name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name="false", parent=self.name_ctx, virtual=True, can_access_children=False)
     self.false_branch_name_ctx.is_subnet_ctx = True
     self.false_branch_name_ctx.extend_reserved_names({"output"})
+    self.false_branch_control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Cond)
 
   def __repr__(self):
     return f"Cond{self.name_ctx}"
@@ -133,6 +135,19 @@ class Cond:
     assert self._false_value is not None, f"{self} you need to have defined the false value"
     assert self._result_value is not None
     return self._result_value
+
+  @property
+  def control_flow_ctx(self) -> nn.ControlFlowContext:
+    """
+    :return: the control flow context.
+    """
+    assert self._entered, f"{self}: you need to be in the context scope"
+    if self._entered_state is True:
+      return self.true_branch_control_flow_ctx
+    elif self._entered_state is False:
+      return self.false_branch_control_flow_ctx
+    else:
+      assert False, f"{self}: invalid state {self._entered_state!r}"
 
 
 class CondModule(nn.Module):

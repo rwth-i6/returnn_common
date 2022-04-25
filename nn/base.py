@@ -743,19 +743,11 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     "behavior_version": min_returnn_behavior_version,
   })
   BehaviorVersion.set(min_returnn_behavior_version)
-  ctx = nn.NameCtx.top()
-  inside_rec_time_dim = None
-  control_flow_ctx = None
-  while ctx:
-    mod = ctx.module
-    if isinstance(mod, nn.LoopModule):
-      inside_rec_time_dim = mod.loop.axis
-      control_flow_ctx = mod.loop.control_flow_ctx
-      break
-    ctx = ctx.parent
+  loop = nn.NameCtx.inner_loop()  # Note: for control_flow_ctx, we should also check Cond
   net = TFNetwork(
     config=config, extern_data=ExternData(), name="dummy_net",
-    inside_rec_time_dim=inside_rec_time_dim, control_flow_ctx=control_flow_ctx)
+    inside_rec_time_dim=loop.axis if loop else None,
+    control_flow_ctx=nn.NameCtx.inner_control_flow())
 
   ref_to_layer_name = {}  # type: Dict[nn.NameCtx, str]
 
@@ -777,7 +769,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     ref_to_layer_name[ref.name_ctx] = name
     assert name not in net.layers
     data = ref.data.copy()
-    data.control_flow_ctx = control_flow_ctx
+    data.control_flow_ctx = nn.NameCtx.inner_control_flow()
     net.layers[name] = InternalLayer(name=name, network=net, output=data)
     return name
 
