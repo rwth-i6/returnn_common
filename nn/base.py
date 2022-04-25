@@ -527,7 +527,7 @@ class Parameter(Tensor):
     else:
       self.layer_dict.pop("init_by_layer", None)
       self.layer_dict["init"] = value
-    if nn.NameCtx.current_ctx().root.debug_eager_mode:
+    if nn.is_debug_eager_mode_enabled():
       if isinstance(value, nn.Tensor):
         assert value.data.placeholder is not None
         self.data.placeholder = value.data.placeholder
@@ -647,7 +647,7 @@ def get_extern_data(data: Data) -> Tensor:
     if not scope.global_batch:
       if data.batch:
         scope.global_batch = data.batch
-      elif scope.root.debug_eager_mode:
+      elif nn.is_debug_eager_mode_enabled():
         scope.global_batch = nn.BatchInfo.make_global_batch_info(
           tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
       else:
@@ -656,7 +656,7 @@ def get_extern_data(data: Data) -> Tensor:
       data.batch = scope.global_batch
   root_layer_name = f"data:{data.name}"
   out = _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
-  if scope.root.debug_eager_mode:
+  if nn.is_debug_eager_mode_enabled():
     out.data.placeholder = _make_random_tf_tensor_for_returnn_data(out.data)
   return out
 
@@ -710,7 +710,7 @@ def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
   Normally this should only be needed for internal usage.
   """
   out = layer.name_ctx.get_child_layer_ref(name, data=data)
-  if layer.name_ctx.root.debug_eager_mode:
+  if nn.is_debug_eager_mode_enabled():
     assert layer.debug_layer
     import returnn.tf.layers.base
     assert isinstance(layer.debug_layer, returnn.tf.layers.base.LayerBase)
@@ -743,7 +743,6 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
   })
   BehaviorVersion.set(min_returnn_behavior_version)
   ctx = nn.NameCtx.top()
-  root_ctx = ctx.root
   inside_rec_time_dim = None
   control_flow_ctx = None
   while ctx:
@@ -815,7 +814,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     msg += ")"
     raise ReturnnConstructTemplateException(msg) from exc
 
-  if root_ctx.debug_eager_mode:
+  if nn.is_debug_eager_mode_enabled():
     # See TFNetwork._create_layer.
     layer_desc["output"] = out_data
     out_data = layer_class.fixup_out_data(**layer_desc)

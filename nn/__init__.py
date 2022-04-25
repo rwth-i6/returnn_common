@@ -6,6 +6,7 @@ from . import _absolute_import_fixup  # noqa
 
 from .base import *
 from .naming import *
+from .debug_eager_mode import *
 from .module import *
 from .cond import *
 from .loop import *
