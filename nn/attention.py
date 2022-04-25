@@ -79,8 +79,6 @@ class GenericSelfAttention(nn.Module):
                causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     """forward"""
-    hist_dim = nn.SpatialDim(
-      f"{nn.NameCtx.current_ctx().get_abs_name()}:{'history' if causal or axis == nn.single_step_dim else 'attention'}")
     qkv = self.qkv(source)
     qkv = nn.split_dims(
       qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head), name="qkv_split_dims")
@@ -89,8 +87,11 @@ class GenericSelfAttention(nn.Module):
       out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
     if axis == nn.single_step_dim:
-      assert causal is None or causal
+      assert causal is None or causal  # always causal for single step
       assert state
+      loop = nn.NameCtx.inner_loop()
+      hist_dim = nn.SpatialDim(
+        f"{loop.axis.description if loop else nn.NameCtx.current_ctx().get_abs_name()}:kv-history")
       new_state = nn.LayerState()
       k, _, new_state.k_accum = nn.cum_concat_step(k, state=state.k_accum, out_spatial_dim=hist_dim, name="k_accum")
       v, _, new_state.v_accum = nn.cum_concat_step(v, state=state.v_accum, out_spatial_dim=hist_dim, name="v_accum")
@@ -102,6 +103,7 @@ class GenericSelfAttention(nn.Module):
           "Causal attention on sequence level not implemented. "
           "We can easily extend CumConcatLayer on RETURNN side for this, to accept any axis argument. "
           "However, normally any causal attention should always be inside a loop and this should never be needed.")
+      hist_dim = nn.SpatialDim(f"{axis.description}:{'kv-history' if causal else 'kv'}")
       k, _ = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=hist_dim, name="k_new_dim")
       v, _ = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=hist_dim, name="v_new_dim")
     att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=hist_dim, att_dropout=self.att_dropout)
