@@ -48,12 +48,14 @@ class Cond:
       module=self.layer_module, suggested_name="true", parent=self.name_ctx, virtual=True, can_access_children=False)
     self.true_branch_name_ctx.is_subnet_ctx = True
     self.true_branch_name_ctx.extend_reserved_names({"output"})
-    self.true_branch_control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Cond)
+    self.true_branch_control_flow_ctx = nn.ControlFlowContext(
+      kind=nn.ControlFlowContext.Types.Cond, outer_ctx=nn.NameCtx.inner_control_flow())
     self.false_branch_name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name="false", parent=self.name_ctx, virtual=True, can_access_children=False)
     self.false_branch_name_ctx.is_subnet_ctx = True
     self.false_branch_name_ctx.extend_reserved_names({"output"})
-    self.false_branch_control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Cond)
+    self.false_branch_control_flow_ctx = nn.ControlFlowContext(
+      kind=nn.ControlFlowContext.Types.Cond, outer_ctx=nn.NameCtx.inner_control_flow())
 
   def __repr__(self):
     return f"Cond{self.name_ctx}"

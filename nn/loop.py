@@ -82,7 +82,8 @@ class Loop:
     self.outputs = []  # type: List[nn.Tensor]
     self._last_frames = {}  # type: Dict[nn.NameCtx, nn.Tensor]  # inner name -> outer
     self.axis = axis
-    self.control_flow_ctx = nn.ControlFlowContext(kind=nn.ControlFlowContext.Types.Loop)
+    self.control_flow_ctx = nn.ControlFlowContext(
+      kind=nn.ControlFlowContext.Types.Loop, outer_ctx=nn.NameCtx.inner_control_flow())
     self.control_flow_ctx.loop_spatial_dim = axis
     self.end_ref = None  # type: Optional[nn.Tensor]
 
