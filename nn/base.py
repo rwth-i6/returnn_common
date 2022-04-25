@@ -683,7 +683,8 @@ def _make_random_tf_tensor_for_returnn_data(data: Data) -> tf.Tensor:
     if data.sparse:
       return tf.random.uniform(shape=shape, dtype=dtype, minval=0, maxval=data.dim)
     else:
-      c = abs(hash(data.name)) % 21 + 3
+      import binascii
+      c = abs(binascii.crc32(data.name.encode("utf8"))) % 21 + 3
       shape = tf.convert_to_tensor(shape)
       c_tf = tf.constant(c, name="dummy_random_const", dtype=dtype)
       rnd = tf.broadcast_to(c_tf, shape)
