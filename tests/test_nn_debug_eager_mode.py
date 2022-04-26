@@ -49,10 +49,6 @@ def test_constant():
 
 
 def test_example_data_audio_get_sample_batch():
-  try:
-    import soundfile  # noqa
-  except Exception as exc:
-    raise unittest.SkipTest("soundfile can not be imported") from exc
   from .. import example_data
   out, _ = example_data.audio.get_sample_batch()
   print("out:", out)
