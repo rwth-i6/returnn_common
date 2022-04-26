@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from . import _setup_test_env  # noqa
 import typing
+import unittest
 
 if typing.TYPE_CHECKING:
   from .. import nn
@@ -48,6 +49,10 @@ def test_constant():
 
 
 def test_example_data_audio_get_sample_batch():
+  try:
+    import soundfile  # noqa
+  except ImportError as exc:
+    raise unittest.SkipTest("soundfile can not be imported") from exc
   from .. import example_data
   out, _ = example_data.audio.get_sample_batch()
   print("out:", out)
