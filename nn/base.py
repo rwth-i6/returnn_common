@@ -121,6 +121,8 @@ class Tensor:
 
   def __repr__(self):
     parts = [self.__class__.__name__, self.name_ctx.get_abs_name_repr()]
+    if not hasattr(self, "data"):
+      return f"<{' '.join(parts)} uninitialized>"
     if self.data:
       parts.append("[%s]" % ",".join(self.data.get_batch_axes_short_description()))
     if not self.is_ref:
