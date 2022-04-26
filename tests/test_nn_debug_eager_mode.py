@@ -39,3 +39,9 @@ def test_conformer():
   conformer = nn.ConformerEncoder(nn.FeatureDim("conformer", 10), num_layers=2, num_heads=2)
   out, out_spatial_dim = conformer(data, in_spatial_dim=time_dim)
   assert out.data.placeholder is not None
+
+
+def test_constant():
+  res = nn.constant(value=42., shape=[nn.SpatialDim("custom-batch", 3)])
+  assert res.data.placeholder is not None
+  assert (res.data.placeholder.numpy() == 42.).all()
