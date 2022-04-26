@@ -48,7 +48,7 @@ def test_constant():
 
 
 def test_example_data_audio_get_sample_batch():
-  from .. import example_data
-  out, _ = example_data.audio.get_sample_batch()
+  from ..example_data import audio
+  out, _ = audio.get_sample_batch()
   print("out:", out)
   assert out.data.placeholder is not None
