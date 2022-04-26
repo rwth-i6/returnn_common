@@ -3,6 +3,8 @@
 SpecAugment.
 """
 
+from .. import nn
+
 
 def _mask(x, batch_axis, axis, pos, max_amount, mask_value=0.):
   """
@@ -71,7 +73,7 @@ def random_mask(x, batch_axis, axis, min_num, max_num, max_dims, mask_value=0.):
 
 
 # Use this for an EvalLayer
-def specaugment_eval_func(source, **kwargs):
+def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, cond_on_train: bool = True, **kwargs):
   """
   :rtype: tf.Tensor
   """
@@ -80,9 +82,12 @@ def specaugment_eval_func(source, **kwargs):
   time_factor = 1  # for switchout == 6
   x = data.placeholder
   network = kwargs["self"].network
-  step = network.global_train_step
-  step1 = tf.where(tf.greater_equal(step, 1000), 1, 0)
-  step2 = tf.where(tf.greater_equal(step, 2000), 1, 0)
+  if global_train_step_dependent:
+    step = network.global_train_step
+    step1 = tf.where(tf.greater_equal(step, 1000), 1, 0)
+    step2 = tf.where(tf.greater_equal(step, 2000), 1, 0)
+  else:
+    step1 = step2 = 1
 
   def get_masked():
     """
@@ -99,5 +104,17 @@ def specaugment_eval_func(source, **kwargs):
       max_dims=data.dim // 5)
     return x_masked
 
-  x = network.cond_on_train(get_masked, lambda: x)
+  if cond_on_train:
+    x = network.cond_on_train(get_masked, lambda: x)
+  else:
+    x = get_masked()
   return x
+
+
+def specaugment_v1(x: nn.Tensor, **kwargs) -> nn.Tensor:
+  """
+  SpecAugment, wrapping the old-style code
+  """
+  return nn.make_layer({
+    "class": "eval", "from": x,
+    "eval": specaugment_eval_func, "eval_locals": kwargs}, name="specaugment")
