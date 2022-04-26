@@ -2,6 +2,7 @@
 Simple utility to load (and maybe resample) the audio.
 """
 
+from ... import nn
 from typing import Sequence, Tuple, List, Optional
 import numpy
 
@@ -9,7 +10,31 @@ import numpy
 def get_sample_batch(files: Sequence[str], *,
                      batch_size: int = 2,
                      sample_rate: int = 16_000
-                     ) -> Tuple[numpy.ndarray, List[int]]:
+                     ) -> Tuple[nn.Tensor, nn.Dim]:
+  """
+  sample batch.
+
+  This is currently only intended and implemented for debug-eager-mode.
+
+  :return: samples of shape [B,samples], and out spatial dim
+  """
+  assert nn.is_debug_eager_mode_enabled()
+  import tensorflow as tf
+  audio_np, seq_lens = get_sample_batch_np(files, batch_size=batch_size, sample_rate=sample_rate)
+  batch_dim = nn.SpatialDim("B", batch_size)
+  out_spatial_dim = nn.SpatialDim("samples")
+  out_spatial_dim.dyn_size_ext = nn.Data(
+    name="seq_lens", dim_tags=[batch_dim], dtype=nn.Data.size_dtype,
+    placeholder=tf.convert_to_tensor(seq_lens))
+  audio = nn.constant(value=0., shape=[batch_dim, out_spatial_dim], dtype="float32")
+  audio.data.placeholder = tf.convert_to_tensor(audio_np)
+  return audio, out_spatial_dim
+
+
+def get_sample_batch_np(files: Sequence[str], *,
+                        batch_size: int = 2,
+                        sample_rate: int = 16_000
+                        ) -> Tuple[numpy.ndarray, List[int]]:
   """
   sample batch
 
@@ -23,7 +48,7 @@ def get_sample_batch(files: Sequence[str], *,
     files = files[:batch_size]
   audios = []
   for fn in files:
-    audios.append(load_audio(fn, sample_rate=sample_rate)[0])
+    audios.append(load_audio_np(fn, sample_rate=sample_rate)[0])
   seq_lens = [len(a) for a in audios]
   out = numpy.zeros((batch_size, max(seq_lens)), dtype=numpy.float32)
   for i, a in enumerate(audios):
@@ -31,7 +56,7 @@ def get_sample_batch(files: Sequence[str], *,
   return out, seq_lens
 
 
-def load_audio(filename: str, *, sample_rate: Optional[int] = None) -> Tuple[numpy.ndarray, int]:
+def load_audio_np(filename: str, *, sample_rate: Optional[int] = None) -> Tuple[numpy.ndarray, int]:
   """
   load audio
 
@@ -49,12 +74,12 @@ def load_audio(filename: str, *, sample_rate: Optional[int] = None) -> Tuple[num
   import soundfile  # noqa  # pip install pysoundfile
   audio, sample_rate_ = soundfile.read(filename)
   if sample_rate is not None:
-    audio = resample(audio, sample_rate_, sample_rate)
+    audio = resample_np(audio, sample_rate_, sample_rate)
     sample_rate_ = sample_rate
   return audio, sample_rate_
 
 
-def resample(audio: numpy.ndarray, in_sample_rate: int, out_sample_rate: int) -> numpy.ndarray:
+def resample_np(audio: numpy.ndarray, in_sample_rate: int, out_sample_rate: int) -> numpy.ndarray:
   """
   resample
   """

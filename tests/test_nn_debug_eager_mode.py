@@ -45,3 +45,10 @@ def test_constant():
   res = nn.constant(value=42., shape=[nn.SpatialDim("custom-batch", 3)])
   assert res.data.placeholder is not None
   assert (res.data.placeholder.numpy() == 42.).all()
+
+
+def test_example_data_audio_get_sample_batch():
+  from .. import example_data
+  out, _ = example_data.audio.get_sample_batch()
+  print("out:", out)
+  assert out.data.placeholder is not None

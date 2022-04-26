@@ -2,6 +2,7 @@
 Librispeech examples
 """
 
+from .... import nn
 from typing import Tuple, List
 import numpy
 import os
@@ -14,12 +15,21 @@ files = [
 ]
 
 
-# noinspection PyUnusedLocal
 def get_sample_batch(batch_size: int = 2,
                      sample_rate: int = 16_000
-                     ) -> Tuple[numpy.ndarray, List[int]]:
+                     ) -> Tuple[nn.Tensor, nn.Dim]:
   """
   load
   """
   from ..load_audio_file import get_sample_batch
   return get_sample_batch(files, batch_size=batch_size, sample_rate=sample_rate)
+
+
+def get_sample_batch_np(batch_size: int = 2,
+                        sample_rate: int = 16_000
+                        ) -> Tuple[numpy.ndarray, List[int]]:
+  """
+  load
+  """
+  from ..load_audio_file import get_sample_batch_np
+  return get_sample_batch_np(files, batch_size=batch_size, sample_rate=sample_rate)
