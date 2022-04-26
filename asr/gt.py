@@ -129,7 +129,7 @@ def get_net_dict(
   if normalization is None:
     net_dict['output'] = {'class': 'copy', 'from': 'dct'}
   elif normalization == 'batch':
-    net_dict['output'] = {'class': 'batch_norm', 'from': 'dct'}
+    net_dict['output'] = {'class': 'batch_norm', 'from': 'dct', 'masked_time': True}
   elif normalization == 'time':
     net_dict['output'] = {'class': 'norm', 'axes': 'T', 'from': 'dct'}
   else:
