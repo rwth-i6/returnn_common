@@ -4,7 +4,7 @@ Test nn.math_.
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, config_net_dict_via_serialized
 from nose.tools import assert_equal
 import typing
 
@@ -63,3 +63,18 @@ def test_split_glu():
       }
     })
   dummy_run_net(config)
+
+
+def test_cumcum():
+  # https://github.com/rwth-i6/returnn_common/issues/133
+  class _Net(nn.Module):
+    @nn.scoped
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      """
+      Forward
+      """
+      return nn.cumsum(x, axis=axis)
+
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  dummy_run_net(config, net=net)
