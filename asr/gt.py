@@ -6,6 +6,7 @@ Code by Peter Vieting, and adopted.
 """
 
 
+from typing import Tuple
 import tensorflow as tf
 import numpy
 from returnn.tf.network import TFNetwork, ExternData
@@ -138,7 +139,10 @@ def get_net_dict(
   return net_dict
 
 
-def wrapped_old_style(x: nn.Tensor, out_dim: nn.Dim = nn.FeatureDim("channels", 50), **kwargs) -> nn.Tensor:
+def wrapped_old_style(x: nn.Tensor,
+                      out_dim: nn.Dim = nn.FeatureDim("channels", 50),
+                      **kwargs
+                      ) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Wraps get_net_dict (old-style)
   """
@@ -154,4 +158,4 @@ def wrapped_old_style(x: nn.Tensor, out_dim: nn.Dim = nn.FeatureDim("channels", 
     "class": "reinterpret_data", "from": y,
     "set_dim_tags": {"T": out_spatial_dim, "F": out_dim}}, name="gt_old_style_set_dims")
   y.verify_out_shape({nn.batch_dim, out_spatial_dim, out_dim})
-  return y
+  return y, out_spatial_dim
