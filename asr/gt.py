@@ -10,6 +10,7 @@ import tensorflow as tf
 import numpy
 from returnn.tf.network import TFNetwork, ExternData
 from returnn.tf.util.data import FeatureDim
+from .. import nn
 
 tf1 = tf.compat.v1
 
@@ -135,3 +136,22 @@ def get_net_dict(
   else:
     raise NotImplementedError
   return net_dict
+
+
+def wrapped_old_style(x: nn.Tensor, out_dim: nn.Dim = nn.FeatureDim("channels", 50), **kwargs) -> nn.Tensor:
+  """
+  Wraps get_net_dict (old-style)
+  """
+  x = nn.expand_dim(
+    x, dim=nn.FeatureDim("dummy-feat-dim", 1),
+    name="gt_old_style_raw_samples_input")  # get_net_dict expects raw samples as [B,T,1]
+  y = nn.make_layer({
+    "class": "subnetwork", "from": x,
+    "subnetwork": get_net_dict(num_channels=out_dim.dimension, **kwargs)}, name="gt_old_style_wrapped")
+  assert y.feature_dim.dimension == out_dim.dimension
+  out_spatial_dim = nn.SpatialDim("time")
+  y = nn.make_layer({
+    "class": "reinterpret_data", "from": y,
+    "set_dim_tags": {"T": out_spatial_dim, "F": out_dim}}, name="gt_old_style_set_dims")
+  y.verify_out_shape({nn.batch_dim, out_spatial_dim, out_dim})
+  return y
