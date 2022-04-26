@@ -49,7 +49,7 @@ Code conventions:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Callable
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Callable, Type
 from returnn.tf.util.data import *  # Dim, Data, and others
 # noinspection PyProtectedMember
 from returnn.tf.util.data import _MarkedDim
@@ -776,7 +776,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     return name
 
   def _get_layer(name: str) -> LayerBase:
-    assert name in net.layers
+    assert name in net.layers  # via _map_layer_dict_elem, _get_layer_name
     return net.layers[name]
 
   def _map_layer_dict_elem(value):
@@ -785,39 +785,30 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     return value
 
   layer_dict = nest.map_structure(_map_layer_dict_elem, layer_dict)
-  out_name = _get_unique_name("output")
-
-  layer_desc = layer_dict.copy()
-  layer_class = get_layer_class(layer_desc.pop("class"))
-  # Note about name:
-  # The name can be to the root network (full name) or to the owning/direct network (`net`) (base_name).
-  # The name can optionally have a prefix (here we only care about extra net prefix "extra...:").
-  # The prefix is implied by the owning network.
-  layer_desc["_network"] = net
-  layer_desc["_name"] = out_name
-
-  layer_class.transform_config_dict(layer_desc, network=net, get_layer=_get_layer)
-
-  # noinspection PyProtectedMember
-  layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
-  try:
-    out_data = layer_class.get_out_data_from_opts(**layer_desc)
-  except Exception as exc:
-    msg = f"Failed to call {layer_class.__name__}.get_out_data_from_opts(\n"
-    for key, v in layer_desc.items():
-      msg += f"  {key}={v!r},\n"
-    msg += ")"
-    raise ReturnnConstructTemplateException(msg) from exc
+  out_name = _get_unique_name(tensor.name_ctx.name)
+  net_dict = {out_name: layer_dict}
 
   if nn.is_debug_eager_mode_enabled():
-    # See TFNetwork._create_layer.
-    layer_desc["output"] = out_data
-    out_data = layer_class.fixup_out_data(**layer_desc)
-    out_data.sanity_check(ignore_placeholder=True)
-    layer = layer_class(**layer_desc)
-    layer.post_init(layer_desc)
-    layer.output.sanity_check()
-    out_data = layer.output
+    _add_layer = None  # implies to really construct the layer
+  else:
+    # Creates only a template layer.
+    def _add_layer(name: str, layer_class: Type[LayerBase], **layer_desc) -> LayerBase:
+      # noinspection PyProtectedMember
+      layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
+      try:
+        out_data = layer_class.get_out_data_from_opts(**layer_desc)
+      except Exception as exc:
+        msg = f"Failed to call {layer_class.__name__}.get_out_data_from_opts(\n"
+        for key, v in layer_desc.items():
+          msg += f"  {key}={v!r},\n"
+        msg += ")"
+        raise ReturnnConstructTemplateException(msg) from exc
+      return InternalLayer(name=name, network=net, output=out_data)
+
+  # Use construct_layer to automatically handle more complex logic such as subnetworks.
+  layer = net.construct_layer(net_dict=net_dict, name=out_name, get_layer=_get_layer, add_layer=_add_layer)
+
+  if nn.is_debug_eager_mode_enabled():
     tensor.debug_layer = layer
 
-  return out_data
+  return layer.output
