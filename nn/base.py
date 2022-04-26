@@ -775,10 +775,6 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     net.layers[name] = InternalLayer(name=name, network=net, output=data)
     return name
 
-  def _get_layer(name: str) -> LayerBase:
-    assert name in net.layers  # via _map_layer_dict_elem, _get_layer_name
-    return net.layers[name]
-
   def _map_layer_dict_elem(value):
     if isinstance(value, Tensor):
       return _get_layer_name(value)
@@ -806,7 +802,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
       return InternalLayer(name=name, network=net, output=out_data)
 
   # Use construct_layer to automatically handle more complex logic such as subnetworks.
-  layer = net.construct_layer(net_dict=net_dict, name=out_name, get_layer=_get_layer, add_layer=_add_layer)
+  layer = net.construct_layer(net_dict=net_dict, name=out_name, add_layer=_add_layer)
 
   if nn.is_debug_eager_mode_enabled():
     tensor.debug_layer = layer
