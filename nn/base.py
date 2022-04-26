@@ -737,7 +737,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
   Use RETURNN layer_class.get_out_data_from_opts to get the :class:`Data`.
   For this function, we need to set up some dummy network and dummy source layers.
   """
-  from returnn.tf.network import TFNetwork, ExternData, get_layer_class
+  from returnn.tf.network import TFNetwork, ExternData
   from returnn.tf.layers.base import InternalLayer, LayerBase
   from returnn.util import BehaviorVersion
   from returnn.config import Config
