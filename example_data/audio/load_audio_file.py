@@ -21,12 +21,11 @@ def get_sample_batch(files: Sequence[str], *,
   assert nn.is_debug_eager_mode_enabled()
   import tensorflow as tf
   audio_np, seq_lens = get_sample_batch_np(files, batch_size=batch_size, sample_rate=sample_rate)
-  batch_dim = nn.SpatialDim("B", batch_size)
   out_spatial_dim = nn.SpatialDim("samples")
   out_spatial_dim.dyn_size_ext = nn.Data(
-    name="seq_lens", dim_tags=[batch_dim], dtype=nn.Data.size_dtype,
+    name="seq_lens", dim_tags=[nn.batch_dim], dtype=nn.Data.size_dtype,
     placeholder=tf.convert_to_tensor(seq_lens))
-  audio = nn.constant(value=0., shape=[batch_dim, out_spatial_dim], dtype="float32")
+  audio = nn.constant(value=0., shape=[nn.batch_dim, out_spatial_dim], dtype="float32")
   audio.data.placeholder = tf.convert_to_tensor(audio_np)
   return audio, out_spatial_dim
 
