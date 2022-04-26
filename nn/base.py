@@ -530,11 +530,20 @@ class Parameter(Tensor):
       self.layer_dict.pop("init_by_layer", None)
       self.layer_dict["init"] = value
     if nn.is_debug_eager_mode_enabled():
+      shape = [d.get_dim_value() for d in self.data.dim_tags]
       if isinstance(value, nn.Tensor):
         assert value.data.placeholder is not None
-        self.data.placeholder = value.data.placeholder
+        value_tf = value.data.placeholder
       else:
-        self.data.placeholder = tf.broadcast_to(tf.convert_to_tensor(value), self.data.batch_shape)
+        value_tf = tf.broadcast_to(tf.convert_to_tensor(value), shape)
+      if self.data.placeholder is None:
+        var = tf.Variable(
+          value_tf, shape=[d.get_dim_value() for d in self.data.dim_tags], dtype=self.data.dtype)
+        self.data.placeholder = var
+      else:
+        var = self.data.placeholder
+        assert isinstance(var, tf.Variable)
+        var.assign(value_tf)
 
   @property
   def weight_decay(self) -> float:
