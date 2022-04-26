@@ -58,5 +58,5 @@ def test_demo_asr_gt_wrapped_old_style():
   from ..example_data import audio
   raw_audio, _ = audio.get_sample_batch()
   from ..asr import gt
-  audio = gt.wrapped_old_style(raw_audio)
+  audio, _ = gt.wrapped_old_style(raw_audio)
   assert audio.data.placeholder is not None
