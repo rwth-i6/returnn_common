@@ -748,6 +748,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
   loop = nn.NameCtx.inner_loop()  # Note: for control_flow_ctx, we should also check Cond
   net = TFNetwork(
     config=config, extern_data=ExternData(), name="dummy_net",
+    train_flag=True,  # should not have an effect usually for templates, except maybe in debug-eager-mode
     inside_rec_time_dim=loop.axis if loop else None,
     control_flow_ctx=nn.NameCtx.inner_control_flow())
 
