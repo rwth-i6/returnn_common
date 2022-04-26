@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from . import _setup_test_env  # noqa
 import typing
-import unittest
 
 if typing.TYPE_CHECKING:
   from .. import nn
