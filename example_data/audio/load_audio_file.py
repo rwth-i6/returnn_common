@@ -61,5 +61,5 @@ def resample(audio: numpy.ndarray, in_sample_rate: int, out_sample_rate: int) ->
   if in_sample_rate == out_sample_rate:
     return audio
   # https://stackoverflow.com/questions/29085268/resample-a-numpy-array/52347385#52347385
-  import samplerate
+  import samplerate  # noqa  # pip install samplerate
   return samplerate.resample(audio, out_sample_rate / in_sample_rate, 'sinc_best')
