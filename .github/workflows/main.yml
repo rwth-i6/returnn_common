@@ -69,6 +69,7 @@ jobs:
         # pip install --user -r requirements.txt | cat
         pip install --user --upgrade tensorflow==${{ matrix.tf-version }} | cat
         pip install --user nose
+        pip install --user pysoundfile
 
         pip install --user --upgrade returnn
 
