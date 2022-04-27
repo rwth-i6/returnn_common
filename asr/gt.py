@@ -16,55 +16,29 @@ from .. import nn
 tf1 = tf.compat.v1
 
 
-class Extractor:
+def gammatone_v1(raw_samples: nn.Tensor,
+                 out_dim: nn.Dim = nn.FeatureDim("channels", 50),
+                 **kwargs
+                 ) -> Tuple[nn.Tensor, nn.Dim]:
   """
-  Extractor
+  Wraps get_net_dict (old-style)
+
+  :param raw_samples: raw float32 samples, expected shape [B,T]
+  :param out_dim: output feature dimension, num channels
   """
-  def __init__(self, **kwargs):
-    net_dict = get_net_dict(**kwargs)
-    with tf1.Graph().as_default() as self.graph:
-      self.extern_data = ExternData({"data": {"shape": (None, 1)}})
-      self.input = self.extern_data.data["data"]
-      self.net = TFNetwork(name="Gammatone", extern_data=self.extern_data)
-      self.net.construct_from_dict(net_dict)
-      self.output = self.net.get_default_output_layer().output.copy_as_batch_major()
-      self.session = tf1.Session(graph=self.graph, config=tf1.ConfigProto(device_count=dict(GPU=0)))
-      self.session.run(tf1.global_variables_initializer())
-
-  def run(self, audio, seq_lens=None):
-    """
-    :param numpy.ndarray audio: shape [B,T,1] (T being raw samples, 16kHz)
-    :param numpy.array|None seq_lens: shape [B]. if not given, assume [T]*B
-    :return: features, feat_seq_lens
-    :rtype: (numpy.ndarray,numpy.ndarray)
-    """
-    assert len(audio.shape) == 3 and audio.shape[-1] == 1
-    b, t, _ = audio.shape
-    if seq_lens is None:
-      seq_lens = [t] * b
-    return self.session.run(
-      (self.output.placeholder, self.output.size_placeholder[0]),
-      feed_dict={self.input.placeholder: audio, self.input.size_placeholder[0]: seq_lens})
-
-
-_extractor = None
-
-
-def _extract(*, audio, num_feature_filters, sample_rate, **_other):
-  assert sample_rate == 16000
-  global _extractor
-  if not _extractor:
-    _extractor = Extractor(num_channels=num_feature_filters)
-  features, _ = _extractor.run(audio[numpy.newaxis, :, numpy.newaxis])
-  return features[0]
-
-
-def make_returnn_audio_features_func():
-  """
-  This can be used for ExtractAudioFeatures in RETURNN,
-  e.g. in OggZipDataset or LibriSpeechCorpus or others.
-  """
-  return _extract
+  raw_samples = nn.expand_dim(
+    raw_samples, dim=nn.FeatureDim("dummy-feat-dim", 1),
+    name="gt_old_style_raw_samples_input")  # get_net_dict expects raw samples as [B,T,1]
+  y = nn.make_layer({
+    "class": "subnetwork", "from": raw_samples,
+    "subnetwork": get_net_dict(num_channels=out_dim.dimension, **kwargs)}, name="gt_old_style_wrapped")
+  assert y.feature_dim.dimension == out_dim.dimension
+  out_spatial_dim = nn.SpatialDim("time")
+  y = nn.make_layer({
+    "class": "reinterpret_data", "from": y,
+    "set_dim_tags": {"T": out_spatial_dim, "F": out_dim}}, name="gt_old_style_set_dims")
+  y.verify_out_shape({nn.batch_dim, out_spatial_dim, out_dim})
+  return y, out_spatial_dim
 
 
 def get_net_dict(
@@ -139,23 +113,52 @@ def get_net_dict(
   return net_dict
 
 
-def wrapped_old_style(x: nn.Tensor,
-                      out_dim: nn.Dim = nn.FeatureDim("channels", 50),
-                      **kwargs
-                      ) -> Tuple[nn.Tensor, nn.Dim]:
+def make_returnn_audio_features_func():
   """
-  Wraps get_net_dict (old-style)
+  This can be used for ExtractAudioFeatures in RETURNN,
+  e.g. in OggZipDataset or LibriSpeechCorpus or others.
   """
-  x = nn.expand_dim(
-    x, dim=nn.FeatureDim("dummy-feat-dim", 1),
-    name="gt_old_style_raw_samples_input")  # get_net_dict expects raw samples as [B,T,1]
-  y = nn.make_layer({
-    "class": "subnetwork", "from": x,
-    "subnetwork": get_net_dict(num_channels=out_dim.dimension, **kwargs)}, name="gt_old_style_wrapped")
-  assert y.feature_dim.dimension == out_dim.dimension
-  out_spatial_dim = nn.SpatialDim("time")
-  y = nn.make_layer({
-    "class": "reinterpret_data", "from": y,
-    "set_dim_tags": {"T": out_spatial_dim, "F": out_dim}}, name="gt_old_style_set_dims")
-  y.verify_out_shape({nn.batch_dim, out_spatial_dim, out_dim})
-  return y, out_spatial_dim
+  return _extract
+
+
+_extractor = None
+
+
+def _extract(*, audio, num_feature_filters, sample_rate, **_other):
+  assert sample_rate == 16000
+  global _extractor
+  if not _extractor:
+    _extractor = Extractor(num_channels=num_feature_filters)
+  features, _ = _extractor.run(audio[numpy.newaxis, :, numpy.newaxis])
+  return features[0]
+
+
+class Extractor:
+  """
+  Extractor
+  """
+  def __init__(self, **kwargs):
+    net_dict = get_net_dict(**kwargs)
+    with tf1.Graph().as_default() as self.graph:
+      self.extern_data = ExternData({"data": {"shape": (None, 1)}})
+      self.input = self.extern_data.data["data"]
+      self.net = TFNetwork(name="Gammatone", extern_data=self.extern_data)
+      self.net.construct_from_dict(net_dict)
+      self.output = self.net.get_default_output_layer().output.copy_as_batch_major()
+      self.session = tf1.Session(graph=self.graph, config=tf1.ConfigProto(device_count=dict(GPU=0)))
+      self.session.run(tf1.global_variables_initializer())
+
+  def run(self, audio, seq_lens=None):
+    """
+    :param numpy.ndarray audio: shape [B,T,1] (T being raw samples, 16kHz)
+    :param numpy.array|None seq_lens: shape [B]. if not given, assume [T]*B
+    :return: features, feat_seq_lens
+    :rtype: (numpy.ndarray,numpy.ndarray)
+    """
+    assert len(audio.shape) == 3 and audio.shape[-1] == 1
+    b, t, _ = audio.shape
+    if seq_lens is None:
+      seq_lens = [t] * b
+    return self.session.run(
+      (self.output.placeholder, self.output.size_placeholder[0]),
+      feed_dict={self.input.placeholder: audio, self.input.size_placeholder[0]: seq_lens})
