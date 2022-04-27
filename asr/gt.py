@@ -33,7 +33,8 @@ class GammatoneV2(nn.Module):
     self.out_dim = out_dim
     self._dummy_dim = nn.FeatureDim("dummy", 1)
     self.gammatone_filterbank = nn.Conv1d(
-      out_dim, in_dim=self._dummy_dim, filter_size=gt_filterbank_size, padding="valid")
+      in_dim=self._dummy_dim, out_dim=out_dim,
+      filter_size=gt_filterbank_size, padding="valid")
     # TODO 'forward_weights_init': {
     #         'class': 'GammatoneFilterbankInitializer',
     #         'num_channels': num_channels,
@@ -41,7 +42,10 @@ class GammatoneV2(nn.Module):
     #         'sample_rate': sample_rate,
     #         'freq_max': freq_max},
     self.temporal_integration = nn.Conv1d(
-      in_dim=self._dummy_dim, out_dim=self._dummy_dim, filter_size=temporal_integration_size, padding="valid")
+      in_dim=self._dummy_dim, out_dim=self._dummy_dim,
+      filter_size=temporal_integration_size,
+      strides=temporal_integration_strides,
+      padding="valid")
     # TODO 'forward_weights_init': 'numpy.hanning({}).reshape(({}, 1, 1, 1))'.format(
     #         temporal_integration_size, temporal_integration_size),
 
