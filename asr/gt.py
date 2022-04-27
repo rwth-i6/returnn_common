@@ -31,7 +31,7 @@ def gammatone_v1(raw_samples: nn.Tensor,
     name="gt_old_style_raw_samples_input")  # get_net_dict expects raw samples as [B,T,1]
   y = nn.make_layer({
     "class": "subnetwork", "from": raw_samples,
-    "subnetwork": get_net_dict(num_channels=out_dim.dimension, **kwargs)}, name="gt_old_style_wrapped")
+    "subnetwork": get_net_dict_v1(num_channels=out_dim.dimension, **kwargs)}, name="gt_old_style_wrapped")
   assert y.feature_dim.dimension == out_dim.dimension
   out_spatial_dim = nn.SpatialDim("time")
   y = nn.make_layer({
@@ -41,7 +41,7 @@ def gammatone_v1(raw_samples: nn.Tensor,
   return y, out_spatial_dim
 
 
-def get_net_dict(
+def get_net_dict_v1(
     num_channels=50, sample_rate=16000, gt_filterbank_size=640, temporal_integration_size=400,
     temporal_integration_strides=160, normalization="batch", freq_max=7500., source="data",
 ):
@@ -138,7 +138,7 @@ class Extractor:
   Extractor
   """
   def __init__(self, **kwargs):
-    net_dict = get_net_dict(**kwargs)
+    net_dict = get_net_dict_v1(**kwargs)
     with tf1.Graph().as_default() as self.graph:
       self.extern_data = ExternData({"data": {"shape": (None, 1)}})
       self.input = self.extern_data.data["data"]
