@@ -6,7 +6,7 @@ Code by Peter Vieting, and adopted.
 """
 
 
-from typing import Tuple
+from typing import Tuple, Union
 import tensorflow as tf
 import numpy
 from returnn.tf.network import TFNetwork, ExternData
@@ -14,6 +14,62 @@ from returnn.tf.util.data import FeatureDim
 from .. import nn
 
 tf1 = tf.compat.v1
+
+
+class GammatoneV2(nn.Module):
+  """
+  Gammatone filterbank feature extraction
+  """
+
+  def __init__(self, out_dim: nn.Dim = nn.FeatureDim("channels", 50),
+               *,
+               sample_rate: int = 16_000,
+               gt_filterbank_size: int = 640,
+               temporal_integration_size: int = 400,
+               temporal_integration_strides: int = 160,
+               freq_max: Union[float, int] = 7500.,
+               ):
+    super(GammatoneV2, self).__init__()
+    self.out_dim = out_dim
+    self._dummy_dim = nn.FeatureDim("dummy", 1)
+    self.gammatone_filterbank = nn.Conv1d(
+      out_dim, in_dim=self._dummy_dim, filter_size=gt_filterbank_size, padding="valid")
+    # TODO 'forward_weights_init': {
+    #         'class': 'GammatoneFilterbankInitializer',
+    #         'num_channels': num_channels,
+    #         'length': gt_filterbank_size / sample_rate,
+    #         'sample_rate': sample_rate,
+    #         'freq_max': freq_max},
+    self.temporal_integration = nn.Conv1d(
+      in_dim=self._dummy_dim, out_dim=self._dummy_dim, filter_size=temporal_integration_size, padding="valid")
+    # TODO 'forward_weights_init': 'numpy.hanning({}).reshape(({}, 1, 1, 1))'.format(
+    #         temporal_integration_size, temporal_integration_size),
+
+  @nn.scoped
+  def __call__(
+        self,
+        raw_samples: nn.Tensor,
+        *,
+        in_spatial_dim: nn.Dim,
+        ) -> Tuple[nn.Tensor, nn.Dim]:
+
+    shift_0, spatial_dim0 = nn.slice(raw_samples, axis=in_spatial_dim, slice_end=-1)
+    shift_1, spatial_dim0_ = nn.slice(raw_samples, axis=in_spatial_dim, slice_start=1)
+    shift_1, _ = nn.reinterpret_new_dim(shift_1, in_dim=spatial_dim0_, out_dim=spatial_dim0)
+    preemphasis = shift_1 - shift_0
+
+    gammatone_filterbank, spatial_dim1 = self.gammatone_filterbank(
+      nn.expand_dim(preemphasis, dim=self._dummy_dim), in_spatial_dim=spatial_dim0)
+    gammatone_filterbank = nn.abs(gammatone_filterbank)
+
+    temporal_integration, spatial_dim2 = self.temporal_integration(
+      nn.expand_dim(gammatone_filterbank, dim=self._dummy_dim), in_spatial_dim=spatial_dim1)
+    temporal_integration = nn.squeeze(temporal_integration, axis=self._dummy_dim)
+
+    compression = (temporal_integration + 1e-6) ** 0.1
+
+    dct = nn.dct(compression)
+    return dct, spatial_dim2
 
 
 def gammatone_v1(raw_samples: nn.Tensor,
