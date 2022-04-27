@@ -35,19 +35,26 @@ class GammatoneV2(nn.Module):
     self.gammatone_filterbank = nn.Conv1d(
       in_dim=self._dummy_dim, out_dim=out_dim,
       filter_size=gt_filterbank_size, padding="valid")
-    # TODO 'forward_weights_init': {
-    #         'class': 'GammatoneFilterbankInitializer',
-    #         'num_channels': num_channels,
-    #         'length': gt_filterbank_size / sample_rate,
-    #         'sample_rate': sample_rate,
-    #         'freq_max': freq_max},
+    from returnn.util.sig_proc import GammatoneFilterbank
+    gammatone_filterbank = GammatoneFilterbank(
+      num_channels=out_dim.dimension,
+      length=gt_filterbank_size / sample_rate,
+      sample_rate=sample_rate,
+      freq_max=freq_max)
+    fbank = gammatone_filterbank.get_gammatone_filterbank()
+    self.gammatone_filterbank.filter.initial = (
+      fbank
+      .reshape(gt_filterbank_size, 1, gammatone_filterbank.num_channels)
+      .astype(numpy.float32))
     self.temporal_integration = nn.Conv1d(
       in_dim=self._dummy_dim, out_dim=self._dummy_dim,
       filter_size=temporal_integration_size,
       strides=temporal_integration_strides,
       padding="valid")
-    # TODO 'forward_weights_init': 'numpy.hanning({}).reshape(({}, 1, 1, 1))'.format(
-    #         temporal_integration_size, temporal_integration_size),
+    self.temporal_integration.filter.initial = (
+      numpy.hanning(temporal_integration_size)
+      .reshape((temporal_integration_size, 1, 1))
+      .astype(numpy.float32))
 
   @nn.scoped
   def __call__(
