@@ -49,6 +49,7 @@ Code conventions:
 """
 
 from __future__ import annotations
+import numpy
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Callable, Type
 from returnn.tf.util.data import *  # Dim, Data, and others
 # noinspection PyProtectedMember
@@ -60,7 +61,7 @@ from .. import nn
 LayerDictRaw = Dict[str, Any]
 TensorRefRaw = str
 NetDictRaw = Dict[str, LayerDictRaw]
-RawTensorTypes = Union[int, float, complex, bool, str]
+RawTensorTypes = Union[int, float, complex, bool, numpy.number, str]
 OutShapeType = Union[Set[Union[Dim, _MarkedDim]], tuple, list]
 
 min_returnn_behavior_version = 12
@@ -366,22 +367,32 @@ class Tensor:
     return sis_hash_helper(self.layer_dict)
 
   def __add__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 0:
+      return self
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_tensor(other)], kind="add", name="add")
 
   def __sub__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 0:
+      return self
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_tensor(other)], kind="sub", name="sub")
 
   def __mul__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_tensor(other)], kind="mul", name="mul")
 
   def __truediv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_tensor(other)], kind="truediv", name="truediv")
 
   def __floordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_tensor(other)], kind="floordiv", name="floordiv")
 
@@ -390,22 +401,32 @@ class Tensor:
     return _combine([self, nn.convert_to_tensor(other)], kind="mod", name="mod")
 
   def __radd__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 0:
+      return self
     from ._generated_layers import _combine
     return _combine([nn.convert_to_tensor(other), self], kind="add", name="add")
 
   def __rsub__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 0:
+      return self
     from ._generated_layers import _combine
     return _combine([nn.convert_to_tensor(other), self], kind="sub", name="sub")
 
   def __rmul__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([nn.convert_to_tensor(other), self], kind="mul", name="mul")
 
   def __rtruediv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([nn.convert_to_tensor(other), self], kind="truediv", name="truediv")
 
   def __rfloordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([nn.convert_to_tensor(other), self], kind="floordiv", name="floordiv")
 
@@ -421,6 +442,8 @@ class Tensor:
 
   def __pow__(self, other: Union[RawTensorTypes, Tensor], modulo=None) -> Tensor:
     assert modulo is None
+    if isinstance(other, (int, float, numpy.number)) and other == 1:
+      return self
     from ._generated_layers import _combine
     return _combine([self, nn.convert_to_tensor(other)], kind="pow", name="pow")
 
