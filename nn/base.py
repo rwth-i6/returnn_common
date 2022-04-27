@@ -61,7 +61,7 @@ from .. import nn
 LayerDictRaw = Dict[str, Any]
 TensorRefRaw = str
 NetDictRaw = Dict[str, LayerDictRaw]
-RawTensorTypes = Union[int, float, complex, bool, numpy.number, str]
+RawTensorTypes = Union[int, float, complex, numpy.number, numpy.ndarray, bool, str]
 OutShapeType = Union[Set[Union[Dim, _MarkedDim]], tuple, list]
 
 min_returnn_behavior_version = 12
