@@ -65,8 +65,7 @@ class GammatoneV2(nn.Module):
         ) -> Tuple[nn.Tensor, nn.Dim]:
 
     shift_0, spatial_dim0 = nn.slice(raw_samples, axis=in_spatial_dim, slice_end=-1)
-    shift_1, spatial_dim0_ = nn.slice(raw_samples, axis=in_spatial_dim, slice_start=1)
-    shift_1, _ = nn.reinterpret_new_dim(shift_1, in_dim=spatial_dim0_, out_dim=spatial_dim0)
+    shift_1, _ = nn.slice(raw_samples, axis=in_spatial_dim, slice_start=1, out_dim=spatial_dim0)
     preemphasis = shift_1 - shift_0
 
     gammatone_filterbank, spatial_dim1 = self.gammatone_filterbank(
