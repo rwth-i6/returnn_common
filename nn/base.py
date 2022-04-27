@@ -126,6 +126,11 @@ class Tensor:
       return f"<{' '.join(parts)} uninitialized>"
     if self.data:
       parts.append("[%s]" % ",".join(self.data.get_batch_axes_short_description()))
+    if nn.is_debug_eager_mode_enabled():
+      if self.data.placeholder is None:
+        parts.append("<tf.Tensor: None>")
+      else:
+        parts.append(repr(self.data.placeholder))
     if not self.is_ref:
       parts.append(f"via {self.name_ctx.module if self.name_ctx.module else self.layer_dict.get('class', '?')!r}")
     return f"<{' '.join(parts)}>"
