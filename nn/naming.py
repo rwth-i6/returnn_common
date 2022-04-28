@@ -752,7 +752,7 @@ class ReturnnConfigSerializer:
         # For user code, we should serialize the function itself, which is not supported yet.
         raise ValueError(f"Function {obj} from unknown module {obj.__qualname__} cannot be serialized")
       imports[f"import {obj.__module__}"] = None
-      return ReturnnConfigSerializer._CodeWrapper(f"{obj.__module__}.{obj.__qualname__}", obj)
+      return self._CodeWrapper(f"{obj.__module__}.{obj.__qualname__}", obj)
     if isinstance(obj, dict):
       return {
         self._post_process_transform(key, imports=imports): self._post_process_transform(value, imports=imports)
