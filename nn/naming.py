@@ -729,7 +729,8 @@ class ReturnnConfigSerializer:
       "extern_data": self.get_extern_data_raw_dict(),
       "network": self.get_net_dict_raw_dict(root_module=root_module)}
 
-  def _post_process_transform(self, obj, *, imports: Dict[str, None]):
+  @classmethod
+  def _post_process_transform(cls, obj, *, imports: Dict[str, None]):
     # imports is a dict to keep insertion order.
     # Similar as ReturnnDimTagsProxy.collect_dim_tags_and_transform_config.
     # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
@@ -752,18 +753,18 @@ class ReturnnConfigSerializer:
         # For user code, we should serialize the function itself, which is not supported yet.
         raise ValueError(f"Function {obj} from unknown module {obj.__qualname__} cannot be serialized")
       imports[f"import {obj.__module__}"] = None
-      return self._CodeWrapper(f"{obj.__module__}.{obj.__qualname__}", obj)
+      return cls._CodeWrapper(f"{obj.__module__}.{obj.__qualname__}", obj)
     if isinstance(obj, dict):
       return {
-        self._post_process_transform(key, imports=imports): self._post_process_transform(value, imports=imports)
+        cls._post_process_transform(key, imports=imports): cls._post_process_transform(value, imports=imports)
         for key, value in obj.items()}
     if isinstance(obj, list):
-      return [self._post_process_transform(value, imports=imports) for value in obj]
+      return [cls._post_process_transform(value, imports=imports) for value in obj]
     if isinstance(obj, tuple) and type(obj) is tuple:
-      return tuple(self._post_process_transform(value, imports=imports) for value in obj)
+      return tuple(cls._post_process_transform(value, imports=imports) for value in obj)
     if isinstance(obj, tuple) and type(obj) is not tuple:
       # noinspection PyProtectedMember,PyUnresolvedReferences,PyArgumentList
-      return type(obj)(*(self._post_process_transform(getattr(obj, key), imports=imports) for key in obj._fields))
+      return type(obj)(*(cls._post_process_transform(getattr(obj, key), imports=imports) for key in obj._fields))
 
   class _CodeWrapper:
     def __init__(self, code: str, obj: Any):
