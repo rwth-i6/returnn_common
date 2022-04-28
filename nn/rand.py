@@ -24,7 +24,7 @@ class Random(nn.Module):
       **kwargs)
 
   def uniform(self,
-              shape, dtype=None,
+              shape: Sequence[nn.Dim], dtype: str = None,
               *,
               minval: Union[int, float, nn.Tensor] = 0, maxval: Union[int, float, nn.Tensor]
               ) -> nn.Tensor:
@@ -32,7 +32,7 @@ class Random(nn.Module):
     return self(distribution="uniform", shape=shape, dtype=dtype, minval=minval, maxval=maxval)
 
   def normal(self,
-             shape: Sequence[nn.Dim], dtype=None,
+             shape: Sequence[nn.Dim], dtype: str = None,
              *,
              mean: Union[int, float, nn.Tensor],
              stddev: Union[int, float, nn.Tensor],
@@ -41,7 +41,7 @@ class Random(nn.Module):
     return self(distribution="normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)
 
   def truncated_normal(self,
-                       shape: Sequence[nn.Dim], dtype=None,
+                       shape: Sequence[nn.Dim], dtype: str = None,
                        *,
                        mean: Union[int, float, nn.Tensor],
                        stddev: Union[int, float, nn.Tensor],
@@ -49,13 +49,13 @@ class Random(nn.Module):
     """truncated normal"""
     return self(distribution="truncated_normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)
 
-  def bernoulli(self, shape: Sequence[nn.Dim], dtype=None, *, p: Union[float, nn.Tensor]) -> nn.Tensor:
+  def bernoulli(self, shape: Sequence[nn.Dim], dtype: str = None, *, p: Union[float, nn.Tensor]) -> nn.Tensor:
     """bernoulli"""
     x = self.uniform(shape=shape, dtype=dtype, minval=0., maxval=1.)
     return nn.where(x <= p, nn.ones(shape=(), dtype=dtype), nn.zeros(shape=(), dtype=dtype))
 
 
-def random_uniform(shape, dtype=None,
+def random_uniform(shape: Sequence[nn.Dim], dtype: str = None,
                    *,
                    minval: Union[int, float, nn.Tensor] = 0, maxval: Union[int, float, nn.Tensor]
                    ) -> nn.Tensor:
@@ -63,7 +63,7 @@ def random_uniform(shape, dtype=None,
   return Random().uniform(shape=shape, dtype=dtype, minval=minval, maxval=maxval)
 
 
-def random_normal(shape: Sequence[nn.Dim], dtype=None,
+def random_normal(shape: Sequence[nn.Dim], dtype: str = None,
                   *,
                   mean: Union[int, float, nn.Tensor],
                   stddev: Union[int, float, nn.Tensor],
@@ -73,7 +73,7 @@ def random_normal(shape: Sequence[nn.Dim], dtype=None,
 
 
 def random_truncated_normal(
-      shape: Sequence[nn.Dim], dtype=None,
+      shape: Sequence[nn.Dim], dtype: str = None,
       *,
       mean: Union[int, float, nn.Tensor],
       stddev: Union[int, float, nn.Tensor],
@@ -82,6 +82,6 @@ def random_truncated_normal(
   return Random().truncated_normal(shape=shape, dtype=dtype, mean=mean, stddev=stddev)
 
 
-def random_bernoulli(shape: Sequence[nn.Dim], dtype=None, *, p: Union[float, nn.Tensor]) -> nn.Tensor:
+def random_bernoulli(shape: Sequence[nn.Dim], dtype: str = None, *, p: Union[float, nn.Tensor]) -> nn.Tensor:
   """Random Bernoulli"""
   return Random().bernoulli(shape=shape, dtype=dtype, p=p)
