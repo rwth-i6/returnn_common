@@ -16,7 +16,7 @@ def specaugment_v1(x: nn.Tensor, **kwargs) -> nn.Tensor:
 
 
 # Use this for an EvalLayer
-def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, cond_on_train: bool = True, **kwargs):
+def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, only_on_train: bool = True, **kwargs):
   """
   :rtype: tf.Tensor
   """
@@ -50,7 +50,7 @@ def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, c
       max_dims=data.dim // 5)
     return x_masked
 
-  if cond_on_train:
+  if only_on_train:
     x = network.cond_on_train(get_masked, lambda: x)
   else:
     x = get_masked()
