@@ -2693,4 +2693,3 @@ def _name_str(name: Optional[Union[str, nn.NameCtx]], default: str) -> str:
   if isinstance(name, nn.NameCtx):
     return name.get_abs_name()
   raise TypeError(f'name type {type(name)} not supported')
-

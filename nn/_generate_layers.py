@@ -556,7 +556,7 @@ def setup():
     "    return f'{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}'\n"
     "  if isinstance(name, nn.NameCtx):\n"
     "    return name.get_abs_name()\n"
-    "  raise TypeError(f'name type {type(name)} not supported')\n", file=f)
+    "  raise TypeError(f'name type {type(name)} not supported')\n", file=f, end="")
 
 
 class LayerSignature:
