@@ -6,6 +6,15 @@ SpecAugment.
 from .. import nn
 
 
+def specaugment_v1(x: nn.Tensor, **kwargs) -> nn.Tensor:
+  """
+  SpecAugment, wrapping the old-style code
+  """
+  return nn.make_layer({
+    "class": "eval", "from": x,
+    "eval": specaugment_eval_func, "eval_locals": kwargs}, name="specaugment")
+
+
 def _mask(x, batch_axis, axis, pos, max_amount, mask_value=0.):
   """
   :param tf.Tensor x: (batch,time,[feature])
@@ -112,12 +121,3 @@ def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, c
   else:
     x = get_masked()
   return x
-
-
-def specaugment_v1(x: nn.Tensor, **kwargs) -> nn.Tensor:
-  """
-  SpecAugment, wrapping the old-style code
-  """
-  return nn.make_layer({
-    "class": "eval", "from": x,
-    "eval": specaugment_eval_func, "eval_locals": kwargs}, name="specaugment")
