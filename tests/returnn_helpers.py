@@ -104,9 +104,13 @@ def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Di
   """
   :param str config_code: via get_returnn_config_serialized
   """
+  from returnn.util import better_exchook
   print(config_code)
   scope = {}
-  exec(config_code, scope, scope)
+  src_filename = "<config_net_dict_via_serialized>"
+  better_exchook.set_linecache(src_filename, config_code)
+  code_ = compile(config_code, src_filename, "exec")
+  exec(code_, scope, scope)
   for tmp in ["__builtins__", "Dim", "batch_dim", "FeatureDim", "SpatialDim"]:
     scope.pop(tmp)
   config = scope
