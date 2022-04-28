@@ -20,6 +20,7 @@ jobs:
         tf-version:
           - 2.3.0
         action:
+          - TEST=asr_gt
           - TEST=hello
           - TEST=nn_array
           - TEST=nn_attention
