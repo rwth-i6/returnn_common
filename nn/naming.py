@@ -687,9 +687,15 @@ class ReturnnConfigSerializer:
     dim_tags_proxy = self._dim_tags_proxy.copy()
     net_dict = self.get_net_dict_raw_dict(root_module=root_module)
     net_dict = dim_tags_proxy.collect_dim_tags_and_transform_config(net_dict)
+    imports = {}
+    net_dict = self._post_process_transform(net_dict, imports=imports)
 
-    code_lines = [
-      self._ImportPyCodeStr if with_imports else "",
+    code_lines = []
+    if with_imports:
+      code_lines.append(self._ImportPyCodeStr + "\n")
+    for import_str in imports:
+      code_lines.append(import_str + "\n")
+    code_lines += [
       f"{dim_tags_proxy.py_code_str(exclude_dims=self._base_extern_data_dim_refs)}\n",
       f"network = {pformat(net_dict)}\n",
     ]
@@ -722,6 +728,50 @@ class ReturnnConfigSerializer:
       "behavior_version": self._behavior_version,
       "extern_data": self.get_extern_data_raw_dict(),
       "network": self.get_net_dict_raw_dict(root_module=root_module)}
+
+  def _post_process_transform(self, obj, *, imports: Dict[str, None]):
+    # imports is a dict to keep insertion order.
+    # Similar as ReturnnDimTagsProxy.collect_dim_tags_and_transform_config.
+    # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
+    # See also NetDictBuilderCtx.make_net_dict_raw.
+    if isinstance(obj, (int, float, str, bool, type(None))):
+      return obj
+    # We usually would be called after collect_dim_tags_and_transform_config, but we also allow it to be skipped.
+    if isinstance(obj, (nn.Dim, ReturnnDimTagsProxy.DimRefProxy, ReturnnDimTagsProxy.SetProxy)):
+      return obj
+    if isinstance(obj, numpy.ndarray):
+      imports["import numpy"] = None
+      return obj  # the standard repr of numpy arrays should work now
+    import types
+    if isinstance(obj, types.FunctionType):
+      if obj.__module__.split(".")[0] != __name__.split(".")[0]:
+        # Currently, we only allow functions from returnn_common to be used here,
+        # as returnn_common is considered as stable,
+        # and we do not serialize the function itself but just keep a ref to it here.
+        # We can maybe later extend this whitelist to other packages such as TensorFlow.
+        # For user code, we should serialize the function itself, which is not supported yet.
+        raise ValueError(f"Function {obj} from unknown module {obj.__qualname__} cannot be serialized")
+      imports[f"import {obj.__module__}"] = None
+      return ReturnnConfigSerializer._CodeWrapper(f"{obj.__module__}.{obj.__qualname__}", obj)
+    if isinstance(obj, dict):
+      return {
+        self._post_process_transform(key, imports=imports): self._post_process_transform(value, imports=imports)
+        for key, value in obj.items()}
+    if isinstance(obj, list):
+      return [self._post_process_transform(value, imports=imports) for value in obj]
+    if isinstance(obj, tuple) and type(obj) is tuple:
+      return tuple(self._post_process_transform(value, imports=imports) for value in obj)
+    if isinstance(obj, tuple) and type(obj) is not tuple:
+      # noinspection PyProtectedMember,PyUnresolvedReferences,PyArgumentList
+      return type(obj)(*(self._post_process_transform(getattr(obj, key), imports=imports) for key in obj._fields))
+
+  class _CodeWrapper:
+    def __init__(self, code: str, obj: Any):
+      self.code = code
+      self.obj = obj
+
+    def __repr__(self):
+      return self.code
 
 
 class NetDictBuilderCtx:
@@ -771,6 +821,7 @@ class NetDictBuilderCtx:
     """
     Create raw net dict, not containing any :class:`Tensor` or :class:`Net` instances anymore.
     """
+    import types
     if _stack is None:
       _stack = self._StackInfo(net=net, layer_abs_name_scope_effective="")
     net_dict = {}
@@ -835,8 +886,11 @@ class NetDictBuilderCtx:
               return self.make_net_dict_raw(
                 net=obj, _stack=_stack.add(net=obj, layer_abs_name_scope_effective=sub_layer_abs_name_scope))
             # We assume only basic types. This is not really a restriction but just a sanity check.
-            assert isinstance(obj, (int, float, str, bool, numpy.ndarray, set, nn.Dim, type(None))), (
-              f"unexpected type {type(obj)}")
+            # You might want to extend this.
+            # However, then make sure that serialization to string is handled in ReturnnConfigSerializer.
+            assert isinstance(
+              obj, (int, float, str, bool, numpy.ndarray, set, nn.Dim, type(None), types.FunctionType)), (
+                f"unexpected type {type(obj)}")
             return obj
 
           layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
@@ -1037,7 +1091,7 @@ class ReturnnDimTagsProxy:
 
   def collect_dim_tags_and_transform_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Go through the config and collect all dim tags, replace them by proxies.
+    Go through the config and collect all dim tags, replace them by proxies (DimRefProxy or SetProxy).
 
     :return: new config
     """
