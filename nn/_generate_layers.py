@@ -103,7 +103,7 @@ LayersHidden = {
 LayersWithoutSourceArg = {
   "source",
   "constant", "variable",
-  "train_flag",
+  "train_flag", "global_train_step",
   "cond", "switch",
   "generic_attention",
   "range", "rand_int", "random", "random_state_init",
