@@ -495,7 +495,7 @@ def setup():
             description += "{i}"
             print(
               f"    {out_dim_arg} = [\n"
-              f"      d.copy(same_as_self=False,"
+              f"      nn.Dim(kind=d.kind,"
               f" description=f{description!r})\n"
               f"      for i, d in enumerate({in_dim_arg})]", file=f)
           elif in_dim_arg == "axes":
@@ -511,9 +511,8 @@ def setup():
             pass
           elif in_dim_arg:
             print(
-              f"    {out_dim_arg} = {in_dim_arg}.copy(\n"
-              f"      same_as_self=False, description"
-              f"=f{description!r})", file=f)
+              f"    {out_dim_arg} = nn.Dim(\n"
+              f"      kind={in_dim_arg}.kind, description=f{description!r})", file=f)
           else:
             print(
               f"    {out_dim_arg} = nn.SpatialDim("
