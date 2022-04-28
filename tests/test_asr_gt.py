@@ -26,4 +26,4 @@ def test_gt_gammatone_v2():
   assert audio.data.placeholder is not None
   audio_, out_spatial_dim_ = gt.gammatone_v1(raw_audio, normalization=None)
   assert audio_.data.placeholder is not None
-  assert (audio_.data.placeholder.numpy() == audio.data.placeholder.numpy()).all()
+  assert (audio_.data.placeholder.numpy() == audio.data.placeholder.numpy()).all()  # noqa
