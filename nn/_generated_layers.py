@@ -127,7 +127,7 @@ def slice(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'slice')}:out_dim")
   args = {
     'axis': axis,
     'slice_start': slice_start,
@@ -178,7 +178,7 @@ def slice_nd(
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
+      same_as_self=False, description=f"{_name_str(name, 'slice_nd')}:out_spatial_dim")
   args = {
     'start': start,
     'size': size,
@@ -563,7 +563,7 @@ def range(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
+    out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range')}:out_spatial_dim")
   args = {
     'limit': limit,
     'start': start,
@@ -643,7 +643,7 @@ def range_from_length(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
+    out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range_from_length')}:out_spatial_dim")
   args = {
     'dtype': dtype,
     'sparse': sparse,
@@ -745,10 +745,10 @@ def rec_window(
   :return: layer, (window_dim, out_spatial_dim), out_state
   """
   if window_dim is None or window_dim is NotSpecified:
-    window_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:window_dim')
+    window_dim = nn.SpatialDim(f"{_name_str(name, 'rec_window')}:window_dim")
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
+      same_as_self=False, description=f"{_name_str(name, 'rec_window')}:out_spatial_dim")
   args = {
     'window_dim': window_dim,
     'window_left': window_left,
@@ -869,7 +869,7 @@ def merge_dims(
       kind = nn.Dim.Types.Feature
     else:
       kind = nn.Dim.Types.Spatial
-    out_dim = nn.Dim(kind=kind, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+    out_dim = nn.Dim(kind=kind, description=f"{_name_str(name, 'merge_dims')}:out_dim")
   args = {
     'axes': axes,
     'out_dim': out_dim,
@@ -1084,7 +1084,7 @@ def repeat(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'repeat')}:out_dim")
   args = {
     'repetitions': repetitions,
     'axis': axis,
@@ -1297,7 +1297,7 @@ def stack(
   :return: layer, out_spatial_dim
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
+    out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'stack')}:out_spatial_dim")
   args = {
     'out_spatial_dim': out_spatial_dim,
     }
@@ -1336,7 +1336,7 @@ def prefix_in_time(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'prefix_in_time')}:out_dim")
   args = {
     'axis': axis,
     'out_dim': out_dim,
@@ -1375,7 +1375,7 @@ def postfix_in_time(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'postfix_in_time')}:out_dim")
   args = {
     'axis': axis,
     'out_dim': out_dim,
@@ -1412,7 +1412,7 @@ def time_chunking(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'time_chunking')}:out_dim")
   args = {
     'chunk_size': chunk_size,
     'chunk_step': chunk_step,
@@ -1570,7 +1570,7 @@ def resize(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'resize')}:out_dim")
   args = {
     'factor': factor,
     'axis': axis,
@@ -1610,7 +1610,7 @@ def remove(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'remove')}:out_dim")
   args = {
     'symbol': symbol,
     'axis': axis,
@@ -2375,7 +2375,7 @@ def split_batch_beam(
   :return: layer, beam_dim
   """
   if beam_dim is None or beam_dim is NotSpecified:
-    beam_dim = nn.SpatialDim(f'{nn.NameCtx.current_ctx().get_abs_name()}:beam_dim')
+    beam_dim = nn.SpatialDim(f"{_name_str(name, 'split_batch_beam')}:beam_dim")
   args = {
     'beam_dim': beam_dim,
     'search': search,
@@ -2558,7 +2558,7 @@ def edit_distance_table(
   """
   if out_dim is None or out_dim is NotSpecified:
     out_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_dim')
+      same_as_self=False, description=f"{_name_str(name, 'edit_distance_table')}:out_dim")
   args = {
     'axis': axis,
     'debug': debug,
@@ -2672,7 +2672,7 @@ def rec_cum_concat(
   """
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = axis.copy(
-      same_as_self=False, description=f'{nn.NameCtx.current_ctx().get_abs_name()}:out_spatial_dim')
+      same_as_self=False, description=f"{_name_str(name, 'rec_cum_concat')}:out_spatial_dim")
   args = {
     'out_spatial_dim': out_spatial_dim,
     'axis': axis,
@@ -2685,3 +2685,12 @@ def rec_cum_concat(
     **args}, name=name or 'rec_cum_concat')
   out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
   return layer, out_spatial_dim, out_state
+
+
+def _name_str(name: Optional[Union[str, nn.NameCtx]], default: str) -> str:
+  if name is None or isinstance(name, str):
+    return f'{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}'
+  if isinstance(name, nn.NameCtx):
+    return name.get_abs_name()
+  raise TypeError(f'name type {type(name)} not supported')
+

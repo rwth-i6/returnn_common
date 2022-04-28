@@ -487,7 +487,8 @@ def setup():
             in_dim_arg = "in_spatial_dims"
           if not in_dim_arg and "axes" in sig.params:
             in_dim_arg = "axes"
-          description = f"{{nn.NameCtx.current_ctx().get_abs_name()}}:{out_dim_arg}"
+          description = (
+            f"{{_name_str(name, {name.lstrip('_')!r})}}:{out_dim_arg}")
 
           if "Sequence" in param.param_type_s:
             assert in_dim_arg is not None
@@ -547,6 +548,15 @@ def setup():
         print(f"  return {', '.join(res_args)}", file=f)
 
     print(name, sig)
+
+  print(
+    "\n\n"
+    "def _name_str(name: Optional[Union[str, nn.NameCtx]], default: str) -> str:\n"
+    "  if name is None or isinstance(name, str):\n"
+    "    return f'{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}'\n"
+    "  if isinstance(name, nn.NameCtx):\n"
+    "    return name.get_abs_name()\n"
+    "  raise TypeError(f'name type {type(name)} not supported')\n", file=f)
 
 
 class LayerSignature:
