@@ -90,7 +90,8 @@ def random_mask_v1(x, *, batch_axis, axis, min_num, max_num, max_dims, mask_valu
         i_ + 1,
         tf.where(
           tf.less(i_, num),
-          _mask_v1(x_, batch_axis=batch_axis, axis=axis, pos=indices[:, i_], max_amount=max_dims, mask_value=mask_value),
+          _mask_v1(
+            x_, batch_axis=batch_axis, axis=axis, pos=indices[:, i_], max_amount=max_dims, mask_value=mask_value),
           x_)),
       loop_vars=(0, x))
   return x
