@@ -408,3 +408,31 @@ def test_deepcopy():
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
   dummy_run_net(config)
+
+
+def test_const_array_serialization():
+  class _Net(nn.Module):
+    @nn.scoped
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      import numpy
+      c = nn.constant(
+        value=numpy.linspace(0., 10., x.feature_dim.dimension, dtype=numpy.float32),
+        shape=[x.feature_dim])
+      return x + c
+
+  config, net_dict = dummy_config_net_dict(net=_Net())
+  dummy_run_net(config)
+
+
+def test_asr_specaug_v1_eval_func_serialization():
+  class _Net(nn.Module):
+    @nn.scoped
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      # specaugment_v1 uses a custom eval layer with a ref to a Python function,
+      # which is defined in that module.
+      # Thus, extra care needs to be taken when serializing the config.
+      from ..asr.specaugment import specaugment_v1
+      return specaugment_v1(x)
+
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  dummy_run_net(config)
