@@ -487,13 +487,15 @@ def setup():
             in_dim_arg = "in_spatial_dims"
           if not in_dim_arg and "axes" in sig.params:
             in_dim_arg = "axes"
+          description = f"{{nn.NameCtx.current_ctx().get_abs_name()}}:{out_dim_arg}"
 
           if "Sequence" in param.param_type_s:
             assert in_dim_arg is not None
+            description += "{i}"
             print(
               f"    {out_dim_arg} = [\n"
               f"      d.copy(same_as_self=False,"
-              f" description=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg + '{i}'!r})\n"
+              f" description=f{description!r})\n"
               f"      for i, d in enumerate({in_dim_arg})]", file=f)
           elif in_dim_arg == "axes":
             print(
@@ -504,17 +506,17 @@ def setup():
               f"    else:\n"
               f"      kind = nn.Dim.Types.Spatial\n"
               f"    {out_dim_arg} = nn.Dim(kind=kind, description"
-              f"=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg!r})", file=f)
+              f"=f{description!r})", file=f)
             pass
           elif in_dim_arg:
             print(
               f"    {out_dim_arg} = {in_dim_arg}.copy(\n"
               f"      same_as_self=False, description"
-              f"=f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg!r})", file=f)
+              f"=f{description!r})", file=f)
           else:
             print(
               f"    {out_dim_arg} = nn.SpatialDim("
-              f"f{'{nn.NameCtx.current_ctx().get_abs_name()}:' + out_dim_arg!r})", file=f)
+              f"f{description!r})", file=f)
 
       if sig.has_recurrent_state() or mod_args:
         print("  args = {", file=f)
