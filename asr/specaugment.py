@@ -37,14 +37,14 @@ def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, o
     :return: masked tensor
     """
     x_masked = x
-    x_masked = random_mask(
+    x_masked = random_mask_v1(
       x_masked, batch_axis=data.batch_dim_axis, axis=data.time_dim_axis,
       min_num=step1 + step2,
       max_num=tf.maximum(
         tf.maximum(tf.shape(x)[data.time_dim_axis] // 100, 2) * (1 + step1 + step2 * 2),
         tf.shape(x)[data.time_dim_axis]),
       max_dims=20 // time_factor)
-    x_masked = random_mask(
+    x_masked = random_mask_v1(
       x_masked, batch_axis=data.batch_dim_axis, axis=data.feature_dim_axis,
       min_num=step1 + step2, max_num=2 + step1 + step2 * 2,
       max_dims=data.dim // 5)
@@ -57,7 +57,7 @@ def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, o
   return x
 
 
-def random_mask(x, batch_axis, axis, min_num, max_num, max_dims, mask_value=0.):
+def random_mask_v1(x, *, batch_axis, axis, min_num, max_num, max_dims, mask_value=0.):
   """
   :param tf.Tensor x: (batch,time,feature)
   :param int batch_axis:
@@ -82,7 +82,7 @@ def random_mask(x, batch_axis, axis, min_num, max_num, max_dims, mask_value=0.):
   # indices = tf.Print(indices, ["indices", indices, tf.shape(indices)])
   if isinstance(num, int):
     for i in range(num):
-      x = _mask(x, batch_axis=batch_axis, axis=axis, pos=indices[:, i], max_amount=max_dims, mask_value=mask_value)
+      x = _mask_v1(x, batch_axis=batch_axis, axis=axis, pos=indices[:, i], max_amount=max_dims, mask_value=mask_value)
   else:
     _, x = tf.while_loop(
       cond=lambda i_, _: tf.less(i_, tf.reduce_max(num)),
@@ -90,13 +90,13 @@ def random_mask(x, batch_axis, axis, min_num, max_num, max_dims, mask_value=0.):
         i_ + 1,
         tf.where(
           tf.less(i_, num),
-          _mask(x_, batch_axis=batch_axis, axis=axis, pos=indices[:, i_], max_amount=max_dims, mask_value=mask_value),
+          _mask_v1(x_, batch_axis=batch_axis, axis=axis, pos=indices[:, i_], max_amount=max_dims, mask_value=mask_value),
           x_)),
       loop_vars=(0, x))
   return x
 
 
-def _mask(x, batch_axis, axis, pos, max_amount, mask_value=0.):
+def _mask_v1(x, *, batch_axis, axis, pos, max_amount, mask_value=0.):
   """
   :param tf.Tensor x: (batch,time,[feature])
   :param int batch_axis:

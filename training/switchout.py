@@ -3,7 +3,7 @@
 Switchout.
 """
 
-from ..asr.specaugment import random_mask
+from ..asr.specaugment import random_mask_v1
 
 
 def switchout_target(self, source, targetb_blank_idx: int,
@@ -48,7 +48,7 @@ def switchout_target(self, source, targetb_blank_idx: int,
     rnd_label = tf.random_uniform(shape=shape, minval=0, maxval=target_num_labels, dtype=tf.int32)
     rnd_label = where_bc(take_blank_mask, targetb_blank_idx, rnd_label)
     x_ = where_bc(take_rnd_mask, rnd_label, x_)
-    x_ = random_mask(
+    x_ = random_mask_v1(
       x_, batch_axis=data.batch_dim_axis, axis=data.time_dim_axis,
       min_num=0, max_num=tf.maximum(tf.shape(x)[data.time_dim_axis] // (50 // time_factor), 1),
       max_dims=20 // time_factor,
