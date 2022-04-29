@@ -4,7 +4,7 @@ Common parameter initialization functions.
 https://github.com/rwth-i6/returnn/wiki/Parameter-initialization
 """
 
-from typing import Sequence
+from typing import Sequence, Optional
 import math
 from .. import nn
 
@@ -42,7 +42,7 @@ class VarianceScaling:
         "Argument `distribution` should be one of ('normal', 'uniform', 'truncated_normal', 'untruncated_normal'). "
         f"Received: {self.distribution}")
 
-  def __call__(self, shape: Sequence[nn.Dim], dtype=None) -> nn.Tensor:
+  def __call__(self, shape: Sequence[nn.Dim], dtype: Optional[str] = None) -> nn.Tensor:
     if dtype is None:
       dtype = self.dtype
     scale = self.scale

@@ -143,6 +143,24 @@ class Tensor:
     return self.data.dim_tags_set_implicit
 
   @property
+  def shape_ordered(self) -> Tuple[Dim]:
+    """
+    :return: ordered dims.
+      Note that usually the order should never matter.
+      For some functions like nn.constant or nn.random_...,
+      we currently need a specific order,
+      and often we want to copy the order from some other tensor.
+      This property shape_ordered is supposed to be used for such functions.
+      Note that the rtype here could potentially change at some point
+      to a ref-type which just indicates to reuse the same order of this tensor.
+      So you should not rely on the rtype here
+      and make any direct use of the returned value,
+      except of passing it to functions like nn.constant.
+      https://github.com/rwth-i6/returnn_common/issues/138
+    """
+    return self.data.dim_tags
+
+  @property
   def dtype(self) -> str:
     """
     :return: data type (e.g. "float32")
@@ -550,7 +568,7 @@ class Parameter(Tensor):
   @initial.setter
   def initial(self, value: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.VarianceScaling]]):
     if isinstance(value, nn.init.VarianceScaling):
-      value = value(self.data.dim_tags)
+      value = value(self.shape_ordered)
     if value is None or isinstance(value, nn.Tensor):
       self.layer_dict.pop("init", None)
       self.layer_dict["init_by_layer"] = value
@@ -558,7 +576,7 @@ class Parameter(Tensor):
       self.layer_dict.pop("init_by_layer", None)
       self.layer_dict["init"] = value
     if nn.is_debug_eager_mode_enabled():
-      shape = [d.get_dim_value() for d in self.data.dim_tags]
+      shape = [d.get_dim_value() for d in self.shape_ordered]
       if isinstance(value, nn.Tensor):
         assert value.data.placeholder is not None
         value_tf = value.data.placeholder
@@ -566,7 +584,7 @@ class Parameter(Tensor):
         value_tf = tf.broadcast_to(tf.convert_to_tensor(value), shape)
       if self.data.placeholder is None:
         var = tf.Variable(
-          value_tf, shape=[d.get_dim_value() for d in self.data.dim_tags], dtype=self.data.dtype)
+          value_tf, shape=[d.get_dim_value() for d in self.shape_ordered], dtype=self.data.dtype)
         self.data.placeholder = var
       else:
         var = self.data.placeholder
