@@ -160,18 +160,24 @@ def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]]
   return nn.make_layer(d, name=activation)
 
 
-def maximum(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
+def maximum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
+            *, name: Optional[str] = None) -> nn.Tensor:
   """
   Wraps tf.math.maximum.
   """
+  a = nn.convert_to_tensor(a)
+  b = nn.convert_to_tensor(b)
   from ._generated_layers import _combine
   return _combine([a, b], kind="maximum", name=name or "maximum")
 
 
-def minimum(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
+def minimum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
+            *, name: Optional[str] = None) -> nn.Tensor:
   """
   Wraps tf.math.minimum.
   """
+  a = nn.convert_to_tensor(a)
+  b = nn.convert_to_tensor(b)
   from ._generated_layers import _combine
   return _combine([a, b], kind="minimum", name=name or "minimum")
 
