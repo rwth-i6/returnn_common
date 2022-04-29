@@ -104,7 +104,7 @@ def window(
       stride: int = NotSpecified,
       name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
-  Window. See :func:`_generated_layers._window`.
+  Window. See :func:`rec_window`.
   """
   from ._generated_layers import rec_window
   layer, (window_dim, out_spatial_dim), state = rec_window(
