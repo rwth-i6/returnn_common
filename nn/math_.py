@@ -160,6 +160,22 @@ def _activation(x: nn.Tensor, activation: str, *, opts: Optional[Dict[str, Any]]
   return nn.make_layer(d, name=activation)
 
 
+def maximum(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
+  """
+  Wraps tf.math.maximum.
+  """
+  from ._generated_layers import _combine
+  return _combine([a, b], kind="maximum", name=name or "maximum")
+
+
+def minimum(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
+  """
+  Wraps tf.math.minimum.
+  """
+  from ._generated_layers import _combine
+  return _combine([a, b], kind="minimum", name=name or "minimum")
+
+
 @nn.scoped
 def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
            gate_func=sigmoid, act_func=identity) -> nn.Tensor:
