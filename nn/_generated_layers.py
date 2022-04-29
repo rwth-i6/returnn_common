@@ -1770,14 +1770,14 @@ def _compare(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def top_k(
-          source: nn.Tensor,
-          *,
-          axis: Union[nn.Dim, Sequence[nn.Dim]],
-          k: Union[int, nn.Tensor],
-          k_dim: Optional[nn.Dim] = NotSpecified,
-          sorted: bool = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
+def _top_k(
+           source: nn.Tensor,
+           *,
+           axis: Union[nn.Dim, Sequence[nn.Dim]],
+           k: Union[int, nn.Tensor],
+           k_dim: Optional[nn.Dim] = NotSpecified,
+           sorted: bool = NotSpecified,
+           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Basically wraps tf.nn.top_k.
 

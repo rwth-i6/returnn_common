@@ -79,6 +79,64 @@ def stop_gradient(source: nn.Tensor, name: Optional[str] = None) -> nn.Tensor:
   return nn.scaled_gradient(source, scale=0, name=name)
 
 
+# noinspection PyShadowingBuiltins
+def top_k(source: nn.Tensor,
+          *,
+          axis: Union[nn.Dim, Sequence[nn.Dim]],
+          k: Union[int, nn.Tensor],
+          k_dim: Optional[nn.Dim] = None,
+          sorted: bool = True,
+          name: Optional[str] = None
+          ) -> Tuple[nn.Tensor, Union[nn.Tensor, Sequence[nn.Tensor]], nn.Dim]:
+  """
+  Basically wraps tf.nn.top_k.
+
+  Directly returns the top_k values.
+  The indices are accessible via the "indices" sub-layer.
+
+  For an input [B,D] with axis=D, the output and indices values are shape [B,K].
+
+  It's somewhat similar to :class:`ReduceLayer` with max and argmax.
+  The axis dim is reduced and then a new dim for K is added.
+
+  Axis can also cover multiple axes, such as [beam,classes].
+  In that cases, there is not a single "indices" sub-layer,
+  but sub-layers "indices0" .. "indices{N-1}"
+  corresponding to each axis, in the same order.
+
+  All other axes are treated as batch dims.
+
+  :param source:
+  :param axis: the axis to do the top_k on, which is reduced, or a sequence of axes
+  :param k: the "K" in "TopK"
+  :param k_dim: the new axis dim for K. if not provided, will be automatically created.
+  :param sorted:
+  :param name:
+  :return: values, indices (multiple if axis is a sequence), k_dim
+  """
+  from ._generated_layers import _top_k
+  from .base import _get_sub_layer
+  values, k_dim = _top_k(source, axis=axis, k=k, k_dim=k_dim, sorted=sorted, name=name)
+  if isinstance(axis, (tuple, list)):
+    axes = axis
+    single_axis = False
+  else:
+    assert isinstance(axis, nn.Dim)
+    axes = [axis]
+    single_axis = True
+  indices = []
+  for i, a in enumerate(axes):
+    assert isinstance(a, nn.Dim)
+    sub_name = "indices" if single_axis else f"indices{i}"
+    indices_data = values.data.copy_template(name=f"{values.data.name}_{sub_name}_{a.description}")
+    indices_data.dtype = "int32"
+    indices_data.sparse_dim = a
+    indices.append(_get_sub_layer(source, sub_name, data=indices_data))
+  if single_axis:
+    indices = indices[0]
+  return values, indices, k_dim
+
+
 def reinterpret_new_dim(source: nn.Tensor, *, in_dim: nn.Dim, out_dim: Optional[nn.Dim] = None,
                         name: Optional[str] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
