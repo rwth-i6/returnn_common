@@ -832,11 +832,17 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
       try:
         out_data = layer_class.get_out_data_from_opts(**layer_desc)
       except Exception as exc:
-        msg = f"Failed to call {layer_class.__name__}.get_out_data_from_opts(\n"
+        msgs = [
+          "The RETURNN call\n",
+          f"  {layer_class.__name__}.get_out_data_from_opts(\n"]
         for key, v in layer_desc.items():
-          msg += f"  {key}={v!r},\n"
-        msg += ")"
-        raise ReturnnConstructTemplateException(msg) from exc
+          msgs.append(f"    {key}={v!r},\n")
+        msgs += [
+          "  )\n",
+          "raised the exception:\n",
+          f"  {type(exc).__name__} {exc!s}\n",
+          "(See above for the RETURNN exception traceback.)"]
+        raise ReturnnConstructTemplateException("".join(msgs)) from exc
       return InternalLayer(name=name, network=net, output=out_data)
 
   # Use construct_layer to automatically handle more complex logic such as subnetworks.
