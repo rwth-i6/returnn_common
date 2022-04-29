@@ -122,7 +122,7 @@ def window_step(
       name: Optional[str] = None) -> Tuple[nn.Tensor, nn.LayerState]:
   """
   Window into the past when iterating.
-  See :func:`_generated_layers._window`.
+  See :func:`rec_window`.
   """
   from ._generated_layers import rec_window
   out, _, state = rec_window(
