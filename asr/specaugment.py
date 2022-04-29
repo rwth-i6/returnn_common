@@ -3,7 +3,124 @@
 SpecAugment.
 """
 
+from typing import Union, Collection
 from .. import nn
+
+
+@nn.scoped
+def specaugment_v2(x: nn.Tensor, *,
+                   spatial_dim: nn.Dim,
+                   feature_dim: nn.Dim,
+                   global_train_step_dependent: bool = True,
+                   only_on_train: bool = True,
+                   ) -> nn.Tensor:
+  """
+  SpecAugment reimplementation of :func:`specaugment_v1`
+  """
+  if global_train_step_dependent:
+    step = nn.global_train_step()
+    step1 = nn.where(step >= 1000, 1, 0)
+    step2 = nn.where(step >= 2000, 1, 0)
+  else:
+    step1 = step2 = 1
+  time_factor = 1
+
+  with nn.Cond(nn.train_flag() | (not only_on_train)) as cond:
+    x_masked = x
+    x_masked = random_mask_v2(
+      x_masked, mask_axis=spatial_dim,
+      min_num=step1 + step2,
+      max_num=nn.maximum(
+        nn.maximum(nn.length(x, axis=spatial_dim) // 100, 2) * (1 + step1 + step2 * 2),
+        nn.length(x, axis=spatial_dim)),
+      max_dims=20 // time_factor)
+    x_masked = random_mask_v2(
+      x_masked, mask_axis=feature_dim,
+      min_num=step1 + step2, max_num=2 + step1 + step2 * 2,
+      max_dims=feature_dim.dimension // 5)
+    cond.true = x_masked
+    cond.false = x
+  return cond.result
+
+
+@nn.scoped
+def random_mask_v2(x: nn.Tensor, *,
+                   mask_axis: nn.Dim,
+                   broadcast_axis: Union[nn.Dim, Collection[nn.Dim]],
+                   min_num: Union[int, nn.Tensor],
+                   max_num: Union[int, nn.Tensor],
+                   max_dims: Union[int, nn.Tensor],
+                   mask_value: Union[int, float] = 0.
+                   ) -> nn.Tensor:
+  """
+  :param x: (batch,time,feature)
+  :param mask_axis: axis to mask
+  :param broadcast_axis: one or multiple, which should be broadcasted over.
+    The remaining axes not specified by mask_axis and broadcast_axis are not broadcasted over
+    and treated as batch dims.
+    E.g. in [B,T,D], with mask_axis=F, broadcast_axis=T, it creates masks [B,F].
+  :param min_num:
+  :param max_num: inclusive
+  :param max_dims: inclusive
+  :param mask_value:
+  :rtype: tf.Tensor
+  """
+  batch_dims = list(x.shape_ordered)
+  batch_dims.remove(mask_axis)
+  if isinstance(broadcast_axis, nn.Dim):
+    batch_dims.remove(broadcast_axis)
+  else:
+    for a in broadcast_axis:
+      batch_dims.remove(a)
+  if isinstance(min_num, int) and isinstance(max_num, int) and min_num == max_num:
+    num = min_num
+  else:
+    num = nn.random_uniform(batch_dims, minval=min_num, maxval=max_num + 1, dtype="int32")
+  # https://github.com/tensorflow/tensorflow/issues/9260
+  # https://timvieira.github.io/blog/post/2014/08/01/gumbel-max-trick-and-weighted-reservoir-sampling/
+  z = -nn.log(-nn.log(nn.random_uniform(batch_dims + [mask_axis], minval=0., maxval=1.)))
+  _, indices, k_dim = nn.top_k(
+    z, axis=mask_axis,
+    k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.shape_ordered))
+  # indices should be sorted, and of shape (batch,num), entries (int32) in [0,dim)
+  if isinstance(num, int):
+    for i in range(num):
+      x = _mask_v2(
+        x, mask_axis=mask_axis,
+        pos=nn.gather(indices, axis=k_dim, position=i), max_amount=max_dims, mask_value=mask_value)
+  else:
+    loop = nn.Loop(axis=k_dim)
+    loop.state.x = x
+    with loop:
+      i = loop.unstack(nn.range_in_axis(indices, axis=k_dim))
+      loop.state.x = _mask_v2(
+        loop.state.x, mask_axis=mask_axis,
+        pos=nn.gather(indices, axis=k_dim, position=i), max_amount=max_dims, mask_value=mask_value)
+    x = loop.state.x
+  return x
+
+
+@nn.scoped
+def _mask_v2(x: nn.Tensor, *,
+             mask_axis: nn.Dim,
+             pos: nn.Tensor,
+             max_amount: Union[int, nn.Tensor],
+             mask_value: Union[int, float] = 0.
+             ) -> nn.Tensor:
+  """
+  :param x: (batch,time,[feature]). any dim not mask_axis or in pos.shape will be broadcasted over
+  :param mask_axis:
+  :param pos: (batch,) (or multiple batch dims)
+  :param max_amount: inclusive
+  :param mask_value:
+  """
+  dim = nn.length(x, axis=mask_axis)
+  amount = nn.random_uniform(shape=pos.shape_ordered, minval=1, maxval=max_amount + 1, dtype="int32")
+  pos2 = nn.minimum(pos + amount, dim)
+  idxs = nn.range_in_axis(x, axis=mask_axis)  # (dim,)
+  cond = (idxs >= pos) & (idxs < pos2)  # (batch,dim)
+  x = nn.where(cond, mask_value, x)
+  return x
 
 
 def specaugment_v1(x: nn.Tensor, **kwargs) -> nn.Tensor:
