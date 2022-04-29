@@ -1777,7 +1777,7 @@ def top_k(
           k: Union[int, nn.Tensor],
           k_dim: Optional[nn.Dim] = NotSpecified,
           sorted: bool = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Basically wraps tf.nn.top_k.
 
@@ -1802,8 +1802,10 @@ def top_k(
   :param nn.Dim|None k_dim: the output dim tag corresponding to k
   :param bool sorted:
   :param str|nn.NameCtx|None name:
-  :return: layer
+  :return: layer, k_dim
   """
+  if k_dim is None or k_dim is NotSpecified:
+    k_dim = nn.SpatialDim(f"{_name_str(name, 'top_k')}:k_dim")
   args = {
     'axis': axis,
     'k': k,
@@ -1811,10 +1813,11 @@ def top_k(
     'sorted': sorted,
     }
   args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
+  layer = nn.make_layer({
     'class': 'top_k',
     'from': source,
     **args}, name=name or 'top_k')
+  return layer, k_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
