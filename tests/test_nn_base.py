@@ -5,7 +5,7 @@ Test the base nn functionality
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, config_net_dict_via_serialized
 from pprint import pprint
 from nose.tools import assert_equal
 import typing
@@ -407,6 +407,28 @@ def test_deepcopy():
   pprint(net_dict)
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
+  dummy_run_net(config)
+
+
+def test_variable():
+  # https://github.com/rwth-i6/returnn_common/issues/141
+  class _Net(nn.Module):
+    def __init__(self, dim: nn.Dim):
+      super().__init__()
+      self.variable = nn.Parameter(shape=[dim])
+
+    def __call__(self, x: nn.Tensor):
+      return x + self.variable
+
+  nn.reset_default_root_name_ctx()
+  feat_dim = nn.FeatureDim("feature", 5)
+  time_dim = nn.SpatialDim("time")
+  inputs = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
+  net = _Net(feat_dim)
+  out = net(inputs)
+  out.mark_as_default_output()
+  config_code = nn.get_returnn_config().get_complete_py_code_str(net)
+  config, net_dict = config_net_dict_via_serialized(config_code)
   dummy_run_net(config)
 
 

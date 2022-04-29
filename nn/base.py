@@ -208,11 +208,15 @@ class Tensor:
     """
     return self._get_name_in_ctx(ctx=nn.NameCtx.current_ctx())
 
-  def _assign_parent_name_ctx(self):
+  def _assign_parent_name_ctx(self, *, ref_ctx: nn.NameCtx):
+    """
+    :param ref_ctx: where this comes from
+    """
     assert not self.name_ctx.parent
     assert self.parent_modules  # cannot assign parent without parent modules
     #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
     #    when the actual name ctx parent is not so relevant.)
+    sub_name = None
     for parent_module, attr in self.parent_modules:
       if getattr(parent_module, attr, None) is not self:
         continue  # might have been reset later...
@@ -229,7 +233,8 @@ class Tensor:
             parent_name_ctx = parent_name_ctx.parent
         self.name_ctx.assign_parent(parent_name_ctx, sub_name)
         break
-    assert self.name_ctx.parent, f"{self.parent_modules}"  # could not find parent
+    # None found. Just assign to the root.
+    self.name_ctx.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
 
   def _get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
     """
@@ -240,7 +245,7 @@ class Tensor:
       # such as for Parameter, which might be created outside a name context,
       # or in an unrelated name context.
       # We caught this case here, and now assign some parent.
-      self._assign_parent_name_ctx()
+      self._assign_parent_name_ctx(ref_ctx=ctx)
     return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:

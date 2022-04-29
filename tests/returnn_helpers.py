@@ -103,6 +103,7 @@ def dummy_config_net_dict(net: nn.Module, *,
 def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
   """
   :param str config_code: via get_returnn_config_serialized
+  :return: config, net_dict
   """
   from returnn.util import better_exchook
   print(config_code)
