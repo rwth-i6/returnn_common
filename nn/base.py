@@ -233,8 +233,9 @@ class Tensor:
             parent_name_ctx = parent_name_ctx.parent
         self.name_ctx.assign_parent(parent_name_ctx, sub_name)
         break
-    # None found. Just assign to the root.
-    self.name_ctx.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
+    if not self.name_ctx.parent:
+      # None found. Just assign to the root.
+      self.name_ctx.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
 
   def _get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
     """
