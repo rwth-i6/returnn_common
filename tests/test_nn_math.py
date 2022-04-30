@@ -4,7 +4,8 @@ Test nn.math_.
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict, config_net_dict_via_serialized
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_run_net_single_custom
+from .returnn_helpers import config_net_dict_via_serialized
 from nose.tools import assert_equal
 import typing
 
