@@ -3,7 +3,7 @@ Some basic math functions
 (potential activation functions).
 """
 
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Sequence, Dict, Any
 from .. import nn
 
 
@@ -226,22 +226,19 @@ def combine(
     'from': sources,
     'kind': kind,
   }
-  common_dims = set(sum((x.data.dim_tags for x in sources), ()))
-  if all(set(x.data.dim_tags) != common_dims for x in sources):
-    if allow_broadcast_all_sources is False:
-      raise ValueError(f"combine: sources {sources!r} not allowed with allow_broadcast_all_sources=False")
-    if allow_broadcast_all_sources is nn.NotSpecified:
-      raise ValueError(f"combine: sources {sources!r} require explicit allow_broadcast_all_sources=True")
-    args['allow_broadcast_all_sources'] = True
-  elif allow_broadcast_all_sources is not nn.NotSpecified:
-    args['allow_broadcast_all_sources'] = allow_broadcast_all_sources
+  args.update(_args_allow_broadcast_all_sources(sources, "combine", allow_broadcast_all_sources))
   return nn.make_layer(args, name=name or 'combine')
 
 
-def compare(a: nn.Tensor, b: nn.Tensor, *, kind: str) -> nn.Tensor:
+def compare(a: Union[nn.Tensor, nn.RawTensorTypes], b: Union[nn.Tensor, nn.RawTensorTypes], *,
+            kind: str,
+            allow_broadcast_all_sources: Union[bool, nn.NotSpecified] = nn.NotSpecified,
+            name: Optional[str] = None) -> nn.Tensor:
   """
   compare a and b
   """
+  a = nn.convert_to_tensor(a)
+  b = nn.convert_to_tensor(b)
   a_const = nn.constant_value(a)
   b_const = nn.constant_value(b)
   if a_const is not None and b_const is not None:
@@ -250,17 +247,38 @@ def compare(a: nn.Tensor, b: nn.Tensor, *, kind: str) -> nn.Tensor:
       "equal": operator.eq, "not_equal": operator.ne,
       "less": operator.lt, "less_equal": operator.le,
       "greater": operator.gt, "greater_equal": operator.ge}[kind](a_const, b_const)
-    return nn.constant(value=res_const, dtype="bool", name="const_" + kind)
+    return nn.constant(value=res_const, dtype="bool", name=name or "const_" + kind)
   from ._generated_layers import _compare
   if b_const is not None:
-    return _compare(a, kind=kind, value=b_const, name=kind)
+    return _compare(
+      a, kind=kind, value=b_const, name=name or kind, allow_broadcast_all_sources=allow_broadcast_all_sources)
   if a_const is not None:
-    kind_rev = {
+    kind_swapped = {
       "equal": "equal", "not_equal": "not_equal",
       "less": "greater", "less_equal": "greater_equal",
       "greater": "less", "greater_equal": "less_equal"}[kind]
-    return _compare(b, kind=kind_rev, value=a_const, name=kind)
-  return _compare([a, b], kind=kind, name=kind)
+    return _compare(
+      b, kind=kind_swapped, value=a_const, name=name or kind, allow_broadcast_all_sources=allow_broadcast_all_sources)
+  args = dict(kind=kind, name=name or kind)  # type: Dict[str, Any]
+  args.update(_args_allow_broadcast_all_sources((a, b), "compare", allow_broadcast_all_sources))
+  return _compare([a, b], **args)
+
+
+def _args_allow_broadcast_all_sources(sources: Sequence[nn.Tensor],
+                                      op_name: str,
+                                      allow_broadcast_all_sources: Union[bool, nn.NotSpecified]
+                                      ) -> Dict[str, Any]:
+  args = {}
+  common_dims = set(sum((x.data.dim_tags for x in sources), ()))
+  if all(set(x.data.dim_tags) != common_dims for x in sources):
+    if allow_broadcast_all_sources is False:
+      raise ValueError(f"{op_name}: sources {sources!r} not allowed with allow_broadcast_all_sources=False")
+    if allow_broadcast_all_sources is nn.NotSpecified:
+      raise ValueError(f"{op_name}: sources {sources!r} require explicit allow_broadcast_all_sources=True")
+    args['allow_broadcast_all_sources'] = True
+  elif allow_broadcast_all_sources is not nn.NotSpecified:
+    args['allow_broadcast_all_sources'] = allow_broadcast_all_sources
+  return args
 
 
 def cumsum(
