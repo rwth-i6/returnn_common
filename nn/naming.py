@@ -382,7 +382,7 @@ class NameCtx:
       if name_ctx not in used_names:
         assert name_ctx.parent
         name_ctx.parent.children.pop(name_ctx.name)
-        if name_ctx.layer_ref:
+        if name_ctx.layer_ref is not None:
           for hook in name_ctx.layer_ref.remove_unused_cleanup_hooks:
             hook(name_ctx.layer_ref)
       else:

@@ -134,8 +134,7 @@ def squared_difference(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None
 
   Wraps tf.math.squared_difference.
   """
-  from ._generated_layers import _combine
-  return _combine([a, b], kind="squared_difference", name=name or "squared_difference")
+  return combine(a, b, kind="squared_difference", name=name or "squared_difference")
 
 
 # softmax already provided via generated layers
@@ -165,10 +164,7 @@ def maximum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
   """
   Wraps tf.math.maximum.
   """
-  a = nn.convert_to_tensor(a)
-  b = nn.convert_to_tensor(b)
-  from ._generated_layers import _combine
-  return _combine([a, b], kind="maximum", name=name or "maximum")
+  return combine(a, b, kind="maximum", name=name or "maximum")
 
 
 def minimum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
@@ -176,10 +172,7 @@ def minimum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
   """
   Wraps tf.math.minimum.
   """
-  a = nn.convert_to_tensor(a)
-  b = nn.convert_to_tensor(b)
-  from ._generated_layers import _combine
-  return _combine([a, b], kind="minimum", name=name or "minimum")
+  return combine(a, b, kind="minimum", name=name or "minimum")
 
 
 @nn.scoped
@@ -198,6 +191,51 @@ def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
   from . import split
   a, b = split(x, axis=axis, out_dims=[axis // 2, axis // 2])
   return act_func(a) * gate_func(b)
+
+
+# noinspection PyShadowingBuiltins,PyShadowingNames
+def combine(
+             *sources: Union[nn.Tensor, nn.RawTensorTypes],
+             kind: str,
+             allow_broadcast_all_sources: Union[bool, nn.NotSpecified] = nn.NotSpecified,
+             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+  """
+  Applies a binary operation, such as addition, to all sources while accumulating the partial results.
+  In the first step, the binary operation is performed on the first two sources.
+  After the first step, the previous results is always the left-hand operator.
+
+  Its basic working is similar to the `reduce` function used in functional programming.
+  Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
+
+  :param sources:
+  :param str kind:
+    currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `floordiv`, `mod`, `pow`,
+    `maximum`, `minimum`,
+    `logical_and`, `logical_or`,
+    `squared_difference`,
+    or `eval`,
+    or any function in the tf.math or tf namespace.
+  :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
+    e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
+  :param str|None name:
+  :return: layer
+  """
+  sources = [nn.convert_to_tensor(x) for x in sources]
+  args = {
+    'class': 'combine',
+    'from': sources,
+    'kind': kind,
+  }
+  common_dims = set(sum((x.data.dim_tags for x in sources), ()))
+  if all(set(x.data.dim_tags) != common_dims for x in sources):
+    if allow_broadcast_all_sources is False:
+      raise ValueError(f"combine: sources {sources!r} not allowed with allow_broadcast_all_sources=False")
+    if allow_broadcast_all_sources is nn.NotSpecified:
+      raise ValueError(f"combine: sources {sources!r} require explicit allow_broadcast_all_sources=True")
+    args['allow_broadcast_all_sources'] = True
+  elif allow_broadcast_all_sources is not nn.NotSpecified:
+    args['allow_broadcast_all_sources'] = allow_broadcast_all_sources
+  return nn.make_layer(args, name=name or 'combine')
 
 
 def compare(a: nn.Tensor, b: nn.Tensor, *, kind: str) -> nn.Tensor:

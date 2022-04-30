@@ -15,6 +15,24 @@ else:
   from returnn_common import nn  # noqa
 
 
+def test_op_broadcasting():
+  # https://github.com/rwth-i6/returnn_common/issues/136
+  nn.reset_default_root_name_ctx()
+  x = nn.get_extern_data(nn.Data('x', dim_tags=[nn.FeatureDim('x', 3)]))
+  y = nn.get_extern_data(nn.Data('y', dim_tags=[nn.FeatureDim('y', 5)]))
+  try:
+    (x + y)
+  except Exception as exc:
+    print("Got expected exception on (x + y):", exc)
+    assert "require explicit allow_broadcast_all_sources=True" in str(exc)
+  else:
+    raise Exception("Expected exception on (x + y)")
+  # This should work:
+  nn.combine(x, y, kind="add", allow_broadcast_all_sources=True).mark_as_default_output()
+  config = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config)
+
+
 def test_split_glu():
   class _Net(nn.Module):
     @nn.scoped

@@ -66,7 +66,7 @@ BlacklistLayerClassNames = {
   "subnetwork",  # explicitly
 
   "source",  # we have get_extern_data instead
-  "reinterpret_data",
+  "reinterpret_data",  # we wrap it manually
   "rec_last_output",  # explicitly
   "swap_axes",
   "gather_nd",  # -> gather

@@ -98,17 +98,16 @@ class Tensor:
     """
     self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
     self.name_ctx = name_ctx
+    # Do not assign name_ctx.layer{_ref} yet because we potentially could raise exceptions later.
     assert name_ctx.layer_ref is None
-    name_ctx.layer_ref = self
     assert name_ctx.layer is None
-    if not is_ref:
-      name_ctx.layer = self
     self.debug_layer = None
 
     if is_ref:
       assert layer_dict is None
     else:  # not is_ref (default)
       assert layer_dict is not None
+      # Note that the following code can potentially raise user errors.
       if not data:
         data = _data_from_layer_dict(layer_dict, tensor=self)
       if data.have_batch_axis() and not data.batch and name_ctx.root.global_batch:
@@ -116,6 +115,9 @@ class Tensor:
 
     self.data = data
     self.layer_dict = layer_dict
+    name_ctx.layer_ref = self
+    if not is_ref:
+      name_ctx.layer = self
     self.is_ref = is_ref
     self.extra_dependencies = []  # type: List[Tensor]
     self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
@@ -398,70 +400,58 @@ class Tensor:
   def __add__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 0:
       return self
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="add", name="add")
+    return nn.combine(self, other, kind="add", name="add")
 
   def __sub__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 0:
       return self
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="sub", name="sub")
+    return nn.combine(self, other, kind="sub", name="sub")
 
   def __mul__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="mul", name="mul")
+    return nn.combine(self, other, kind="mul", name="mul")
 
   def __truediv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="truediv", name="truediv")
+    return nn.combine(self, other, kind="truediv", name="truediv")
 
   def __floordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="floordiv", name="floordiv")
+    return nn.combine(self, other, kind="floordiv", name="floordiv")
 
   def __mod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="mod", name="mod")
+    return nn.combine(self, other, kind="mod", name="mod")
 
   def __radd__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 0:
       return self
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="add", name="add")
+    return nn.combine(other, self, kind="add", name="add")
 
   def __rsub__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 0:
       return self
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="sub", name="sub")
+    return nn.combine(other, self, kind="sub", name="sub")
 
   def __rmul__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="mul", name="mul")
+    return nn.combine(other, self, kind="mul", name="mul")
 
   def __rtruediv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="truediv", name="truediv")
+    return nn.combine(other, self, kind="truediv", name="truediv")
 
   def __rfloordiv__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="floordiv", name="floordiv")
+    return nn.combine(other, self, kind="floordiv", name="floordiv")
 
   def __rmod__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="mod", name="mod")
+    return nn.combine(other, self, kind="mod", name="mod")
 
   def __neg__(self) -> Tensor:
     return nn.neg(self)
@@ -473,21 +463,17 @@ class Tensor:
     assert modulo is None
     if isinstance(other, (int, float, numpy.number)) and other == 1:
       return self
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="pow", name="pow")
+    return nn.combine(self, other, kind="pow", name="pow")
 
   def __rpow__(self, other: Union[RawTensorTypes, Tensor], modulo=None) -> Tensor:
     assert modulo is None
-    from ._generated_layers import _combine
-    return _combine([nn.convert_to_tensor(other), self], kind="pow", name="pow")
+    return nn.combine(other, self, kind="pow", name="pow")
 
   def __and__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="logical_and", name="logical_and")
+    return nn.combine(self, other, kind="logical_and", name="logical_and")
 
   def __or__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
-    from ._generated_layers import _combine
-    return _combine([self, nn.convert_to_tensor(other)], kind="logical_or", name="logical_or")
+    return nn.combine(self, other, kind="logical_or", name="logical_or")
 
   def __abs__(self) -> Tensor:
     return nn.abs(self)
@@ -676,17 +662,27 @@ def make_layer(layer_dict: LayerDictRaw, *,
   if isinstance(name, str) or module:
     assert not name or isinstance(name, str)
     name_ctx = nn.NameCtx.get_from_call(module=module, name=name)
+    created_name_ctx = True
   elif isinstance(name, nn.NameCtx):
     name_ctx = name
+    created_name_ctx = False
   else:
     raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
   name_ctx.is_subnet_ctx = False
-  layer = Tensor(
-    layer_dict=layer_dict, name_ctx=name_ctx,
-    data=predefined_out_data)
+  try:
+    layer = Tensor(
+      layer_dict=layer_dict, name_ctx=name_ctx,
+      data=predefined_out_data)
+  except Exception as exc:
+    # Just forward the exception.
+    # However, if we already created a new name_ctx for it, we can clean this up now.
+    if created_name_ctx:
+      assert name_ctx.parent
+      name_ctx.parent.children.pop(name_ctx.name)
+    raise exc
   if name_ctx.module:
     name_ctx.module.calls.append(name_ctx)
   return layer
