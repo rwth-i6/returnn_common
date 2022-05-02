@@ -49,8 +49,7 @@ def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) ->
   elif dim.is_feature_dim():
     if any(d.is_feature_dim() for d in source_dims):
       axis = [d for d in source_dims if d.is_feature_dim()][-1]
-      return nn.split_dims(
-        source, axis=axis, dims=(axis.copy(same_as_self=True, kind=nn.Dim.Types.Spatial), dim), name=name)
+      return nn.split_dims(source, axis=axis, dims=(axis, dim), name=name)
     else:
       axis = source_dims[-1]
       return nn.split_dims(source, axis=axis, dims=(axis, dim), name=name)
