@@ -35,8 +35,8 @@ class Random(nn.Module):
   def normal(self,
              shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
              *,
-             mean: Union[int, float, nn.Tensor],
-             stddev: Union[int, float, nn.Tensor],
+             mean: Union[int, float, nn.Tensor] = 0.,
+             stddev: Union[int, float, nn.Tensor] = 1.,
              ) -> nn.Tensor:
     """normal"""
     return self(distribution="normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)
@@ -44,8 +44,8 @@ class Random(nn.Module):
   def truncated_normal(self,
                        shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
                        *,
-                       mean: Union[int, float, nn.Tensor],
-                       stddev: Union[int, float, nn.Tensor],
+                       mean: Union[int, float, nn.Tensor] = 0.,
+                       stddev: Union[int, float, nn.Tensor] = 1.,
                        ) -> nn.Tensor:
     """truncated normal"""
     return self(distribution="truncated_normal", shape=shape, dtype=dtype, mean=mean, stddev=stddev)
@@ -54,14 +54,15 @@ class Random(nn.Module):
                 *,
                 p: Union[float, nn.Tensor]
                 ) -> nn.Tensor:
-    """bernoulli"""
+    """bernoulli. 0 or 1. p: prob for 1. uniform(1) <= p -> 1, else 0"""
     x = self.uniform(shape=shape, dtype=dtype, minval=0., maxval=1.)
     return nn.where(x <= p, nn.ones(shape=(), dtype=dtype), nn.zeros(shape=(), dtype=dtype))
 
 
 def random_uniform(shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
                    *,
-                   minval: Union[int, float, nn.Tensor] = 0, maxval: Union[int, float, nn.Tensor]
+                   minval: Union[int, float, nn.Tensor] = 0,
+                   maxval: Union[int, float, nn.Tensor]
                    ) -> nn.Tensor:
   """Random uniform"""
   return Random().uniform(shape=shape, dtype=dtype, minval=minval, maxval=maxval)
@@ -69,8 +70,8 @@ def random_uniform(shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
 
 def random_normal(shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
                   *,
-                  mean: Union[int, float, nn.Tensor],
-                  stddev: Union[int, float, nn.Tensor],
+                  mean: Union[int, float, nn.Tensor] = 0.,
+                  stddev: Union[int, float, nn.Tensor] = 1.,
                   ) -> nn.Tensor:
   """Random normal"""
   return Random().normal(shape=shape, dtype=dtype, mean=mean, stddev=stddev)
@@ -79,8 +80,8 @@ def random_normal(shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
 def random_truncated_normal(
       shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
       *,
-      mean: Union[int, float, nn.Tensor],
-      stddev: Union[int, float, nn.Tensor],
+      mean: Union[int, float, nn.Tensor] = 0.,
+      stddev: Union[int, float, nn.Tensor] = 1.,
       ) -> nn.Tensor:
   """Random truncated normal"""
   return Random().truncated_normal(shape=shape, dtype=dtype, mean=mean, stddev=stddev)
@@ -91,5 +92,5 @@ def random_bernoulli(
       *,
       p: Union[float, nn.Tensor]
       ) -> nn.Tensor:
-  """Random Bernoulli"""
+  """Random Bernoulli. 0 or 1. p: prob for 1. uniform(1) <= p -> 1, else 0"""
   return Random().bernoulli(shape=shape, dtype=dtype, p=p)
