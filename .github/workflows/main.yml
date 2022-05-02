@@ -35,6 +35,7 @@ jobs:
           - TEST=nn_masked_computation
           - TEST=nn_math
           - TEST=nn_normalization
+          - TEST=nn_rand
           - TEST=nn_rec
           - TEST=nn_transformer
         include:
