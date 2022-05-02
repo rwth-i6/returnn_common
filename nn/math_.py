@@ -195,7 +195,7 @@ def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def combine(
-             *sources: Union[nn.Tensor, nn.RawTensorTypes],
+             *sources: Union[Sequence[nn.Tensor], nn.RawTensorTypes],
              kind: str,
              allow_broadcast_all_sources: Union[bool, nn.NotSpecified] = nn.NotSpecified,
              name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
