@@ -10,13 +10,16 @@ from .. import nn
 @nn.scoped
 def specaugment_v2(x: nn.Tensor, *,
                    spatial_dim: nn.Dim,
-                   feature_dim: nn.Dim,
+                   feature_dim: nn.Dim = nn.NotSpecified,
                    global_train_step_dependent: bool = True,
                    only_on_train: bool = True,
                    ) -> nn.Tensor:
   """
   SpecAugment reimplementation of :func:`specaugment_v1`
   """
+  if feature_dim is nn.NotSpecified:
+    assert x.feature_dim
+    feature_dim = x.feature_dim
   if global_train_step_dependent:
     step = nn.global_train_step()
     step1 = nn.where(step >= 1000, 1, 0)
@@ -27,15 +30,14 @@ def specaugment_v2(x: nn.Tensor, *,
 
   with nn.Cond(nn.train_flag() | (not only_on_train)) as cond:
     x_masked = x
+    spatial_len = nn.dim_value(x, axis=spatial_dim)
     x_masked = random_mask_v2(
-      x_masked, mask_axis=spatial_dim,
+      x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
       min_num=step1 + step2,
-      max_num=nn.maximum(
-        nn.maximum(nn.length(x, axis=spatial_dim) // 100, 2) * (1 + step1 + step2 * 2),
-        nn.length(x, axis=spatial_dim)),
+      max_num=nn.maximum(nn.maximum(spatial_len // 100, 2) * (1 + step1 + step2 * 2), spatial_len),
       max_dims=20 // time_factor)
     x_masked = random_mask_v2(
-      x_masked, mask_axis=feature_dim,
+      x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim,
       min_num=step1 + step2, max_num=2 + step1 + step2 * 2,
       max_dims=feature_dim.dimension // 5)
     cond.true = x_masked
