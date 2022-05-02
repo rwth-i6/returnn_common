@@ -470,9 +470,17 @@ class Tensor:
     return nn.combine(other, self, kind="pow", name="pow")
 
   def __and__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, bool) and other is True:
+      return self
+    if isinstance(other, bool) and other is False:
+      return nn.zeros_like(self)
     return nn.combine(self, other, kind="logical_and", name="logical_and")
 
   def __or__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, bool) and other is True:
+      return nn.ones_like(self)
+    if isinstance(other, bool) and other is False:
+      return self
     return nn.combine(self, other, kind="logical_or", name="logical_or")
 
   def __abs__(self) -> Tensor:
