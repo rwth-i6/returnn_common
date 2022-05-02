@@ -478,6 +478,8 @@ class NameCtx:
     :return: absolute RETURNN layer name starting from root context.
     """
     ls = self.get_abs_name_ctx_list()
+    if len(ls) == 1:
+      return ""
     assert len(ls) >= 2 and not ls[0].name and ls[-1] is self and ls[-1].name
     return "/".join(ctx.name for ctx in ls[1:])
 
