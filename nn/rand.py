@@ -13,7 +13,7 @@ class Random(nn.Module):
   def __init__(self):
     super(Random, self).__init__()
     # No explicit seed, so RETURNN uses its global seed.
-    init_state = nn.random_state_init()
+    init_state, _ = nn.random_state_init()
     self.state_var = nn.Parameter(init_state.shape_ordered, init_state.dtype)
     self.state_var.initial = init_state
 
