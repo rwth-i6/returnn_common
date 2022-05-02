@@ -7,6 +7,17 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
+@nn.scoped
+def dim_value(source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+  """
+  :return: like tf.shape(source)[axis], or specifically sum(nn.length(source, axis=axis))
+  """
+  length = nn.length(source, axis=axis)
+  if not length.shape:
+    return length
+  return nn.reduce(length, mode="max", axis=length.shape_ordered)
+
+
 def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:
   """
   Expand the source by the given dimension,
