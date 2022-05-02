@@ -201,6 +201,7 @@ PerLayerOutDimArgs = {
   "slice_nd": ["out_spatial_dim"],
   "range": ["out_spatial_dim"],
   "range_from_length": ["out_spatial_dim"],
+  "random_state_init": ["out_dim"],
   "top_k": ["k_dim"],
   "window": ["window_dim", "out_spatial_dim"],
   # pad?
