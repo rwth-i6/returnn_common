@@ -173,6 +173,10 @@ class Loop:
     # We access the returned layer-ref from outside, thus fix the data template.
     res.data = res.data.copy_add_dim_by_tag(dim_tag=self.axis, unbroadcast=True, axis=0)
     res.data.time_dim_axis = 0
+    # res.data.control_flow_ctx = self.control_flow_ctx.outer_ctx  # TODO setting this is somewhat broken...
+    batch = res.data.batch or self.name_ctx.root.global_batch
+    if batch:
+      res.data.batch = batch
     self.outputs.append(res)
     return res
 
