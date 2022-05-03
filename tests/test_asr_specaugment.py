@@ -25,5 +25,6 @@ def test_specaugment_v2():
   masked = specaugment.specaugment_v2(
     audio, spatial_dim=time_dim, global_train_step_dependent=False, only_on_train=False)
   print(masked)
+  masked.mark_as_default_output()
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   print(code_str)
