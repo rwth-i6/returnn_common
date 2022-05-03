@@ -661,8 +661,9 @@ class ReturnnConfigSerializer:
       self.get_ext_net_dict_py_code_str(root_module=root_module, with_imports=False))
 
   _ImportPyCodeStr = (
-    "from returnn.tf.util.data import Dim, batch_dim, single_step_dim,"
-    " SpatialDim, FeatureDim, ImplicitDynSizeDim, ImplicitSparseDim\n\n")
+    "from returnn.tf.util.data import (\n"
+    "  Dim, batch_dim, single_step_dim,"
+    " SpatialDim, FeatureDim, ImplicitDynSizeDim, ImplicitSparseDim)\n\n")
 
   def get_base_extern_data_py_code_str(self) -> str:
     """
