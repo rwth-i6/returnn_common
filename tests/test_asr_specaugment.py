@@ -14,7 +14,7 @@ else:
 
 
 # Enables it globally now.
-nn.enable_debug_eager_mode()
+# nn.enable_debug_eager_mode()
 
 
 def test_specaugment_v2():
@@ -25,3 +25,5 @@ def test_specaugment_v2():
   masked = specaugment.specaugment_v2(
     audio, spatial_dim=time_dim, global_train_step_dependent=False, only_on_train=False)
   print(masked)
+  code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  print(code_str)
