@@ -11,7 +11,12 @@ def zeros(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
   """
   zeros
   """
-  return nn.constant(value=0., shape=shape, dtype=dtype, name=name or "zeros")
+  value = 0
+  if dtype is None:
+    dtype = "float32"
+  if dtype == "bool":
+    value = False
+  return nn.constant(value=value, shape=shape, dtype=dtype, name=name or "zeros")
 
 
 def zeros_like(value: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
@@ -26,7 +31,12 @@ def ones(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
   """
   ones
   """
-  return nn.constant(value=1., shape=shape, dtype=dtype, name=name or "ones")
+  value = 1
+  if dtype is None:
+    dtype = "float32"
+  if dtype == "bool":
+    value = True
+  return nn.constant(value=value, shape=shape, dtype=dtype, name=name or "ones")
 
 
 def ones_like(value: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
