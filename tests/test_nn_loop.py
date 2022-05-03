@@ -7,7 +7,6 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, dummy_config_net_dict
 
 import typing
-import unittest
 from nose.tools import assert_equal
 from builtins import range as range_
 
