@@ -191,6 +191,7 @@ class Loop:
         predefined_out_data=source.data,
         name=name or sub_layer_name.replace("/", "_"))
       res.remove_unused_cleanup_hooks.append(lambda _: source.layer_dict.pop("need_last"))
+      res.extra_dependencies.append(source)
       self._last_frames[source.name_ctx] = res
       return res
 
