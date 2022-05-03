@@ -7,6 +7,7 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, dummy_config_net_dict
 
 import typing
+import unittest
 from nose.tools import assert_equal
 from builtins import range as range_
 
@@ -140,6 +141,25 @@ def test_rec_hidden_initial():
       for _ in range_(3):
         y, state = self.lstm(y, state=state, axis=axis)
       return y
+
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  dummy_run_net(config, net=net)
+
+
+@unittest.skip("incomplete")
+def test_loop_axis_indices():
+  class _Net(nn.Module):
+    @nn.scoped
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      loop = nn.Loop(axis=axis)
+      indices = nn.range_in_axis(x, axis=axis)
+      loop.state.x = nn.zeros([nn.batch_dim, x.feature_dim], dtype=indices.dtype)
+      with loop:
+        i = loop.unstack(indices)
+        loop.state.x = loop.state.x + i
+        loop.stack(i)  # loop needs some dummy output currently...
+      return loop.state.x
 
   net = _Net()
   config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
