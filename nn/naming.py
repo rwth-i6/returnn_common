@@ -845,11 +845,13 @@ class NetDictBuilderCtx:
           layer_dict = sub_name_ctx.layer.layer_dict.copy()
           assert "class" in layer_dict
 
-          dim_tags = list(sub_name_ctx.layer_ref.data.dim_tags)
-          dim_tags.extend(sub_name_ctx.layer_ref.data.dim_tags_set_implicit_only_wrapped)
+          data_template = sub_name_ctx.layer_ref.data.copy_template()
           for outer_dim in _stack.get_parent_loop_axes():
-            if outer_dim in dim_tags:
-              dim_tags.remove(outer_dim)
+            if outer_dim in data_template.dim_tags:
+              data_template = data_template.copy_template_excluding_axis(
+                data_template.get_axis_from_description(outer_dim))
+          dim_tags = list(data_template.dim_tags)
+          dim_tags.extend(data_template.dim_tags_set_implicit_only_wrapped)
           assert len(dim_tags) == len(set((d, d.match_priority if isinstance(d, nn.Dim) else 0) for d in dim_tags)), (
             f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}")
           if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
