@@ -235,8 +235,13 @@ def compare(a: Union[nn.Tensor, nn.RawTensorTypes], b: Union[nn.Tensor, nn.RawTe
             allow_broadcast_all_sources: Union[bool, nn.NotSpecified] = nn.NotSpecified,
             name: Optional[str] = None) -> nn.Tensor:
   """
-  compare a and b
+  compare a and b.
+  note that you can also just do `a <= b` or so.
   """
+  kind = {
+    "==": "equal", "!=": "not_equal",
+    "<": "less", "<=": "less_equal",
+    ">": "greater", ">=": "greater_equal"}.get(kind, kind)
   a = nn.convert_to_tensor(a)
   b = nn.convert_to_tensor(b)
   a_const = nn.constant_value(a)
@@ -262,6 +267,17 @@ def compare(a: Union[nn.Tensor, nn.RawTensorTypes], b: Union[nn.Tensor, nn.RawTe
   args = dict(kind=kind, name=name or kind)  # type: Dict[str, Any]
   args.update(_args_allow_broadcast_all_sources((a, b), "compare", allow_broadcast_all_sources))
   return _compare([a, b], **args)
+
+
+def compare_bc(a: Union[nn.Tensor, nn.RawTensorTypes],
+               kind: str,
+               b: Union[nn.Tensor, nn.RawTensorTypes]
+               ) -> nn.Tensor:
+  """
+  shorter version of :func:`compare`
+  with allow_broadcast_all_sources=True.
+  """
+  return compare(a, b, kind=kind, allow_broadcast_all_sources=True)
 
 
 def _args_allow_broadcast_all_sources(sources: Sequence[nn.Tensor],
