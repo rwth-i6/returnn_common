@@ -147,7 +147,6 @@ def test_rec_hidden_initial():
   dummy_run_net(config, net=net)
 
 
-@unittest.skip("incomplete")
 def test_loop_axis_indices():
   class _Net(nn.Module):
     @nn.scoped
