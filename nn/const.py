@@ -12,7 +12,7 @@ def zeros(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
   zeros
   """
   value = 0
-  if dtype is None:
+  if dtype is None or dtype is nn.NotSpecified:
     dtype = "float32"
   if dtype == "bool":
     value = False
@@ -32,7 +32,7 @@ def ones(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,
   ones
   """
   value = 1
-  if dtype is None:
+  if dtype is None or dtype is nn.NotSpecified:
     dtype = "float32"
   if dtype == "bool":
     value = True

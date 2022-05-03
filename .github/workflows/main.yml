@@ -26,6 +26,7 @@ jobs:
           - TEST=nn_attention
           - TEST=nn_base
           - TEST=nn_conformer
+          - TEST=nn_const
           - TEST=nn_container
           - TEST=nn_conv
           - TEST=nn_debug_eager_mode
@@ -72,7 +73,7 @@ jobs:
         # pip install --user -r requirements.txt | cat
         pip install --user --upgrade tensorflow==${{ matrix.tf-version }} | cat
         pip install --user nose
-        
+
         sudo apt-get install libsndfile1
         pip install --user pysoundfile
 
