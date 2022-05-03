@@ -389,7 +389,7 @@ class Tensor:
     self.layer_dict = tensor.layer_dict
     self.is_ref = tensor.is_ref
     self.extra_dependencies = tensor.extra_dependencies
-    self.remove_unused_cleanup_hooks = tensor.remove_unused_cleanup_hooks
+    self.remove_unused_cleanup_hooks.clear()
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
@@ -723,6 +723,11 @@ def get_extern_data(data: Data) -> Tensor:
       data.batch = scope.global_batch
   root_layer_name = f"data:{data.name}"
   out = _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
+  for tag in data.dim_tags:
+    if not tag.is_batch_dim() and tag.dimension is None and not tag.dyn_size_ext:
+      # Undefined dynamic dim tag. Set default data template.
+      tag.dyn_size_ext = Data(
+        name=f"{data.name}_default_dyn_size_ext", dim_tags=[nn.batch_dim], dtype=data.size_dtype, batch=data.batch)
   if nn.is_debug_eager_mode_enabled():
     out.data.placeholder = _make_random_tf_tensor_for_returnn_data(out.data)
   return out
