@@ -389,7 +389,7 @@ class Tensor:
     self.layer_dict = tensor.layer_dict
     self.is_ref = tensor.is_ref
     self.extra_dependencies = tensor.extra_dependencies
-    self.remove_unused_cleanup_hooks = tensor.extra_dependencies
+    self.remove_unused_cleanup_hooks = tensor.remove_unused_cleanup_hooks
 
   def _sis_hash(self):
     from sisyphus.hash import sis_hash_helper  # noqa
