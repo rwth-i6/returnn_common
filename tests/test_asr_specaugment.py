@@ -22,5 +22,6 @@ def test_specaugment_v2():
   feat_dim = nn.FeatureDim("feat", 50)
   audio = nn.get_extern_data(nn.Data("input", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
   from ..asr import specaugment
-  masked = specaugment.specaugment_v2(audio, spatial_dim=time_dim, global_train_step_dependent=False)
+  masked = specaugment.specaugment_v2(
+    audio, spatial_dim=time_dim, global_train_step_dependent=False, only_on_train=False)
   print(masked)
