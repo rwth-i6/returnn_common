@@ -187,6 +187,7 @@ class Loop:
     assert isinstance(source, nn.Tensor)
     if source.name_ctx in self._last_frames:
       return self._last_frames[source.name_ctx]
+    assert self.name_ctx.layer_ref is not None, f"{self}.last(...): call from outside"  # current restriction...
     source.layer_dict["need_last"] = True
     sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
     with self.name_ctx.parent:  # need to be outside the loop
