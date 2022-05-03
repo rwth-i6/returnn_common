@@ -48,6 +48,8 @@ from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Colle
 import numpy
 from tensorflow.python.util import nest
 from returnn.util.basic import NotSpecified
+# noinspection PyProtectedMember
+from returnn.tf.util.data import _MarkedDim
 from .. import nn
 
 
@@ -658,7 +660,9 @@ class ReturnnConfigSerializer:
       self.get_base_extern_data_py_code_str() +
       self.get_ext_net_dict_py_code_str(root_module=root_module, with_imports=False))
 
-  _ImportPyCodeStr = "from returnn.tf.util.data import Dim, batch_dim, single_step_dim, SpatialDim, FeatureDim\n\n"
+  _ImportPyCodeStr = (
+    "from returnn.tf.util.data import Dim, batch_dim, single_step_dim,"
+    " SpatialDim, FeatureDim, ImplicitDynSizeDim, ImplicitSparseDim\n\n")
 
   def get_base_extern_data_py_code_str(self) -> str:
     """
@@ -842,11 +846,11 @@ class NetDictBuilderCtx:
           assert "class" in layer_dict
 
           dim_tags = list(sub_name_ctx.layer_ref.data.dim_tags)
-          dim_tags.extend(sub_name_ctx.layer_ref.data.dim_tags_set_implicit_only)  # like dim_tags_set_implicit
+          dim_tags.extend(sub_name_ctx.layer_ref.data.dim_tags_set_implicit_only_wrapped)
           for outer_dim in _stack.get_parent_loop_axes():
             if outer_dim in dim_tags:
               dim_tags.remove(outer_dim)
-          assert len(dim_tags) == len(set((d, d.match_priority) for d in dim_tags)), (
+          assert len(dim_tags) == len(set((d, d.match_priority if isinstance(d, nn.Dim) else 0) for d in dim_tags)), (
             f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}")
           if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
             if layer_dict["class"] not in {"constant", "variable", "random"}:
@@ -948,8 +952,12 @@ class ReturnnDimTagsProxy:
     """
     This will be a reference to the global dim_tags __repr__.
     """
-    def __init__(self, *, dim: nn.Dim, name: Optional[str], path: Tuple[Any, ...], parent: ReturnnDimTagsProxy):
-      self.dim = dim
+    def __init__(self, *,
+                 dim: Union[nn.Dim, _MarkedDim],
+                 name: Optional[str],
+                 path: Tuple[Any, ...],
+                 parent: ReturnnDimTagsProxy):
+      self._dim = dim
       self.name = name  # None, or valid Python identifier
       self.path = path
       self.parent = parent
@@ -958,9 +966,19 @@ class ReturnnDimTagsProxy:
     def __repr__(self):
       return self.ref_repr()
 
+    @property
+    def dim(self) -> nn.Dim:
+      """nn.Dim"""
+      if isinstance(self._dim, nn.Dim):
+        return self._dim
+      elif isinstance(self._dim, _MarkedDim):
+        return self._dim.tag
+      else:
+        raise TypeError(f"invalid {self._dim}")
+
     def ref_repr(self) -> str:
       """ref repr"""
-      return self.parent.dim_ref_repr(self.dim, brackets=False)
+      return self.parent.dim_ref_repr(self._dim, brackets=False, prefer_ref=True)
 
     def py_id_name(self) -> str:
       """
@@ -976,11 +994,14 @@ class ReturnnDimTagsProxy:
       with the same derivation referencing other registered dim tags.
       See :func:`ReturnnDimTagsProxy.dim_ref_repr`.
       """
-      dim = self.dim
+      dim = self._dim
+      if isinstance(dim, _MarkedDim):
+        return self.parent.dim_ref_repr(dim, brackets=False, prefer_ref=False)
+      assert isinstance(dim, nn.Dim)
       assert not dim.is_batch_dim()
       assert dim.can_be_used_as_dim()
       if dim.derived_from_op:
-        return self.parent.dim_ref_repr(self.dim, brackets=False, prefer_ref=False)
+        return self.parent.dim_ref_repr(dim, brackets=False, prefer_ref=False)
       assert not dim.match_priority
       # We assume FeatureDim, SpatialDim and Dim are imported.
       if dim.kind == nn.Dim.Types.Feature:
@@ -1060,10 +1081,13 @@ class ReturnnDimTagsProxy:
   def _sis_hash(self):
     raise Exception('unexpected')
 
-  def dim_ref_repr(self, dim: nn.Dim, *, brackets: bool = True, prefer_ref: bool = True) -> str:
+  def dim_ref_repr(self, dim: Union[nn.Dim, _MarkedDim], *, brackets: bool = True, prefer_ref: bool = True) -> str:
     """
     :return: for the given dim, Python code which refers to it, via ``dim_tags``
     """
+    if isinstance(dim, _MarkedDim):
+      return f"{dim.__class__.__name__}({self.dim_ref_repr(dim.tag, brackets=False, prefer_ref=prefer_ref)})"
+    assert isinstance(dim, nn.Dim)
     if dim == nn.batch_dim:
       return "batch_dim"
     if dim == nn.single_step_dim:
@@ -1126,6 +1150,9 @@ class ReturnnDimTagsProxy:
 
     # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
     def _map(path, value, *, direct=True):
+      if isinstance(value, _MarkedDim):
+        _map(path, value.tag)  # Register the dim tag
+        return ReturnnDimTagsProxy.DimRefProxy(dim=value, name=None, path=path, parent=self)
       if isinstance(value, nn.Dim):
         if value in {nn.batch_dim, nn.single_step_dim}:
           # No need to register this.
