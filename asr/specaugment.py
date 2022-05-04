@@ -32,12 +32,12 @@ def specaugment_v2(x: nn.Tensor, *,
     x_masked = x
     spatial_len = nn.dim_value(x, axis=spatial_dim)
     x_masked = random_mask_v2(
-      x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
+      x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim, name="time_masking",
       min_num=step1 + step2,
       max_num=nn.maximum(nn.maximum(spatial_len // 100, 2) * (1 + step1 + step2 * 2), spatial_len),
       max_dims=20 // time_factor)
     x_masked = random_mask_v2(
-      x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim,
+      x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim, name="feature_masking",
       min_num=step1 + step2, max_num=2 + step1 + step2 * 2,
       max_dims=feature_dim.dimension // 5)
     cond.true = x_masked
