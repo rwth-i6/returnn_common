@@ -24,13 +24,12 @@ def make_scope():
       yield session
 
 
-def make_feed_dict(data_list, same_time=False, n_batch=3, n_time=7):
+def make_feed_dict(data_list, n_batch=3, n_time=7):
   """
-  :param list[nn.Data]|returnn.tf.network.ExternData data_list:
-  :param bool same_time:
+  :param returnn.tf.network.ExternData data_list:
   :param int n_batch:
   :param int n_time:
-  :rtype: dict[tf.Tensor,numpy.ndarray]
+  :rtype: dict[tf.Tensor,numpy.ndarray|list[int|float]]
   """
   from returnn.tf.network import ExternData
   if isinstance(data_list, ExternData):
@@ -60,8 +59,7 @@ def make_feed_dict(data_list, same_time=False, n_batch=3, n_time=7):
           dyn_size_v = numpy.concatenate(
             [dyn_size_v, rnd.randint(1, n_time + 1, size=(n_batch - dyn_size_v.shape[0],))], axis=0)
         d[dyn_size] = dyn_size_v
-        if not same_time:
-          n_time += 1
+        n_time += 1
     print("%r %r: shape %r" % (data, data.placeholder, shape))
     if data.sparse:
       d[data.placeholder] = rnd.randint(0, data.dim or 13, size=shape, dtype=data.dtype)
@@ -137,9 +135,11 @@ def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: ret
   forwarder.run(report_prefix=engine.get_epoch_str() + " forward")
 
 
-def dummy_run_net_single_custom(config_code_str: str):
+# noinspection PyShadowingNames
+def dummy_run_net_single_custom(config_code_str: str, *, make_feed_dict=make_feed_dict):
   """
   :param config_code_str: e.g. via get_complete_py_code_str
+  :param make_feed_dict: func
   """
   config_dict, net_dict = config_net_dict_via_serialized(config_code_str)
   from returnn.config import Config
