@@ -14,7 +14,7 @@ else:
 
 
 # Enables it globally now.
-# nn.enable_debug_eager_mode()
+nn.enable_debug_eager_mode()
 
 
 def test_specaugment_v2():
