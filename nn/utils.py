@@ -131,7 +131,7 @@ def top_k(source: nn.Tensor,
     indices_data = values.data.copy_template(name=f"{values.data.name}_{sub_name}_{a.description}")
     indices_data.dtype = "int32"
     indices_data.sparse_dim = a
-    indices.append(_get_sub_layer(source, sub_name, data=indices_data))
+    indices.append(_get_sub_layer(values, sub_name, data=indices_data))
   if single_axis:
     indices = indices[0]
   return values, indices, k_dim
