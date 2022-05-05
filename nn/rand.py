@@ -17,7 +17,6 @@ class Random(nn.Module):
     self.state_var = nn.Parameter(init_state.shape_ordered, init_state.dtype)
     self.state_var.initial = init_state
 
-  @nn.scoped
   def __call__(self, **kwargs) -> nn.Tensor:
     return nn.random(
       explicit_state=self.state_var, auto_update_state=True,
