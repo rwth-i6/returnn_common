@@ -269,16 +269,16 @@ class NameCtx:
   def __hash__(self):
     return hash(id(self))
 
-  def assign_parent(self, parent: NameCtx, suggested_name: str):
+  def assign_parent(self, parent: NameCtx, suggested_name: Optional[str] = None):
     """
-    Assign parent to this name context.
+    Assign or reassign parent to this name context.
     """
     if self.parent:
       self_ = self.parent.children.pop(self.name)
       assert self_ is self
       self.parent = None
     self.parent = parent
-    self.name = self._get_unique_name(suggested_name)
+    self.name = self._get_unique_name(suggested_name or self.name)
     self.parent._add_child(self)
 
   def move_layer_ref_here(self: NameCtx, layer_ref: nn.Tensor):

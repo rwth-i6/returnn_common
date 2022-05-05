@@ -571,6 +571,15 @@ class Parameter(Tensor):
       value = value(self.shape_ordered)
     if value is None or isinstance(value, nn.Tensor):
       self.layer_dict.pop("init", None)
+      if isinstance(value, nn.Tensor) and not value.name_ctx.parent.can_access_children_from_root:
+        accessible_parent = value.name_ctx.parent
+        while not accessible_parent.can_access_children_from_root:
+          accessible_parent = accessible_parent.parent
+        value.name_ctx.assign_parent(accessible_parent)
+        # We could also maybe move out all the dependencies. However, it's not clear whether this is always safe.
+        for dep in value.get_dependencies():
+          assert dep.name_ctx.parent.can_access_children_from_root, (
+            f"dep {dep} of moved value {value} is not accessible")
       self.layer_dict["init_by_layer"] = value
     else:
       self.layer_dict.pop("init_by_layer", None)
