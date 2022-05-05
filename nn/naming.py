@@ -360,9 +360,10 @@ class NameCtx:
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
 
-  def _remove_unused(self):
+  def _remove_unused_and_assign_parents(self):
     # Collect all used tensor names.
     used_names = {self}  # type: Set[nn.NameCtx]
+    root = self.root
     queue = list(self.marked_outputs + self.marked_losses)  # type: List[nn.Tensor]
     while queue:
       tensor = queue.pop(0)
@@ -372,6 +373,9 @@ class NameCtx:
       for dep in tensor.get_dependencies():
         if dep.name_ctx not in used_names:
           queue.append(dep)
+      if not tensor.name_ctx.parent and tensor.name_ctx != root:
+        # noinspection PyProtectedMember
+        tensor._assign_parent_name_ctx(ref_ctx=root)
 
     # Go through all names in the hierarchy and remove unused.
     visited = set()  # type: Set[nn.NameCtx]
@@ -438,7 +442,7 @@ class NameCtx:
             child.name = name
             self.children[name] = child
 
-    self._remove_unused()
+    self._remove_unused_and_assign_parents()
     assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
 
   def get_returnn_config(self) -> ReturnnConfigSerializer:
