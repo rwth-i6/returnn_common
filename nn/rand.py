@@ -14,6 +14,7 @@ class Random(nn.Module):
     super(Random, self).__init__()
     self._call_counter = 0
 
+  @nn.scoped
   def __call__(self, **kwargs) -> nn.Tensor:
     # For every call, we create a new state var to make sure there is no non-determinism.
     # https://github.com/rwth-i6/returnn_common/issues/148
