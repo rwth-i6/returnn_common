@@ -432,6 +432,29 @@ def test_variable():
   dummy_run_net(config)
 
 
+def test_parameter_weight_decay():
+  nn.reset_default_root_name_ctx()
+  feat_dim = nn.FeatureDim("feature", 5)
+  time_dim = nn.SpatialDim("time")
+  inputs = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
+
+  net = nn.Linear(nn.FeatureDim("out", 4))
+  out = net(inputs)
+  out.mark_as_default_output()
+
+  params = []
+  for param in net.parameters():
+    params.append(param)
+    print("param:", param)
+    param.weight_decay = 1.1
+  assert len(params) == 2  # weight + bias
+
+  config = nn.get_returnn_config().get_complete_py_code_str(net)
+  config, net_dict = config_net_dict_via_serialized(config)
+  assert "L2" in net_dict["weight"] and net_dict["weight"]["L2"] == 1.1
+  dummy_run_net(config)
+
+
 def test_const_array_serialization():
   class _Net(nn.Module):
     @nn.scoped
