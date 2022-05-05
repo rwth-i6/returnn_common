@@ -83,3 +83,24 @@ def test_cond_twice_shared_params():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net=net)
   dummy_run_net(config, net=net)
+
+
+def test_cond_random():
+  nn.reset_default_root_name_ctx()
+
+  class _Net(nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.rnd = nn.Random()
+
+    @nn.scoped
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      with nn.Cond(nn.length(x, axis=nn.batch_dim) % 2 == 0) as cond:
+        cond.true = x + self.rnd.normal(x.shape_ordered)
+        cond.false = x
+        x = cond.result
+      return x
+
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net=net, reset_name_ctx=False)
+  dummy_run_net(config, net=net)
