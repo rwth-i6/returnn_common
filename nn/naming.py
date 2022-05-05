@@ -837,80 +837,72 @@ class NetDictBuilderCtx:
     if _stack is None:
       _stack = self._StackInfo(net=net, layer_abs_name_scope_effective="")
     net_dict = {}
-    # Due to late assignments of name context parents (e.g. for Parameter),
-    # the name_ctx.children dict might change while we iterate over it.
-    # To avoid that, we iterate over a copy.
-    # We must then check if no new children were added.
-    while True:
-      children = list(net.name_ctx.children.values())
-      for sub_name_ctx in children:
-        if sub_name_ctx.name in net_dict:
-          continue
-        if sub_name_ctx.layer:
-          layer_dict = sub_name_ctx.layer.layer_dict.copy()
-          assert "class" in layer_dict
+    for sub_name_ctx in net.name_ctx.children.values():
+      if not sub_name_ctx.layer:
+        continue
 
-          data_template = sub_name_ctx.layer_ref.data.copy_template()
-          for outer_dim in _stack.get_parent_loop_axes():
-            if outer_dim in data_template.dim_tags:
-              data_template = data_template.copy_template_excluding_axis(
-                data_template.get_axis_from_description(outer_dim))
-          dim_tags = list(data_template.dim_tags)
-          dim_tags.extend(data_template.dim_tags_set_implicit_only_wrapped)
-          assert len(dim_tags) == len(set((d, d.match_priority if isinstance(d, nn.Dim) else 0) for d in dim_tags)), (
-            f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}")
-          if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
-            if layer_dict["class"] not in {"constant", "variable", "random"}:
-              layer_dict["out_shape"] = set(dim_tags)
+      layer_dict = sub_name_ctx.layer.layer_dict.copy()
+      assert "class" in layer_dict
 
-          assert "name_scope" not in layer_dict  # we explicitly want to assign it now (if needed)
-          if sub_name_ctx.custom_layer_name_scope is not None:
-            sub_name_scope = sub_name_ctx.custom_layer_name_scope
-            layer_dict["name_scope"] = sub_name_scope
-            assert sub_name_scope == ""  # anything else unexpected currently
-            sub_layer_abs_name_scope = _stack.layer_abs_name_scope_effective
-          else:
-            # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
-            # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
-            # The parent name ctx RETURNN layer will also have the right name_scope set,
-            # so this layers name scope default is simply based on that.
-            # Note that parameters could be assigned lazily at some later point.
-            layer_abs_name_scope_parent = _stack.layer_abs_name_scope_effective
-            if layer_abs_name_scope_parent:
-              layer_abs_name_scope_parent += "/"
-            layer_abs_name_scope_default = layer_abs_name_scope_parent + sub_name_ctx.name
+      data_template = sub_name_ctx.layer_ref.data.copy_template()
+      for outer_dim in _stack.get_parent_loop_axes():
+        if outer_dim in data_template.dim_tags:
+          data_template = data_template.copy_template_excluding_axis(
+            data_template.get_axis_from_description(outer_dim))
+      dim_tags = list(data_template.dim_tags)
+      dim_tags.extend(data_template.dim_tags_set_implicit_only_wrapped)
+      assert len(dim_tags) == len(set((d, d.match_priority if isinstance(d, nn.Dim) else 0) for d in dim_tags)), (
+        f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}")
+      if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
+        if layer_dict["class"] not in {"constant", "variable", "random"}:
+          layer_dict["out_shape"] = set(dim_tags)
 
-            sub_layer_abs_name_scope = self._expected_layer_abs_name_scope(sub_name_ctx)
-            if sub_layer_abs_name_scope is not None:
-              if layer_abs_name_scope_default != sub_layer_abs_name_scope:  # default does not match what we require
-                if sub_layer_abs_name_scope == _stack.layer_abs_name_scope_effective:
-                  layer_dict["name_scope"] = ""
-                elif sub_layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
-                  layer_dict["name_scope"] = sub_layer_abs_name_scope[len(layer_abs_name_scope_parent):]
-                else:  # must use absolute
-                  layer_dict["name_scope"] = "/" + sub_layer_abs_name_scope
-            else:
-              sub_layer_abs_name_scope = layer_abs_name_scope_default
+      assert "name_scope" not in layer_dict  # we explicitly want to assign it now (if needed)
+      if sub_name_ctx.custom_layer_name_scope is not None:
+        sub_name_scope = sub_name_ctx.custom_layer_name_scope
+        layer_dict["name_scope"] = sub_name_scope
+        assert sub_name_scope == ""  # anything else unexpected currently
+        sub_layer_abs_name_scope = _stack.layer_abs_name_scope_effective
+      else:
+        # We must check whether the RETURNN abs layer name is consistent with our module naming hierarchy,
+        # and make it consistent if not (https://github.com/rwth-i6/returnn_common/issues/25).
+        # The parent name ctx RETURNN layer will also have the right name_scope set,
+        # so this layers name scope default is simply based on that.
+        # Note that parameters could be assigned lazily at some later point.
+        layer_abs_name_scope_parent = _stack.layer_abs_name_scope_effective
+        if layer_abs_name_scope_parent:
+          layer_abs_name_scope_parent += "/"
+        layer_abs_name_scope_default = layer_abs_name_scope_parent + sub_name_ctx.name
 
-          def _map_elem_resolve(obj: Any) -> Any:
-            if isinstance(obj, nn.Tensor):
-              # noinspection PyProtectedMember
-              return obj._get_name_in_ctx(ctx=net.name_ctx)
-            if isinstance(obj, Net):
-              return self.make_net_dict_raw(
-                net=obj, _stack=_stack.add(net=obj, layer_abs_name_scope_effective=sub_layer_abs_name_scope))
-            # We assume only basic types. This is not really a restriction but just a sanity check.
-            # You might want to extend this.
-            # However, then make sure that serialization to string is handled in ReturnnConfigSerializer.
-            assert isinstance(
-              obj, (int, float, str, bool, numpy.ndarray, set, nn.Dim, type(None), types.FunctionType)), (
-                f"unexpected type {type(obj)}")
-            return obj
+        sub_layer_abs_name_scope = self._expected_layer_abs_name_scope(sub_name_ctx)
+        if sub_layer_abs_name_scope is not None:
+          if layer_abs_name_scope_default != sub_layer_abs_name_scope:  # default does not match what we require
+            if sub_layer_abs_name_scope == _stack.layer_abs_name_scope_effective:
+              layer_dict["name_scope"] = ""
+            elif sub_layer_abs_name_scope.startswith(layer_abs_name_scope_parent):  # can use relative
+              layer_dict["name_scope"] = sub_layer_abs_name_scope[len(layer_abs_name_scope_parent):]
+            else:  # must use absolute
+              layer_dict["name_scope"] = "/" + sub_layer_abs_name_scope
+        else:
+          sub_layer_abs_name_scope = layer_abs_name_scope_default
 
-          layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
-          net_dict[sub_name_ctx.name] = layer_dict
-      if len(net.name_ctx.children) == len(children):  # we never would delete entries, so this should be safe
-        break
+      def _map_elem_resolve(obj: Any) -> Any:
+        if isinstance(obj, nn.Tensor):
+          # noinspection PyProtectedMember
+          return obj._get_name_in_ctx(ctx=net.name_ctx)
+        if isinstance(obj, Net):
+          return self.make_net_dict_raw(
+            net=obj, _stack=_stack.add(net=obj, layer_abs_name_scope_effective=sub_layer_abs_name_scope))
+        # We assume only basic types. This is not really a restriction but just a sanity check.
+        # You might want to extend this.
+        # However, then make sure that serialization to string is handled in ReturnnConfigSerializer.
+        assert isinstance(
+          obj, (int, float, str, bool, numpy.ndarray, set, nn.Dim, type(None), types.FunctionType)), (
+            f"unexpected type {type(obj)}")
+        return obj
+
+      layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
+      net_dict[sub_name_ctx.name] = layer_dict
     return net_dict
 
   def _expected_layer_abs_name_scope(self, name_ctx: NameCtx) -> Optional[str]:
