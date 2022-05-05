@@ -41,7 +41,7 @@ def test_specaugment_v2():
     assert isinstance(extern_data, ExternData)
     data = extern_data.get_default_input_data()
     return {
-      data.placeholder: raw_audio,
+      data.placeholder: raw_audio_np,
       data.get_sequence_lengths(): raw_audio_seq_lens,
     }
 
