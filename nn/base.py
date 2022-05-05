@@ -243,12 +243,7 @@ class Tensor:
     """
     :return: RETURNN layer name in the given name context.
     """
-    if not self.name_ctx.parent and ctx != self.name_ctx:
-      # We allow creating name ctx early without having a known parent,
-      # such as for Parameter, which might be created outside a name context,
-      # or in an unrelated name context.
-      # We caught this case here, and now assign some parent.
-      self._assign_parent_name_ctx(ref_ctx=ctx)
+    assert self.name_ctx.parent or ctx == self.name_ctx
     return self.name_ctx.get_name_in_ctx(ctx=ctx)
 
   def get_abs_name(self) -> str:
