@@ -12,14 +12,19 @@ class Random(nn.Module):
   """
   def __init__(self):
     super(Random, self).__init__()
-    # No explicit seed, so RETURNN uses its global seed.
-    init_state, _ = nn.random_state_init()
-    self.state_var = nn.Parameter(init_state.shape_ordered, init_state.dtype)
-    self.state_var.initial = init_state
+    self._call_counter = 0
 
   def __call__(self, **kwargs) -> nn.Tensor:
+    # For every call, we create a new state var to make sure there is no non-determinism.
+    # https://github.com/rwth-i6/returnn_common/issues/148
+    # No explicit seed, so RETURNN uses its global seed.
+    init_state, _ = nn.random_state_init()
+    state_var = nn.Parameter(init_state.shape_ordered, init_state.dtype)
+    setattr(self, f"state_var{self._call_counter}", state_var)
+    state_var.initial = init_state
+    self._call_counter += 1
     return nn.random(
-      explicit_state=self.state_var, auto_update_state=True,
+      explicit_state=state_var, auto_update_state=True,
       **kwargs)
 
   def uniform(self,
