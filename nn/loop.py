@@ -215,6 +215,8 @@ class Loop:
       if dyn_size_ext.control_flow_ctx:
         dyn_size_ext.control_flow_ctx = dyn_size_ext.control_flow_ctx.outer_ctx
       self.axis.dyn_size_ext = dyn_size_ext
+      self.axis.batch = dyn_size_ext.batch
+      self.axis.control_flow_ctx = dyn_size_ext.control_flow_ctx
     self.extra_opts["include_eos"] = include_eos
     from . import copy
     self.end_ref = copy(source, name=self.name_ctx.get_child("end"))
