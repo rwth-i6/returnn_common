@@ -133,11 +133,14 @@ def specaugment_v1(x: nn.Tensor, **kwargs) -> nn.Tensor:
   """
   return nn.make_layer({
     "class": "eval", "from": x,
-    "eval": specaugment_eval_func, "eval_locals": kwargs}, name="specaugment")
+    "eval": specaugment_v1_eval_func, "eval_locals": kwargs}, name="specaugment")
 
 
 # Use this for an EvalLayer
-def specaugment_eval_func(*, source, global_train_step_dependent: bool = True, only_on_train: bool = True, **kwargs):
+def specaugment_v1_eval_func(*, source,
+                             global_train_step_dependent: bool = True,
+                             only_on_train: bool = True,
+                             **kwargs):
   """
   :rtype: tf.Tensor
   """

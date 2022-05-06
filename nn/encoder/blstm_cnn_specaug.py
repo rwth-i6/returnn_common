@@ -5,7 +5,7 @@ LSTM encoder with initial CNN and SpecAugment.
 
 from typing import Dict, Any, Union, Tuple
 
-from ...asr.specaugment import specaugment_eval_func
+from ...asr.specaugment import specaugment_v1_eval_func
 
 
 def make_encoder(src="data", **kwargs):
@@ -26,7 +26,7 @@ def make_net(
   Make the whole net dict.
   """
   net_dict = {
-    "source": {"class": "eval", "eval": specaugment_eval_func}
+    "source": {"class": "eval", "eval": specaugment_v1_eval_func}
     if with_specaugment else {"class": "copy"},
     "source0": {"class": "split_dims", "axis": "F", "dims": (-1, 1), "from": "source"},  # (T,40,1)
 
