@@ -92,9 +92,10 @@ def random_mask_v2(x: nn.Tensor, *,
         pos=nn.gather(indices, axis=k_dim, position=i), max_amount=max_dims, mask_value=mask_value)
   else:
     loop = nn.Loop(axis=k_dim)
+    k_dim_indices = nn.range_in_axis(indices, axis=k_dim)
     loop.state.x = x
     with loop:
-      i = loop.unstack(nn.range_in_axis(indices, axis=k_dim))
+      i = loop.unstack(k_dim_indices)
       loop.state.x = _mask_v2(
         loop.state.x, mask_axis=mask_axis,
         pos=nn.gather(indices, axis=k_dim, position=i), max_amount=max_dims, mask_value=mask_value)
