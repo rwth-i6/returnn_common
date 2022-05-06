@@ -209,6 +209,12 @@ class Loop:
     :param include_eos: if True, the last() and stack() function include the current ending frame, otherwise not
     """
     assert not self.end_ref, f"{self}.end() can only be called once"
+    if not self.axis.dyn_size_ext:
+      dyn_size_ext = source.data.copy_template()
+      dyn_size_ext.dtype = "int32"
+      if dyn_size_ext.control_flow_ctx:
+        dyn_size_ext.control_flow_ctx = dyn_size_ext.control_flow_ctx.outer_ctx
+      self.axis.dyn_size_ext = dyn_size_ext
     self.extra_opts["include_eos"] = include_eos
     from . import copy
     self.end_ref = copy(source, name=self.name_ctx.get_child("end"))
