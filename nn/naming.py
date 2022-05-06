@@ -850,6 +850,14 @@ class NetDictBuilderCtx:
           data_template = data_template.copy_template_excluding_axis(
             data_template.get_axis_from_description(outer_dim))
       dim_tags = list(data_template.dim_tags)
+      for dim in dim_tags:
+        if dim.is_batch_dim() or dim.dimension is not None:
+          continue
+        # We need dyn_size_ext to know the implicit dims, to correctly set out_shape.
+        # If dyn_size_ext is not set yet, try to complete it.
+        if not dim.dyn_size_ext:
+          dim.complete_dyn_size()
+        assert dim.dyn_size_ext, f"need {dim} to be defined to be able to know about implicit dims"
       dim_tags.extend(data_template.dim_tags_set_implicit_only_wrapped)
       assert len(dim_tags) == len(set((d, d.match_priority if isinstance(d, nn.Dim) else 0) for d in dim_tags)), (
         f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}")
