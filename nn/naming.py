@@ -658,7 +658,7 @@ class ReturnnConfigSerializer:
     self.name_ctx = name_ctx
     self._behavior_version = nn.min_returnn_behavior_version
     self._dim_tags_proxy = ReturnnDimTagsProxy()
-    self._base_extern_data_dim_refs = None  # type: Optional[Set[ReturnnDimTagsProxy.DimRefProxy]]
+    self._base_extern_data_dim_refs = None  # type: Optional[List[ReturnnDimTagsProxy.DimRefProxy]]
 
   def get_complete_py_code_str(self, root_module: nn.Module):
     """
@@ -667,7 +667,8 @@ class ReturnnConfigSerializer:
     """
     return (
       self.get_base_extern_data_py_code_str() +
-      self.get_ext_net_dict_py_code_str(root_module=root_module, with_imports=False))
+      self.get_ext_net_dict_py_code_str(
+        root_module=root_module, with_imports=False, ref_extern_data_dims_via_global_config=False))
 
   _ImportPyCodeStr = (
     "from returnn.tf.util.data import (\n"
@@ -682,7 +683,7 @@ class ReturnnConfigSerializer:
     from ..utils.pprint import pformat
     extern_data_raw = self.get_extern_data_raw_dict()
     extern_data_raw = self._dim_tags_proxy.collect_dim_tags_and_transform_config(extern_data_raw)
-    self._base_extern_data_dim_refs = set(self._dim_tags_proxy.dim_refs_by_tag.values())
+    self._base_extern_data_dim_refs = list(self._dim_tags_proxy.dim_refs_by_tag.values())
 
     code_lines = [
       self._ImportPyCodeStr,
@@ -693,10 +694,14 @@ class ReturnnConfigSerializer:
     ]
     return "".join(code_lines)
 
-  def get_ext_net_dict_py_code_str(self, root_module: nn.Module, *, with_imports: bool = True) -> str:
+  def get_ext_net_dict_py_code_str(
+          self, root_module: nn.Module, *,
+          with_imports: bool = True, ref_extern_data_dims_via_global_config: bool = True) -> str:
     """
     :param nn.Module root_module: there must be one root module such that all params have a well-defined name
     :param bool with_imports: whether to include imports
+    :param ref_extern_data_dims_via_global_config: Add references to the definitions for the dimension tags written in
+      `get_base_extern_data_py_code_str` via `returnn.config.get_global_config`.
     :return: serialized config, i.e. Python code
     """
     from ..utils.pprint import pformat
@@ -705,12 +710,19 @@ class ReturnnConfigSerializer:
     net_dict = dim_tags_proxy.collect_dim_tags_and_transform_config(net_dict)
     imports = {}
     net_dict = self._post_process_transform(net_dict, imports=imports)
-
     code_lines = []
+
     if with_imports:
       code_lines.append(self._ImportPyCodeStr + "\n")
     for import_str in imports:
       code_lines.append(import_str + "\n")
+
+    if ref_extern_data_dims_via_global_config:
+      code_lines += ["from returnn.config import get_global_config\n",
+                     "config = get_global_config()\n"]
+      for value in self._base_extern_data_dim_refs:
+        code_lines += [f"{value.py_id_name()} = config.typed_dict[{value.py_id_name()!r}]\n"]
+
     code_lines += [
       f"{dim_tags_proxy.py_code_str(exclude_dims=self._base_extern_data_dim_refs)}\n",
       f"network = {pformat(net_dict)}\n",
