@@ -171,7 +171,17 @@ class Module:
 
   def named_parameters(self, *, recurse: bool = True) -> Iterator[Tuple[str, nn.Parameter]]:
     """
-    Get all children parameters
+    Get all children parameters, together with their names.
+
+    With recurse=True (default), this iterates over all children modules
+    and iterates through their parameters as well.
+
+    Note that some modules (e.g. :class:`nn.Linear`) can behave lazy,
+    i.e. they only create the parameters on the first call,
+    e.g. when the input dimension is unknown and thus the parameter shape is not defined
+    before the first call.
+    This means you need to first call the module once to get all the parameters.
+    https://github.com/rwth-i6/returnn_common/issues/149
     """
     memo = set()  # over name contexts because we cannot hash layer refs
 
@@ -191,7 +201,7 @@ class Module:
 
   def parameters(self, *, recurse: bool = True) -> Iterator[nn.Parameter]:
     """
-    Get all children parameters
+    Get all children parameters. Also see :func:`named_parameters` for some more documentation.
     """
     for name, param in self.named_parameters(recurse=recurse):
       yield param
