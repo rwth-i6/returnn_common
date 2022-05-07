@@ -284,7 +284,11 @@ class PrevTensorRef(nn.Tensor):
     # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
     super().__init__(name_ctx=name_ctx, data=data, is_ref=True)
     self.cur_layer_name_ctx = cur_layer_name_ctx
-    self.extra_dependencies.append(cur_layer_name_ctx.layer_ref)
+
+  def get_dependencies(self, **kwargs) -> List[nn.Tensor]:
+    """dependencies"""
+    # Need to overwrite this because self.cur_layer_name_ctx.layer_ref is only available later.
+    return super(PrevTensorRef, self).get_dependencies(**kwargs) + [self.cur_layer_name_ctx.layer_ref]
 
   def assign_new_cur_layer_name_ctx(self, cur_layer_name_ctx: nn.NameCtx):
     """
