@@ -173,7 +173,7 @@ class Loop:
     # We access the returned layer-ref from outside, thus fix the data template.
     res.data = res.data.copy_add_dim_by_tag(dim_tag=self.axis, unbroadcast=True, axis=0)
     res.data.time_dim_axis = 0
-    # res.data.control_flow_ctx = self.control_flow_ctx.outer_ctx  # TODO setting this is somewhat broken...
+    res.data.control_flow_ctx = self.control_flow_ctx.outer_ctx
     batch = res.data.batch or self.name_ctx.root.global_batch
     if batch:
       res.data.batch = batch
@@ -284,10 +284,7 @@ class PrevTensorRef(nn.Tensor):
     # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
     super().__init__(name_ctx=name_ctx, data=data, is_ref=True)
     self.cur_layer_name_ctx = cur_layer_name_ctx
-
-  def get_dependencies(self) -> List[nn.Tensor]:
-    """dependencies"""
-    return super(PrevTensorRef, self).get_dependencies() + [self.cur_layer_name_ctx.layer_ref]
+    self.extra_dependencies.append(cur_layer_name_ctx.layer_ref)
 
   def assign_new_cur_layer_name_ctx(self, cur_layer_name_ctx: nn.NameCtx):
     """

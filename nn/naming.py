@@ -199,15 +199,7 @@ class NameCtx:
     :return: the most inner loop in the current context, if there is one
       E.g. you can use it to access the outer spatial dim.
     """
-    ctx = cls.top()
-    while ctx:
-      mod = ctx.module
-      if isinstance(mod, nn.LoopModule):
-        return mod.loop.control_flow_ctx
-      if isinstance(mod, nn.CondModule):
-        return mod.cond.control_flow_ctx
-      ctx = ctx.parent
-    return None
+    return cls.top().control_flow_ctx()
 
   def __init__(self, *,
                module: Optional[nn.Module] = None,
@@ -352,6 +344,20 @@ class NameCtx:
         return False
       name = name.parent
     return True
+
+  def control_flow_ctx(self) -> Optional[nn.ControlFlowContext]:
+    """
+    :return: control flow context of this name ctx
+    """
+    ctx = self
+    while ctx:
+      mod = ctx.module
+      if isinstance(mod, nn.LoopModule):
+        return mod.loop.control_flow_ctx
+      if isinstance(mod, nn.CondModule):
+        return mod.cond.control_flow_ctx
+      ctx = ctx.parent
+    return None
 
   def extend_reserved_names(self, names: Set[str]):
     """
@@ -803,9 +809,6 @@ class NetDictBuilderCtx:
       self.parent = parent
       self.net = net
       self.layer_abs_name_scope_effective = layer_abs_name_scope_effective
-      self.control_flow_ctx = None
-      if net.name_ctx.layer_ref is not None:
-        self.control_flow_ctx = self.net.name_ctx.layer_ref.data.control_flow_ctx
 
     def add(self, *, net: Net, layer_abs_name_scope_effective: str) -> NetDictBuilderCtx._StackInfo:
       """
@@ -822,10 +825,11 @@ class NetDictBuilderCtx:
       dims = []
       parent = self
       while parent:
-        if parent.control_flow_ctx:
-          if parent.control_flow_ctx.is_loop():
-            if parent.control_flow_ctx.loop_spatial_dim is not None:
-              dims.append(parent.control_flow_ctx.loop_spatial_dim)
+        ctx = parent.net.name_ctx.control_flow_ctx()
+        if ctx:
+          if ctx.is_loop():
+            if ctx.loop_spatial_dim is not None and ctx.loop_spatial_dim not in dims:
+              dims.append(ctx.loop_spatial_dim)
         parent = parent.parent
       return list(reversed(dims))
 

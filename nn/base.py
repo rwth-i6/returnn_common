@@ -110,8 +110,22 @@ class Tensor:
       # Note that the following code can potentially raise user errors.
       if not data:
         data = _data_from_layer_dict(layer_dict, tensor=self)
-      if data.have_batch_axis() and not data.batch and name_ctx.root.global_batch:
-        data.batch = name_ctx.root.global_batch
+      else:
+        data = data.copy()
+      data.control_flow_ctx = nn.NameCtx.inner_control_flow()
+      if data.have_batch_axis() and not data.batch:
+        # You could say this is a bug of RETURNN. Or at least RETURNN is just incomplete here.
+        # RETURNN usually would fix that later when the layer is actually created,
+        # but we don't do that here.
+        # We can still try to look at dependencies and use those batch info.
+        batches = []
+        for dep in self.get_dependencies(_extra_layer_dict=layer_dict):
+          if dep.data.batch and dep.data.batch not in batches:
+            batches.append(dep.data.batch)
+        if batches:
+          data.batch = nn.BatchInfo.get_common_batch_info(batches)
+        elif name_ctx.root.global_batch:
+          data.batch = name_ctx.root.global_batch
 
     self.data = data
     self.layer_dict = layer_dict
@@ -347,7 +361,7 @@ class Tensor:
     res.mark_as_output()
     return res
 
-  def get_dependencies(self) -> List[nn.Tensor]:
+  def get_dependencies(self, *, _extra_layer_dict=None) -> List[nn.Tensor]:
     """
     :return: list of tensors this tensor depends on
     """
@@ -364,13 +378,17 @@ class Tensor:
       if isinstance(x, nn.Net):
         _maybe_add_dep(x.name_ctx.children["output"].layer_ref)
 
-    if self.layer_dict:
+    if _extra_layer_dict:
+      nest.map_structure(_maybe_add_dep, _extra_layer_dict)
+    if hasattr(self, "layer_dict") and self.layer_dict:  # hasattr to be able to run this function early
       nest.map_structure(_maybe_add_dep, self.layer_dict)
     if self.name_ctx.children and "output" in self.name_ctx.children:
       _maybe_add_dep(self.name_ctx.children["output"].layer_ref)
     if self.name_ctx.parent and self.name_ctx.parent.layer_ref:
       _maybe_add_dep(self.name_ctx.parent.layer_ref)
-    return dep_list + self.extra_dependencies
+    if getattr(self, "extra_dependencies", None):
+      dep_list.extend(self.extra_dependencies)
+    return dep_list
 
   def _replace_by(self, tensor: nn.Tensor):
     """
@@ -846,7 +864,6 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     ref_to_layer_name[ref.name_ctx] = name
     assert name not in net.layers
     data = ref.data.copy()
-    data.control_flow_ctx = nn.NameCtx.inner_control_flow()
     net.layers[name] = InternalLayer(name=name, network=net, output=data)
     return name
 
