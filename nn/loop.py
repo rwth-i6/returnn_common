@@ -472,6 +472,8 @@ class _LoopState:
     Return prev or current value
     """
     assert self.name_ctx is not None
+    if not self.loop.has_entered_scope:
+      return self.initial
     if self.assigned_value is None:  # not yet assigned
       # Return prev value
       return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx, self.initial)
