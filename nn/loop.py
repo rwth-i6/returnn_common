@@ -340,8 +340,16 @@ class _LoopStateHolder:
     """keys"""
     return self._state.keys()
 
+  def values(self) -> List[Any]:
+    """values"""
+    return [v.get() for v in self._state.values()]
+
   def __len__(self):
     return len(self._state)
+
+  def deep_tensors(self) -> List[nn.Tensor]:
+    """See :func:`LayerState.cls_deep_tensors`."""
+    return nn.LayerState.cls_deep_tensors(self)
 
 
 class _LoopState:

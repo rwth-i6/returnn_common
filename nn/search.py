@@ -11,6 +11,14 @@ class SearchFuncInterface:
   Interface for search.
   """
 
+  def get_beam(self) -> nn.SearchBeam:
+    """
+    Return a new beam instance. dependency and name is still unset and will be set outside.
+    This overwrites whatever is returned by :func:`choice`,
+    and copy_as_prev_frame() is used to set the initial (prev) state beam.
+    """
+    raise NotImplementedError
+
   def choice(self, *, output: nn.Tensor, output_type: str) -> nn.Tensor:
     """
     Given an output tensor (logits or log prop), returns a beam of chosen indices.
@@ -34,6 +42,10 @@ class SearchFunc(SearchFuncInterface):
   def __init__(self, beam_size: int, max_seq_len: nn.Tensor):
     self.beam_size = beam_size
     self.max_seq_len = max_seq_len
+
+  def get_beam(self):
+    """beam"""
+    return nn.SearchBeam(beam_size=self.beam_size)
 
   def choice(self, *, output: nn.Tensor, output_type: str) -> nn.Tensor:
     """nn.choice"""

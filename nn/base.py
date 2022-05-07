@@ -663,6 +663,35 @@ class LayerState(dict):
   def __setattr__(self, key, value):
     self[key] = value
 
+  def deep_tensors(self) -> List[nn.Tensor]:
+    """See :func:`cls_deep_tensors`."""
+    return self.cls_deep_tensors(self)
+
+  @classmethod
+  def cls_deep_tensors(cls, obj: Union[LayerState, dict, Any]) -> List[nn.Tensor]:
+    """
+    Iterates through obj and all its sub-objects, yielding all tensors.
+    """
+    from .loop import _LoopStateHolder
+    cache_tensor_names = set()  # type: Set[nn.NameCtx]  # names because tensors are not hashable
+    tensors = []  # type: List[nn.Tensor]
+    queue = [obj]
+
+    while queue:
+      x = queue.pop()
+      if isinstance(x, nn.Tensor):
+        if x.name_ctx not in cache_tensor_names:
+          cache_tensor_names.add(x.name_ctx)
+          tensors.append(x)
+      elif isinstance(x, (dict, _LoopStateHolder)):
+        queue.extend(x.values())
+      elif isinstance(x, (list, tuple)):
+        queue.extend(x)
+      else:
+        raise TypeError(f"unexpected type {type(x)}")
+
+    return tensors
+
 
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, nn.NameCtx]] = None,
