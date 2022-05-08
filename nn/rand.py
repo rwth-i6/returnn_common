@@ -14,12 +14,14 @@ class Random(nn.Module):
     super(Random, self).__init__()
     self._call_counter = 0
 
+  _state_dim = nn.FeatureDim("random-state", None)
+
   @nn.scoped
   def __call__(self, **kwargs) -> nn.Tensor:
     # For every call, we create a new state var to make sure there is no non-determinism.
     # https://github.com/rwth-i6/returnn_common/issues/148
     # No explicit seed, so RETURNN uses its global seed.
-    init_state, _ = nn.random_state_init()
+    init_state, _ = nn.random_state_init(out_dim=self._state_dim)
     state_var = nn.Parameter(init_state.shape_ordered, init_state.dtype)
     setattr(self, f"state_var{self._call_counter}", state_var)
     state_var.initial = init_state
