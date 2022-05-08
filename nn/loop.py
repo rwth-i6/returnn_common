@@ -70,7 +70,12 @@ class Loop:
       if value is not NotSpecified and value is not None
       and key not in {"self", "__class__", "name"}}
     self.layer_module = LoopModule(loop=self)
-    self.name_ctx = nn.NameCtx(module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx())
+    self.control_flow_ctx = nn.ControlFlowContext(
+      kind=nn.ControlFlowContext.Types.Loop, outer_ctx=nn.NameCtx.inner_control_flow())
+    self.control_flow_ctx.loop_spatial_dim = axis
+    self.name_ctx = nn.NameCtx(
+      module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx(),
+      new_control_flow_ctx=self.control_flow_ctx)
     self.name_ctx.custom_layer_name_scope = ""
     self.name_ctx.is_subnet_ctx = True
     self.name_ctx.extend_reserved_names({"output", "end"})
@@ -82,9 +87,6 @@ class Loop:
     self.outputs = []  # type: List[nn.Tensor]
     self._last_frames = {}  # type: Dict[nn.NameCtx, nn.Tensor]  # inner name -> outer
     self.axis = axis
-    self.control_flow_ctx = nn.ControlFlowContext(
-      kind=nn.ControlFlowContext.Types.Loop, outer_ctx=nn.NameCtx.inner_control_flow())
-    self.control_flow_ctx.loop_spatial_dim = axis
     self.end_ref = None  # type: Optional[nn.Tensor]
 
   def __repr__(self):

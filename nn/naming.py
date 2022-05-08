@@ -207,6 +207,7 @@ class NameCtx:
                name: Optional[str] = None,
                virtual: bool = False,
                can_access_children: bool = True,
+               new_control_flow_ctx: Optional[nn.ControlFlowContext] = None,
                parent: Optional[NameCtx] = NotSpecified):
     """
     You are not supposed to call this directly.
@@ -218,6 +219,7 @@ class NameCtx:
     self.is_subnet_ctx = False  # if this is active in the context, it says whether it can have children
     self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
     self.can_access_children = can_access_children  # from outside
+    self.new_control_flow_ctx = new_control_flow_ctx
     self.children = {}  # type: Dict[str, NameCtx]
     self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
     self.global_batch = None  # type: Optional[nn.BatchInfo]  # only for the root name ctx
@@ -351,11 +353,8 @@ class NameCtx:
     """
     ctx = self
     while ctx:
-      mod = ctx.module
-      if isinstance(mod, nn.LoopModule):
-        return mod.loop.control_flow_ctx
-      if isinstance(mod, nn.CondModule):
-        return mod.cond.control_flow_ctx
+      if ctx.new_control_flow_ctx:
+        return ctx.new_control_flow_ctx
       ctx = ctx.parent
     return None
 
