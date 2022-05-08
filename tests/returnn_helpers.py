@@ -148,6 +148,7 @@ def dummy_run_net_single_custom(config_code_str: str, *, make_feed_dict=make_fee
   with make_scope() as session:
     net = TFNetwork(config=config, train_flag=False)
     net.construct_from_dict(net_dict)
+    net.initialize_params(session)
     feed_dict = make_feed_dict(net.extern_data)
     fetches = net.get_fetches_dict()
     for layer in net.get_output_layers():
