@@ -17,6 +17,24 @@ else:
 def test_specaugment_v2():
   nn.reset_default_root_name_ctx()
 
+  feat_dim = nn.FeatureDim("feat", 50)
+  time_dim = nn.SpatialDim("time")
+  audio = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
+
+  from ..asr import specaugment
+  masked = specaugment.specaugment_v2(
+    audio, spatial_dim=time_dim, global_train_step_dependent=False, only_on_train=False)
+  print(masked)
+  masked.mark_as_default_output()
+
+  code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  print(code_str)
+  dummy_run_net_single_custom(code_str)
+
+
+def test_specaugment_v2_real_example_audio():
+  nn.reset_default_root_name_ctx()
+
   raw_audio_spatial_dim = nn.SpatialDim("time")
   raw_audio = nn.get_extern_data(nn.Data("raw_samples", dim_tags=[nn.batch_dim, raw_audio_spatial_dim]))
 
