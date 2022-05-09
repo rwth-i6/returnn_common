@@ -718,8 +718,9 @@ class ReturnnConfigSerializer:
       code_lines.append(import_str + "\n")
 
     if ref_extern_data_dims_via_global_config:
-      code_lines += ["from returnn.config import get_global_config\n",
-                     "config = get_global_config()\n"]
+      code_lines += [
+        "from returnn.config import get_global_config\n",
+        "config = get_global_config()\n"]
       for value in self._base_extern_data_dim_refs:
         code_lines += [f"{value.py_id_name()} = config.typed_dict[{value.py_id_name()!r}]\n"]
 
