@@ -722,7 +722,7 @@ class ReturnnConfigSerializer:
         "from returnn.config import get_global_config\n",
         "config = get_global_config()\n"]
       for value in self._base_extern_data_dim_refs:
-        code_lines += [f"{value.py_id_name()} = config.typed_dict[{value.py_id_name()!r}]\n"]
+        code_lines.append(f"{value.py_id_name()} = config.typed_dict[{value.py_id_name()!r}]\n")
 
     code_lines += [
       f"{dim_tags_proxy.py_code_str(exclude_dims=self._base_extern_data_dim_refs)}\n",
