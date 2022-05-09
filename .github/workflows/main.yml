@@ -72,18 +72,12 @@ jobs:
 
         # pip install --user -r requirements.txt | cat
         pip install --user --upgrade tensorflow==${{ matrix.tf-version }} | cat
-        pip install --user nose
+        pip install --user pytest
 
         sudo apt-get install libsndfile1
         pip install --user pysoundfile
 
         pip install --user --upgrade returnn
-
-        # Enforce the right Python interpreter for nosetests.
-        echo "#!/usr/bin/env python" > ~/nosetests
-        cat ~/.local/bin/nosetests >> ~/nosetests
-        chmod +x ~/nosetests
-        mv ~/nosetests ~/.local/bin/nosetests
 
     - name: Test Python/Numpy/TF/RETURNN versions.
       run: |
@@ -92,9 +86,6 @@ jobs:
         python -c "import tensorflow as tf; print('TensorFlow:', tf.__git_version__, tf.__version__, tf.__file__)"
         python -c "import tensorflow as tf; assert tf.__version__ == '${{ matrix.tf-version }}'"
         python -c "import returnn; print('RETURNN:', returnn.__version__)"
-
-        echo "Nosetests env: $(type nosetests)"
-        nosetests -V
 
     - name: Cache PyCharm
       if: matrix.action == 'RUN=tests/pycharm-inspect.py'
@@ -107,5 +98,5 @@ jobs:
     - name: Run test
       run: |
         export ${{ matrix.action }}
-        if [[ ! -z "$TEST" ]]; then nosetests tests/test_$TEST.py; fi
+        if [[ ! -z "$TEST" ]]; then pytest tests/test_$TEST.py; fi
         if [[ ! -z "$RUN" ]]; then $RUN; fi
