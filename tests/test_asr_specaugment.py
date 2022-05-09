@@ -60,7 +60,7 @@ def test_specaugment_v2_real_example_audio():
   def _make_feed_dict(extern_data):
     from returnn.tf.network import ExternData
     assert isinstance(extern_data, ExternData)
-    data = extern_data.get_default_input_data()
+    data = extern_data.data["raw_samples"]
     return {
       data.placeholder: raw_audio_np,
       data.get_sequence_lengths(): raw_audio_seq_lens,
