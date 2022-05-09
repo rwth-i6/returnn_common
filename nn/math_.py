@@ -317,7 +317,7 @@ def cumsum(
   return layer
 
 
-def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: float = 1e-6):
+def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: float = 1e-6) -> nn.Tensor:
   """
   Calculates normalization for given layer, based on the input dims
   
