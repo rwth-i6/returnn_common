@@ -324,6 +324,7 @@ def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: f
   :param a: input
   :param axes: axes over which the mean and variance are computed
   :param epsilon: epsilon for numerical stability
+  :return: (a - mean) / sqrt(variance + epsilon)
   """
 
   mean, variance = nn.moments(a, axis=axis)
