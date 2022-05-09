@@ -315,3 +315,16 @@ def cumsum(
     name=name)
   del state
   return layer
+
+
+def layer_norm(a: nn.Tensor, *, axes: Union[nn.Dim, Sequence[nn.Dim]], epsilon: float = 1e-6):
+  """
+  Calculates layer norm for given layer, based on the input dims
+  :param a: input
+  :param axes: axes over which the mean and variance are computed
+  :param epsilon: epsilon for numerical stability
+  """
+
+  mean = nn.reduce(a, axis=axes, mode='mean')
+  variance = nn.reduce((a - mean) ** 2, mode='mean', axis=axes, name='variance')
+  return (a - mean) * nn.rsqrt(variance + epsilon)
