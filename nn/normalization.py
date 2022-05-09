@@ -172,3 +172,17 @@ class BatchNorm(nn.Module):
       "param_version": 2, "reuse_params": reuse_params,
       "momentum": self.momentum, "epsilon": self.epsilon, "masked_time": use_mask,
     }, name="batch_norm")
+
+
+def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: float = 1e-6) -> nn.Tensor:
+  """
+  Calculates normalization for given layer, based on the input dims
+
+  :param a: input
+  :param axis: axis over which the mean and variance are computed
+  :param epsilon: epsilon for numerical stability
+  :return: (a - mean) / sqrt(variance + epsilon)
+  """
+
+  mean, variance = nn.moments(a, axis=axis)
+  return (a - mean) * nn.rsqrt(variance + epsilon)
