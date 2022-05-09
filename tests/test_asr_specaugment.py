@@ -39,8 +39,11 @@ def test_specaugment_v2_real_example_audio():
   raw_audio = nn.get_extern_data(nn.Data("raw_samples", dim_tags=[nn.batch_dim, raw_audio_spatial_dim]))
 
   from ..asr import gt
-  mod = gt.GammatoneV2()
-  audio, time_dim = mod(raw_audio, in_spatial_dim=raw_audio_spatial_dim)
+  gammatone = gt.GammatoneV2()
+  audio, time_dim = gammatone(raw_audio, in_spatial_dim=raw_audio_spatial_dim)
+
+  for param in gammatone.parameters():
+    param.initial = 0.  # just to have shorter net config for this test  # TODO remove this
 
   from ..asr import specaugment
   masked = specaugment.specaugment_v2(
