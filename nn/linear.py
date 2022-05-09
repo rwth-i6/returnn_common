@@ -11,6 +11,8 @@ class Linear(nn.Module):
   Linear transformation.
   """
 
+  initialized = False  # lazy init
+
   def __init__(self, out_dim: nn.Dim, *, in_dim: Optional[nn.Dim] = None, with_bias=True):
     super().__init__()
     assert isinstance(out_dim, nn.Dim)
@@ -29,6 +31,7 @@ class Linear(nn.Module):
     if self.with_bias:
       self.bias = nn.Parameter((self.out_dim,))
       self.bias.initial = 0.
+    self.initialized = True
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:

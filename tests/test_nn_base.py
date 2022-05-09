@@ -455,6 +455,17 @@ def test_parameter_weight_decay():
   dummy_run_net(config)
 
 
+def test_parameter_not_initialized():
+  nn.reset_default_root_name_ctx()
+  net = nn.Linear(nn.FeatureDim("out", 4))
+  try:
+    params = list(net.parameters())
+  except Exception as exc:
+    print("Expected exception:", exc)
+  else:
+    raise Exception(f"No exception. Got params = {params!r}")
+
+
 def test_const_array_serialization():
   class _Net(nn.Module):
     @nn.scoped

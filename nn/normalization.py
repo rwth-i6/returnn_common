@@ -34,6 +34,9 @@ class LayerNorm(nn.Module):
   or all axes except batch and time.
   For a more generic variant, see :func:`norm`.
   """
+
+  initialized = False  # lazy init
+
   def __init__(self, *, in_dim: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None, eps: float = 1e-6):
     super().__init__()
     self.in_dim = in_dim
@@ -49,6 +52,7 @@ class LayerNorm(nn.Module):
     self.scale.initial = 1.
     self.bias = nn.Parameter((self.in_dim,))
     self.bias.initial = 0.
+    self.initialized = True
 
   @nn.scoped
   def __call__(self, x: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
@@ -93,6 +97,8 @@ class BatchNorm(nn.Module):
 
   """
 
+  initialized = False  # lazy init
+
   def __init__(self, in_dim: Optional[nn.Dim] = None, *,
                affine: bool = True,
                momentum: float = 0.1, epsilon: float = 1e-3,
@@ -134,6 +140,7 @@ class BatchNorm(nn.Module):
       self.gamma.initial = 1.
       self.beta = nn.Parameter([in_dim])
       self.beta.initial = 0.
+    self.initialized = True
 
   @nn.scoped
   def __call__(self, source: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:

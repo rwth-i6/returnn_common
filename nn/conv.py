@@ -15,6 +15,8 @@ class _ConvOrTransposedConv(nn.Module):
   _transposed: bool
   groups: Optional[int] = None
 
+  initialized = False  # lazy init
+
   def __init__(self,
                out_dim: nn.Dim,
                filter_size: Union[Sequence[Union[int, nn.Dim]], int, nn.Dim],
@@ -66,6 +68,7 @@ class _ConvOrTransposedConv(nn.Module):
     if self.with_bias:
       self.bias = nn.Parameter([self.out_dim])
       self.bias.initial = 0.
+    self.initialized = True
 
   def _call_nd1(self, source: nn.Tensor, *,
                 in_dim: Optional[nn.Dim] = None,
