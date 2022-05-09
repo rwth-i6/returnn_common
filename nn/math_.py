@@ -322,7 +322,7 @@ def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: f
   Calculates normalization for given layer, based on the input dims
   
   :param a: input
-  :param axes: axes over which the mean and variance are computed
+  :param axis: axis over which the mean and variance are computed
   :param epsilon: epsilon for numerical stability
   :return: (a - mean) / sqrt(variance + epsilon)
   """
