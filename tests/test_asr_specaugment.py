@@ -7,7 +7,7 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 import typing
 import os
-from .returnn_helpers import dummy_run_net_single_custom
+from .returnn_helpers import dummy_run_net_single_custom, config_net_dict_via_serialized, make_scope
 
 if typing.TYPE_CHECKING:
   from .. import nn
@@ -67,26 +67,61 @@ def test_specaugment_v2_real_example_audio():
       data.get_sequence_lengths(): raw_audio_seq_lens,
     }
 
-  fetches_np = dummy_run_net_single_custom(code_str, make_feed_dict=_make_feed_dict)
-  audio_np = fetches_np[f"layer:{audio_name}"]
-  print("audio shape:", audio_np.shape)
-  masked_np = fetches_np["layer:output"]
-  print("masked shape:", masked_np.shape)
-  assert audio_np.shape == masked_np.shape
+  config_dict, net_dict = config_net_dict_via_serialized(code_str)
+  from returnn.config import Config
+  from returnn.tf.network import TFNetwork
+  config = Config(config_dict)
+  with make_scope() as session:
+    net = TFNetwork(config=config, train_flag=False)
+    net.construct_from_dict(net_dict)
+    net.initialize_params(session)
+    feed_dict = _make_feed_dict(net.extern_data)
+    fetches = net.get_fetches_dict()
+    for layer in net.get_output_layers():
+      fetches[f"layer:{layer.name}"] = layer.output.placeholder
 
-  if "PYTEST_CURRENT_TEST" not in os.environ:
-    try:
-      import matplotlib
-      matplotlib.use("TkAgg")
-      import matplotlib.pyplot as plt
-    except ImportError as exc:
-      print("No matplotlib:", exc)
-    else:
-      plt.subplot(2, 1, 1)
-      plt.imshow(audio_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
-      plt.subplot(2, 1, 2)
-      plt.imshow(masked_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
-      plt.show()
+    def _eval():
+      fetches1_np = session.run(fetches, feed_dict=feed_dict)
+      fetches2_np = session.run(fetches, feed_dict=feed_dict)
 
-      # from IPython import embed
-      # embed()
+      audio_np = fetches1_np[f"layer:{audio_name}"]
+      print("audio shape:", audio_np.shape)
+      masked_np = fetches1_np["layer:output"]
+      print("masked shape:", masked_np.shape)
+      assert audio_np.shape == masked_np.shape
+      masked2_np = fetches2_np["layer:output"]
+      print("masked2 shape:", masked2_np.shape)
+      assert audio_np.shape == masked2_np.shape
+      return audio_np, masked_np, masked2_np
+
+    _eval()
+
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+      try:
+        import matplotlib
+        matplotlib.use("TkAgg")
+        import matplotlib.pyplot as plt
+      except ImportError as exc:
+        print("No matplotlib:", exc)
+      else:
+
+        def _plt_onclick(event=None):
+          if event:
+            event.canvas.figure.clear()
+
+          audio_np, masked_np, masked2_np = _eval()
+
+          plt.subplot(3, 1, 1)
+          plt.imshow(audio_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
+          plt.subplot(3, 1, 2)
+          plt.imshow(masked_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
+          plt.subplot(3, 1, 3)
+          plt.imshow(masked2_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
+
+          if event:
+            event.canvas.draw()
+
+        fig = plt.figure()
+        fig.canvas.mpl_connect('button_press_event', _plt_onclick)
+        _plt_onclick()
+        plt.show()
