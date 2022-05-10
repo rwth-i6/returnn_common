@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from . import _setup_test_env  # noqa
 import typing
+import os
 from .returnn_helpers import dummy_run_net_single_custom
 
 if typing.TYPE_CHECKING:
@@ -41,6 +42,7 @@ def test_specaugment_v2_real_example_audio():
   from ..asr import gt
   gammatone = gt.GammatoneV2()
   audio, time_dim = gammatone(raw_audio, in_spatial_dim=raw_audio_spatial_dim)
+  audio = nn.normalize(audio, axis=time_dim)
   audio.mark_as_output()
   audio_name = audio.get_abs_name()
 
@@ -71,3 +73,20 @@ def test_specaugment_v2_real_example_audio():
   masked_np = fetches_np["layer:output"]
   print("masked shape:", masked_np.shape)
   assert audio_np.shape == masked_np.shape
+
+  if "PYTEST_CURRENT_TEST" not in os.environ:
+    try:
+      import matplotlib
+      matplotlib.use("TkAgg")
+      import matplotlib.pyplot as plt
+    except ImportError as exc:
+      print("No matplotlib:", exc)
+    else:
+      plt.subplot(2, 1, 1)
+      plt.imshow(audio_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
+      plt.subplot(2, 1, 2)
+      plt.imshow(masked_np[0, :300, :].T, origin="lower", vmin=-2, vmax=2)
+      plt.show()
+
+      # from IPython import embed
+      # embed()
