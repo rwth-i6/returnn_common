@@ -153,7 +153,7 @@ def dummy_run_net_single_custom(config_code_str: str, *, make_feed_dict=make_fee
     fetches = net.get_fetches_dict()
     for layer in net.get_output_layers():
       fetches[f"layer:{layer.name}"] = layer.output.placeholder
-    session.run(fetches, feed_dict=feed_dict)
+    return session.run(fetches, feed_dict=feed_dict)
 
 
 def dummy_config_net_dict(net: nn.Module, *,

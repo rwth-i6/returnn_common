@@ -29,7 +29,6 @@ def test_specaugment_v2():
 
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   code_str += "debug_runtime_sanity_checks = True\n\n"
-  print(code_str)
   dummy_run_net_single_custom(code_str)
 
 
@@ -42,9 +41,8 @@ def test_specaugment_v2_real_example_audio():
   from ..asr import gt
   gammatone = gt.GammatoneV2()
   audio, time_dim = gammatone(raw_audio, in_spatial_dim=raw_audio_spatial_dim)
-
-  for param in gammatone.parameters():
-    param.initial = 0.  # just to have shorter net config for this test  # TODO remove this
+  audio.mark_as_output()
+  audio_name = audio.get_abs_name()
 
   from ..asr import specaugment
   masked = specaugment.specaugment_v2(
@@ -54,7 +52,6 @@ def test_specaugment_v2_real_example_audio():
 
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   code_str += "debug_runtime_sanity_checks = True\n\n"
-  print(code_str)
 
   from ..example_data import audio
   raw_audio_np, raw_audio_seq_lens = audio.get_sample_batch_np()
@@ -68,4 +65,9 @@ def test_specaugment_v2_real_example_audio():
       data.get_sequence_lengths(): raw_audio_seq_lens,
     }
 
-  dummy_run_net_single_custom(code_str, make_feed_dict=_make_feed_dict)
+  fetches_np = dummy_run_net_single_custom(code_str, make_feed_dict=_make_feed_dict)
+  audio_np = fetches_np[f"layer:{audio_name}"]
+  print("audio shape:", audio_np.shape)
+  masked_np = fetches_np["layer:output"]
+  print("masked shape:", masked_np.shape)
+  assert audio_np.shape == masked_np.shape
