@@ -21,6 +21,7 @@ jobs:
           - 2.3.0
         action:
           - TEST=asr_gt
+          - TEST=asr_specaugment
           - TEST=hello
           - TEST=nn_array
           - TEST=nn_attention
