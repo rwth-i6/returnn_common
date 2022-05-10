@@ -59,6 +59,8 @@ def test_cond_shared_params():
 
 
 def test_cond_twice_shared_params():
+  nn.reset_default_root_name_ctx()
+
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
@@ -81,7 +83,7 @@ def test_cond_twice_shared_params():
       return x
 
   net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net)
+  config, net_dict = dummy_config_net_dict(net=net, reset_name_ctx=False)
   dummy_run_net(config, net=net)
 
 
