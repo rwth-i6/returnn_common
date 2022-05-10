@@ -28,6 +28,7 @@ def test_specaugment_v2():
   masked.mark_as_default_output()
 
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  code_str += "debug_runtime_sanity_checks = True\n\n"
   print(code_str)
   dummy_run_net_single_custom(code_str)
 
@@ -52,6 +53,7 @@ def test_specaugment_v2_real_example_audio():
   masked.mark_as_default_output()
 
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  code_str += "debug_runtime_sanity_checks = True\n\n"
   print(code_str)
 
   from ..example_data import audio
