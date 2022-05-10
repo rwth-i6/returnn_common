@@ -225,6 +225,17 @@ def combine(
   :param str|None name:
   :return: layer
   """
+  if len(sources) == 2 and sum([isinstance(s, (int, float)) for s in sources]) == 1:
+    # Special case for 2 sources, one of which is a constant.
+    # We simplify this by using an EvalLayer.
+    tensor, = [s for s in sources if isinstance(s, nn.Tensor)]
+    a, b = ["source(0)" if s is tensor else str(s) for s in sources]
+    bin_ops = {"add": "+", "sub": "-", "mul": "*", "truediv": "/", "floordiv": "//", "mod": "%", "pow": "**"}
+    if kind in bin_ops:
+      return nn.make_layer({"class": "eval", "from": tensor, "eval": f"{a} {bin_ops[kind]} {b}"}, name=name or kind)
+    funcs = {"maximum": "tf.maximum", "minimum": "tf.minimum"}
+    if kind in funcs:
+      return nn.make_layer({"class": "eval", "from": tensor, "eval": f"{funcs[kind]}({a}, {b})"}, name=name or kind)
   sources = [nn.convert_to_tensor(x) for x in sources]
   args = {
     'class': 'combine',
