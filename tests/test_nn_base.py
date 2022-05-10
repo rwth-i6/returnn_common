@@ -209,7 +209,7 @@ def test_multiple_returns_depth_1():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
-  assert net_dict["output"]["from"] == "sub/linear"
+  assert net_dict["output"]["from"] == "sub"
   assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   dummy_run_net(config)
 
@@ -257,8 +257,8 @@ def test_multiple_returns_depth_2():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
-  assert net_dict["output"]["from"] == "sub/sub/linear"
-  assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub/linear"
+  assert net_dict["output"]["from"] == "sub"
+  assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub"
   assert (
       net_dict
       ["sub"]["subnetwork"]
@@ -302,10 +302,10 @@ def test_from_call_variations():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
-  assert net_dict["output"]["from"] == "sub2/linear2"
+  assert net_dict["output"]["from"] == "sub2"
   assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   assert net_dict["sub"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "base:linear"
-  assert net_dict["sub2"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:sub/linear2"
+  assert net_dict["sub2"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:sub"
   assert net_dict["sub2"]["subnetwork"]["linear2"]["subnetwork"]["dot"]["from"][0] == "base:linear"
   dummy_run_net(config)
 
@@ -356,12 +356,12 @@ def test_from_call_variations2():
       Forward
       """
       out, add_out = self.sub(x)
-      assert_equal(out._get_name_in_current_ctx(), "sub/linear2")
+      assert_equal(out._get_name_in_current_ctx(), "sub")
       assert_equal(add_out._get_name_in_current_ctx(), "sub/linear")
       lin = self.linear(out)
       assert_equal(lin._get_name_in_current_ctx(), "linear")
       out2, add_out2 = self.sub2(add_out, lin)
-      assert_equal(out2._get_name_in_current_ctx(), "sub2/linear2")
+      assert_equal(out2._get_name_in_current_ctx(), "sub2")
       assert_equal(add_out2._get_name_in_current_ctx(), "sub2/linear")
       return out2
 
