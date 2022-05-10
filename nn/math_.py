@@ -41,6 +41,11 @@ def floor(x: nn.Tensor) -> nn.Tensor:
   return _activation(x, activation="floor")
 
 
+def rint(x: nn.Tensor) -> nn.Tensor:
+  """round"""
+  return _activation(x, activation="rint")
+
+
 def relu(x: nn.Tensor) -> nn.Tensor:
   """ReLU"""
   return _activation(x, activation="relu")
