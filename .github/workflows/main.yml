@@ -26,6 +26,7 @@ jobs:
           - TEST=nn_array
           - TEST=nn_attention
           - TEST=nn_base
+          - TEST=nn_cond
           - TEST=nn_conformer
           - TEST=nn_const
           - TEST=nn_container
