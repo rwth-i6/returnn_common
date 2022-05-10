@@ -78,11 +78,9 @@ def random_mask_v2(x: nn.Tensor, *,
     num = min_num
   else:
     num = nn.random_uniform(batch_dims, minval=min_num, maxval=max_num + 1, dtype="int32")
-  # https://github.com/tensorflow/tensorflow/issues/9260
-  # https://timvieira.github.io/blog/post/2014/08/01/gumbel-max-trick-and-weighted-reservoir-sampling/
-  z = -nn.log(-nn.log(nn.random_uniform(batch_dims + [mask_axis], minval=0., maxval=1.)))
   _, indices, k_dim = nn.top_k(
-    z, axis=mask_axis,
+    nn.random_uniform(batch_dims + [mask_axis], minval=0., maxval=1.),
+    axis=mask_axis,
     k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.shape_ordered))
   # indices should be sorted, and of shape (batch,num), entries (int32) in [0,dim)
   if isinstance(num, int):
