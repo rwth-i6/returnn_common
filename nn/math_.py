@@ -232,7 +232,7 @@ def combine(
     'kind': kind,
   }
   args.update(_args_allow_broadcast_all_sources(sources, "combine", allow_broadcast_all_sources))
-  return nn.make_layer(args, name=name or 'combine')
+  return nn.make_layer(args, name=name or kind)
 
 
 def compare(a: Union[nn.Tensor, nn.RawTensorTypes], b: Union[nn.Tensor, nn.RawTensorTypes], *,
