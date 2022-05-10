@@ -93,19 +93,26 @@ def scoped(func):
         self.calls.append(name_ctx)
         return res
       if isinstance(res, nn.Tensor):
-        out = copy(res, name=name_ctx.get_child("output"))
+        out = res
       else:
         # we return more than one layer (thus also working on other layers of the subnet, that are not output)
         # by convention: first layer is the output layer
         res_flat = nest.flatten(res)
-        out = copy(res_flat[0], name=name_ctx.get_child("output"))
+        res_flat = [y for y in res_flat if isinstance(y, nn.Tensor)]
+        if not res_flat:
+          raise ValueError(f"{func} returned no tensors but {res}")
+        out = res_flat[0]
+      copy(out, name=name_ctx.get_child("output"))
       assert out.data
       # Now create the subnetwork layer itself.
       subnet_layer = nn.make_layer(
         {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
         name=name_ctx, predefined_out_data=out.data)
+    # maybe nicer to return subnet layer
     if isinstance(res, nn.Tensor):
-      return subnet_layer  # maybe nicer to return subnet layer
+      res = subnet_layer
+    else:
+      res = nest.map_structure(lambda y: subnet_layer if y is out else y, res)
     return res
 
   _wrapper.__name__ = func.__name__
