@@ -42,7 +42,7 @@ def floor(x: nn.Tensor) -> nn.Tensor:
 
 
 def rint(x: nn.Tensor) -> nn.Tensor:
-  """round"""
+  """rint"""
   return _activation(x, activation="rint")
 
 
