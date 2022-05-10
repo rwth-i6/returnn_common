@@ -47,6 +47,10 @@ def setup():
     level=logging.DEBUG,
     format='%(asctime)s %(name)s %(levelname)s: %(message)s')
 
+  logging.getLogger('matplotlib').disabled = True
+  logging.getLogger('matplotlib.font_manager').disabled = True
+  logging.getLogger('PIL.PngImagePlugin').disabled = True
+
   # Disable extensive TF debug verbosity. Must come before the first TF import.
   logging.getLogger('tensorflow').disabled = True
   # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
