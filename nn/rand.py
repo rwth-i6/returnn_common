@@ -36,7 +36,14 @@ class Random(nn.Module):
               minval: Union[int, float, nn.Tensor] = 0,
               maxval: Union[int, float, nn.Tensor]
               ) -> nn.Tensor:
-    """uniform"""
+    """
+    Random uniform.
+
+    :param shape:
+    :param dtype:
+    :param minval: inclusive
+    :param maxval: exclusive
+    """
     return self(distribution="uniform", shape=shape, dtype=dtype, minval=minval, maxval=maxval)
 
   def normal(self,
@@ -71,7 +78,14 @@ def random_uniform(shape: Sequence[nn.Dim], dtype: str = nn.NotSpecified,
                    minval: Union[int, float, nn.Tensor] = 0,
                    maxval: Union[int, float, nn.Tensor]
                    ) -> nn.Tensor:
-  """Random uniform"""
+  """
+  Random uniform.
+
+  :param shape:
+  :param dtype:
+  :param minval: inclusive
+  :param maxval: exclusive
+  """
   return Random().uniform(shape=shape, dtype=dtype, minval=minval, maxval=maxval)
 
 
