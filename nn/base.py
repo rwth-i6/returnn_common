@@ -717,8 +717,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
     If this should be skipped, you can pass this explicitly.
   """
   if isinstance(name, str):
-    assert not name or isinstance(name, str)
-    name_ctx = nn.NameCtx.get_from_call(name=name)
+    name_ctx = nn.NameCtx(suggested_name=name)
     created_name_ctx = True
   elif isinstance(name, nn.NameCtx):
     name_ctx = name

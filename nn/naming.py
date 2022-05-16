@@ -84,8 +84,16 @@ def scoped(func):
       self = args[0]
     else:
       self = nn.Functional(func)
-    from . import copy
-    with nn.NameCtx.get_from_call(module=self, name=name) as name_ctx:
+    if isinstance(name, NameCtx):
+      if name.module is None:
+        name.module = self
+      else:
+        assert name.module is self
+      name_ctx = name
+    else:
+      assert not name or isinstance(name, str)
+      name_ctx = NameCtx(module=self, suggested_name=name)
+    with name_ctx:
       name_ctx.is_subnet_ctx = True
       res = func(*args, **kwargs)
       if name_ctx.parent is None:  # root
@@ -102,7 +110,7 @@ def scoped(func):
         if not res_flat:
           raise ValueError(f"{func} returned no tensors but {res}")
         out = res_flat[0]
-      copy(out, name=name_ctx.get_child("output"))
+      nn.copy(out, name=name_ctx.get_child("output"))
       assert out.data
       # Now create the subnetwork layer itself.
       subnet_layer = nn.make_layer(
@@ -243,21 +251,6 @@ class NameCtx:
     if self.parent:
       self.parent._add_child(self)
     self.custom_layer_name_scope = None  # type: Optional[str]  # layer_dict name_scope will be set to this
-
-  @classmethod
-  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: Optional[nn.Module] = None) -> NameCtx:
-    """
-    This is used e.g. for user module or module calls.
-    The name argument can either be a predefined name ctx, or a suggested name.
-    """
-    if isinstance(name, NameCtx):
-      if name.module is None:
-        name.module = module
-      else:
-        assert name.module is module
-      return name
-    assert not name or isinstance(name, str)
-    return NameCtx(module=module, suggested_name=name)
 
   def __repr__(self):
     parts = [self.get_abs_name_repr()]
