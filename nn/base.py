@@ -727,7 +727,6 @@ def make_layer(layer_dict: LayerDictRaw, *,
   assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
   layer_dict = layer_dict.copy()
 
-  name_ctx.is_subnet_ctx = False
   try:
     layer = Tensor(
       layer_dict=layer_dict, name_ctx=name_ctx,

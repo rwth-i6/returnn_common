@@ -380,7 +380,7 @@ def test_get_name_in_current_ctx():
       return nn.NameCtx.new_root()
     ctx = nn.NameCtx(parent=parent, name=name)
     if subnet:
-      ctx.is_subnet_ctx = True
+      ctx.is_subnet = True
     return ctx
 
   root = make_ctx(name="root")

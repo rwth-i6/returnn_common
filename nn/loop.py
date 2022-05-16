@@ -77,7 +77,7 @@ class Loop:
       module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx(),
       new_control_flow_ctx=self.control_flow_ctx)
     self.name_ctx.custom_layer_name_scope = ""
-    self.name_ctx.is_subnet_ctx = True
+    self.name_ctx.is_subnet = True
     self.name_ctx.extend_reserved_names({"output", "end"})
     self._entered_scope = False
     self._exited_scope = False

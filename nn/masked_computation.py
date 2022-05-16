@@ -60,7 +60,7 @@ class MaskedComputation:
     self.layer_module = MaskedComputationModule(masked_computation=self)
     self.name_ctx = nn.NameCtx(module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx())
     self.name_ctx.custom_layer_name_scope = ""
-    self.name_ctx.is_subnet_ctx = True
+    self.name_ctx.is_subnet = True
 
   def __enter__(self) -> MaskedComputation:
     self.name_ctx.__enter__()

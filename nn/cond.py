@@ -49,14 +49,14 @@ class Cond:
     self.true_branch_name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name="true", parent=self.name_ctx, virtual=True, can_access_children=False,
       new_control_flow_ctx=self.true_branch_control_flow_ctx)
-    self.true_branch_name_ctx.is_subnet_ctx = True
+    self.true_branch_name_ctx.is_subnet = True
     self.true_branch_name_ctx.extend_reserved_names({"output"})
     self.false_branch_control_flow_ctx = nn.ControlFlowContext(
       kind=nn.ControlFlowContext.Types.Cond, outer_ctx=self.name_ctx.control_flow_ctx())
     self.false_branch_name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name="false", parent=self.name_ctx, virtual=True, can_access_children=False,
       new_control_flow_ctx=self.false_branch_control_flow_ctx)
-    self.false_branch_name_ctx.is_subnet_ctx = True
+    self.false_branch_name_ctx.is_subnet = True
     self.false_branch_name_ctx.extend_reserved_names({"output"})
 
   def __repr__(self):

@@ -94,7 +94,7 @@ def scoped(func):
       assert not name or isinstance(name, str)
       name_ctx = NameCtx(module=self, suggested_name=name)
     with name_ctx:
-      name_ctx.is_subnet_ctx = True
+      name_ctx.is_subnet = True
       res = func(*args, **kwargs)
       if name_ctx.parent is None:  # root
         # special logic, no output layers, no subnetwork layer needed
@@ -179,10 +179,10 @@ class NameCtx:
     This is the top from the stack with is_subnet_ctx.
     """
     top = cls.top()
-    if not top.is_subnet_ctx:
-      assert top.parent and top.parent.is_subnet_ctx
+    if not top.is_subnet:
+      assert top.parent and top.parent.is_subnet
       return top.parent
-    assert top.is_subnet_ctx
+    assert top.is_subnet
     return top
 
   @classmethod
@@ -191,7 +191,7 @@ class NameCtx:
     Create new root name context
     """
     ctx = NameCtx(parent=None)
-    ctx.is_subnet_ctx = True
+    ctx.is_subnet = True
     return ctx
 
   @classmethod
@@ -231,7 +231,7 @@ class NameCtx:
     self.module = module
     self.layer_ref = None  # type: Optional[nn.Tensor]
     self.layer = None  # type: Optional[nn.Tensor]
-    self.is_subnet_ctx = False  # if this is active in the context, it says whether it can have children
+    self.is_subnet = False  # it says whether it can have children
     self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
     self.can_access_children = can_access_children  # from outside
     self.new_control_flow_ctx = new_control_flow_ctx
@@ -467,7 +467,7 @@ class NameCtx:
     Assume this is a subnet, or the root net, and make a default output.
     """
     from . import copy
-    assert self.is_subnet_ctx
+    assert self.is_subnet
     if ref.name_ctx is self.children.get("output", None):  # if this is the output layer already, allow and just return
       return ref
     assert "output" not in self.children
