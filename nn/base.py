@@ -30,7 +30,6 @@ Code example::
         super().__init__()
         self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 1024))
 
-      @nn.scoped
       def __call__(self, x: nn.Tensor) -> nn.Tensor:
         y = self.lstm(x)
         return y
@@ -721,7 +720,7 @@ def make_layer(layer_dict: LayerDictRaw, *,
   :param Data|None predefined_out_data: normally we can derive the out data automatically.
     If this should be skipped, you can pass this explicitly.
   """
-  if isinstance(name, str):
+  if isinstance(name, str) or not name:
     name_ctx = nn.NameCtx(suggested_name=name)
     created_name_ctx = True
   elif isinstance(name, nn.NameCtx):

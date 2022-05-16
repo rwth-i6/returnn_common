@@ -67,67 +67,6 @@ def reset_default_root_name_ctx():
   nn.NameCtx.reset_default_root()
 
 
-def scoped(func):
-  """
-  Decorator to create a new scope (subnetwork) for the function
-  or module method.
-
-  This is usually used for the ``__call__`` method of a module
-  or for pure functions.
-  """
-  assert callable(func)
-
-  def _wrapper(*args, name: Optional[Union[str, nn.NameCtx]] = None, **kwargs):
-    if name == "":
-      return func(*args, **kwargs)
-    if args and isinstance(args[0], nn.Module):
-      self = args[0]
-    else:
-      self = nn.Functional(func)
-    if isinstance(name, NameCtx):
-      if name.module is None:
-        name.module = self
-      else:
-        assert name.module is self
-      name_ctx = name
-    else:
-      assert not name or isinstance(name, str)
-      name_ctx = NameCtx(module=self, suggested_name=name)
-    with name_ctx:
-      name_ctx.is_subnet = True
-      res = func(*args, **kwargs)
-      if name_ctx.parent is None:  # root
-        # special logic, no output layers, no subnetwork layer needed
-        self.calls.append(name_ctx)
-        return res
-      if isinstance(res, nn.Tensor):
-        out = res
-      else:
-        # we return more than one layer (thus also working on other layers of the subnet, that are not output)
-        # by convention: first layer is the output layer
-        res_flat = nest.flatten(res)
-        res_flat = [y for y in res_flat if isinstance(y, nn.Tensor)]
-        if not res_flat:
-          raise ValueError(f"{func} returned no tensors but {res}")
-        out = res_flat[0]
-      nn.copy(out, name=name_ctx.get_child("output"))
-      assert out.data
-      # Now create the subnetwork layer itself.
-      subnet_layer = nn.make_layer(
-        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
-        name=name_ctx, predefined_out_data=out.data)
-    # maybe nicer to return subnet layer
-    if isinstance(res, nn.Tensor):
-      res = subnet_layer
-    else:
-      res = nest.map_structure(lambda y: subnet_layer if y is out else y, res)
-    return res
-
-  _wrapper.__name__ = func.__name__
-  _wrapper.__qualname__ = func.__qualname__
-  return _wrapper
-
-
 class NameCtx:
   """
   This is a helper class to keep track of the current name context when creating layers.

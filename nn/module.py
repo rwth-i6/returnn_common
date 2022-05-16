@@ -25,7 +25,6 @@ class Module:
           self.linear = nn.Linear(dim)
           self.activation = activation
 
-        @nn.scoped
         def __call__(self, x: nn.Tensor) -> nn.Tensor:
           x_ = x
           x = self.layer_norm(x)
@@ -120,7 +119,6 @@ class Module:
       name = camel_case_to_snake_case(name)
     return name
 
-  @nn.scoped
   def __call__(self, *args, **kwargs) -> Union[nn.Tensor, Tuple[nn.Tensor, nn.LayerState], Any]:
     raise NotImplementedError
 
@@ -253,7 +251,6 @@ class Functional(Module):
       return m.group(1)
     return self.func.__qualname__
 
-  @nn.scoped
   def __call__(self, *args, **kwargs):
     return self.func(*args, **kwargs)
 

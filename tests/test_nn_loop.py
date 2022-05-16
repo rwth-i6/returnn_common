@@ -22,7 +22,6 @@ def test_rec_ff():
       super().__init__()
       self.rec_linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
@@ -58,7 +57,6 @@ def test_rec_inner_lstm():
       super().__init__()
       self.lstm = nn.LSTM(nn.FeatureDim("out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
@@ -82,7 +80,6 @@ def test_rec_inner_lstm():
 
 def test_rec_simple_iter():
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
@@ -107,7 +104,6 @@ def test_rec_hidden():
       super().__init__()
       self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
@@ -130,7 +126,6 @@ def test_rec_hidden_initial():
       self.linear = nn.Linear(self.out_dim)
       self.lstm = nn.LSTM(self.out_dim)
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
@@ -148,7 +143,6 @@ def test_rec_hidden_initial():
 
 def test_loop_axis_indices():
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       loop = nn.Loop(axis=axis)
       indices = nn.range_in_axis(x, axis=axis)

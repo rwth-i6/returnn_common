@@ -7,7 +7,6 @@ from typing import Union, Collection
 from .. import nn
 
 
-@nn.scoped
 def specaugment_v2(x: nn.Tensor, *,
                    spatial_dim: nn.Dim,
                    feature_dim: nn.Dim = nn.NotSpecified,
@@ -45,7 +44,6 @@ def specaugment_v2(x: nn.Tensor, *,
   return cond.result
 
 
-@nn.scoped
 def random_mask_v2(x: nn.Tensor, *,
                    mask_axis: nn.Dim,
                    broadcast_axis: Union[nn.Dim, Collection[nn.Dim]],
@@ -102,7 +100,6 @@ def random_mask_v2(x: nn.Tensor, *,
   return x
 
 
-@nn.scoped
 def _mask_v2(x: nn.Tensor, *,
              mask_axis: nn.Dim,
              pos: nn.Tensor,

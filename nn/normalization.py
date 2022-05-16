@@ -7,7 +7,6 @@ from typing import Optional, Sequence, Union, Tuple
 from .. import nn
 
 
-@nn.scoped
 def moments(x: nn.Tensor, axis: Union[nn.Dim, Sequence[nn.Dim]]) -> Tuple[nn.Tensor, nn.Tensor]:
   """
   :param x: input
@@ -54,7 +53,6 @@ class LayerNorm(nn.Module):
     self.bias.initial = 0.
     self.initialized = True
 
-  @nn.scoped
   def __call__(self, x: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
     x = nn.check_in_feature_dim_lazy_init(x, in_dim, self.in_dim, self._lazy_init)
     mean = nn.reduce(x, axis=self.in_dim, mode="mean")
@@ -142,7 +140,6 @@ class BatchNorm(nn.Module):
       self.beta.initial = 0.
     self.initialized = True
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
     source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     # We wrap the RETURNN layer because we want efficient handling if possible,

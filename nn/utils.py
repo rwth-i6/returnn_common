@@ -215,7 +215,6 @@ def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.Tensor] = None, sparse
   return out
 
 
-@nn.scoped
 def sparse_to_dense(source: nn.Tensor, *,
                     label_value: Union[nn.Tensor, int, float],
                     other_value: Union[nn.Tensor, int, float]) -> nn.Tensor:
@@ -369,7 +368,6 @@ def gather_by_mask(x: nn.Tensor, *,
     "unit": {"class": "copy", "from": "data"}}, name=name), out_spatial_dim
 
 
-@nn.scoped
 def ctc_greedy_decode(logits: nn.Tensor, *,
                       in_spatial_dim: nn.Dim,
                       feature_dim: Optional[nn.Dim] = None,

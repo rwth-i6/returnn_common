@@ -35,7 +35,6 @@ def test_op_broadcasting():
 
 def test_split_glu():
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """forward"""
       a, b = nn.split(x, axis=axis, out_dims=[axis // 2, axis // 2])
@@ -87,7 +86,6 @@ def test_split_glu():
 def test_cumcum():
   # https://github.com/rwth-i6/returnn_common/issues/133
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward

@@ -117,7 +117,6 @@ class _Conv(_ConvOrTransposedConv):
     self.dilation_rate = dilation_rate
     self.groups = groups
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *,
                in_dim: Optional[nn.Dim] = None,
                in_spatial_dims: Sequence[nn.Dim]
@@ -238,7 +237,6 @@ class _TransposedConv(_ConvOrTransposedConv):
     self.remove_padding = remove_padding
     self.output_padding = output_padding
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *,
                in_dim: Optional[nn.Dim] = None,
                in_spatial_dims: Sequence[nn.Dim]

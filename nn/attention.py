@@ -23,7 +23,6 @@ class AttentionFunc(Protocol):
                key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.1): ...
 
 
-@nn.scoped
 def dot_attention(query: nn.Tensor, keys: nn.Tensor, values: nn.Tensor, *,
                   key_dim: nn.Dim, axis: nn.Dim, att_dropout: float = 0.1) -> nn.Tensor:
   """
@@ -74,7 +73,6 @@ class GenericSelfAttention(nn.Module):
       k_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.key_dim_per_head])),
       v_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.value_dim_per_head])))
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim,
                causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
                ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
@@ -116,10 +114,10 @@ class SelfAttention(GenericSelfAttention):
   """
   Classic self attention on sequence level
   """
-  @nn.scoped
-  def __call__(self, source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim, **_kwargs) -> nn.Tensor:
     """forward"""
-    out, _ = super().__call__(source, axis=axis, causal=False, name="")
+    assert not _kwargs
+    out, _ = super().__call__(source, axis=axis, causal=False)
     return out
 
 
@@ -127,9 +125,9 @@ class CausalSelfAttention(GenericSelfAttention):
   """
   Classic causal self attention
   """
-  @nn.scoped
-  def __call__(self, source: nn.Tensor, *, axis: nn.Dim, state: Optional[nn.LayerState] = None
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim, state: Optional[nn.LayerState] = None, **_kwargs
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """forward"""
-    out, state = super().__call__(source, causal=True, axis=axis, state=state, name="")
+    assert not _kwargs
+    out, state = super().__call__(source, causal=True, axis=axis, state=state)
     return out, state

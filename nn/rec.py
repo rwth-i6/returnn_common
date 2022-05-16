@@ -45,7 +45,6 @@ class _Rec(nn.Module):
         param_.initial = nn.init.Glorot()
         setattr(self, f"param_{param}", param_)
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *,
                axis: nn.Dim,
                state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], nn.NotSpecified]] = nn.NotSpecified,

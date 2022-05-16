@@ -16,7 +16,6 @@ else:
 def test_concat():
   class _Net(nn.Module):
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       return nn.concat((x, x.feature_dim), (x * 2., x.feature_dim))
 

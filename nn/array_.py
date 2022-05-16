@@ -7,7 +7,6 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-@nn.scoped
 def dim_value(source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
   """
   :return: like tf.shape(source)[axis], or specifically sum(nn.length(source, axis=axis))

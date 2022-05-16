@@ -17,7 +17,6 @@ else:
 def test_range_from_length():
   # https://github.com/rwth-i6/returnn_common/issues/134
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       durations = nn.cast(nn.reduce(x, axis=x.feature_dim, mode="sum"), dtype="int32")
       durations.verify_out_shape({nn.batch_dim, axis})

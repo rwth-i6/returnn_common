@@ -30,7 +30,6 @@ class ConformerPositionwiseFeedForward(nn.Module):
     self.linear_ff = nn.Linear(ff_dim)
     self.linear_out = nn.Linear(out_dim)
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor) -> nn.Tensor:
     """forward"""
     x_ff1 = self.linear_ff(inp)
@@ -60,7 +59,6 @@ class ConformerConvBlock(nn.Module):
     self.positionwise_conv2 = nn.Linear(out_dim)
     self.norm = norm
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
@@ -102,7 +100,6 @@ class ConformerConvSubsample(nn.Module):
       self.conv_layers.append(
         nn.Conv2d(filter_size=filter_size, out_dim=out_dim, padding=padding))
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
     in_spatial_dims = [in_spatial_dim, inp.feature_dim]
@@ -176,7 +173,6 @@ class ConformerEncoderLayer(nn.Module):
 
     self.final_layer_norm = nn.LayerNorm()
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
     # FFN
@@ -254,7 +250,6 @@ class ConformerEncoder(nn.Module):
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
     x_subsample, out_spatial_dim = self.conv_subsample_layer(inp, in_spatial_dim=in_spatial_dim)

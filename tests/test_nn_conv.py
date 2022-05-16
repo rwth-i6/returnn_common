@@ -21,7 +21,6 @@ def test_conv1d():
       # Use some downsampling + valid padding to test dim tag math.
       self.conv = nn.Conv1d(nn.FeatureDim("out", 13), 4, strides=3, padding="valid")
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward
