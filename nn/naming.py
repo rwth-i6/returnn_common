@@ -245,7 +245,7 @@ class NameCtx:
     self.custom_layer_name_scope = None  # type: Optional[str]  # layer_dict name_scope will be set to this
 
   @classmethod
-  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: Optional[nn.Module]) -> NameCtx:
+  def get_from_call(cls, *, name: Optional[Union[str, NameCtx]], module: Optional[nn.Module] = None) -> NameCtx:
     """
     This is used e.g. for user module or module calls.
     The name argument can either be a predefined name ctx, or a suggested name.

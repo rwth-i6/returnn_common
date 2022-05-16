@@ -695,7 +695,6 @@ class LayerState(dict):
 
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, nn.NameCtx]] = None,
-               module: Optional[nn.Module] = None,
                predefined_out_data: Optional[Data] = None,
                ) -> Tensor:
   """
@@ -714,13 +713,12 @@ def make_layer(layer_dict: LayerDictRaw, *,
   :param str|NameCtx|None name:
     if str: (suggested) layer name. if given, will create a new :class:`NameCtx`
     if NameCtx, will use this.
-  :param Module|None module: if given, will create new name scope with this module
   :param Data|None predefined_out_data: normally we can derive the out data automatically.
     If this should be skipped, you can pass this explicitly.
   """
-  if isinstance(name, str) or module:
+  if isinstance(name, str):
     assert not name or isinstance(name, str)
-    name_ctx = nn.NameCtx.get_from_call(module=module, name=name)
+    name_ctx = nn.NameCtx.get_from_call(name=name)
     created_name_ctx = True
   elif isinstance(name, nn.NameCtx):
     name_ctx = name
