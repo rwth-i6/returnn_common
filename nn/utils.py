@@ -71,7 +71,7 @@ def dropout(source: nn.Tensor,
   from .base import make_layer
   return make_layer(
     {"class": "dropout", "from": source, **opts},
-    name=name or "dropout")
+    name=name or "dropout", name_ctx_ignore_top_stack_frames=1)
 
 
 def stop_gradient(source: nn.Tensor, name: Optional[str] = None) -> nn.Tensor:
