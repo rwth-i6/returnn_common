@@ -390,12 +390,10 @@ def test_get_name_in_current_ctx():
   sub_2 = make_ctx(parent=root, name="sub_2", subnet=True)
   child_2 = make_ctx(parent=sub_2, name="child_2")
 
-  with root:
-    with sub_1:
-      assert_equal(same.get_name_in_current_ctx(), "same")
-      assert_equal(child_1.get_name_in_current_ctx(), "same/child_1")
-      assert_equal(sub_2.get_name_in_current_ctx(), "base:sub_2")
-      assert_equal(child_2.get_name_in_current_ctx(), "base:sub_2/child_2")
+  assert_equal(same.get_name_in_ctx(sub_1), "same")
+  assert_equal(child_1.get_name_in_ctx(sub_1), "same/child_1")
+  assert_equal(sub_2.get_name_in_ctx(sub_1), "base:sub_2")
+  assert_equal(child_2.get_name_in_ctx(sub_1), "base:sub_2/child_2")
 
 
 def test_deepcopy():
