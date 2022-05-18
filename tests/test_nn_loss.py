@@ -15,6 +15,7 @@ else:
 
 
 def _make_dummy_model_with_ce_out() -> Tuple[nn.Module, nn.Tensor]:
+  nn.auto_setup_name_ctx_ignore_func(_make_dummy_model_with_ce_out)
   time_dim = nn.SpatialDim("time")
   in_dim = nn.FeatureDim("input", 3)
   out_dim = nn.FeatureDim("out", 5)
