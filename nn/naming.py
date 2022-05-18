@@ -484,7 +484,7 @@ class NameCtx:
       cur = cur.parent
     return list(reversed(ls))
 
-  def get_abs_name(self) -> str:
+  def get_abs_name(self, *, join_str: str = "/") -> str:
     """
     :return: absolute RETURNN layer name starting from root context.
     """
@@ -492,7 +492,7 @@ class NameCtx:
     if len(ls) == 1:
       return ""
     assert len(ls) >= 2 and not ls[0].name and ls[-1] is self and ls[-1].name
-    return "/".join(ctx.name for ctx in ls[1:])
+    return join_str.join(ctx.name for ctx in ls[1:])
 
   def get_abs_name_repr(self) -> str:
     """
@@ -547,6 +547,12 @@ class NameCtx:
       return self.children[name]
     else:
       return NameCtx(name=name, parent=self)  # also registers in self.children
+
+  def get_new_child(self, suggested_name: str) -> NameCtx:
+    """
+    New child.
+    """
+    return NameCtx(name=suggested_name, parent=self)
 
   def get_child_with_layer_ref(self, name: str, *, data: nn.Data) -> NameCtx:
     """
