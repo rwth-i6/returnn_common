@@ -72,6 +72,27 @@ def test_simple_net_arithmetic():
   dummy_run_net(config)
 
 
+def _functional_example(x: nn.Tensor) -> nn.Tensor:
+  return nn.tanh((x + 1.) * 0.5)
+
+
+def test_functional_auto_name_ctx():
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      x -= 1.
+      x = _functional_example(x)
+      x += 1.
+      x = _functional_example(x)
+      return x
+
+  config, net_dict = dummy_config_net_dict(net=_Net())
+  assert "_functional_example" in net_dict
+  assert_equal(net_dict["_functional_example"]["class"], "subnetwork")
+  assert_equal(net_dict["_functional_example_0"]["class"], "subnetwork")
+  assert "_functional_example_1" not in net_dict
+  dummy_run_net(config)
+
+
 def test_simple_net_share_params():
   class _Net(nn.Module):
     def __init__(self):
