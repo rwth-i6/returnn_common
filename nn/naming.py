@@ -574,6 +574,21 @@ class NameCtx:
     """
     return self.get_child_with_layer_ref(name, data=data).layer_ref
 
+  def get_recent_layer_ref(self, *, only_same_control_flow: bool = False) -> Optional[nn.Tensor]:
+    """
+    Get recent layer ref if it exists. Can go deeply through children.
+    """
+    queue = [self]
+    while queue:
+      ctx = queue.pop(-1)  # depth-first
+      if only_same_control_flow and ctx.control_flow_ctx() != self.control_flow_ctx():
+        continue
+      if ctx.layer_ref is not None:
+        return ctx.layer_ref
+      # due to pop(-1), this will be accessed in reverse order, which is what we want
+      queue.extend(ctx.children.values())
+    return None
+
   def __enter__(self):
     self._maybe_init_default_root()
     self._stack.append(self)
