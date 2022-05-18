@@ -218,12 +218,6 @@ class Tensor:
     self.data.verify_out_shape(out_shape)
     return self
 
-  def _get_name_in_current_ctx(self) -> str:
-    """
-    :return: RETURNN layer name, valid in the current active name context.
-    """
-    return self._get_name_in_ctx(ctx=nn.NameCtx.current_ctx())
-
   def _assign_parent_name_ctx(self, *, ref_ctx: nn.NameCtx):
     """
     :param ref_ctx: where this comes from

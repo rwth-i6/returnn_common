@@ -337,8 +337,6 @@ def test_from_call_variations2():
       """
       Forward
       """
-      assert_equal(x._get_name_in_current_ctx(), "base:sub/linear")
-      assert_equal(y._get_name_in_current_ctx(), "base:linear")
       x_ = self.linear(x)
       x = self.linear2(x_)
       return x, x_
@@ -356,13 +354,8 @@ def test_from_call_variations2():
       Forward
       """
       out, add_out = self.sub(x)
-      assert_equal(out._get_name_in_current_ctx(), "sub")
-      assert_equal(add_out._get_name_in_current_ctx(), "sub/linear")
       lin = self.linear(out)
-      assert_equal(lin._get_name_in_current_ctx(), "linear")
       out2, add_out2 = self.sub2(add_out, lin)
-      assert_equal(out2._get_name_in_current_ctx(), "sub2")
-      assert_equal(add_out2._get_name_in_current_ctx(), "sub2/linear")
       return out2
 
   net = _Net()
