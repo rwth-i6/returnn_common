@@ -550,7 +550,25 @@ class NameCtx:
     prefix = "".join(["base:" for ctx_ in reversed(ctx_scope_abs) if not ctx_.virtual])
     assert len(self_name_abs) >= 1, f"{self} in ctx {ctx} invalid"  # direct parent?
     assert self_name_abs[-1] is self
-    postfix = "/".join([ctx.name for ctx in self_name_abs if not ctx.virtual])
+    if len(self_name_abs) == 1:  # fast path
+      return prefix + self.name
+    if self.layer_ref is None:  # without tensor, no further optimization
+      postfix = "/".join([ctx.name for ctx in self_name_abs if not ctx.virtual])
+      return prefix + postfix
+    self_name_abs_ = [self]
+    # Potentially shorten postfix when it matches subnet outputs.
+    for ctx_ in reversed(self_name_abs[:-1]):
+      if ctx_.virtual:
+        continue
+      assert not ctx_.is_root
+      ctx__ = self_name_abs_[-1]
+      if ctx__.layer_ref is not None:
+        if ctx_.layer is not None and ctx_.layer.layer_dict["class"] == "subnetwork":
+          if ctx_._subnet_main_output is ctx__.layer_ref or ctx_.children.get("output") is ctx__:
+            self_name_abs_ = [ctx_]
+            continue
+      self_name_abs_.append(ctx_)
+    postfix = "/".join([ctx_.name for ctx_ in reversed(self_name_abs_) if not ctx_.virtual])
     assert postfix, f"{self} in ctx {ctx} invalid, no postfix?"  # should not happen
     return prefix + postfix
 
