@@ -198,7 +198,6 @@ def test_multiple_returns_depth_1():
   config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub"
-  assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   dummy_run_net(config)
 
 
