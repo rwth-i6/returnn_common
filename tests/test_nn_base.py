@@ -92,8 +92,6 @@ def test_simple_net_share_params():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
   assert "linear2" in net_dict
-  assert "linear2_0" in net_dict
-  assert_equal(net_dict["linear2_0"]["name_scope"], "linear2")
   dummy_run_net(config, net=net)
 
 
