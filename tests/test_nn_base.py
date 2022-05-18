@@ -167,8 +167,6 @@ def test_root_mod_call_twice():
   pprint(net_dict)
 
   assert "linear" in net_dict
-  assert "test_block_0" in net_dict
-  assert_equal(net_dict["test_block_0"]["name_scope"], "")
 
 
 def test_multiple_returns_depth_1():
