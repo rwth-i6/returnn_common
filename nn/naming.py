@@ -422,19 +422,21 @@ class NameCtx:
     if root_module.calls:
       root_mod_call = root_module.calls[0]
       assert root_mod_call.module is root_module
-      assert root_mod_call.layer_ref  # unexpected
       assert root_mod_call.root is self.root  # just not implemented otherwise
       if root_mod_call is not self:
-        assert not self.layer_ref  # not sure. maybe just reset?
-        assert root_mod_call.layer.layer_dict["class"] == "subnetwork"
-        sub_out = root_mod_call.children.pop("output")
-        assert sub_out.layer.layer_dict["class"] == "copy"
-        sub_real_out = sub_out.layer.layer_dict["from"]
-        assert isinstance(sub_real_out, nn.Tensor)
-        # noinspection PyProtectedMember
-        sub_out.layer._replace_by(sub_real_out)
-        # noinspection PyProtectedMember
-        root_mod_call.layer._replace_by(sub_real_out)
+        # root_mod_call.layer might be None if the subnet is not yet initialized.
+        if root_mod_call.layer_ref is not None:
+          assert not self.layer_ref  # not sure. maybe just reset?
+          assert root_mod_call.layer.layer_dict["class"] == "subnetwork"
+          sub_out = root_mod_call.children.pop("output")
+          assert sub_out.layer.layer_dict["class"] == "copy"
+          sub_real_out = sub_out.layer.layer_dict["from"]
+          assert isinstance(sub_real_out, nn.Tensor)
+          # noinspection PyProtectedMember
+          sub_out.layer._replace_by(sub_real_out)
+          # noinspection PyProtectedMember
+          root_mod_call.layer._replace_by(sub_real_out)
+
         # Do not use self.move_layer_ref_here(root_mod_call.layer_ref) because we don't want the extra logic.
         self.module = root_module
         root_module.calls[0] = self
