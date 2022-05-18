@@ -50,11 +50,13 @@ def test_nn_transformer_search():
       collected_name_scopes[path] = x
 
   nest.map_structure_with_tuple_paths(_collect_name_scope, net_dict)
-  assert_equal(collected_name_scopes, {
+  # Just assert subset.
+  for k, v in {
     ('encoder', 'subnetwork', 'layers.0', 'name_scope'): 'layers/0',
     ('encoder', 'subnetwork', 'layers.1', 'name_scope'): 'layers/1',
     ('loop', 'name_scope'): '',
     ('loop', 'unit', 'decoder', 'subnetwork', 'layers.0', 'name_scope'): 'layers/0',
-    ('loop', 'unit', 'decoder', 'subnetwork', 'layers.1', 'name_scope'): 'layers/1'})
+    ('loop', 'unit', 'decoder', 'subnetwork', 'layers.1', 'name_scope'): 'layers/1'}.items():
+    assert_equal(collected_name_scopes[k], v)
 
   dummy_run_net(config, net=transformer)
