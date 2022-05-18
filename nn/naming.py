@@ -375,13 +375,14 @@ class NameCtx:
       tensor = queue.pop(0)
       if tensor.name_ctx is used_names:
         continue
-      used_names.add(tensor.name_ctx)
       for dep in tensor.get_dependencies():
         if dep.name_ctx not in used_names:
           queue.append(dep)
       if not tensor.name_ctx.parent and tensor.name_ctx != root:
         # noinspection PyProtectedMember
         tensor._assign_parent_name_ctx(ref_ctx=root)
+      # Do this here after the potential late assign-parent because we need to know the right parents.
+      used_names.update(tensor.name_ctx.get_abs_name_ctx_list())  # tensor name including all parents
 
     # Go through all names in the hierarchy and remove unused.
     visited = set()  # type: Set[nn.NameCtx]
