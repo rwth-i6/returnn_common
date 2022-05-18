@@ -531,13 +531,16 @@ class NameCtx:
         for i, ctx in enumerate(ls))
     return debug_name
 
-  def get_name_in_ctx(self, ctx: NameCtx) -> str:
+  def get_name_in_ctx(self, ctx: NameCtx, *, middle_prefix: str = "", shorten_subnet: bool = True) -> str:
     """
     Get layer name valid in given scope.
     """
     assert not self.virtual
     if self.parent is ctx:  # fast path
-      return self.name
+      return middle_prefix + self.name
+    if isinstance(self.layer_ref, nn.PrevTensorRef):
+      return self.layer_ref.cur_layer_name_ctx.get_name_in_ctx(
+        ctx, middle_prefix="prev:" + middle_prefix, shorten_subnet=False)
     ctx_scope_abs = ctx.get_abs_name_ctx_list()
     self_name_abs = self.get_abs_name_ctx_list()
     assert ctx_scope_abs[0] is self_name_abs[0]  # same root
@@ -551,10 +554,10 @@ class NameCtx:
     assert len(self_name_abs) >= 1, f"{self} in ctx {ctx} invalid"  # direct parent?
     assert self_name_abs[-1] is self
     if len(self_name_abs) == 1:  # fast path
-      return prefix + self.name
-    if self.layer_ref is None:  # without tensor, no further optimization
+      return prefix + middle_prefix + self.name
+    if self.layer_ref is None or not shorten_subnet:  # without tensor, no further optimization
       postfix = "/".join([ctx.name for ctx in self_name_abs if not ctx.virtual])
-      return prefix + postfix
+      return prefix + middle_prefix + postfix
     self_name_abs_ = [self]
     # Potentially shorten postfix when it matches subnet outputs.
     for ctx_ in reversed(self_name_abs[:-1]):
@@ -570,7 +573,7 @@ class NameCtx:
       self_name_abs_.append(ctx_)
     postfix = "/".join([ctx_.name for ctx_ in reversed(self_name_abs_) if not ctx_.virtual])
     assert postfix, f"{self} in ctx {ctx} invalid, no postfix?"  # should not happen
-    return prefix + postfix
+    return prefix + middle_prefix + postfix
 
   def _add_child(self, child: NameCtx):
     assert child.name
