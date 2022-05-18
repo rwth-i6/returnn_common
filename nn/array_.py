@@ -65,7 +65,9 @@ def concat(*sources: Tuple[nn.Tensor, nn.Dim],
   opts = {}
   if allow_broadcast:
     opts["allow_broadcast"] = True
-  return nn.make_layer({"class": "concat", "from": sources, **opts}, name=name or "concat")
+  return nn.make_layer(
+    {"class": "concat", "from": sources, **opts},
+    name=name or "concat", name_ctx_ignore_top_stack_frames=1)
 
 
 def cum_concat_step(
@@ -76,6 +78,7 @@ def cum_concat_step(
   Concatenates all previous frames of a time-axis.
   See RETURNN :class:`CumConcatLayer` for details.
   """
+  nn.auto_setup_name_ctx_ignore_func(cum_concat_step)
   from ._generated_layers import rec_cum_concat
   return rec_cum_concat(
     source=source, axis=nn.single_step_dim,
@@ -115,6 +118,7 @@ def window(
   """
   Window. See :func:`rec_window`.
   """
+  nn.auto_setup_name_ctx_ignore_func(window)
   from ._generated_layers import rec_window
   layer, (window_dim, out_spatial_dim), state = rec_window(
     source,
@@ -133,6 +137,7 @@ def window_step(
   Window into the past when iterating.
   See :func:`rec_window`.
   """
+  nn.auto_setup_name_ctx_ignore_func(window_step)
   from ._generated_layers import rec_window
   out, _, state = rec_window(
     source, state=state,
