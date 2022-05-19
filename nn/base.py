@@ -341,23 +341,26 @@ class Tensor:
     Also see :func:`mark_as_default_output`.
     """
     assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
-    scope = nn.NameCtx.current_ctx()
-    assert scope.parent is None, f"{self} mark_as_output only makes sense at the top level"
-    if self.name_ctx is scope.children.get("output"):
+    root_scope = self.name_ctx.root  # mark_as_output always refers to the root
+    if self.name_ctx is root_scope.children.get("output"):
       pass  # not needed
+    elif self.name_ctx.parent is not root_scope:
+      res = nn.copy(self, name=root_scope.get_new_child(suggested_name=self.name_ctx.get_abs_name(join_str="_")))
+      res.layer_dict["is_output_layer"] = True
     else:
+      assert self.name_ctx.parent is root_scope
       self.layer_dict["is_output_layer"] = True
-    scope.marked_outputs.append(self)
+    root_scope.marked_outputs.append(self)
 
   def mark_as_default_output(self) -> Tensor:
     """
-    Mark this as the default output, i.e. create the "output" layer with a reference to this.
+    Mark this as the default output, i.e. create the "output" layer in the root with a reference to this.
     This has the effect that RETURNN will in any case construct the corresponding layer,
     and it is the default output layer for forwarding and potential other tasks.
 
     :return: the "output" layer.
     """
-    res = nn.NameCtx.current_ctx().make_default_output(self)
+    res = self.name_ctx.root.make_default_output(self)
     res.mark_as_output()
     return res
 
