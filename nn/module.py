@@ -243,7 +243,7 @@ class Functional(Module):
     self.func = func
 
   def __repr__(self):
-    return f"{self.__class__.__name__}({self.func.__name__})"
+    return f"{self.__class__.__name__}({self.func.__qualname__})"
 
   def get_default_name(self) -> str:
     """default name"""
