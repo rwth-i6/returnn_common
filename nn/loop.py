@@ -75,7 +75,7 @@ class Loop:
     self.control_flow_ctx.loop_spatial_dim = axis
     self.name_ctx = nn.NameCtx(
       module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx(),
-      new_control_flow_ctx=self.control_flow_ctx)
+      new_control_flow_ctx=self.control_flow_ctx, can_access_children=False)
     self.name_ctx.custom_layer_name_scope = ""
     self.name_ctx.is_subnet = True
     self.name_ctx.extend_reserved_names({"output", "end"})
