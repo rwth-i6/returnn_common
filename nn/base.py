@@ -325,8 +325,14 @@ class Tensor:
       self.layer_dict["loss_opts"] = loss_opts
     # Add it to the root name scope marked_losses list.
     # Note that this logic might change.
-    scope = nn.NameCtx.current_ctx().root
-    scope.marked_losses.append(self)
+    self.name_ctx.root.marked_losses.append(self)
+    # We might need to tell RETURNN specifically to get this layer.
+    self.name_ctx.make_all_sub_networks_and_optimize()
+    ctx = self.name_ctx.parent
+    while ctx:
+      if ctx.layer:
+        ctx.layer.layer_dict["is_output_layer"] = True
+      ctx = ctx.parent
 
   def mark_as_output(self):
     """
