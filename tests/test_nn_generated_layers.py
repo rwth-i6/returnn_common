@@ -5,7 +5,7 @@ Test nn._generated_layers
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_run_net_single_custom
 import typing
 
 if typing.TYPE_CHECKING:
@@ -27,3 +27,14 @@ def test_range_from_length():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
   dummy_run_net(config, net=net)
+
+
+def test_repeat_int():
+  # https://github.com/rwth-i6/returnn_common/issues/162
+  nn.reset_default_root_name_ctx()
+  time = nn.SpatialDim("time")
+  data = nn.get_extern_data(nn.Data('data', dim_tags=[nn.batch_dim, time]))
+  rep, rep_dim = nn.repeat(data, repetitions=5, axis=time)
+  rep.mark_as_default_output()
+  config = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config)
