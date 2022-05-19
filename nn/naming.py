@@ -529,12 +529,6 @@ class NameCtx:
     postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:] if not ctx.virtual])
     return prefix + postfix
 
-  def get_name_in_current_ctx(self) -> str:
-    """
-    Get layer name valid for current scope.
-    """
-    return self.get_name_in_ctx(ctx=NameCtx.current_ctx())
-
   def _add_child(self, child: NameCtx):
     assert child.name
     assert child.parent is self
