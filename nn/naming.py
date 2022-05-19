@@ -535,9 +535,12 @@ class NameCtx:
     """
     Get layer name valid in given scope.
     """
-    assert not self.virtual
+    assert not self.virtual and not self.is_root
     if self.parent is ctx:  # fast path
       return middle_prefix + self.name
+    if self is ctx:
+      return "base:" + self.get_name_in_ctx(
+        ctx=ctx.parent, middle_prefix=middle_prefix, shorten_subnet=shorten_subnet)
     if isinstance(self.layer_ref, nn.PrevTensorRef):
       return self.layer_ref.cur_layer_name_ctx.get_name_in_ctx(
         ctx, middle_prefix="prev:" + middle_prefix, shorten_subnet=False)
