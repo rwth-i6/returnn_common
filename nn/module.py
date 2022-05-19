@@ -247,6 +247,10 @@ class Functional(Module):
 
   def get_default_name(self) -> str:
     """default name"""
+    import re
+    m = re.match(r"^Tensor\.__(.*)__$", self.func.__qualname__)
+    if m:
+      return m.group(1)
     return self.func.__qualname__
 
   @nn.scoped
