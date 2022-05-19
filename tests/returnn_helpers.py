@@ -4,7 +4,7 @@ Helpers for RETURNN
 
 from __future__ import annotations
 import typing
-from typing import Dict, Tuple, Any, Optional
+from typing import Dict, Tuple, Sequence, Union, Any, Optional
 import contextlib
 import numpy
 import tensorflow as tf
@@ -136,10 +136,14 @@ def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: ret
 
 
 # noinspection PyShadowingNames
-def dummy_run_net_single_custom(config_code_str: str, *, make_feed_dict=make_feed_dict):
+def dummy_run_net_single_custom(config_code_str: str, *,
+                                make_feed_dict=make_feed_dict,
+                                default_out_dim_tag_order: Optional[Sequence[Union[nn.Dim, str]]] = None
+                                ) -> Dict[str, numpy.ndarray]:
   """
   :param config_code_str: e.g. via get_complete_py_code_str
   :param make_feed_dict: func
+  :param default_out_dim_tag_order: if given, for the fetch, will order the dims this way
   """
   config_dict, net_dict = config_net_dict_via_serialized(config_code_str)
   from returnn.config import Config
@@ -151,8 +155,19 @@ def dummy_run_net_single_custom(config_code_str: str, *, make_feed_dict=make_fee
     net.initialize_params(session)
     feed_dict = make_feed_dict(net.extern_data)
     fetches = net.get_fetches_dict()
+    have_default_out = False
     for layer in net.get_output_layers():
+      if layer.get_absolute_name() == "output":
+        have_default_out = True
+        if default_out_dim_tag_order:
+          out = layer.output
+          out = out.copy_transpose([out.get_axis_from_description(a) for a in default_out_dim_tag_order])
+          fetches["layer:output"] = out.placeholder
+          continue
+      assert f"layer:{layer.name}" not in fetches
       fetches[f"layer:{layer.name}"] = layer.output.placeholder
+    if default_out_dim_tag_order:
+      assert have_default_out
     return session.run(fetches, feed_dict=feed_dict)
 
 
