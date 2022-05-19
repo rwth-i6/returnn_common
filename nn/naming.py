@@ -398,7 +398,8 @@ class NameCtx:
           for hook in name_ctx.layer_ref.remove_unused_cleanup_hooks:
             hook(name_ctx.layer_ref)
       else:
-        for child in name_ctx.children.values():
+        for name, child in name_ctx.children.items():
+          assert child.parent is name_ctx and child.name == name
           queue.append(child)
 
   def prepare_for_config_serialization(self, root_module: nn.Module):
