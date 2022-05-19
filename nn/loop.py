@@ -399,6 +399,8 @@ class _LoopState:
       assert isinstance(layer_ref, nn.Tensor)
       assert isinstance(name_ctx, nn.NameCtx)
 
+      layer_ref.name_ctx.optimize_move_up()
+
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
       if layer_ref.layer_dict:
