@@ -516,6 +516,7 @@ class NameCtx:
     """
     Get layer name valid in given scope.
     """
+    assert not self.virtual
     if self.parent is ctx:  # fast path
       return self.name
     ctx_scope_abs = ctx.get_abs_name_ctx_list()
@@ -525,8 +526,13 @@ class NameCtx:
     max_common_len = min(len(ctx_scope_abs), len(self_name_abs))
     while common_len < max_common_len and ctx_scope_abs[common_len] is self_name_abs[common_len]:
       common_len += 1
-    prefix = "".join(["base:" for ctx in reversed(ctx_scope_abs[common_len:]) if not ctx.virtual])
-    postfix = "/".join([ctx.name for ctx in self_name_abs[common_len:] if not ctx.virtual])
+    del ctx_scope_abs[:common_len]
+    del self_name_abs[:common_len]
+    prefix = "".join(["base:" for ctx_ in reversed(ctx_scope_abs) if not ctx_.virtual])
+    assert len(self_name_abs) >= 1, f"{self} in ctx {ctx} invalid"  # direct parent?
+    assert self_name_abs[-1] is self
+    postfix = "/".join([ctx.name for ctx in self_name_abs if not ctx.virtual])
+    assert postfix, f"{self} in ctx {ctx} invalid, no postfix?"  # should not happen
     return prefix + postfix
 
   def _add_child(self, child: NameCtx):
