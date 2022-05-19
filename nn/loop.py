@@ -400,7 +400,19 @@ class _LoopState:
       assert isinstance(name_ctx, nn.NameCtx)
       assert name_ctx.layer_ref is None, f"Loop state {name_ctx} already assigned"
 
-      layer_ref.name_ctx.optimize_move_up()
+      layer_ref.name_ctx.make_all_sub_networks_and_optimize()
+
+      layer_ctx_list = layer_ref.name_ctx.get_abs_name_ctx_list()
+      assert self.loop.name_ctx in layer_ctx_list, (
+        f"Loop state {name_ctx} should get a value inside the loop but got {layer_ref}")
+      # We need some special logic for MaskedComputation but maybe also for others later.
+      # This is currently not nice but I'm not sure about better solutions.
+      for i in range(layer_ctx_list.index(self.loop.name_ctx) + 1, len(layer_ctx_list) - 1):
+        ctx, ctx_ = layer_ctx_list[i:i+2]
+        assert isinstance(ctx, nn.NameCtx) and isinstance(ctx_, nn.NameCtx)
+        if isinstance(ctx.module, nn.MaskedComputationModule):
+          ctx_.layer.layer_dict["is_output_layer"] = True
+          break
 
       # Potential optimization for RETURNN layers.
       # See ReturnnWrappedLayerBase._get_recurrent_state.
