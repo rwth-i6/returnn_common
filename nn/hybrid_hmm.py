@@ -50,7 +50,7 @@ class HybridHMM(IHybridHMM):
     in_spatial_dim = source.data.dim_tags[source.data.time_dim_axis]
     assert state is None, f"{self} stateful hybrid HMM not supported yet"
     if isinstance(self.encoder, ISeqFramewiseEncoder):
-      encoder_output = self.encoder(source, in_spatial_dim=in_spatial_dim)
+      encoder_output = self.encoder(source, spatial_dim=in_spatial_dim)
       out_spatial_dim = in_spatial_dim
     elif isinstance(self.encoder, ISeqDownsamplingEncoder):
       encoder_output, out_spatial_dim = self.encoder(source, in_spatial_dim=in_spatial_dim)
