@@ -246,6 +246,17 @@ def combine(
   return nn.make_layer(args, name=name or kind)
 
 
+def combine_bc(a: Union[nn.Tensor, nn.RawTensorTypes],
+               kind: str,
+               b: Union[nn.Tensor, nn.RawTensorTypes]
+               ) -> nn.Tensor:
+  """
+  shorter version of :func:`combine`
+  with allow_broadcast_all_sources=True.
+  """
+  return combine(a, b, kind=kind, allow_broadcast_all_sources=True)
+
+
 def compare(a: Union[nn.Tensor, nn.RawTensorTypes], b: Union[nn.Tensor, nn.RawTensorTypes], *,
             kind: str,
             allow_broadcast_all_sources: Union[bool, nn.NotSpecified] = nn.NotSpecified,
