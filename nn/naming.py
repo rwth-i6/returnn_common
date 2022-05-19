@@ -232,6 +232,7 @@ class NameCtx:
     self.layer_ref = None  # type: Optional[nn.Tensor]
     self.layer = None  # type: Optional[nn.Tensor]
     self.is_subnet = False  # it says whether it can have children
+    self._subnet_main_output = None  # type: Optional[nn.Tensor]  # when this is via SubnetworkLayer
     self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
     self.can_access_children = can_access_children  # from outside
     self.new_control_flow_ctx = new_control_flow_ctx
@@ -298,6 +299,7 @@ class NameCtx:
     self.layer = layer_ref if layer_ref.layer_dict else None
     self.module = old_name_ctx.module
     self.is_subnet = old_name_ctx.is_subnet
+    self._subnet_main_output = old_name_ctx._subnet_main_output
     if self.module:
       for i, call in enumerate(self.module.calls):
         if call is old_name_ctx:
@@ -366,7 +368,7 @@ class NameCtx:
     # Do not update inplace because we want an own instance on self.
     self._ReservedNames = self._ReservedNames | names
 
-  def _remove_unused_and_assign_parents(self):
+  def _remove_unused_and_assign_parents_and_handle_subnets(self):
     # Collect all used tensor names.
     used_names = {self}  # type: Set[nn.NameCtx]
     root = self.root
@@ -375,13 +377,28 @@ class NameCtx:
       tensor = queue.pop(0)
       if tensor.name_ctx is used_names:
         continue
-      used_names.add(tensor.name_ctx)
       for dep in tensor.get_dependencies():
         if dep.name_ctx not in used_names:
           queue.append(dep)
+
+      # Parameters usually have no parent assigned at creation time.
       if not tensor.name_ctx.parent and tensor.name_ctx != root:
         # noinspection PyProtectedMember
         tensor._assign_parent_name_ctx(ref_ctx=root)
+
+      # Handle subnetworks: Flatten away if just a single entry. Create layer if not created yet.
+      ctx = tensor.name_ctx
+      ctx.make_all_sub_networks_and_optimize()
+
+      # Add tensor name including all parents.
+      # Do this here after the potential late assign-parent and potential subnet flattening
+      # because we need to know the right parents.
+      for ctx in tensor.name_ctx.get_abs_name_ctx_list():
+        if ctx in used_names:
+          continue  # skip early, to skip the extra checks below
+        used_names.add(ctx)
+        if ctx.layer_ref is not None and ctx.layer_ref is not tensor:
+          queue.append(ctx.layer_ref)
 
     # Go through all names in the hierarchy and remove unused.
     visited = set()  # type: Set[nn.NameCtx]
@@ -451,7 +468,7 @@ class NameCtx:
             child.name = name
             self.children[name] = child
 
-    self._remove_unused_and_assign_parents()
+    self._remove_unused_and_assign_parents_and_handle_subnets()
     assert not self.parent, f"{self} get_returnn_config only makes sense in the root name ctx"
 
   def get_returnn_config(self) -> ReturnnConfigSerializer:
@@ -664,6 +681,72 @@ class NameCtx:
       if name_ not in reserved_names:
         return name_
       i += 1
+
+  def make_all_sub_networks_and_optimize(self):
+    """
+    Go up all parents and create subnetworks which are not initialized yet.
+    Also optimize by removing obsolete subnetworks (which just consist of one child).
+    """
+    ctx = self
+    while True:
+      if ctx.layer_ref is not None:
+        ctx.optimize_move_up()
+      ctx_ = ctx
+      ctx = ctx_.parent
+      if not ctx or ctx.is_root:
+        break
+      if ctx.virtual or ctx.layer_ref is not None or ctx_.layer_ref is None:
+        continue
+      if isinstance(ctx.module, (nn.MaskedComputationModule, nn.CondModule, nn.LoopModule)):
+        continue
+      if ctx.new_control_flow_ctx:
+        continue
+      ctx._make_sub_network_layer(ctx_.layer_ref)
+      assert ctx.layer_ref is not None
+
+  def optimize_move_up(self):
+    """
+    If the parent is a (non-initialized) subnet where we are the only child,
+    move us up.
+    """
+    assert self.layer_ref is not None
+    ctx = self.parent
+    while ctx:
+      assert isinstance(ctx, NameCtx)
+      if not ctx._is_obsolete_subnet():
+        break
+      assert set(ctx.children.values()) == {self}
+      ctx.parent.children[ctx.name] = self
+      self.parent = ctx.parent
+      self.name = ctx.name
+      ctx = ctx.parent
+
+  def _is_obsolete_subnet(self) -> bool:
+    # Assume that we are not initialized yet (just for simplicity, not needed otherwise).
+    if self.is_root or self.virtual or len(self.children) > 1:
+      return False
+    if self.layer_ref is not None:
+      return False
+    if self.module is not None and not isinstance(self.module, nn.Functional):
+      return False
+    return True
+
+  def _make_sub_network_layer(self, sub_output: nn.Tensor):
+    assert self.layer_ref is None and self.layer is None
+    assert not self._is_obsolete_subnet()  # assume optimize_move_up() was called already
+    if "output" in self.children:
+      assert self.children["output"].layer_ref is sub_output
+    else:
+      if isinstance(sub_output, nn.PrevTensorRef):
+        # It would be quite confusing to have a prev-layer as default output,
+        # so replace it by the current iteration.
+        assert sub_output.cur_layer_name_ctx.layer_ref is not None
+        sub_output = sub_output.cur_layer_name_ctx.layer_ref
+      nn.copy(sub_output, name=self.get_child("output"))
+    self.layer = self.layer_ref = nn.make_layer(
+      {"class": "subnetwork", "from": [], "subnetwork": self.make_net()},
+      name=self, predefined_out_data=sub_output.data)
+    self._subnet_main_output = sub_output
 
 
 class ReturnnConfigSerializer:
