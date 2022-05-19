@@ -297,6 +297,7 @@ class NameCtx:
     self.layer_ref = layer_ref
     self.layer = layer_ref if layer_ref.layer_dict else None
     self.module = old_name_ctx.module
+    self.is_subnet = old_name_ctx.is_subnet
     if self.module:
       for i, call in enumerate(self.module.calls):
         if call is old_name_ctx:
