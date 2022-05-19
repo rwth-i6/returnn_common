@@ -398,6 +398,7 @@ class _LoopState:
     def _map_ref_to_name_ctx(layer_ref: nn.Tensor, name_ctx: nn.NameCtx, initial: nn.Tensor):
       assert isinstance(layer_ref, nn.Tensor)
       assert isinstance(name_ctx, nn.NameCtx)
+      assert name_ctx.layer_ref is None, f"Loop state {name_ctx} already assigned"
 
       layer_ref.name_ctx.optimize_move_up()
 
@@ -472,7 +473,16 @@ class _LoopState:
       if prev_name_ctx:  # might not exist if we have never accessed the prev state
         prev_ref = prev_name_ctx.layer_ref
         assert isinstance(prev_ref, PrevTensorRef), f"{name_ctx, prev_name_ctx}"
-        prev_ref.assign_new_cur_layer_name_ctx(layer_ref.name_ctx)
+        if layer_ref.name_ctx.parent != self.loop.name_ctx:
+          # Currently, RETURNN does not properly support a state in a subnet.
+          # So we copy the layer to the loop root under the reserved existing name.
+          nn.copy(layer_ref, name=name_ctx)
+          if layer_ref.layer_dict:
+            assert "initial_state" not in layer_ref.layer_dict  # not supported/implemented
+            if "initial_output" in layer_ref.layer_dict:
+              name_ctx.layer.layer_dict["initial_output"] = layer_ref.layer_dict.pop("initial_output")
+        else:
+          prev_ref.assign_new_cur_layer_name_ctx(layer_ref.name_ctx)
 
       return layer_ref.name_ctx
 
