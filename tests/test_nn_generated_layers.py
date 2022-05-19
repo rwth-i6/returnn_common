@@ -38,3 +38,14 @@ def test_repeat_int():
   rep.mark_as_default_output()
   config = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   dummy_run_net_single_custom(config)
+
+
+def test_repeat_layer():
+  # https://github.com/rwth-i6/returnn_common/issues/163
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  data = nn.get_extern_data(nn.Data('data', dim_tags=[nn.batch_dim, time_dim, nn.FeatureDim('F', 3)]))
+  const = nn.constant(value=5, shape=[nn.batch_dim, time_dim])
+  nn.repeat(data, repetitions=const, axis=time_dim)[0].mark_as_default_output()
+  config_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config_str)
