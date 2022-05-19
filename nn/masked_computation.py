@@ -71,10 +71,10 @@ class MaskedComputation:
       if not exc_type:
         # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
         if "output" not in self.name_ctx.children:
-          if self.name_ctx.children:
-            last_child = list(self.name_ctx.children.values())[-1]
+          last_child = self.name_ctx.get_recent_layer_ref(only_same_control_flow=True)
+          if last_child is not None:
             from . import copy
-            copy(last_child.layer_ref, name=self.name_ctx.get_child("output"))
+            copy(last_child, name=self.name_ctx.get_child("output"))
           else:
             from . import constant
             constant(value=0, name=self.name_ctx.get_child("output"))  # unused
