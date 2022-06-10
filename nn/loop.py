@@ -189,7 +189,13 @@ class Loop:
     assert isinstance(source, nn.Tensor)
     if source.name_ctx in self._last_frames:
       return self._last_frames[source.name_ctx]
-    assert self.name_ctx.layer_ref is not None, f"{self}.last(...): call from outside"  # current restriction...
+    assert self.name_ctx.layer_ref is not None, f"{self}.last(...): must call from outside"  # current restriction...
+    # need_last option only works in root of subnet of RecLayer
+    if source.name_ctx.parent is not self.name_ctx:
+      assert self.name_ctx in source.name_ctx.get_abs_name_ctx_list(), f"invalid {self}.last({source})"
+      sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx).replace("/", ".")
+      source = nn.copy(source, name=self.name_ctx.get_new_child(sub_layer_name))
+      assert source.name_ctx.parent is self.name_ctx
     source.layer_dict["need_last"] = True
     sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
     with self.name_ctx.parent:  # need to be outside the loop
