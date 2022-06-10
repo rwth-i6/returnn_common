@@ -597,7 +597,7 @@ class NameCtx:
     """
     New child.
     """
-    return NameCtx(name=suggested_name, parent=self)
+    return NameCtx(suggested_name=suggested_name, parent=self)
 
   def get_child_with_layer_ref(self, name: str, *, data: nn.Data) -> NameCtx:
     """
