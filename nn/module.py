@@ -246,10 +246,15 @@ class Functional(Module):
   def get_default_name(self) -> str:
     """default name"""
     import re
-    m = re.match(r"^Tensor\.__(.*)__$", self.func.__qualname__)
-    if m:
-      return m.group(1)
-    return self.func.__qualname__
+    name = self.func.__qualname__
+    assert isinstance(name, str)
+    if name.startswith("Tensor.__"):
+      m = re.match(r"^Tensor\.__(.*)__$", name)
+      if m:
+        return m.group(1)
+    if ".<locals>." in name:
+      name = name.replace(".<locals>.", ".")
+    return name
 
   def __call__(self, *args, **kwargs):
     return self.func(*args, **kwargs)
