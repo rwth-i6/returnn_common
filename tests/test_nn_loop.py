@@ -4,7 +4,7 @@ Test nn.loop
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_run_net_single_custom
 
 import typing
 from .utils import assert_equal
@@ -156,3 +156,43 @@ def test_loop_axis_indices():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
   dummy_run_net(config, net=net)
+
+
+def test_loop_full_seq_last():
+  nn.reset_default_root_name_ctx()
+
+  feat_dim = nn.FeatureDim("feat", 5)
+  time_dim = nn.SpatialDim("time")
+  x = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
+
+  # own name scope via function, this triggers the bug of need_last in sub layer inside rec loop
+  def _relu(_x: nn.Tensor) -> nn.Tensor:
+    return nn.where(_x < 0., 0., _x)
+
+  # feature mask
+  mask_axis = x.feature_dim
+  broadcast_axis = time_dim
+
+  batch_dims = list(x.shape_ordered)
+  batch_dims.remove(mask_axis)
+  batch_dims.remove(broadcast_axis)
+  num = nn.random_uniform(batch_dims, minval=1, maxval=3, dtype="int32")
+  _, indices, k_dim = nn.top_k(
+    nn.random_uniform(batch_dims + [mask_axis], minval=0., maxval=1.),
+    axis=mask_axis,
+    k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.shape_ordered))
+  # indices should be sorted, and of shape (batch,num), entries (int32) in [0,dim)
+  loop = nn.Loop(axis=k_dim)
+  k_dim_indices = nn.range_in_axis(indices, axis=k_dim)
+  loop.state.x = x
+  with loop:
+    i = loop.unstack(k_dim_indices)
+    loop.state.x = _relu(loop.state.x)
+    loop.stack(i)  # loop needs some dummy output currently...
+  x = loop.state.x
+  print(x)
+  x.mark_as_default_output()
+
+  code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  code_str += "debug_runtime_sanity_checks = True\n\n"
+  dummy_run_net_single_custom(code_str)
