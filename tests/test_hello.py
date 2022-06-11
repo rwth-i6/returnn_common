@@ -4,7 +4,7 @@ Test hello.
 """
 
 from . import _setup_test_env  # noqa
-from nose.tools import assert_equal
+from .utils import assert_equal
 
 
 def test_hello():

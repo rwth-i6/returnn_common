@@ -7,7 +7,7 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, dummy_config_net_dict, config_net_dict_via_serialized
 from pprint import pprint
-from nose.tools import assert_equal
+from .utils import assert_equal
 import typing
 from typing import Tuple
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
-from nose.tools import assert_equal
+from .utils import assert_equal
 from tensorflow.python.util import nest
 import typing
 

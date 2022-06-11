@@ -7,7 +7,7 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, dummy_config_net_dict
 
 import typing
-from nose.tools import assert_equal
+from .utils import assert_equal
 
 if typing.TYPE_CHECKING:
   from .. import nn
