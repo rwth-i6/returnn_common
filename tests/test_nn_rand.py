@@ -60,7 +60,6 @@ def test_random_in_loop():
       super().__init__()
       self.rnd = nn.Random()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       loop = nn.Loop(axis=axis)
       with loop:
