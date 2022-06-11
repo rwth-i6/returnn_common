@@ -760,6 +760,11 @@ def get_extern_data(data: Data) -> Tensor:
     scope.extern_data[data.name] = data
   else:
     assert scope.extern_data[data.name] is data
+  for tag in data.dim_tags:
+    # noinspection PyProtectedMember
+    tag._validate_in_current_graph()
+    if tag.is_batch_dim():
+      data.batch = tag.batch
   if data.have_batch_axis():
     if not scope.global_batch:
       if data.batch:
