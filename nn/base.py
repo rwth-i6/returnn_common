@@ -334,7 +334,7 @@ class Tensor:
         ctx.layer.layer_dict["is_output_layer"] = True
       ctx = ctx.parent
 
-  def mark_as_output(self):
+  def mark_as_output(self) -> Tensor:
     """
     Mark this as an output.
     This has the effect that RETURNN will in any case construct the corresponding layer.
@@ -342,6 +342,7 @@ class Tensor:
     """
     assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
     root_scope = self.name_ctx.root  # mark_as_output always refers to the root
+    res = self
     if self.name_ctx is root_scope.children.get("output"):
       pass  # not needed
     elif self.name_ctx.parent is not root_scope:
@@ -350,7 +351,8 @@ class Tensor:
     else:
       assert self.name_ctx.parent is root_scope
       self.layer_dict["is_output_layer"] = True
-    root_scope.marked_outputs.append(self)
+    root_scope.marked_outputs.append(res)
+    return res
 
   def mark_as_default_output(self) -> Tensor:
     """
