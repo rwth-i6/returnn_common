@@ -43,8 +43,7 @@ def test_specaugment_v2_real_example_audio():
   gammatone = gt.GammatoneV2()
   audio, time_dim = gammatone(raw_audio, in_spatial_dim=raw_audio_spatial_dim)
   audio = nn.normalize(audio, axis=time_dim)
-  audio.mark_as_output()
-  audio_name = audio.get_abs_name()
+  audio_name = audio.mark_as_output().get_abs_name()
 
   from ..asr import specaugment
   masked = specaugment.specaugment_v2(
