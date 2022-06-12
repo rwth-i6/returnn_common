@@ -167,7 +167,15 @@ def test_loop_full_seq_last():
 
   # own name scope via function, this triggers the bug of need_last in sub layer inside rec loop
   def _relu(_x: nn.Tensor) -> nn.Tensor:
-    return nn.where(_x < 0., 0., _x)
+    _y = nn.where(_x < 0., 0., _x)
+    # Check names. Note that these potentially might change at some later time, and then we need to update this here.
+    # However, what we want to test is that the name is reasonable. Specifically:
+    # - "test_loop_full_seq_last" should not be part of the name scope.
+    assert _x.get_abs_name() == 'loop/prev:state.x'
+    # 'where' twice due to current implementation of nn.where and nn.make_layer.
+    # However, this is optimized (flattened) later, i.e. does not end up like that in the final net dict.
+    assert _y.get_abs_name() == 'loop/where/where'
+    return _y
 
   # feature mask
   mask_axis = x.feature_dim
