@@ -7,7 +7,6 @@ from typing import Union, Collection
 from .. import nn
 
 
-@nn.scoped
 def specaugment_v2(x: nn.Tensor, *,
                    spatial_dim: nn.Dim,
                    feature_dim: nn.Dim = nn.NotSpecified,
@@ -31,13 +30,15 @@ def specaugment_v2(x: nn.Tensor, *,
   with nn.Cond(nn.train_flag() | (not only_on_train)) as cond:
     x_masked = x
     spatial_len = nn.dim_value(x, axis=spatial_dim)
+    # time mask
     x_masked = random_mask_v2(
-      x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim, name="time_masking",
+      x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
       min_num=nn.minimum(step1 + step2, spatial_len),
       max_num=nn.minimum(nn.maximum(spatial_len // 100, 2) * (1 + step1 + step2 * 2), spatial_len),
       max_dims=20 // time_factor)
+    # feature mask
     x_masked = random_mask_v2(
-      x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim, name="feature_masking",
+      x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim,
       min_num=step1 + step2, max_num=2 + step1 + step2 * 2,
       max_dims=feature_dim.dimension // 5)
     cond.true = x_masked
@@ -45,7 +46,6 @@ def specaugment_v2(x: nn.Tensor, *,
   return cond.result
 
 
-@nn.scoped
 def random_mask_v2(x: nn.Tensor, *,
                    mask_axis: nn.Dim,
                    broadcast_axis: Union[nn.Dim, Collection[nn.Dim]],
@@ -102,7 +102,6 @@ def random_mask_v2(x: nn.Tensor, *,
   return x
 
 
-@nn.scoped
 def _mask_v2(x: nn.Tensor, *,
              mask_axis: nn.Dim,
              pos: nn.Tensor,

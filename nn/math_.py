@@ -180,7 +180,6 @@ def minimum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
   return combine(a, b, kind="minimum", name=name or "minimum")
 
 
-@nn.scoped
 def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
            gate_func=sigmoid, act_func=identity) -> nn.Tensor:
   """

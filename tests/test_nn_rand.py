@@ -22,7 +22,6 @@ def test_random_normal():
       super().__init__()
       self.rnd = nn.Random()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       return x + self.rnd.normal(x.shape_ordered)
 
@@ -43,7 +42,6 @@ def test_random_multi_call():
       super().__init__()
       self.rnd = nn.Random()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       return x + self.rnd.normal(x.shape_ordered) - self.rnd.normal(x.shape_ordered)
 
@@ -62,7 +60,6 @@ def test_random_in_loop():
       super().__init__()
       self.rnd = nn.Random()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       loop = nn.Loop(axis=axis)
       with loop:

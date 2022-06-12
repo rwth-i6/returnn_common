@@ -71,7 +71,7 @@ def dropout(source: nn.Tensor,
   from .base import make_layer
   return make_layer(
     {"class": "dropout", "from": source, **opts},
-    name=name or "dropout")
+    name=name or "dropout", name_ctx_ignore_top_stack_frames=1)
 
 
 def stop_gradient(source: nn.Tensor, name: Optional[str] = None) -> nn.Tensor:
@@ -215,7 +215,6 @@ def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.Tensor] = None, sparse
   return out
 
 
-@nn.scoped
 def sparse_to_dense(source: nn.Tensor, *,
                     label_value: Union[nn.Tensor, int, float],
                     other_value: Union[nn.Tensor, int, float]) -> nn.Tensor:
@@ -233,18 +232,17 @@ def sparse_to_dense(source: nn.Tensor, *,
   return nn.where(source == indices, label_value, other_value)
 
 
-def one_hot(source: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
+def one_hot(source: nn.Tensor) -> nn.Tensor:
   """
   one_hot. special case of :func:`sparse_to_dense`.
 
   Note that usually this is not needed as most other functions should handle sparse tensors just fine
   and much more efficiently than they would be with dense tensors.
   """
-  return sparse_to_dense(source, label_value=1., other_value=0., name=name or "one_hot")
+  return sparse_to_dense(source, label_value=1., other_value=0.)
 
 
-def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float],
-                   name: Optional[str] = None) -> nn.Tensor:
+def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float]) -> nn.Tensor:
   """
   Smooth variant of :func:`one_hot`.
   Uses ``label_prob`` for the labels and ``(1 - label_prob) / (dim - 1)`` for the remaining values.
@@ -254,8 +252,7 @@ def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float],
   if source.data.sparse_dim.dimension is None:
     raise NotImplementedError(f"smooth_one_hot({source}) not implemented for dynamic dims")
   return sparse_to_dense(
-    source, label_value=label_prob, other_value=(1. - label_prob) / (source.data.sparse_dim.dimension - 1),
-    name=name or "smooth_one_hot")
+    source, label_value=label_prob, other_value=(1. - label_prob) / (source.data.sparse_dim.dimension - 1))
 
 
 def label_smoothing(source: nn.Tensor, smoothing: Union[nn.Tensor, float],
@@ -369,7 +366,6 @@ def gather_by_mask(x: nn.Tensor, *,
     "unit": {"class": "copy", "from": "data"}}, name=name), out_spatial_dim
 
 
-@nn.scoped
 def ctc_greedy_decode(logits: nn.Tensor, *,
                       in_spatial_dim: nn.Dim,
                       feature_dim: Optional[nn.Dim] = None,

@@ -24,7 +24,6 @@ def test_self_attention():
         value_dim_total=nn.FeatureDim("value-dim-total", 33),
         num_heads=3)
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """forward"""
       return self.self_att(x, axis=axis)

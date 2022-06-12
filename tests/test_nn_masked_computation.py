@@ -21,7 +21,6 @@ def test_masked_computation_lstm():
       super().__init__()
       self.lstm = nn.LSTM(nn.FeatureDim("out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
       Forward

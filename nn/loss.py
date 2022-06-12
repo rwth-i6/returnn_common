@@ -20,7 +20,6 @@ from typing import Optional, Union
 from .. import nn
 
 
-@nn.scoped
 def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: str,
                   axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
@@ -63,7 +62,6 @@ def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: st
   return -nn.dot(target, log_prob, reduce=axis)
 
 
-@nn.scoped
 def binary_cross_entropy(*,
                          target: nn.Tensor,
                          pos_estimated: nn.Tensor, pos_estimated_type: str,
@@ -146,7 +144,6 @@ def binary_cross_entropy(*,
     )
 
 
-@nn.scoped
 def kl_div(*, target: nn.Tensor, target_type: str,
            estimated: nn.Tensor, estimated_type: str,
            axis: Optional[nn.Dim] = None) -> nn.Tensor:
@@ -196,7 +193,6 @@ def kl_div(*, target: nn.Tensor, target_type: str,
   return kl
 
 
-@nn.scoped
 def mean_absolute_difference(a: nn.Tensor, b: nn.Tensor, *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
   Mean absolute difference, mean absolute error (MAE), or L1 loss between two tensors,
@@ -208,7 +204,6 @@ def mean_absolute_difference(a: nn.Tensor, b: nn.Tensor, *, axis: Optional[nn.Di
   return nn.reduce(nn.abs(a - b), mode="mean", axis=axis)
 
 
-@nn.scoped
 def mean_squared_difference(a: nn.Tensor, b: nn.Tensor, *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
   Mean squared difference between two tensors,

@@ -25,7 +25,6 @@ class Module:
           self.linear = nn.Linear(dim)
           self.activation = activation
 
-        @nn.scoped
         def __call__(self, x: nn.Tensor) -> nn.Tensor:
           x_ = x
           x = self.layer_norm(x)
@@ -120,7 +119,6 @@ class Module:
       name = camel_case_to_snake_case(name)
     return name
 
-  @nn.scoped
   def __call__(self, *args, **kwargs) -> Union[nn.Tensor, Tuple[nn.Tensor, nn.LayerState], Any]:
     raise NotImplementedError
 
@@ -248,12 +246,16 @@ class Functional(Module):
   def get_default_name(self) -> str:
     """default name"""
     import re
-    m = re.match(r"^Tensor\.__(.*)__$", self.func.__qualname__)
-    if m:
-      return m.group(1)
-    return self.func.__qualname__
+    name = self.func.__qualname__
+    assert isinstance(name, str)
+    if name.startswith("Tensor.__"):
+      m = re.match(r"^Tensor\.__(.*)__$", name)
+      if m:
+        return m.group(1)
+    if ".<locals>." in name:
+      name = name.replace(".<locals>.", ".")
+    return name
 
-  @nn.scoped
   def __call__(self, *args, **kwargs):
     return self.func(*args, **kwargs)
 

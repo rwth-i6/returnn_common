@@ -16,7 +16,6 @@ class Random(nn.Module):
 
   _state_dim = nn.FeatureDim("random-state", None)
 
-  @nn.scoped
   def __call__(self, **kwargs) -> nn.Tensor:
     # For every call, we create a new state var to make sure there is no non-determinism.
     # https://github.com/rwth-i6/returnn_common/issues/148

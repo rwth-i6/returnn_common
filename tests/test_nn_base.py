@@ -23,7 +23,6 @@ def test_simple_net_linear():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x) -> nn.Tensor:
       """
       Forward
@@ -47,7 +46,6 @@ def test_simple_net_linear_square_matrix():
       self.linear = nn.Linear(out_dim)
       self.linear2 = nn.Linear(out_dim)
 
-    @nn.scoped
     def __call__(self, x) -> nn.Tensor:
       """
       Forward
@@ -63,7 +61,6 @@ def test_simple_net_linear_square_matrix():
 
 def test_simple_net_arithmetic():
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x) -> nn.Tensor:
       """
       Forward
@@ -75,6 +72,27 @@ def test_simple_net_arithmetic():
   dummy_run_net(config)
 
 
+def _functional_example(x: nn.Tensor) -> nn.Tensor:
+  return nn.tanh((x + 1.) * 0.5)
+
+
+def test_functional_auto_name_ctx():
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      x -= 1.
+      x = _functional_example(x)
+      x += 1.
+      x = _functional_example(x)
+      return x
+
+  config, net_dict = dummy_config_net_dict(net=_Net())
+  assert "_functional_example" in net_dict
+  assert_equal(net_dict["_functional_example"]["class"], "subnetwork")
+  assert_equal(net_dict["_functional_example_0"]["class"], "subnetwork")
+  assert "_functional_example_1" not in net_dict
+  dummy_run_net(config)
+
+
 def test_simple_net_share_params():
   class _Net(nn.Module):
     def __init__(self):
@@ -83,7 +101,6 @@ def test_simple_net_share_params():
       self.linear = nn.Linear(self.dim)
       self.linear2 = nn.Linear(self.dim)
 
-    @nn.scoped
     def __call__(self, x) -> nn.Tensor:
       """
       Forward
@@ -96,8 +113,6 @@ def test_simple_net_share_params():
   net = _Net()
   config, net_dict = dummy_config_net_dict(net)
   assert "linear2" in net_dict
-  assert "linear2_0" in net_dict
-  assert_equal(net_dict["linear2_0"]["name_scope"], "linear2")
   dummy_run_net(config, net=net)
 
 
@@ -109,7 +124,6 @@ def test_explicit_root_ctx_sub():
       self.linear = nn.Linear(out_dim)
       self.dropout = dropout
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
       forward
@@ -147,7 +161,6 @@ def test_root_mod_call_twice():
       self.linear = nn.Linear(out_dim)
       self.dropout = dropout
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
       forward
@@ -175,8 +188,6 @@ def test_root_mod_call_twice():
   pprint(net_dict)
 
   assert "linear" in net_dict
-  assert "test_block_0" in net_dict
-  assert_equal(net_dict["test_block_0"]["name_scope"], "")
 
 
 def test_multiple_returns_depth_1():
@@ -185,7 +196,6 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
       Forward
@@ -198,7 +208,6 @@ def test_multiple_returns_depth_1():
       super().__init__()
       self.sub = _SubNet()
 
-    @nn.scoped
     def __call__(self, x) -> nn.Tensor:
       """
       Forward
@@ -210,7 +219,6 @@ def test_multiple_returns_depth_1():
   config, net_dict = dummy_config_net_dict(net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub"
-  assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   dummy_run_net(config)
 
 
@@ -220,7 +228,6 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
       Forward
@@ -233,7 +240,6 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubSubNet()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
       Forward
@@ -246,7 +252,6 @@ def test_multiple_returns_depth_2():
       super().__init__()
       self.sub = _SubNet()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
       Forward
@@ -275,7 +280,6 @@ def test_from_call_variations():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
       Forward
@@ -290,7 +294,6 @@ def test_from_call_variations():
       self.sub = _SubNet()
       self.sub2 = _SubNet()
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
       Forward
@@ -317,7 +320,6 @@ def test_from_call_variations2():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
       Forward
@@ -332,7 +334,6 @@ def test_from_call_variations2():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor, y: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
       Forward
@@ -348,7 +349,6 @@ def test_from_call_variations2():
       self.sub2 = _SubNet2()
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
       Forward
@@ -459,7 +459,6 @@ def test_parameter_not_initialized():
 
 def test_const_array_serialization():
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       import numpy
       c = nn.constant(
@@ -473,7 +472,6 @@ def test_const_array_serialization():
 
 def test_asr_specaug_v1_eval_func_serialization():
   class _Net(nn.Module):
-    @nn.scoped
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       # specaugment_v1 uses a custom eval layer with a ref to a Python function,
       # which is defined in that module.

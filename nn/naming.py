@@ -6,6 +6,8 @@ and the parameters of the model
 to a RETURNN net dict.
 
 The main class is :class:`NameCtx`.
+You would use :func:`get_returnn_config` and the :class:`ReturnnConfigSerializer`
+to get the net dict in the end, either fully serialized as Python code or as a raw dict.
 
 Note on the different type of name hierarchies in RETURNN and here in RETURNN-common:
 
@@ -41,11 +43,25 @@ Note on the different type of name hierarchies in RETURNN and here in RETURNN-co
   and to :class:`Parameter`s itself, via :func:`Tensor._assign_parent`.
   This is applied by setting ``name_scope`` in the corresponding layer.
 
+Note that the RETURNN layer name and thus :class:`NameCtx` hierarchy is not really critical and can be arbitrary.
+Thus, we don't want that the user needs to think too much about this and have it mostly automatic.
+Some automatic handling we do:
+
+* We currently infer the current name ctx from the stack trace in :func:`NameCtx.current_ctx`.
+* The root module is a subnet initially, but we merge it into the root scope,
+  in :func:`NameCtx.prepare_for_config_serialization`.
+* We clean up unused layers in the end via :func:`NameCtx._remove_unused_and_assign_parents_and_handle_subnets`.
+* Parameter parents are assigned late in :func:`NameCtx._remove_unused_and_assign_parents_and_handle_subnets`.
+* Subnetworks are created late in :func:`NameCtx._remove_unused_and_assign_parents_and_handle_subnets`.
+* Subnetworks are potentially flattened away when it just consists of a single layer,
+  in :func:`NameCtx._make_sub_network_layer`.
 """
 
 from __future__ import annotations
-from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Collection
+from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Collection, Callable
+import types
 import numpy
+import weakref
 from tensorflow.python.util import nest
 from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
@@ -65,67 +81,6 @@ def reset_default_root_name_ctx():
   Resets the default root name ctx. See :func:`NameCtx.reset_default_root`.
   """
   nn.NameCtx.reset_default_root()
-
-
-def scoped(func):
-  """
-  Decorator to create a new scope (subnetwork) for the function
-  or module method.
-
-  This is usually used for the ``__call__`` method of a module
-  or for pure functions.
-  """
-  assert callable(func)
-
-  def _wrapper(*args, name: Optional[Union[str, nn.NameCtx]] = None, **kwargs):
-    if name == "":
-      return func(*args, **kwargs)
-    if args and isinstance(args[0], nn.Module):
-      self = args[0]
-    else:
-      self = nn.Functional(func)
-    if isinstance(name, NameCtx):
-      if name.module is None:
-        name.module = self
-      else:
-        assert name.module is self
-      name_ctx = name
-    else:
-      assert not name or isinstance(name, str)
-      name_ctx = NameCtx(module=self, suggested_name=name)
-    with name_ctx:
-      name_ctx.is_subnet = True
-      res = func(*args, **kwargs)
-      if name_ctx.parent is None:  # root
-        # special logic, no output layers, no subnetwork layer needed
-        self.calls.append(name_ctx)
-        return res
-      if isinstance(res, nn.Tensor):
-        out = res
-      else:
-        # we return more than one layer (thus also working on other layers of the subnet, that are not output)
-        # by convention: first layer is the output layer
-        res_flat = nest.flatten(res)
-        res_flat = [y for y in res_flat if isinstance(y, nn.Tensor)]
-        if not res_flat:
-          raise ValueError(f"{func} returned no tensors but {res}")
-        out = res_flat[0]
-      nn.copy(out, name=name_ctx.get_child("output"))
-      assert out.data
-      # Now create the subnetwork layer itself.
-      subnet_layer = nn.make_layer(
-        {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
-        name=name_ctx, predefined_out_data=out.data)
-    # maybe nicer to return subnet layer
-    if isinstance(res, nn.Tensor):
-      res = subnet_layer
-    else:
-      res = nest.map_structure(lambda y: subnet_layer if y is out else y, res)
-    return res
-
-  _wrapper.__name__ = func.__name__
-  _wrapper.__qualname__ = func.__qualname__
-  return _wrapper
 
 
 class NameCtx:
@@ -173,17 +128,15 @@ class NameCtx:
     return cls._stack[-1]
 
   @classmethod
-  def current_ctx(cls) -> NameCtx:
+  def current_ctx(cls, *, ignore_top_stack_frames: int = 0) -> NameCtx:
     """
     Return the current context.
-    This is the top from the stack with is_subnet_ctx.
+    This is the top from the stack with is_subnet_ctx,
+    and additionally using the Python stack trace to automatically infer further subnets.
+
+    :param int ignore_top_stack_frames:
     """
-    top = cls.top()
-    if not top.is_subnet:
-      assert top.parent and top.parent.is_subnet
-      return top.parent
-    assert top.is_subnet
-    return top
+    return _auto_setup_parent_name_ctx(ignore_top_stack_frames=ignore_top_stack_frames + 1)
 
   @classmethod
   def new_root(cls) -> NameCtx:
@@ -231,6 +184,7 @@ class NameCtx:
     self.module = module
     self.layer_ref = None  # type: Optional[nn.Tensor]
     self.layer = None  # type: Optional[nn.Tensor]
+    self._enter_stack_frames = None  # type: Optional[Set[types.FrameType]]
     self.is_subnet = False  # it says whether it can have children
     self._subnet_main_output = None  # type: Optional[nn.Tensor]  # when this is via SubnetworkLayer
     self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
@@ -634,10 +588,17 @@ class NameCtx:
   def __enter__(self):
     self._maybe_init_default_root()
     self._stack.append(self)
+    from returnn.util.better_exchook import get_current_frame
+    frame = get_current_frame()
+    self._enter_stack_frames = set()
+    while frame:
+      self._enter_stack_frames.add(frame)
+      frame = frame.f_back
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
     assert self._stack[-1] is self, f"{self}.__exit__: stack {self._stack} top is not self"
+    self._enter_stack_frames = None
     self._stack.pop(-1)
 
   def _get_parent_module(self) -> Optional[nn.Module]:
@@ -1465,3 +1426,142 @@ class _NamePathCache:
         break
       ls.append(module)
     return ls
+
+
+_FuncToFunctional = weakref.WeakKeyDictionary()  # type: weakref.WeakKeyDictionary[types.FunctionType, nn.Functional]
+_AutoSetupNameCtxPrevTopFrame = None  # type: Optional[types.FrameType]
+_AutoSetupNameCtxCodeBlacklist = set()  # type: Set[types.CodeType]
+
+
+def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
+  """
+  Sets up a NameCtx corresponding to the Python call stack trace.
+
+  From the call stack, we consider methods from modules (nn.Module subclasses)
+  or global functions on tensors.
+
+  There are some heuristics involved but this should not be critical.
+
+  https://github.com/rwth-i6/returnn_common/issues/159
+
+  :param ignore_top_stack_frames:
+  :return: name ctx for the layer
+  """
+  global _AutoSetupNameCtxPrevTopFrame
+  from . import _generated_layers
+  from returnn.util.better_exchook import get_current_frame, get_func_from_code_object
+  frame = get_current_frame()
+  assert frame
+  code_blacklist = {
+    _auto_setup_parent_name_ctx.__code__,
+    nn.NameCtx.__init__.__code__,
+    nn.NameCtx.current_ctx.__code__,
+    nn.make_layer.__code__,
+    nn.check_in_feature_dim_lazy_init.__code__,
+    nn.Loop.__init__.__code__,
+    nn.Cond.__init__.__code__,
+    nn.MaskedComputation.__init__.__code__,
+  }
+  code_blacklist.update(_AutoSetupNameCtxCodeBlacklist)
+  ignore_top_stack_frames += 1  # ignore ourself
+  while ignore_top_stack_frames > 0:
+    assert frame.f_back
+    frame = frame.f_back
+    ignore_top_stack_frames -= 1
+  while frame.f_code in code_blacklist:
+    assert frame.f_back
+    frame = frame.f_back
+  top_frame = frame  # e.g. the caller of make_layer
+
+  prev_frames = set()
+  frame = _AutoSetupNameCtxPrevTopFrame
+  while frame:
+    prev_frames.add(frame)
+    frame = frame.f_back
+
+  cur_ctx = nn.NameCtx.top()
+  if not cur_ctx.is_subnet:
+    assert cur_ctx.parent and cur_ctx.parent.is_subnet
+    cur_ctx = cur_ctx.parent
+  assert cur_ctx.is_subnet
+  cur_control_flow_ctx = cur_ctx.control_flow_ctx()
+  cur_root_ctx = cur_ctx.root
+
+  ctx = None  # type: Optional[NameCtx]
+  module_ids = set()  # avoid duplicates
+  module_frames = []  # type: List[nn.Module]
+  frame = top_frame
+  while frame:
+    # Stop in the frame from the cur context.
+    # Ignore the cur context if it is the root because the root creation stack trace can be arbitrary.
+    # noinspection PyProtectedMember
+    if cur_ctx.parent and cur_ctx._enter_stack_frames and frame in cur_ctx._enter_stack_frames:
+      break
+    if frame.f_code in code_blacklist:
+      frame = frame.f_back
+      continue
+
+    # find module from module method or function
+    func = get_func_from_code_object(frame.f_code)
+    mod = None
+    # In case of a method, func will point to the original function (FunctionType), not the MethodType.
+    # We use a more generic method: The first argument of the function (frame.f_code.co_varnames[0])
+    # is usually `self` in a method. If this is a module, we use it.
+    if frame.f_code.co_varnames and isinstance(frame.f_locals.get(frame.f_code.co_varnames[0]), nn.Module):
+      mod = frame.f_locals[frame.f_code.co_varnames[0]]
+    elif (isinstance(func, types.FunctionType)
+          and (
+              any(isinstance(v, nn.Tensor) for v in frame.f_locals.values())
+              or frame is top_frame)):
+      if func.__module__ == _generated_layers.__name__:  # ignore those
+        frame = frame.f_back
+        continue
+      if func in _FuncToFunctional:
+        mod = _FuncToFunctional[func]
+      else:
+        mod = nn.Functional(func)
+        _FuncToFunctional[func] = mod
+    if mod is not None and id(mod) not in module_ids:
+      calls = [
+        call_ctx for call_ctx in mod.calls
+        if call_ctx.root is cur_root_ctx
+        and call_ctx.control_flow_ctx() is cur_control_flow_ctx]
+      if isinstance(mod, nn.Functional):
+        if frame in prev_frames:
+          calls = calls[-1:]  # take the last call
+        else:
+          calls = None  # make a new ctx
+      if calls:
+        # We can reuse some existing name ctx.
+        ctx = calls[0]
+        break
+      module_frames.append(mod)
+      module_ids.add(id(mod))
+
+    frame = frame.f_back
+
+  if ctx is None:
+    ctx = cur_ctx if cur_control_flow_ctx else cur_root_ctx
+    if module_frames and isinstance(module_frames[-1], nn.Functional):
+      # The topmost function usually sets up the model and everything.
+      # It's like the main() function
+      # We don't want to have that here on the name stack.
+      module_frames = module_frames[:-1]
+
+  for module in reversed(module_frames):
+    # Note: instead of just storing the module, we could also cleverly infer a good suggested name
+    #   by looking at the code and check for patterns like "whatever = func(...)"
+    #   and then use "whatever" as suggested name.
+    ctx = nn.NameCtx(module=module, parent=ctx)
+    ctx.is_subnet = True
+    module.calls.append(ctx)
+
+  _AutoSetupNameCtxPrevTopFrame = top_frame
+  return ctx
+
+
+def auto_setup_name_ctx_ignore_func(func: Union[types.FunctionType, Callable]):
+  """
+  Registers the func in the blacklist.
+  """
+  _AutoSetupNameCtxCodeBlacklist.add(func.__code__)

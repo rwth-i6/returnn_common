@@ -46,7 +46,6 @@ class TransformerEncoderLayer(nn.Module):
     self.ff_norm = norm()
     self.dropout = dropout
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """
     Two possible forward variants of encoder, defined by self.norm_first.
@@ -97,7 +96,6 @@ class TransformerEncoder(nn.Module):
     self.num_layers = num_layers
     self.norm = norm(eps=norm_eps) if isinstance(norm, type) else norm
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """
     Applies every encoder layer initialized in self.layers.
@@ -152,7 +150,6 @@ class TransformerDecoderLayer(nn.Module):
     self.activation = ff_activation
     self.dropout = dropout
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *,
                axis: nn.Dim,
                memory: nn.Tensor,
@@ -221,7 +218,6 @@ class TransformerDecoder(nn.Module):
     self.num_layers = num_layers
     self.norm = norm(eps=norm_eps) if isinstance(norm, type) else norm
 
-  @nn.scoped
   def __call__(self, inp: nn.Tensor, *,
                axis: nn.Dim,
                memory: nn.Tensor,
@@ -362,7 +358,6 @@ class Transformer(nn.Module):
     self.norm = norm
     self.norm_eps = norm_eps
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *,
                source_spatial_axis: nn.Dim,
                target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,

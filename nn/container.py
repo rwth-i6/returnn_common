@@ -72,7 +72,6 @@ class Sequential(ModuleList):
   """
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
-  @nn.scoped
   def __call__(self, inp, **kwargs) -> nn.Tensor:
     """
     Forward

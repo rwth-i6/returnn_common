@@ -30,7 +30,6 @@ Code example::
         super().__init__()
         self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 1024))
 
-      @nn.scoped
       def __call__(self, x: nn.Tensor) -> nn.Tensor:
         y = self.lstm(x)
         return y
@@ -701,6 +700,7 @@ class LayerState(dict):
 def make_layer(layer_dict: LayerDictRaw, *,
                name: Optional[Union[str, nn.NameCtx]] = None,
                predefined_out_data: Optional[Data] = None,
+               name_ctx_ignore_top_stack_frames: int = 0,
                ) -> Tensor:
   """
   Creates the layer. This also registers the layer instance in the top name ctx.
@@ -720,9 +720,17 @@ def make_layer(layer_dict: LayerDictRaw, *,
     if NameCtx, will use this.
   :param Data|None predefined_out_data: normally we can derive the out data automatically.
     If this should be skipped, you can pass this explicitly.
+  :param int name_ctx_ignore_top_stack_frames: for :func:`NameCtx.current_ctx`.
+    If your calling function creates exactly one single layer, you might want to ignore its stack frame
+    and set ignore_top_stack_frames=1 and also set a name for the layer.
+    If you are potentially creating multiple layers in your calling function,
+    leave the default ignore_top_stack_frames=0.
+    Some postprocessing step might anyway simplify obsolete subnetworks,
+    see :mod:`naming`.
   """
-  if isinstance(name, str):
-    name_ctx = nn.NameCtx(suggested_name=name)
+  if isinstance(name, str) or not name:
+    parent_ctx = nn.NameCtx.current_ctx(ignore_top_stack_frames=name_ctx_ignore_top_stack_frames + 1)
+    name_ctx = nn.NameCtx(suggested_name=name, parent=parent_ctx)
     created_name_ctx = True
   elif isinstance(name, nn.NameCtx):
     name_ctx = name

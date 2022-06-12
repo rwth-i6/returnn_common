@@ -56,7 +56,6 @@ class GammatoneV2(nn.Module):
       .reshape((temporal_integration_size, 1, 1))
       .astype(numpy.float32))
 
-  @nn.scoped
   def __call__(
         self,
         raw_samples: nn.Tensor,

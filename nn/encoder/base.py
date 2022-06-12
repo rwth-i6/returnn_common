@@ -29,7 +29,6 @@ class IEncoder(nn.Module, ABC):
 
   out_dim: nn.Dim
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor) -> nn.Tensor:
     """
     Encode the input
@@ -45,7 +44,6 @@ class ISeqFramewiseEncoder(nn.Module, ABC):
 
   out_dim: nn.Dim
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
     raise NotImplementedError
 
@@ -67,6 +65,5 @@ class ISeqDownsamplingEncoder(nn.Module, ABC):
   # The downsampling factor only describes the linear factor in the limit.
   downsample_factor: Union[int, float]
 
-  @nn.scoped
   def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     raise NotImplementedError
