@@ -1487,12 +1487,15 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
   cur_control_flow_ctx = cur_ctx.control_flow_ctx()
   cur_root_ctx = cur_ctx.root
 
+  ctx = None  # type: Optional[NameCtx]
   module_ids = set()  # avoid duplicates
   module_frames = []  # type: List[nn.Module]
   frame = top_frame
   while frame:
+    # Stop in the frame from the cur context.
+    # Ignore the cur context if it is the root because the root creation stack trace can be arbitrary.
     # noinspection PyProtectedMember
-    if cur_ctx._enter_stack_frames and frame in cur_ctx._enter_stack_frames:
+    if cur_ctx.parent and cur_ctx._enter_stack_frames and frame in cur_ctx._enter_stack_frames:
       break
     if frame.f_code in code_blacklist:
       frame = frame.f_back
@@ -1530,23 +1533,31 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
           calls = None  # make a new ctx
       if calls:
         # We can reuse some existing name ctx.
-        cur_ctx = calls[0]
+        ctx = calls[0]
         break
       module_frames.append(mod)
       module_ids.add(id(mod))
 
     frame = frame.f_back
 
+  if ctx is None:
+    ctx = cur_ctx if cur_control_flow_ctx else cur_root_ctx
+    if module_frames and isinstance(module_frames[-1], nn.Functional):
+      # The topmost function usually sets up the model and everything.
+      # It's like the main() function
+      # We don't want to have that here on the name stack.
+      module_frames = module_frames[:-1]
+
   for module in reversed(module_frames):
     # Note: instead of just storing the module, we could also cleverly infer a good suggested name
     #   by looking at the code and check for patterns like "whatever = func(...)"
     #   and then use "whatever" as suggested name.
-    cur_ctx = nn.NameCtx(module=module, parent=cur_ctx)
-    cur_ctx.is_subnet = True
-    module.calls.append(cur_ctx)
+    ctx = nn.NameCtx(module=module, parent=ctx)
+    ctx.is_subnet = True
+    module.calls.append(ctx)
 
   _AutoSetupNameCtxPrevTopFrame = top_frame
-  return cur_ctx
+  return ctx
 
 
 def auto_setup_name_ctx_ignore_func(func: Union[types.FunctionType, Callable]):
