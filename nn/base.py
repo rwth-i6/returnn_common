@@ -265,7 +265,7 @@ class Tensor:
                    use_normalized_loss: bool = False,
                    use_flatten_frames: bool = True,
                    custom_inv_norm_factor: Optional[nn.Tensor] = None,
-                   ):
+                   ) -> Tensor:
     """
     Mark this as a loss.
     This has the effect that it is specially handled by RETURNN.
@@ -305,12 +305,16 @@ class Tensor:
       So you could simply pass target_seq_len directly here.
       Basically, for all reporting, it uses sum(loss) * sum(custom_inv_norm_factor).
     """
-    assert not self.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
-    assert "loss" not in self.layer_dict
-    self.layer_dict["loss"] = "as_is"
+    root_scope = self.name_ctx.root
+    res = self
+    if self.name_ctx.parent is not root_scope:
+      res = nn.copy(self, name=root_scope.get_new_child(suggested_name=self.name_ctx.get_abs_name(join_str="_")))
+    assert not res.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
+    assert "loss" not in res.layer_dict
+    res.layer_dict["loss"] = "as_is"
     loss_opts = {}
     if scale is not None and scale != 1:
-      assert "loss_scale" not in self.layer_dict
+      assert "loss_scale" not in res.layer_dict
       loss_opts["scale"] = scale
     if as_error:
       loss_opts["as_error"] = True
@@ -321,17 +325,11 @@ class Tensor:
     if custom_inv_norm_factor is not None:
       loss_opts["custom_inv_norm_factor"] = custom_inv_norm_factor
     if loss_opts:
-      self.layer_dict["loss_opts"] = loss_opts
+      res.layer_dict["loss_opts"] = loss_opts
     # Add it to the root name scope marked_losses list.
     # Note that this logic might change.
-    self.name_ctx.root.marked_losses.append(self)
-    # We might need to tell RETURNN specifically to get this layer.
-    self.name_ctx.make_all_sub_networks_and_optimize()
-    ctx = self.name_ctx.parent
-    while ctx:
-      if ctx.layer:
-        ctx.layer.layer_dict["is_output_layer"] = True
-      ctx = ctx.parent
+    root_scope.marked_losses.append(res)
+    return res
 
   def mark_as_output(self) -> Tensor:
     """
