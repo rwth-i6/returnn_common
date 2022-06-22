@@ -220,7 +220,7 @@ class Normalize(nn.Module):
     norm = normalize(a, axis=self.axis, epsilon=self.epsilon)
     if self.scale is not None:
       norm = self.scale * norm
-    if self.bias:
+    if self.bias is not None:
       norm = norm + self.bias
 
     return norm
