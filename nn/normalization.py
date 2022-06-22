@@ -173,8 +173,8 @@ class BatchNorm(nn.Module):
 
 def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: float = 1e-6) -> nn.Tensor:
   """
-  Calculates normalization for given layer, based on the input dims
-  This does not support parameters as in :class:`NormLayer`, cf. :class:`Normalize`
+  Calculates normalization for given layer, based on the input dims.
+  This does not support parameters as in :class:`NormLayer`, cf. :class:`Normalize`.
 
   :param a: input
   :param axis: axis over which the mean and variance are computed
@@ -192,32 +192,24 @@ class Normalize(nn.Module):
   """
 
   def __init__(self,
-               axis: Union[nn.Dim, Sequence[nn.Dim]],
+               param_shape: Sequence[nn.Dim],
                epsilon: float = 1e-6,
                scale: bool = True, bias: bool = True):
     """
 
-    :param axis: axis over which normalization is computed
+    :param param_shape: shape of the scale and bias parameters
     :param epsilon: epsilon for numerical stability
     :param scale: whether to include a trainable scale
     :param bias: whether to include a trainable bias
     """
     super(Normalize, self).__init__()
     self.epsilon = epsilon
-    self.axis = axis
-    if isinstance(axis, nn.Dim):
-      axis = [axis]
-    self.scale = nn.Parameter(shape=axis, trainable=True) if scale else None
-    self.bias = nn.Parameter(shape=axis, trainable=True) if bias else None
+    self.scale = nn.Parameter(shape=param_shape, trainable=True) if scale else None
+    self.bias = nn.Parameter(shape=param_shape, trainable=True) if bias else None
 
-  def __call__(self, a: nn.Tensor):
-    """
+  def __call__(self, a: nn.Tensor, axis: Union[nn.Dim, Sequence[nn.Dim]]):
 
-    :param a: input
-    :return:
-    """
-
-    norm = normalize(a, axis=self.axis, epsilon=self.epsilon)
+    norm = normalize(a, axis=axis, epsilon=self.epsilon)
     if self.scale is not None:
       norm = self.scale * norm
     if self.bias is not None:
