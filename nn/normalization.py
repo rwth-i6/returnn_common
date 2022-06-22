@@ -207,7 +207,7 @@ class Normalize(nn.Module):
     self.scale = nn.Parameter(shape=param_shape) if scale else None
     self.bias = nn.Parameter(shape=param_shape) if bias else None
 
-  def __call__(self, a: nn.Tensor, axis: Union[nn.Dim, Sequence[nn.Dim]]):
+  def __call__(self, a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]]):
 
     norm = normalize(a, axis=axis, epsilon=self.epsilon)
     if self.scale is not None:
