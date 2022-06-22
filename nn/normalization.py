@@ -218,7 +218,7 @@ class Normalize(nn.Module):
     """
 
     norm = normalize(a, axis=self.axis, epsilon=self.epsilon)
-    if self.scale:
+    if self.scale is not None:
       norm = self.scale * norm
     if self.bias:
       norm = norm + self.bias
