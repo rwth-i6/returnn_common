@@ -204,8 +204,8 @@ class Normalize(nn.Module):
     """
     super(Normalize, self).__init__()
     self.epsilon = epsilon
-    self.scale = nn.Parameter(shape=param_shape, trainable=True) if scale else None
-    self.bias = nn.Parameter(shape=param_shape, trainable=True) if bias else None
+    self.scale = nn.Parameter(shape=param_shape) if scale else None
+    self.bias = nn.Parameter(shape=param_shape) if bias else None
 
   def __call__(self, a: nn.Tensor, axis: Union[nn.Dim, Sequence[nn.Dim]]):
 
