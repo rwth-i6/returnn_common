@@ -191,7 +191,7 @@ class Normalize(nn.Module):
   :func:`normalize` with additional scale and bias
   """
 
-  def __init__(self,
+  def __init__(self, *,
                param_shape: Sequence[nn.Dim],
                epsilon: float = 1e-6,
                scale: bool = True, bias: bool = True):
