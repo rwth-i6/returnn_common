@@ -188,7 +188,7 @@ def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: f
 
 class Normalize(nn.Module):
   """
-  Wrapper around normalize with additional scale and bias
+  :func:`normalize` with additional scale and bias
   """
 
   def __init__(self,
