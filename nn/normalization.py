@@ -224,4 +224,3 @@ class Normalize(nn.Module):
       norm = norm + self.bias
 
     return norm
-
