@@ -96,3 +96,25 @@ def test_sequential_named_case():
   assert net_dict["seq"]["subnetwork"]["output"]["from"] == "three"
   assert net_dict["output"]["from"] == "seq"
   dummy_run_net(config, net=net)
+
+
+def test_parameter_list():
+  class _TestParameterList(nn.Module):
+    def __init__(self):
+      super().__init__()
+      in_dim = nn.FeatureDim("input", 13)
+      self.param_list = nn.ParameterList([nn.Parameter([in_dim]) for _ in range(3)])
+
+    def __call__(self, data: nn.Tensor) -> nn.Tensor:
+      """
+      Forward
+      """
+      for param in self.param_list:
+        data = nn.combine(data, param, kind="add", allow_broadcast_all_sources=True)
+      return data
+
+  net = _TestParameterList()
+  config, net_dict = dummy_config_net_dict(net)
+  pprint(net_dict)
+
+  dummy_run_net(config, net=net)

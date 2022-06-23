@@ -105,3 +105,57 @@ def _is_iterable(obj) -> bool:
     return True
   except TypeError:
     return False
+
+
+class ParameterList(nn.Module):
+  """
+  Parameter list, getting passed an Iterable of Parameters and creates a list of Parameters in that order
+  """
+  def __init__(self, *parameters: Union[nn.Parameter, Iterable[nn.Parameter], ParameterList]):
+    super().__init__()
+    if len(parameters) == 1 and isinstance(parameters[0], ParameterList):
+      for key, parameter in parameters[0]._get_parameters().items():
+        setattr(self, key, parameter)
+    elif len(parameters) == 1 and _is_iterable(parameters[0]):
+      for idx, parameter in enumerate(parameters[0]):
+        setattr(self, str(idx), parameter)
+    else:
+      for idx, parameter in enumerate(parameters):
+        setattr(self, str(idx), parameter)
+
+  def _get_parameters(self) -> Dict[str, nn.Parameter]:
+    return {key: value for (key, value) in vars(self).items() if isinstance(value, nn.Parameter)}
+
+  def append(self, parameter: nn.Parameter) -> ParameterList:
+    """
+    appends one Parameter to the list
+    """
+    setattr(self, str(len(self)), parameter)
+    return self
+
+  def extend(self, parameters: Iterable[nn.Parameter]) -> ParameterList:
+    """
+    appends multiple Parameters to the list
+    """
+    for parameter in parameters:
+      self.append(parameter)
+    return self
+
+  def __len__(self) -> int:
+    return len(self._get_parameters())
+
+  def __iter__(self) -> Iterator[nn.Parameter]:
+    return iter(self._get_parameters().values())
+
+  def __getitem__(self, idx) -> Union[ParameterList, nn.Parameter]:
+    from builtins import slice
+    if isinstance(idx, slice):
+      return self.__class__(dict(list(self._get_parameters().items())[idx]))
+    else:
+      return list(self._get_parameters().values())[idx]
+
+  def __setitem__(self, idx: int, parameter: nn.Parameter) -> None:
+    key = list(self._get_parameters().keys())[idx]
+    return setattr(self, key, nn.Parameter)
+
+  __call__ = nn.Module.__call__  # stays abstract
