@@ -109,7 +109,7 @@ def _is_iterable(obj) -> bool:
 
 class ParameterList(nn.Module):
   """
-  Parameter list, getting passed an Iterable of parameters and creates a list of parameters in that order
+  Parameter list, getting passed an Iterable of Parameters and creates a list of Parameters in that order
   """
   def __init__(self, *parameters: Union[nn.Parameter, Iterable[nn.Parameter], ParameterList]):
     super().__init__()
@@ -128,14 +128,14 @@ class ParameterList(nn.Module):
 
   def append(self, parameter: nn.Parameter) -> ParameterList:
     """
-    appends one parameter to the list
+    appends one Parameter to the list
     """
     setattr(self, str(len(self)), parameter)
     return self
 
   def extend(self, parameters: Iterable[nn.Parameter]) -> ParameterList:
     """
-    appends multiple parameters to the list
+    appends multiple Parameters to the list
     """
     for parameter in parameters:
       self.append(parameter)
