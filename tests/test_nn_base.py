@@ -494,7 +494,8 @@ def test_returnn_config_direct_construction():
   x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
 
   def _config_get_network(epoch: int, **_kwargs) -> dict:
-    epoch  # unused  # noqa
+    # noinspection PyStatementEffect
+    epoch  # unused
     nn.reset_default_root_name_ctx()
     net = nn.Linear(out_dim)
     out = net(nn.get_extern_data(x))
