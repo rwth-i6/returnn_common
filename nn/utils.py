@@ -160,6 +160,15 @@ def reinterpret_set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str 
     name=name)
 
 
+def reinterpret_set_size_base(source: nn.Tensor, size_base: nn.Tensor, *, name: str = "set_size_base") -> nn.Tensor:
+  """
+  :return: source with sparse_dim set to out_dim
+  """
+  return nn.make_layer(
+    {"class": "reinterpret_data", "size_base": size_base, "from": source},
+    name=name)
+
+
 def check_in_feature_dim_lazy_init(
       source: nn.Tensor, in_dim: Optional[nn.Dim], mod_in_dim: Optional[nn.Dim],
       lazy_init: Callable[[nn.Dim], Any]) -> nn.Tensor:
