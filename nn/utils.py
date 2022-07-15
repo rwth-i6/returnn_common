@@ -162,7 +162,7 @@ def reinterpret_set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str 
 
 def reinterpret_set_size_base(source: nn.Tensor, size_base: nn.Tensor, *, name: str = "set_size_base") -> nn.Tensor:
   """
-  :return: source with sparse_dim set to out_dim
+  :return: source with size placeholder set to size_base size placeholder
   """
   return nn.make_layer(
     {"class": "reinterpret_data", "size_base": size_base, "from": source},
