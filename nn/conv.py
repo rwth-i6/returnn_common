@@ -72,10 +72,13 @@ class _ConvOrTransposedConv(nn.Module):
 
   def _call_nd1(self, source: nn.Tensor, *,
                 in_dim: Optional[nn.Dim] = None,
-                in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+                in_spatial_dim: nn.Dim,
+                out_spatial_dim: Optional[nn.Dim] = None,
+                ) -> Tuple[nn.Tensor, nn.Dim]:
     assert self.nd == 1
     out, (out_spatial_dim,) = self.__class__.__base__.__call__(
-      self, source, in_dim=in_dim, in_spatial_dims=[in_spatial_dim])
+      self, source, in_dim=in_dim, in_spatial_dims=[in_spatial_dim],
+      out_spatial_dims=[out_spatial_dim] if out_spatial_dim else None)
     return out, out_spatial_dim
 
 
@@ -119,13 +122,14 @@ class _Conv(_ConvOrTransposedConv):
 
   def __call__(self, source: nn.Tensor, *,
                in_dim: Optional[nn.Dim] = None,
-               in_spatial_dims: Sequence[nn.Dim]
+               in_spatial_dims: Sequence[nn.Dim],
+               out_spatial_dims: Optional[Sequence[nn.Dim]] = None,
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     for in_spatial_dim in in_spatial_dims:
       if in_spatial_dim not in source.shape:
         raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
-    out_spatial_dims = _default_out_spatial_dims(
+    out_spatial_dims = out_spatial_dims or _default_out_spatial_dims(
       description_prefix=nn.NameCtx.current_ctx().get_abs_name(),
       in_spatial_dims=in_spatial_dims,
       filter_size=[d.dimension for d in self.filter_size],
@@ -239,16 +243,18 @@ class _TransposedConv(_ConvOrTransposedConv):
 
   def __call__(self, source: nn.Tensor, *,
                in_dim: Optional[nn.Dim] = None,
-               in_spatial_dims: Sequence[nn.Dim]
+               in_spatial_dims: Sequence[nn.Dim],
+               out_spatial_dims: Optional[Sequence[nn.Dim]] = None,
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
     source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
-    out_spatial_dims = [
-      nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:out-spatial-dim{i}")
-      for i, s in enumerate(self.filter_size)]
-    for i in range(len(self.filter_size)):
-      s = self.filter_size[i].dimension if not self.strides else self.strides[i]
-      if self.filter_size[i].dimension == s == 1 or (s == 1 and self.padding.lower() == "same"):
-        out_spatial_dims[i] = in_spatial_dims[i]
+    if not out_spatial_dims:
+      out_spatial_dims = [
+        nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:out-spatial-dim{i}")
+        for i, s in enumerate(self.filter_size)]
+      for i in range(len(self.filter_size)):
+        s = self.filter_size[i].dimension if not self.strides else self.strides[i]
+        if self.filter_size[i].dimension == s == 1 or (s == 1 and self.padding.lower() == "same"):
+          out_spatial_dims[i] = in_spatial_dims[i]
     layer_dict = {
       "class": "transposed_conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
