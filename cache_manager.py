@@ -1,3 +1,8 @@
+"""
+Helpers for the RWTH-i6 cache manager
+
+https://github.com/rwth-i6/cache-manager
+"""
 
 import os
 from subprocess import check_output, CalledProcessError
