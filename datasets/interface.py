@@ -9,7 +9,7 @@ from typing import Dict, Optional, Any
 
 class DatasetConfig:
   """
-  Base class to be used to define a dataset (`train`, `dev` etc)
+  Base class to be used to define a dataset (`train`, `dev` (for cross-validation and learning rate scheduling) etc)
   and `extern_data` for RETURNN.
   For an example instance `dataset`,
   you might do this in your RETURNN config::
