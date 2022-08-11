@@ -5,7 +5,7 @@ OggZipDataset helpers
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .vocabs import bpe1k, bpe10k
 from ...interface import DatasetConfig, VocabConfig
 from ....data import get_common_data_path
@@ -27,7 +27,8 @@ class Librispeech(DatasetConfig):
                audio_dim=50,
                audio_norm: str = "per_seq",
                vocab: VocabConfig = bpe1k,
-               train_epoch_split=20, train_random_permute=None):
+               train_epoch_split=20, train_random_permute=None,
+               main_key: Optional[str] = None):
     """
     :param audio_norm: "global" or "per_seq". "global" tries to read from standard location in repo
     """
@@ -37,6 +38,7 @@ class Librispeech(DatasetConfig):
     self.vocab = vocab
     self.train_epoch_split = train_epoch_split
     self.train_random_permute = train_random_permute
+    self.main_key = main_key
 
   @classmethod
   def old_defaults(cls, audio_dim=40, audio_norm="global", vocab: VocabConfig = bpe10k, **kwargs) -> Librispeech:
@@ -70,6 +72,10 @@ class Librispeech(DatasetConfig):
     return {
       "dev": self.get_dataset("dev", train=False, subset=3000),
       "devtrain": self.get_dataset("train", train=False, subset=2000)}
+
+  def get_main_dataset(self) -> Dict[str]:
+    assert self.main_key, "main key not defined"
+    return self.get_dataset(self.main_key, train=False)
 
   def get_dataset(self, key: str, *, train: bool, subset=None, train_partition_epoch=None):
     """

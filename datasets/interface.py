@@ -5,6 +5,48 @@ Datasets common interfaces
 
 from __future__ import annotations
 from typing import Dict, Optional, Any
+import dataclasses
+
+
+@dataclasses.dataclass
+class Task:
+  """
+  Covers the training dataset and dev/eval etc for recognition, including how to score it.
+  This goes beyond :class:`DatasetConfig`, or rather covers multiple :class:`DatasetConfig`.
+  It should be possible to replace Librispeech by Switchboard. Maybe even translation tasks later.
+  Thus, the scoring is generic as well.
+  """
+  # TODO the dataset would also already include things like feature extraction details, output labels (BPE etc),
+  #  is this already too much here?
+  train_dataset: DatasetConfig
+
+  dev_dataset: DatasetConfig  # used to select best epoch, maybe tune LM scale or so.
+  eval_datasets: Dict[str, DatasetConfig]
+
+  main_measure_type: MeasureType  # e.g. WER
+
+  # TODO scoring in some generic way? need RecogOutput or so?
+
+
+@dataclasses.dataclass
+class ScoreResult:
+  """
+  Intended to cover all relevant results.
+  """
+  main_number_description: str  # e.g. "test-other"
+  main_number: MeasureValue  # e.g. the final best WER
+
+
+@dataclasses.dataclass(frozen=True)
+class MeasureType:
+  short_name: str  # e.g. "WER"
+  lower_is_better: bool = True
+
+
+@dataclasses.dataclass(frozen=True)
+class MeasureValue:
+  type_: MeasureType
+  value: float
 
 
 class DatasetConfig:
@@ -32,6 +74,16 @@ class DatasetConfig:
   def get_eval_datasets(self) -> Dict[str, Dict[str]]:
     """
     :return: e.g. {"dev": ..., "devtrain": ...}
+    This is intended for eval_datasets in the RETURNN config,
+    which is used for cross-validation and learning rate scheduling.
+    """
+    raise NotImplementedError
+
+  def get_main_dataset(self) -> Dict[str]:
+    """
+    More generic function, when this API is used for other purpose than training,
+    e.g. recognition, generating alignment, collecting some statistics, etc,
+    on one specific dataset.
     """
     raise NotImplementedError
 
