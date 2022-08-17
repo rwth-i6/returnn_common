@@ -73,6 +73,10 @@ class Librispeech(DatasetConfig):
       "dev": self.get_dataset("dev", train=False, subset=3000),
       "devtrain": self.get_dataset("train", train=False, subset=2000)}
 
+  def get_main_name(self) -> str:
+    assert self.main_key, "main key not defined"
+    return self.main_key
+
   def get_main_dataset(self) -> Dict[str]:
     assert self.main_key, "main key not defined"
     return self.get_dataset(self.main_key, train=False)

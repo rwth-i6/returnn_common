@@ -37,6 +37,9 @@ class DatasetConfig:
     """
     raise NotImplementedError
 
+  def get_main_name(self) -> str:
+    raise NotImplementedError
+
   def get_main_dataset(self) -> Dict[str]:
     """
     More generic function, when this API is used for other purpose than training,
