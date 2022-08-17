@@ -11,21 +11,23 @@ import dataclasses
 @dataclasses.dataclass
 class SupervisedTask:
   """
-  Covers the training dataset and dev/eval etc for recognition, including how to score it.
+  Covers the training dataset and dev/eval etc. for recognition, including how to score it.
   This goes beyond :class:`DatasetConfig`, or rather covers multiple :class:`DatasetConfig`.
-  It should be possible to replace Librispeech by Switchboard. Maybe even translation tasks later.
-  Thus, the scoring is generic as well.
-  """
-  # TODO the dataset would also already include things like feature extraction details, output labels (BPE etc),
-  #  is this already too much here?
-  train_dataset: DatasetConfig
 
+  It should be possible to replace Librispeech by Switchboard. Maybe even translation tasks later.
+
+  Note that the dataset would also already include things like feature extraction details, output labels (BPE etc).
+  """
+
+  # for training
+  train_dataset: DatasetConfig  # also includes cross-validation dataset for learning rate scheduling etc
+
+  # for recognition
   dev_dataset: DatasetConfig  # used to select best epoch, maybe tune LM scale or so.
   eval_datasets: Dict[str, DatasetConfig]
 
   main_measure_type: MeasureType  # e.g. WER
-
-  # TODO scoring in some generic way? need RecogOutput or so?
+  main_measure_name: str  # e.g. dataset name but arbitrary, just to describe the main measure value
 
 
 @dataclasses.dataclass
