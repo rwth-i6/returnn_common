@@ -38,6 +38,7 @@ class DatasetConfig:
     raise NotImplementedError
 
   def get_main_name(self) -> str:
+    """name of main dataset"""
     raise NotImplementedError
 
   def get_main_dataset(self) -> Dict[str]:

@@ -7,7 +7,7 @@ See :class:`NltkTimitDataset` for more details.
 """
 
 from __future__ import annotations
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from returnn.config import get_global_config
 
 from ...interface import DatasetConfig
@@ -24,12 +24,14 @@ class NltkTimit(DatasetConfig):
   """
   NLTK TIMIT Dataset
   """
-  def __init__(self, audio_dim=50, debug_mode=None):
+
+  def __init__(self, *, audio_dim=50, debug_mode=None, main_key: Optional[str] = None):
     super(NltkTimit, self).__init__()
     if debug_mode is None:
       debug_mode = config.typed_dict.get("debug_mode", False)
     self.audio_dim = audio_dim
     self.debug_mode = debug_mode
+    self.main_key = main_key
 
   def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
     """
@@ -53,6 +55,16 @@ class NltkTimit(DatasetConfig):
     return {
       "dev": self.get_dataset("dev"),
       "devtrain": self.get_dataset("train")}
+
+  def get_main_name(self) -> str:
+    """main name"""
+    assert self.main_key, "main key not defined"
+    return self.main_key
+
+  def get_main_dataset(self) -> Dict[str]:
+    """main dataset"""
+    assert self.main_key, "main key not defined"
+    return self.get_dataset(self.main_key)
 
   def get_dataset(self, key, subset=None):
     """
