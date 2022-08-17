@@ -9,7 +9,7 @@ import dataclasses
 
 
 @dataclasses.dataclass
-class Task:
+class SupervisedTask:
   """
   Covers the training dataset and dev/eval etc for recognition, including how to score it.
   This goes beyond :class:`DatasetConfig`, or rather covers multiple :class:`DatasetConfig`.
