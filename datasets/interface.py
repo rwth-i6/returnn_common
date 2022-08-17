@@ -5,50 +5,6 @@ Datasets common interfaces
 
 from __future__ import annotations
 from typing import Dict, Optional, Any
-import dataclasses
-
-
-@dataclasses.dataclass
-class SupervisedTask:
-  """
-  Covers the training dataset and dev/eval etc. for recognition, including how to score it.
-  This goes beyond :class:`DatasetConfig`, or rather covers multiple :class:`DatasetConfig`.
-
-  It should be possible to replace Librispeech by Switchboard. Maybe even translation tasks later.
-
-  Note that the dataset would also already include things like feature extraction details, output labels (BPE etc).
-  """
-
-  # for training
-  train_dataset: DatasetConfig  # also includes cross-validation dataset for learning rate scheduling etc
-
-  # for recognition
-  dev_dataset: DatasetConfig  # used to select best epoch, maybe tune LM scale or so.
-  eval_datasets: Dict[str, DatasetConfig]
-
-  main_measure_type: MeasureType  # e.g. WER
-  main_measure_name: str  # e.g. dataset name but arbitrary, just to describe the main measure value
-
-
-@dataclasses.dataclass
-class ScoreResult:
-  """
-  Intended to cover all relevant results.
-  """
-  main_number_description: str  # e.g. "test-other"
-  main_number: MeasureValue  # e.g. the final best WER
-
-
-@dataclasses.dataclass(frozen=True)
-class MeasureType:
-  short_name: str  # e.g. "WER"
-  lower_is_better: bool = True
-
-
-@dataclasses.dataclass(frozen=True)
-class MeasureValue:
-  type_: MeasureType
-  value: float
 
 
 class DatasetConfig:
