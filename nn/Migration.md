@@ -6,6 +6,7 @@ so please give feedback, and maybe extend the framework!
 
 For further documentation, see:
 
+* [RETURNN common homepage](https://github.com/rwth-i6/returnn_common) has an introduction and small usage examples
 * [RETURNN common principles](https://github.com/rwth-i6/returnn_common/wiki/RETURNN-common-principles)
 * Docstrings in the code. It is anyway very recommended to use an IDE to be able to use auto-completion, and the IDE would also automatically show you the documentation.
 
@@ -33,6 +34,12 @@ and be able to easily extend or change it
 for one-off experiments,
 it is recommended to always keep the `nn` code around,
 and maybe not dump the generated net dict at all.
+
+Next to the network (`network`),
+you also directly should define
+the extern data (`extern_data`).
+
+(Speak to Nick, Benedikt, Albert, or others about examples, but note that they are all work-in-progress. You probably find some example code in [i6_experiments](https://github.com/rwth-i6/i6_experiments/).)
 
 
 ## Inputs / outputs
@@ -100,6 +107,18 @@ On getting the length or dim value as a tensor:
 `nn.length(x, axis=axis)`
 or `nn.dim_value(x, axis=axis)`.
 
+
+## Parameters
+
+All parameters (variables) are explicit in `nn`,
+meaning that no RETURNN layer will create a variable
+but all variables are explicitly created by the `nn` code
+via creating `nn.Parameter`.
+
+You can iterate through all parameters of a module or network
+via `parameters()` or `named_parameters()`.
+
+
 ## Losses
 
 RETURNN differentiates between layer classes
@@ -126,4 +145,11 @@ ctc_loss.mark_as_loss(custom_inv_norm_factor=nn.length(targets, axis=targets_tim
 ```
 
 
-## Constraints (L2 etc.)
+## L2 / weight decay
+
+`L2` parameter in a layer
+-> `weight_decay` attrib of `nn.Parameter`
+
+By iterating over `paramaters()`,
+you can easily assign the same weight decay
+to all parameters, or a subset of your model.
