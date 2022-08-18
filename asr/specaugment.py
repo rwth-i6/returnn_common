@@ -157,13 +157,12 @@ def specaugment_v1_eval_func(*, source,
     """
     :return: masked tensor
     """
+    time_len = tf.shape(x)[data.time_dim_axis]
     x_masked = x
     x_masked = random_mask_v1(
       x_masked, batch_axis=data.batch_dim_axis, axis=data.time_dim_axis,
-      min_num=step1 + step2,
-      max_num=tf.maximum(
-        tf.maximum(tf.shape(x)[data.time_dim_axis] // 100, 2) * (1 + step1 + step2 * 2),
-        tf.shape(x)[data.time_dim_axis]),
+      min_num=tf.minimum(step1 + step2, time_len),
+      max_num=tf.minimum(tf.maximum(time_len // 100, 2) * (1 + step1 + step2 * 2), time_len),
       max_dims=20 // time_factor)
     x_masked = random_mask_v1(
       x_masked, batch_axis=data.batch_dim_axis, axis=data.feature_dim_axis,
