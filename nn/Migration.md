@@ -75,10 +75,12 @@ Functional, e.g. `ReduceLayer`
 -> `nn.reduce` etc., pure functions
 
 
-## Simple arithmetic
+## Simple arithmetic and comparisons
 
-`CombineLayer` etc.
+`CombineLayer`
 -> `a + b` etc. works directly
+
+`CompareLayer` -> `a >= b` etc. works directly
 
 
 ## Common math functions
