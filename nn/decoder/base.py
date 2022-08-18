@@ -182,19 +182,19 @@ class IDecoderJointNoStateLogProb(nn.Module):
     raise NotImplementedError
 
 
-class IDecoderJointStateLogProb(nn.Module):
+class IDecoderJointAlignStateLogProb(nn.Module):
   """
   Joint network for transducer-like models:
 
-  getting in step-sync inputs, label-sync inputs,
-  producing probabilities for labels + blank
+  Getting in time-sync inputs, label-sync inputs,
+  producing probabilities for labels + blank.
   """
 
   def __call__(self, *,
-               step_sync_in: nn.Tensor,
-               step_sync_state: nn.LayerState,
+               time_sync_in: nn.Tensor,
                label_sync_in: nn.Tensor,
-               label_sync_state: nn.LayerState,
+               prev_align_label: nn.Tensor,
+               state: nn.LayerState,
                ) -> Tuple[IDecoderJointLogProbOutput, nn.LayerState]:
     raise NotImplementedError
 
