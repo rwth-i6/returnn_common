@@ -181,6 +181,10 @@ via creating `nn.Parameter`.
 
 Parameters must have a unique name from the root module via an attrib chain.
 
+Parameter initial values can be assigned via the `initial` attribute, and the `nn.init` module provides common helpers such as `nn.init.Glorot`.
+Modules (`nn.Linear`, `nn.Conv` etc) should already set a sensible default init,
+but this can then be easily overwritten.
+
 You can iterate through all parameters of a module or network
 via `parameters()` or `named_parameters()`.
 
