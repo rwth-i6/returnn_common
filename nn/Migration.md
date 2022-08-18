@@ -127,6 +127,15 @@ See `nn.LSTM` for an example.
 However, also see `nn.SearchFunc` and `nn.Transformer` as an example.
 
 
+## Attention
+
+`SelfAttentionLayer` -> `nn.SelfAttention` or `nn.CausalSelfAttention`.
+
+In general, there is also `nn.dot_attention`.
+
+For more complete networks, there is also `nn.Transformer`, `nn.TransformerEncoder`, `nn.TransformerDecoder`, or `nn.Conformer`.
+
+
 ## EvalLayer / custom TF code
 
 It should be straight-forward
