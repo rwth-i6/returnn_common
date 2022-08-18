@@ -142,6 +142,7 @@ It should be straight-forward
 to translate custom TF code
 directly to `nn` code,
 mostly just by replacing `tf.` with `nn.`.
+See [our SpecAugment code](https://github.com/rwth-i6/returnn_common/blob/main/asr/specaugment.py) as an example (`specaugment_v1_eval_func` vs `specaugment_v2`).
 
 
 ## Wrapping custom layer dicts
@@ -196,6 +197,8 @@ but this can then be easily overwritten.
 
 You can iterate through all parameters of a module or network
 via `parameters()` or `named_parameters()`.
+
+Also see [How to define the API for parameter initialization, regularization (L2, weight dropout, etc), maybe updater opts per-param](https://github.com/rwth-i6/returnn_common/issues/59).
 
 
 ## Losses
