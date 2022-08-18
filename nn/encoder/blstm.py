@@ -37,6 +37,13 @@ class BlstmEncoder(nn.Module):
 
     self.layers = nn.ModuleList([BlstmSingleLayer(dim=dim) for _ in range(num_layers)])
 
+    if l2:
+      for param in self.parameters():
+        param.weight_decay = l2
+
+    if rec_weight_dropout:
+      raise NotImplementedError  # TODO ...
+
   def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
     for i, lstm in enumerate(self.layers):
       if i > 0:
