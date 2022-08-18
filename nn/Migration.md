@@ -11,7 +11,7 @@ For further documentation, see:
 * Docstrings in the code. It is anyway very recommended to use an IDE to be able to use auto-completion, and the IDE would also automatically show you the documentation.
 * [`nn.base` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/base.py). `nn.base` defines many important base classes such as `nn.Tensor`, `nn.Module`, and has some high-level explanation of how it works internally
 * [`nn.naming` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/naming.py). `nn.naming` defines the layer names and parameter names, i.e. how a model (via `nn.Module`) and all intermediate computations map to RETURNN layers.
-* [Missing pieces for first release](https://github.com/rwth-i6/returnn_common/issues/32). This is an overview, also linking to now completed issues. The issues often come with some discussion where you find the rationality behind certain design decisions.
+* [Missing pieces for first release](https://github.com/rwth-i6/returnn_common/issues/32) and [Intermediate usage before first release](https://github.com/rwth-i6/returnn_common/issues/98). This is an overview, also linking to now completed issues. The issues often come with some discussion where you find the rationality behind certain design decisions.
 
 For many aspects and design decision, RETURNN common follows the PyTorch API.
 
@@ -43,6 +43,9 @@ and maybe not dump the generated net dict at all.
 Next to the network (`network`),
 you also directly should define
 the extern data (`extern_data`).
+
+Also see [How to handle Sisyphus hashes](https://github.com/rwth-i6/returnn_common/issues/51)
+and [Extensions for Sisyphus serialization of net dict and extern data](https://github.com/rwth-i6/returnn_common/issues/104).
 
 (Speak to Nick, Benedikt, Albert, or others about examples, but note that they are all work-in-progress. You probably find some example code in [i6_experiments](https://github.com/rwth-i6/i6_experiments/).)
 
