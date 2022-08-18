@@ -167,11 +167,18 @@ class IDecoderJointNoStateLogProb(nn.Module):
   """
   Joint network for transducer-like models:
 
-  getting in step-sync inputs, label-sync inputs,
-  producing probabilities for labels + blank
+  Getting in time-sync inputs, label-sync inputs,
+  producing probabilities for labels + blank.
+
+  In case of full-sum training,
+  for T time frames,
+  N label frames,
+  D classes (incl blank),
+  it would produce a matrix (..., T, N, D),
+  no matter if we use RNN-T (with vertical) or RNA (monotonic) label topology.
   """
 
-  def __call__(self, *, step_sync_in: nn.Tensor, label_sync_in: nn.Tensor) -> IDecoderJointLogProbOutput:
+  def __call__(self, *, time_sync_in: nn.Tensor, label_sync_in: nn.Tensor) -> IDecoderJointLogProbOutput:
     raise NotImplementedError
 
 
