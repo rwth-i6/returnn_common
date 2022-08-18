@@ -9,6 +9,7 @@ For further documentation, see:
 * [RETURNN common homepage](https://github.com/rwth-i6/returnn_common) has an introduction and small usage examples
 * [RETURNN common principles](https://github.com/rwth-i6/returnn_common/wiki/RETURNN-common-principles)
 * Docstrings in the code. It is anyway very recommended to use an IDE to be able to use auto-completion, and the IDE would also automatically show you the documentation.
+* [`nn.base` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/base.py). `nn.base` defines many important base classes such as `nn.Tensor`, `nn.Module`, and has some high-level explanation of how it works internally
 
 
 ## Setup
@@ -77,6 +78,42 @@ Functional, e.g. `ReduceLayer`
 
 Via `ActivationLayer`
 -> `nn.relu` etc. works directly
+
+
+## Layers with hidden state
+
+`RecLayer`, `SelfAttentionLayer` etc.
+
+There is no hidden state in `nn`, it is all explicit.
+The `nn.LayerState` object is used to pass around state.
+See `nn.LSTM` for an example.
+`nn.LSTM` can operate both on a sequence or on a single frame when you pass `axis=nn.single_step_dim`.
+
+
+## Loops
+
+`RecLayer` with subnetwork
+-> `nn.Loop`
+
+
+## Conditions
+
+`CondLayer`
+-> `nn.Cond`
+
+
+## Subnetworks
+
+`SubnetworkLayer`
+-> define your own module (class, derived from `nn.Module`)
+
+
+## Wrapping custom layer dicts
+
+You can use `nn.make_layer` to wrap a custom layer dict.
+This can be used to partially migrate over some network definition.
+However, it is recommended to avoid this and rewrite the model definition using the `nn` framework directly.
+`nn.make_layer` is how `nn` works internally.
 
 
 ## Dimensions
