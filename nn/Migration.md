@@ -67,6 +67,31 @@ Via `ActivationLayer`
 -> `nn.relu` etc. works directly
 
 
+## Dimensions
+
+After [some discussion](https://github.com/rwth-i6/returnn_common/issues/17),
+it was decided to make consistent use of dimension tags (`DimensionTag`, or `nn.Dim`),
+and not allow anything else to specify dimensions or axes.
+
+The concept of axes and the concept of dimensions and dimension values (e.g. output feature dimension of `LinearLayer`) is the same when dim tags are used consistently.
+
+The feature dimension is still treated special in some cases,
+meaning it is automatically used when not specified,
+via the attrib `feature_dim` of a tensor.
+However, all spatial dims (or reduce dims, etc.) always need to be specified explicitly.
+All non-specified dimensions are handled as batch dimensions.
+
+Before:
+```python
+"y": {"class": "linear", "from": "x", "n_out": 512, "activation": None}
+```
+After:
+```python
+linear_module = nn.Linear(out_dim=nn.FeatureDim("linear", 512))
+y = linear_module(x)
+```
+
+
 ## Losses
 
 RETURNN differentiates between layer classes
