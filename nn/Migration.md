@@ -4,6 +4,11 @@ If you do not find sth, or find sth confusing,
 the reason might be that this is just incomplete,
 so please give feedback, and maybe extend the framework!
 
+For further documentation, see:
+
+* [RETURNN common principles](https://github.com/rwth-i6/returnn_common/wiki/RETURNN-common-principles)
+* Docstrings in the code. It is anyway very recommended to use an IDE to be able to use auto-completion, and the IDE would also automatically show you the documentation.
+
 
 ## Setup
 
@@ -91,6 +96,9 @@ linear_module = nn.Linear(out_dim=nn.FeatureDim("linear", 512))
 y = linear_module(x)
 ```
 
+On getting the length or dim value as a tensor:
+`nn.length(x, axis=axis)`
+or `nn.dim_value(x, axis=axis)`.
 
 ## Losses
 
