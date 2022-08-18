@@ -49,7 +49,7 @@ class PreConvNet(nn.Module):
   def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
     extra_spatial_dim = x.feature_dim
     feat_dim = nn.FeatureDim("dummy-feature", 1)
-    x = nn.split_dims(x, axis=x.feature_dim, dims=(extra_spatial_dim, feat_dim))
+    x = nn.expand_dim(x, dim=feat_dim)
     x, _ = self.conv0(x, in_spatial_dims=(spatial_dim, extra_spatial_dim), in_dim=feat_dim)
     feat_dim = x.feature_dim
     x, extra_spatial_dim = nn.pool1d(x, in_spatial_dim=extra_spatial_dim, pool_size=2, mode="max", padding="same")
