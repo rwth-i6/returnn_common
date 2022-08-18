@@ -5,6 +5,31 @@ the reason might be that this is just incomplete,
 so please give feedback, and maybe extend the framework!
 
 
+## Setup
+
+How to define or create the config,
+how to write Sisyphus setups, etc.:
+There is no definite recommended way yet.
+We are still figuring out what the nicest way is.
+It's also up to you.
+It's very flexible and basically allows
+to do it in any way you want.
+
+You could have the `nn` code to define the network
+directly in the config,
+instead of the net dict.
+
+You can also dump a generated net dict
+and put that into the config.
+However, the generated net dict tends to be quite big,
+closer to the TF computation graph.
+So, to better understand the model definition
+and be able to easily extend or change it
+for one-off experiments,
+it is recommended to always keep the `nn` code around,
+and maybe not dump the generated net dict at all.
+
+
 ## Inputs / outputs
 
 The outputs of layers
