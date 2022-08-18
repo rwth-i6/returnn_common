@@ -10,6 +10,9 @@ For further documentation, see:
 * [RETURNN common principles](https://github.com/rwth-i6/returnn_common/wiki/RETURNN-common-principles)
 * Docstrings in the code. It is anyway very recommended to use an IDE to be able to use auto-completion, and the IDE would also automatically show you the documentation.
 * [`nn.base` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/base.py). `nn.base` defines many important base classes such as `nn.Tensor`, `nn.Module`, and has some high-level explanation of how it works internally
+* [`nn.naming` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/naming.py). `nn.naming` defines the layer names and parameter names, i.e. how a model (via `nn.Module`) and all intermediate computations map to RETURNN layers.
+
+For many aspects and design decision, RETURNN common follows the PyTorch API.
 
 
 ## Setup
@@ -102,10 +105,30 @@ See `nn.LSTM` for an example.
 -> `nn.Cond`
 
 
+## Masked computation
+
+`MaskedComputationLayer`
+-> `nn.MaskedComputation`
+
+
 ## Subnetworks
 
 `SubnetworkLayer`
 -> define your own module (class, derived from `nn.Module`)
+
+
+## ChoiceLayer / search
+
+`ChoiceLayer` -> `nn.choice`.
+However, also see `nn.SearchFunc` and `nn.Transformer` as an example.
+
+
+## EvalLayer / custom TF code
+
+It should be straight-forward
+to translate custom TF code
+directly to `nn` code,
+mostly just by replacing `tf.` with `nn.`.
 
 
 ## Wrapping custom layer dicts
@@ -151,6 +174,8 @@ All parameters (variables) are explicit in `nn`,
 meaning that no RETURNN layer will create a variable
 but all variables are explicitly created by the `nn` code
 via creating `nn.Parameter`.
+
+Parameters must have a unique name from the root module via an attrib chain.
 
 You can iterate through all parameters of a module or network
 via `parameters()` or `named_parameters()`.
