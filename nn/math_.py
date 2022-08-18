@@ -82,6 +82,11 @@ def safe_exp(x: nn.Tensor, *, eps: float = 1e-7) -> nn.Tensor:
   return _activation(x, "safe_exp", opts=dict(eps=eps))
 
 
+def expm1(x: nn.Tensor) -> nn.Tensor:
+  """expm1(x) = exp(x) - 1"""
+  return _activation(x, activation="expm1")
+
+
 def log(x: nn.Tensor) -> nn.Tensor:
   """log. see also :func:`safe_log`"""
   return _activation(x, activation="log")
@@ -99,7 +104,7 @@ def safe_log(x: nn.Tensor, *, eps: float = 1e-7, use_fake_grad: bool = True) -> 
 
 
 def log1p(x: nn.Tensor) -> nn.Tensor:
-  """log1p"""
+  """log1p(x) = log(1 + x)"""
   return _activation(x, activation="log1p")
 
 
