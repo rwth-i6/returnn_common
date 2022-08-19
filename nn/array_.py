@@ -25,7 +25,7 @@ def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) ->
   Note that this is *never* needed for broadcasting.
   All broadcasting should always happen automatically.
 
-  This might be needed for convolution.
+  This might be needed for convolution or concatenation.
 
   This can be reversed via :func:`squeeze`.
   """
