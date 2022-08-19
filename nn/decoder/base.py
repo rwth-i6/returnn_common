@@ -16,7 +16,7 @@ TODO this is all work-in-progress. the transducer-fullsum was the base for this 
 """
 
 from __future__ import annotations
-from typing import Optional, Tuple
+from typing import Union, Tuple
 from enum import Enum
 import dataclasses
 from ... import nn
@@ -59,24 +59,13 @@ class Decoder(nn.Module):
 
   def __init__(self, *,
                label_topology: LabelTopology,
-               label_sync_rnn: IDecoderLabelSyncRnn = None,  # earlier: slow_rnn
-               step_sync_rnn: IDecoderStepSyncRnn = None,  # earlier: fast_rnn
-               log_prob_separate_nb: IDecoderLogProbSeparateNb = None,
-               log_prob_separate_wb: Optional[IDecoderLogProbSeparateWb] = None,
+               label_sync_rnn: TDecoderLabelSync,
+               joint_net_log_prob: TDecoderJointNetLogProb,
                ):
-    """
-    :param label_sync_rnn: runs label-sync. earlier slow_rnn
-    :param step_sync_rnn: runs step-sync (align-sync, time-sync or label-sync). earlier fast_rnn
-    :param log_prob_separate_nb:
-    :param log_prob_separate_wb: runs step-sync. might output blank.
-      combines log_prob_separate_nb with sigmoid decision whether to output a label or blank.
-    """
     super().__init__()
     self.label_topology = label_topology
     self.label_sync_rnn = label_sync_rnn  # earlier: slow_rnn
-    self.step_sync_rnn = step_sync_rnn  # earlier: fast_rnn
-    self.log_prob_separate_nb = log_prob_separate_nb
-    self.log_prob_separate_wb = log_prob_separate_wb
+    self.joint_net_log_prob = joint_net_log_prob  # earlier: fast_rnn + readout
 
   def __call__(self, encoder: nn.Tensor) -> nn.Tensor:
     """
@@ -163,6 +152,19 @@ class DecoderJointLogProbSeparatedOutput(IDecoderJointLogProbOutput):
   log_prob_not_blank: nn.Tensor  # log(-expm1(log_prob_blank)) but you maybe could calc it more directly
 
 
+class IDecoderLabelSyncLogProb(nn.Module):
+  """
+  For simple (maybe attention-based) encoder-decoder models,
+  getting input from some label-sync encoding (TDecoderLabelSync).
+
+  This will produce log probs for non-blank labels.
+  There is no blank in this concept.
+  """
+
+  def __call__(self, *, label_sync_in: nn.Tensor) -> nn.Tensor:
+    raise NotImplementedError
+
+
 class IDecoderJointNoStateLogProb(nn.Module):
   """
   Joint network for transducer-like models:
@@ -199,16 +201,17 @@ class IDecoderJointAlignStateLogProb(nn.Module):
     raise NotImplementedError
 
 
+TDecoderJointNetLogProb = Union[IDecoderLabelSyncLogProb, IDecoderJointNoStateLogProb, IDecoderJointAlignStateLogProb]
+
+
 class IDecoderLabelSyncRnn(nn.Module):
   """
   Represents SlowRNN in Transducer.
 
   Inputs:
-  - prev_label_nb: last (non-blank) label (called prev_sparse_label_nb earlier)
-  - state: prev state
+  - prev_label: last (non-blank) label (called prev_sparse_label_nb earlier)
   - encoder_seq: whole sequence
-  - encoder_frame: making it alignment-dependent when used; current frame of encoder
-  - prev_step_sync_rnn: making it alignment-dependent when used; last step-sync-RNN output
+  - state: prev state
 
   Outputs:
   - some encoded tensor (no log probs or anything like that). The joint network gets this.
@@ -228,16 +231,71 @@ class IDecoderLabelSyncRnn(nn.Module):
   - unmasked_sparse_label_nb_seq: optional; like prev_sparse_label_nb but whole sequence.
       This allows to optimize the masked computation layer in training.
   Now, this is not part of the interface anymore, and we handle this outside.
+
+  In earlier designs, there were also the additional inputs:
+  - prev_step_sync_rnn: making it alignment-dependent when used; last step-sync-RNN output
+  In practice, this was not really used much and thus removed to keep it simpler.
+
+  In other related classes, there are additional inputs:
+  - encoder_frame: making it alignment-dependent when used; current frame of encoder
   """
 
   def __call__(self, *,
-               prev_label_nb: nn.Tensor,
-               state: nn.LayerState,
+               prev_label: nn.Tensor,
                encoder_seq: nn.Tensor,
                encoder_frame: nn.Tensor,
-               prev_step_sync_rnn: nn.Tensor,
+               state: nn.LayerState,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     raise NotImplementedError
+
+
+class IDecoderLabelSyncLabelsOnlyRnn(nn.Module):
+  """
+  Represents SlowRNN in Transducer.
+  In this case, actually this is exactly like the language model interface
+  (we might unify the interface).
+
+  Inputs:
+  - prev_label: last (non-blank) label (called prev_sparse_label_nb earlier)
+  - state: prev state
+
+  Outputs:
+  - some encoded tensor (no log probs or anything like that). The joint network gets this.
+  - new state
+  """
+
+  def __call__(self, *,
+               prev_label: nn.Tensor,
+               state: nn.LayerState,
+               ) -> Tuple[nn.Tensor, nn.LayerState]:
+    raise NotImplementedError
+
+
+class IDecoderLabelSyncAlignDepRnn(nn.Module):
+  """
+  Represents SlowRNN in Transducer.
+
+  Inputs:
+  - prev_label: last (non-blank) label (called prev_sparse_label_nb earlier)
+  - encoder_seq: whole sequence
+  - encoder_frame: making it alignment-dependent when used; current frame of encoder
+  - state: prev state
+
+  Outputs:
+  - some encoded tensor (no log probs or anything like that). The joint network gets this.
+  - new state
+  """
+
+  def __call__(self, *,
+               prev_label: nn.Tensor,
+               encoder_seq: nn.Tensor,
+               encoder_frame: nn.Tensor,
+               state: nn.LayerState,
+               ) -> Tuple[nn.Tensor, nn.LayerState]:
+    raise NotImplementedError
+
+
+TDecoderLabelSync = Union[IDecoderLabelSyncRnn, IDecoderLabelSyncLabelsOnlyRnn, IDecoderLabelSyncAlignDepRnn]
 
 
 class IDecoderStepSyncRnn(nn.Module):
