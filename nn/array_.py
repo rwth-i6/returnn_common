@@ -9,7 +9,7 @@ from .. import nn
 
 def dim_value(source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
   """
-  :return: like tf.shape(source)[axis], or specifically sum(nn.length(source, axis=axis))
+  :return: like tf.shape(source)[axis], or specifically max(nn.length(source, axis=axis))
   """
   length = nn.length(source, axis=axis)
   if not length.shape:
