@@ -111,9 +111,9 @@ class IDecoderJointLogProbOutput:
     log_prob_blank = nn.expand_dim(self.log_prob_blank, dim=nn.FeatureDim("blank", 1))
     log_prob_nb += self.log_prob_not_blank
     if self.blank_idx == 0:
-      log_prob_wb = nn.concat((log_prob_blank, log_prob_blank.feature_dim), (log_prob_nb, log_prob_nb.feature_dim))
+      log_prob_wb = nn.concat_features(log_prob_blank, log_prob_nb)
     elif self.blank_idx == log_prob_nb.feature_dim:
-      log_prob_wb = nn.concat((log_prob_nb, log_prob_nb.feature_dim), (log_prob_blank, log_prob_blank.feature_dim))
+      log_prob_wb = nn.concat_features(log_prob_nb, log_prob_blank)
     else:
       raise NotImplementedError(f"blank idx {self.blank_idx}, dims (excl blank) {log_prob_nb.feature_dim}")
     return log_prob_wb

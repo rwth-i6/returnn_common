@@ -69,4 +69,4 @@ class BlstmSingleLayer(nn.Module):
   def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     fw, _ = self.fw(x, axis=axis, direction=1)
     bw, _ = self.bw(x, axis=axis, direction=-1)
-    return nn.concat((fw, fw.feature_dim), (bw, bw.feature_dim))
+    return nn.concat_features(fw, bw)
