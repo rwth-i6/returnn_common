@@ -9,7 +9,7 @@ Terminology / setting:
 
 * label_wb: labels with blank
 * label_nb: labels without blank
-* Labels always include BOS/EOS, although transducer does not directly use it, but external LM might.
+* Label vocab always include BOS/EOS, although transducer does not directly use it, but external LM might.
 * In the interfaces for building blocks, not all inputs might be used.
 * T: encoder num frames
 * U: num frames of labels without blank without EOS/BOS

@@ -202,17 +202,41 @@ class IDecoderJointAlignStateLogProb(nn.Module):
 class IDecoderLabelSyncRnn(nn.Module):
   """
   Represents SlowRNN in Transducer.
+
+  Inputs:
+  - prev_label_nb: last (non-blank) label (called prev_sparse_label_nb earlier)
+  - state: prev state
+  - encoder_seq: whole sequence
+  - encoder_frame: making it alignment-dependent when used; current frame of encoder
+  - prev_step_sync_rnn: making it alignment-dependent when used; last step-sync-RNN output
+
+  Outputs:
+  - some encoded tensor (no log probs or anything like that). The joint network gets this.
+  - new state
+
+  It is up to the implementation to ignore some inputs.
+  Ignoring some inputs actually allows for optimizations.
+  The standard transducer would actually *only* use the prev_label_nb and state.
+  The standard attention-based encoder-decoder would use prev_label_nb, encoder_seq and state,
+  and do attention on the encoder_seq.
+  (The interface might be extended for segmental models which get the current segment of the encoder.)
+
+  This is usually in a masked computation layer.
+  In earlier designs, the interface was supposed to construct the masked computation layer itself,
+  and thus required the following further inputs:
+  - prev_emit: bool scalar, whether a non-blank label was emitted. used for the mask of the masked computation layer
+  - unmasked_sparse_label_nb_seq: optional; like prev_sparse_label_nb but whole sequence.
+      This allows to optimize the masked computation layer in training.
+  Now, this is not part of the interface anymore, and we handle this outside.
   """
+
   def __call__(self, *,
-               prev_sparse_label_nb: nn.Tensor,
-               prev_emit: nn.Tensor,
-               unmasked_sparse_label_nb_seq: Optional[nn.Tensor] = None,
+               prev_label_nb: nn.Tensor,
+               state: nn.LayerState,
+               encoder_seq: nn.Tensor,
+               encoder_frame: nn.Tensor,
                prev_step_sync_rnn: nn.Tensor,
-               encoder: nn.Tensor  # TODO enc ctx?
-               ) -> nn.Tensor:
-    """
-    Make layer dict.
-    """
+               ) -> Tuple[nn.Tensor, nn.LayerState]:
     raise NotImplementedError
 
 
