@@ -60,7 +60,7 @@ def concat(*sources: Tuple[nn.Tensor, nn.Dim],
            allow_broadcast=False,
            name: Optional[str] = None) -> nn.Tensor:
   """
-  Concatenates multiple sources (by default in feature axis).
+  Concatenates multiple sources in the specified dimension.
   """
   opts = {}
   if allow_broadcast:
@@ -68,6 +68,18 @@ def concat(*sources: Tuple[nn.Tensor, nn.Dim],
   return nn.make_layer(
     {"class": "concat", "from": sources, **opts},
     name=name or "concat", name_ctx_ignore_top_stack_frames=1)
+
+
+def concat_features(*sources: nn.Tensor, allow_broadcast=False) -> nn.Tensor:
+  """
+  Concatenates multiple sources, using feature_dim of each source,
+  so make sure that the feature_dim is correctly set.
+  """
+  src_pairs = []
+  for src in sources:
+    assert src.feature_dim is not None
+    src_pairs.append((src, src.feature_dim))
+  return concat(*src_pairs, allow_broadcast=allow_broadcast)
 
 
 def cum_concat_step(
