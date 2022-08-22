@@ -47,7 +47,7 @@ class _Rec(nn.Module):
 
   def __call__(self, source: nn.Tensor, *,
                axis: nn.Dim,
-               state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], nn.NotSpecified]] = nn.NotSpecified,
+               state: Union[nn.LayerState, Dict[str, nn.Tensor], nn.Tensor, None, nn.NotSpecified] = nn.NotSpecified,
                direction: int = 1,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
