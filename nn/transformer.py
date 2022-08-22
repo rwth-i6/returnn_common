@@ -84,7 +84,7 @@ class TransformerEncoder(nn.Module):
   def __init__(self, encoder_layer: Union[TransformerEncoderLayer, Any], *, num_layers: int,
                norm=nn.LayerNorm, norm_eps: float = 1e-6):
     """
-    :param encoder_layer: Encoder layer to be stacked num_layers times
+    :param encoder_layer: Encoder layer to be stacked num_layers times (copies of it, no param sharing)
     :param num_layers: Number of layers
     :param norm: normalization function, e.g. nn.LayerNorm()
     :param norm_eps: Epsilon value for layer normalization
@@ -290,9 +290,11 @@ class Transformer(nn.Module):
     :param custom_encoder: Custom Encoder to replace the standard encoder
     :param custom_decoder: Custom Decoder to replace the standard decoder
     :param custom_encoder_layer: Custom Encoder layer to replace the standard layer if custom_encoder and
-      custom_encoder_layer are given custom_encoder will be preferred
+      custom_encoder_layer are given custom_encoder will be preferred.
+      Copies of it will be made for each layer, so there is no automatic param sharing.
     :param custom_decoder_layer: Custom Decoder layer to replace the standard layer if custom_decoder and
       custom_decoder_layer are given custom_decoder will be preferred
+      Copies of it will be made for each layer, so there is no automatic param sharing.
     :param norm_eps: Epsilon value for layer normalization
     :param norm: function for layer normalization
     :param norm_first: if ``True`` will perform normalization before other att and ff operations, otherwise after
