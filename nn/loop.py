@@ -515,7 +515,9 @@ class _LoopState:
 
   def get(self):
     """
-    Return prev or current value
+    Return prev or current value of the current loop iteration,
+    depending on whether assign() already has been called or not.
+    This is called (only) inside a loop.
     """
     assert self.name_ctx is not None
     if not self.loop.has_entered_scope:
