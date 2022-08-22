@@ -390,7 +390,9 @@ class _LoopState:
 
   def assign(self, value):
     """
-    Assign the new value for the current iteration.
+    Assign the new value of the current iteration.
+    This is called (only) inside the loop.
+    This will define the value for the next iteration.
     """
     assert self.name_ctx is not None
     assert value is not None
