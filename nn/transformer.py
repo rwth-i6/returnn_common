@@ -380,13 +380,6 @@ class Transformer(nn.Module):
       assert target_spatial_axis, f"{self}: Target spatial axis must be specified when target is given"
     loop = nn.Loop(axis=target_spatial_axis)
     loop.state = state if state else self.default_initial_state()
-    beam = None
-    if search:
-      beam = search.get_beam()
-      beam.name = f"{nn.NameCtx.current_ctx().get_abs_name()}/target"
-      beam.dependency = beam.copy_as_prev_frame()
-      for x in loop.state.deep_tensors():
-        x.data.beam = beam.dependency
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
       output, loop.state.decoder = self.decoder(
@@ -397,7 +390,6 @@ class Transformer(nn.Module):
       if search:
         search.apply_loop(loop)
         choice = search.choice(probs=logits, probs_type="logits")
-        choice.data.beam = beam
         loop.state.target = choice
         loop.end(loop.state.target == self.target_eos_symbol, include_eos=False)
       else:
