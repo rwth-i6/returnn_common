@@ -362,7 +362,7 @@ class Transformer(nn.Module):
                source_spatial_axis: nn.Dim,
                target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
                target_spatial_axis: Optional[nn.Dim] = None,
-               initial_state: Optional[nn.LayerState] = None,
+               state: Optional[nn.LayerState] = None,
                ) -> Tuple[nn.Tensor, nn.Tensor, Optional[nn.Tensor], nn.LayerState]:
     """
     Forward step of Transformer
@@ -379,7 +379,7 @@ class Transformer(nn.Module):
     if target is not None:
       assert target_spatial_axis, f"{self}: Target spatial axis must be specified when target is given"
     loop = nn.Loop(axis=target_spatial_axis)
-    loop.state = initial_state if initial_state else self.default_initial_state()
+    loop.state = state if state else self.default_initial_state()
     beam = None
     if search:
       beam = search.get_beam()
