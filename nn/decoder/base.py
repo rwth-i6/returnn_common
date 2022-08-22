@@ -8,6 +8,7 @@ See :class:`Decoder`.
 References:
 
   See ../transducer/transducer_fullsum.py.
+  https://github.com/rwth-i6/returnn_common/issues/49
 
 TODO this is all work-in-progress. the transducer-fullsum was the base for this code,
   but then it got extended for the new base interfaces (Module, Rec),
