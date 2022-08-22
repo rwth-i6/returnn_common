@@ -396,7 +396,7 @@ class Transformer(nn.Module):
       target = loop.unstack(target) if target is not None else None
       if search:
         search.apply_loop(loop)
-        choice = search.choice(output=logits, output_type="logits")
+        choice = search.choice(probs=logits, probs_type="logits")
         choice.data.beam = beam
         loop.state.target = choice
         loop.end(loop.state.target == self.target_eos_symbol, include_eos=False)

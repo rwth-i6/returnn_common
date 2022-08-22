@@ -19,13 +19,13 @@ class SearchFuncInterface:
     """
     raise NotImplementedError
 
-  def choice(self, *, output: nn.Tensor, output_type: str) -> nn.Tensor:
+  def choice(self, *, probs: nn.Tensor, probs_type: str) -> nn.Tensor:
     """
     Given an output tensor (logits or log prop), returns a beam of chosen indices.
     This is the core of the search.
 
-    :param output: The output tensor (logits or log prob or prob).
-    :param output_type: "logits" or "log_prob" or "prob".
+    :param probs: The output tensor (logits or log prob or prob).
+    :param probs_type: "logits" or "log_prob" or "prob".
     """
     raise NotImplementedError
 
@@ -47,10 +47,10 @@ class SearchFunc(SearchFuncInterface):
     """beam"""
     return nn.SearchBeam(beam_size=self.beam_size)
 
-  def choice(self, *, output: nn.Tensor, output_type: str) -> nn.Tensor:
+  def choice(self, *, probs: nn.Tensor, probs_type: str) -> nn.Tensor:
     """nn.choice"""
     return nn.choice(
-      output, input_type=output_type, beam_size=self.beam_size,
+      probs, input_type=probs_type, beam_size=self.beam_size,
       target=None, search=True)
 
   def apply_loop(self, loop: nn.Loop):
