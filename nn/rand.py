@@ -180,7 +180,6 @@ def random(
     Otherwise (default) it will not be updated automatically.
   :param bool|None auto_update_state: only used when you pass an explicit state
   :param bool|None static: if no state at all should be used. it just relies on the seed then.
-  :param list[nn.Tensor] shape_deps: for dyn dim tags in shape
   :param str|nn.NameCtx|None name:
   :return: layer
   """
