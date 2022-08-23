@@ -972,12 +972,16 @@ def unique_tensor_list(tensors: Iterable[Tensor]) -> List[Tensor]:
 _dim_deps = WeakKeyDictionary()  # type: WeakKeyDictionary[nn.Dim, List[nn.Tensor]]
 
 
-def get_dim_deps(dim: nn.Dim) -> List[nn.Tensor]:
+def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
   """
   :return: the tensors the dim tag depends on.
     This is needed for some functions (layers) such as `nn.constant` or `nn.random_...`.
     https://github.com/rwth-i6/returnn/issues/1096
   """
+  if isinstance(dim, (tuple, list, set)):
+    return unique_tensor_list(itertools.chain(*(get_dim_deps(dim_) for dim_ in dim)))
+  if not isinstance(dim, nn.Dim):
+    raise TypeError(f"expected nn.Dim, got {type(dim)}")
   if dim.auto_generated:
     raise ValueError(f"{dim} should not be auto-generated")  # strange to get this here in returnn-common
   if dim.generic or dim.special:
@@ -987,7 +991,7 @@ def get_dim_deps(dim: nn.Dim) -> List[nn.Tensor]:
   if dim in _dim_deps:
     return _dim_deps[dim]
   if dim.derived_from_op:
-    deps = unique_tensor_list(itertools.chain(*(get_dim_deps(dim_) for dim_ in dim.derived_from_op.inputs)))
+    deps = get_dim_deps(dim.derived_from_op.inputs)
     _dim_deps[dim] = deps
     return deps
   # should not get here
