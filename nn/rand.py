@@ -9,7 +9,12 @@ from .. import nn
 class Random(nn.Module):
   """
   Random number generator with state.
+
+  Note that there is ongoing discussion whether this module can be anonymous (not being an attribute of a module)
+  to allow nn.random_uniform and co, or not allowing this:
+  https://github.com/rwth-i6/returnn_common/issues/147
   """
+
   def __init__(self):
     super(Random, self).__init__()
     self._call_counter = 0
