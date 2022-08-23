@@ -9,9 +9,9 @@ from .. import nn
 
 def constant(value: Union[int, float, bool, numpy.ndarray],
              *,
-             shape: Sequence[nn.Dim],
-             dtype: Optional[str] = nn.NotSpecified,
-             sparse_dim: Optional[nn.Dim] = nn.NotSpecified,
+             shape: Optional[Sequence[nn.Dim]] = None,
+             dtype: Optional[str] = None,
+             sparse_dim: Optional[nn.Dim] = None,
              name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
   """
   Output is a constant value.
@@ -28,9 +28,9 @@ def constant(value: Union[int, float, bool, numpy.ndarray],
     'shape': shape,
     'dtype': dtype,
     'sparse_dim': sparse_dim,
-    'shape_deps': nn.get_dim_deps(shape),
+    'shape_deps': nn.get_dim_deps(shape) if shape else None,
     }
-  args = {key: value for (key, value) in args.items() if value is not nn.NotSpecified}
+  args = {key: value for (key, value) in args.items() if value is not None}
   return nn.make_layer({
     'class': 'constant',
     **args}, name=name or 'constant')
