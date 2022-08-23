@@ -21,10 +21,14 @@ def get_sample_batch(files: Sequence[str], *,
   assert nn.is_debug_eager_mode_enabled()
   import tensorflow as tf
   audio_np, seq_lens = get_sample_batch_np(files, batch_size=batch_size, sample_rate=sample_rate)
+  # TODO the way to define our own custom spatial dim here is hacky and ugly.
+  #  we should find a better way to do this.
   out_spatial_dim = nn.SpatialDim("samples")
   out_spatial_dim.dyn_size_ext = nn.Data(
     name="seq_lens", dim_tags=[nn.batch_dim], dtype=nn.Data.size_dtype,
     placeholder=tf.convert_to_tensor(seq_lens))
+  from returnn_common.nn.base import _register_dim_deps_when_novel  # noqa
+  _register_dim_deps_when_novel(out_spatial_dim, [])
   audio = nn.constant(value=0., shape=[nn.batch_dim, out_spatial_dim], dtype="float32")
   audio.data.placeholder = tf.convert_to_tensor(audio_np)
   return audio, out_spatial_dim
