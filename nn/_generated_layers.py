@@ -685,39 +685,6 @@ def batch_softmax(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def constant(
-             *,
-             value: Union[int, float, bool, numpy.ndarray] = NotSpecified,
-             shape: Sequence[nn.Dim] = NotSpecified,
-             dtype: Optional[str] = NotSpecified,
-             sparse_dim: Optional[nn.Dim] = NotSpecified,
-             shape_deps: Sequence[nn.Tensor] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Output is a constant value.
-
-  :param int|float|bool|numpy.ndarray value:
-  :param Sequence[nn.Dim] shape: for verification, and defining dim tags
-  :param str|None dtype:
-  :param nn.Dim|None sparse_dim:
-  :param list[nn.Tensor] shape_deps: for dyn dim tags in shape
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'value': value,
-    'shape': shape,
-    'dtype': dtype,
-    'sparse_dim': sparse_dim,
-    'shape_deps': shape_deps,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'constant',
-    **args}, name=name or 'constant')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_window(
                source: nn.Tensor,
                *,

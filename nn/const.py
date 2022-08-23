@@ -3,7 +3,37 @@ Const helpers
 """
 
 from typing import Optional, Union, Sequence
+import numpy
 from .. import nn
+
+
+def constant(value: Union[int, float, bool, numpy.ndarray],
+             *,
+             shape: Sequence[nn.Dim],
+             dtype: Optional[str] = nn.NotSpecified,
+             sparse_dim: Optional[nn.Dim] = nn.NotSpecified,
+             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+  """
+  Output is a constant value.
+
+  :param int|float|bool|numpy.ndarray value:
+  :param Sequence[nn.Dim] shape: for verification, and defining dim tags
+  :param str|None dtype:
+  :param nn.Dim|None sparse_dim:
+  :param str|nn.NameCtx|None name:
+  :return: layer
+  """
+  args = {
+    'value': value,
+    'shape': shape,
+    'dtype': dtype,
+    'sparse_dim': sparse_dim,
+    'shape_deps': nn.get_dim_deps(shape),
+    }
+  args = {key: value for (key, value) in args.items() if value is not nn.NotSpecified}
+  return nn.make_layer({
+    'class': 'constant',
+    **args}, name=name or 'constant')
 
 
 def zeros(shape: Sequence[nn.Dim], dtype: Optional[str] = nn.NotSpecified,

@@ -58,6 +58,7 @@ BlacklistLayerClassNames = {
   "norm",
   "switch",
   "rand_int",  # random instead
+  "constant",
 
   "RecStepInfoLayer",
   "_TemplateLayer",
