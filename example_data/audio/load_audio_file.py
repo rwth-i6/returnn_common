@@ -29,6 +29,7 @@ def get_sample_batch(files: Sequence[str], *,
     placeholder=tf.convert_to_tensor(seq_lens))
   from returnn_common.nn.base import _register_dim_deps_when_novel  # noqa
   _register_dim_deps_when_novel(out_spatial_dim, [])
+  _register_dim_deps_when_novel(nn.batch_dim, [])  # in case not defined yet. only makes sense because anyway fixed here
   audio = nn.constant(value=0., shape=[nn.batch_dim, out_spatial_dim], dtype="float32")
   audio.data.placeholder = tf.convert_to_tensor(audio_np)
   return audio, out_spatial_dim
