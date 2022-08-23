@@ -969,6 +969,7 @@ def unique_tensor_list(tensors: Iterable[Tensor]) -> List[Tensor]:
   return out
 
 
+# currently assume there is only one root NameCtx at a time, otherwise we would need this to be root NameCtx dependent
 _dim_deps = WeakKeyDictionary()  # type: WeakKeyDictionary[nn.Dim, List[nn.Tensor]]
 
 
@@ -991,7 +992,10 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
   if not dim.is_dim_known():
     raise ValueError(f"{dim} is not defined yet")
   if dim in _dim_deps:
-    return _dim_deps[dim]
+    deps = _dim_deps[dim]
+    if _deps_valid_in_cur_name_ctx(deps):
+      return deps
+    _dim_deps.pop(dim)
   if dim.derived_from_op:
     deps = get_dim_deps(dim.derived_from_op.inputs)
     _dim_deps[dim] = deps
@@ -1005,14 +1009,20 @@ def _register_dim_deps_when_novel(dim: nn.Dim, deps: List[nn.Tensor]):
     return  # not needed
   if dim in _dim_deps:
     # We could just always keep the first dep list.
-    # But there is one case where the new dep list might be better:
-    # For extern_data, when the first dep list for not fully available for inference,
-    # but the new dep list is, we take over the new one.
+    # But there are cases where the new dep list might be better:
     old_deps = _dim_deps[dim]
-    if (
+    if not _deps_valid_in_cur_name_ctx(old_deps):
+      pass  # replace, use new deps list
+    elif (
+          # For extern_data, when the first dep list for not fully available for inference,
+          # but the new dep list is, we take over the new one.
           any(not dep.data.available_for_inference for dep in old_deps) and
           all(dep.data.available_for_inference for dep in deps)):
-      pass  # go on, use the new list
+      pass  # go on, replace, use the new list
     else:
-      return  # discard
+      return  # discard new list, keep old
   _dim_deps[dim] = deps
+
+
+def _deps_valid_in_cur_name_ctx(deps: List[nn.Tensor]) -> bool:
+  return all(dep.name_ctx.root == nn.NameCtx.top().root for dep in deps)
