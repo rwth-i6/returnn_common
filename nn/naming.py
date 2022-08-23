@@ -1016,6 +1016,8 @@ class NetDictBuilderCtx:
         assert isinstance(
           obj, (int, float, str, bool, numpy.ndarray, set, nn.Dim, type(None), types.FunctionType)), (
             f"unexpected type {type(obj)}")
+        if isinstance(obj, nn.Dim) and obj.is_batch_dim():
+          return nn.batch_dim
         return obj
 
       layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
