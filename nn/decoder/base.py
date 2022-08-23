@@ -80,7 +80,7 @@ class Decoder(nn.Module):
                target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
                axis: Optional[nn.Dim] = None,
                state: Optional[nn.LayerState] = None,
-               ) -> Tuple[nn.Tensor, nn.LayerState]:
+               ) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
     """
     Make one decoder step (train and/or recognition).
     """
@@ -112,9 +112,13 @@ class Decoder(nn.Module):
           prev_label=loop.state.label_nb,
           encoder_seq=encoder,
           encoder_frame=encoder_frame,
+          encoder_frame_idx=...,  # TODO...
           state=loop.state.label_predict_enc)
       else:
         raise TypeError(f"{self}: Unsupported label_predict_enc type {type(self.label_predict_enc)}")
+
+      # TODO join all align label cases
+      #  we want to allow for LM fusion, ILM, and thus need to have the nb label prob separate
 
       if isinstance(self.predictor, IDecoderLabelSyncLogits):
         assert self.label_topology == LabelTopology.LABEL_SYNC, f"{self}: Label topology must be label-sync"
@@ -162,6 +166,7 @@ class Decoder(nn.Module):
       # TODO loss handling here? in that case, cleverly do the most efficient?
       # TODO logits instead of log probs?
       # TODO see below, related is whether and we output
+      # TODO or just return log prob (either framewise or fullsum)
 
       target = loop.unstack(target) if target is not None else None
       if search:
@@ -179,7 +184,8 @@ class Decoder(nn.Module):
       out_labels = loop.stack(align_label) if target is None else None
       # TODO? out_logits = loop.stack(logits)  # TODO not necessarily logits...
 
-    return out_labels, loop.state
+    # TODO dataclass out instead...
+    return out_labels, loop.axis, loop.state
 
   def default_initial_state(self) -> Optional[nn.LayerState]:
     """default init state"""
@@ -427,12 +433,13 @@ class IDecoderLabelSyncLabelsOnlyRnn(nn.Module):
 
 class IDecoderLabelSyncAlignDepRnn(nn.Module):
   """
-  Represents SlowRNN in Transducer.
+  Represents SlowRNN in Transducer, i.e. label-sync. This variant is alignment-dependent.
 
   Inputs:
   - prev_label: last (non-blank) label (called prev_sparse_label_nb earlier)
   - encoder_seq: whole sequence
-  - encoder_frame: making it alignment-dependent when used; current frame of encoder
+  - encoder_frame: making it alignment-dependent; current frame of encoder
+  - encoder_frame_idx: encoder_seq[encoder_frame_idx] == encoder_frame
   - state: prev state
 
   Outputs:
@@ -444,6 +451,7 @@ class IDecoderLabelSyncAlignDepRnn(nn.Module):
                prev_label: nn.Tensor,
                encoder_seq: nn.Tensor,
                encoder_frame: nn.Tensor,
+               encoder_frame_idx: nn.Tensor,
                state: nn.LayerState,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     raise NotImplementedError
