@@ -49,7 +49,9 @@ Code conventions:
 
 from __future__ import annotations
 import numpy
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Callable, Type
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Iterable, Callable, Type
+import itertools
+from weakref import WeakKeyDictionary
 from returnn.tf.util.data import *  # Dim, Data, and others
 # noinspection PyProtectedMember
 from returnn.tf.util.data import _MarkedDim
@@ -751,6 +753,8 @@ def make_layer(layer_dict: LayerDictRaw, *,
     raise exc
   if name_ctx.module:
     name_ctx.module.calls.append(name_ctx)
+  for tag in layer.data.dim_tags:
+    _register_dim_deps_when_novel(tag, [layer])
   return layer
 
 
@@ -791,6 +795,7 @@ def get_extern_data(data: Data) -> Tensor:
       # Undefined dynamic dim tag. Set default data template.
       tag.dyn_size_ext = Data(
         name=f"{data.name}_default_dyn_size_ext", dim_tags=[nn.batch_dim], dtype=data.size_dtype, batch=data.batch)
+    _register_dim_deps_when_novel(tag, [out])
   if nn.is_debug_eager_mode_enabled():
     out.data.placeholder = _make_random_tf_tensor_for_returnn_data(out.data)
   return out
@@ -947,3 +952,61 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     tensor.debug_layer = layer
 
   return layer.output
+
+
+def unique_tensor_list(tensors: Iterable[Tensor]) -> List[Tensor]:
+  """
+  :param list[Tensor] tensors:
+  :return: list with unique tensors
+  :rtype: list[Tensor]
+  """
+  seen = set()  # over name_ctx, not tensor (which is not hashable)
+  out = []
+  for tensor in tensors:
+    if tensor.name_ctx not in seen:
+      out.append(tensor)
+      seen.add(tensor.name_ctx)
+  return out
+
+
+_dim_deps = WeakKeyDictionary()  # type: WeakKeyDictionary[nn.Dim, List[nn.Tensor]]
+
+
+def get_dim_deps(dim: nn.Dim) -> List[nn.Tensor]:
+  """
+  :return: the tensors the dim tag depends on.
+    This is needed for some functions (layers) such as `nn.constant` or `nn.random_...`.
+    https://github.com/rwth-i6/returnn/issues/1096
+  """
+  if dim.auto_generated:
+    raise ValueError(f"{dim} should not be auto-generated")  # strange to get this here in returnn-common
+  if dim.generic or dim.special:
+    raise ValueError(f"{dim} deps not defined for generic/special tags")
+  if not dim.is_dim_known():
+    raise ValueError(f"{dim} is not defined yet")
+  if dim in _dim_deps:
+    return _dim_deps[dim]
+  if dim.derived_from_op:
+    deps = unique_tensor_list(itertools.chain(*(get_dim_deps(dim_) for dim_ in dim.derived_from_op.inputs)))
+    _dim_deps[dim] = deps
+    return deps
+  # should not get here
+  raise Exception(f"{dim} deps not defined (_register_dim_deps not called?)")
+
+
+def _register_dim_deps_when_novel(dim: nn.Dim, deps: List[nn.Tensor]):
+  if dim.derived_from_op:
+    return  # not needed
+  if dim in _dim_deps:
+    # We could just always keep the first dep list.
+    # But there is one case where the new dep list might be better:
+    # For extern_data, when the first dep list for not fully available for inference,
+    # but the new dep list is, we take over the new one.
+    old_deps = _dim_deps[dim]
+    if (
+          any(not dep.data.available_for_inference for dep in old_deps) and
+          all(dep.data.available_for_inference for dep in deps)):
+      pass  # go on, use the new list
+    else:
+      return  # discard
+  _dim_deps[dim] = deps
