@@ -8,9 +8,10 @@ Please file an issue if you miss something.
 """
 
 from __future__ import annotations
-from typing import Union, Optional, Tuple, Sequence, Dict, Any
+from typing import Union, Optional, Tuple, Sequence, Dict, Any, TYPE_CHECKING
 import numpy
-import tensorflow as tf
+if TYPE_CHECKING:
+  import tensorflow as tf
 from returnn.util.basic import NotSpecified
 from .. import nn
 
@@ -463,89 +464,6 @@ def random_state_init(
     'class': 'random_state_init',
     **args}, name=name or 'random_state_init')
   return layer, out_dim
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
-def random(
-           *,
-           shape: Sequence[nn.Dim],
-           distribution: str,
-           mean: Optional[Union[int, float, nn.Tensor]] = NotSpecified,
-           stddev: Optional[Union[int, float, nn.Tensor]] = NotSpecified,
-           bound: Optional[Union[int, float, nn.Tensor]] = NotSpecified,
-           minval: Optional[Union[int, float, nn.Tensor]] = NotSpecified,
-           maxval: Optional[Union[int, float, nn.Tensor]] = NotSpecified,
-           dtype: str = NotSpecified,
-           seed: Optional[Union[int, Sequence[int], numpy.ndarray]] = NotSpecified,
-           algorithm: Optional[Union[str, tf.random.Algorithm]] = NotSpecified,
-           explicit_state: Optional[nn.Tensor] = NotSpecified,
-           auto_update_state: Optional[bool] = NotSpecified,
-           static: Optional[bool] = NotSpecified,
-           shape_deps: Sequence[nn.Tensor] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Generates random numbers from uniform or normal or truncated normal distribution.
-
-  This uses the TensorFlow stateless random ops internally, i.e. all the state handling is explicit.
-  The state var can be explicitly provided and initialized via :class:`RandomStateInitLayer`,
-  or when not provided it will be automatically created.
-
-  There are two possible distinct use cases:
-
-  - For any randomness in the model, e.g. dropout. So each ``session.run`` step will produce a new random number
-    and advance the random state.
-  - To initialize parameters via the config, using :class:`VariableLayer` with the ``init_by_layer`` option.
-    This will only be called once when initializing the parameters.
-    For this use case, we do not want to keep a random state var.
-    You can just pass ``static=False``.
-    Alternatively you could also pass the output of a :class:`RandomStateInitLayer` as ``state``.
-
-  :param Sequence[nn.Dim] shape:
-  :param str distribution: "uniform", "normal" or "truncated_normal"
-  :param int|float|nn.Tensor|None mean:
-  :param int|float|nn.Tensor|None stddev:
-  :param int|float|nn.Tensor|None bound: for uniform, defining the range [-bound, bound)
-  :param int|float|nn.Tensor|None minval: for uniform
-  :param int|float|nn.Tensor|None maxval: for uniform
-  :param str dtype:
-  :param int|list[int]|numpy.ndarray|None seed: If not given, uses self.network.random.randint,
-    i.e. then it is controlled by the global seed setting, and every layer would get its own seed.
-    If you specify it explicitly, make sure every :class:`RandomLayer` uses a different seed,
-    otherwise you would get the same random numbers everywhere.
-  :param str|tf.random.Algorithm|None algorithm: see :class:`RandomStateInitLayer`
-  :param nn.Tensor|None explicit_state: You can pass the state explicitly here.
-    If not given, will be created automatically, and updated automatically.
-    You could pass a :class:`VariableLayer` with initial value via :class:`RandomStateInitLayer`,
-    or directly a :class:`RandomStateInitLayer`.
-    If auto_update_state is True, it must be a variable,
-    and every time a new random number is created, this variable is updated.
-    Otherwise (default) it will not be updated automatically.
-  :param bool|None auto_update_state: only used when you pass an explicit state
-  :param bool|None static: if no state at all should be used. it just relies on the seed then.
-  :param list[nn.Tensor] shape_deps: for dyn dim tags in shape
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'shape': shape,
-    'distribution': distribution,
-    'mean': mean,
-    'stddev': stddev,
-    'bound': bound,
-    'minval': minval,
-    'maxval': maxval,
-    'dtype': dtype,
-    'seed': seed,
-    'algorithm': algorithm,
-    'explicit_state': explicit_state,
-    'auto_update_state': auto_update_state,
-    'static': static,
-    'shape_deps': shape_deps,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'random',
-    **args}, name=name or 'random')
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames

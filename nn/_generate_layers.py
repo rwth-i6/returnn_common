@@ -59,6 +59,7 @@ BlacklistLayerClassNames = {
   "switch",
   "rand_int",  # random instead
   "constant",
+  "random",
 
   "RecStepInfoLayer",
   "_TemplateLayer",
@@ -243,9 +244,10 @@ def setup():
   print('"""', file=f)
   print("", file=f)
   print("from __future__ import annotations", file=f)
-  print("from typing import Union, Optional, Tuple, Sequence, Dict, Any", file=f)
+  print("from typing import Union, Optional, Tuple, Sequence, Dict, Any, TYPE_CHECKING", file=f)
   print("import numpy", file=f)
-  print("import tensorflow as tf", file=f)
+  print("if TYPE_CHECKING:", file=f)
+  print("  import tensorflow as tf", file=f)
   print("from returnn.util.basic import NotSpecified", file=f)
   print("from .. import nn", file=f)
   layer_classes = collect_layers()
