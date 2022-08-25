@@ -27,7 +27,7 @@ def test_masked_computation_lstm():
       """
       loop = nn.Loop(axis=axis)
       loop.state.lstm_out = nn.constant(value=0.0, shape=[nn.batch_dim, self.lstm.out_dim])
-      loop.state.lstm = self.lstm.default_initial_state()
+      loop.state.lstm = self.lstm.default_initial_state(batch_dims=x.batch_dims_ordered(remove=axis))
       with loop:
         x_ = loop.unstack(x)
         mask = nn.reduce(x_, mode="mean", axis=x_.feature_dim) >= 0.  # [B]

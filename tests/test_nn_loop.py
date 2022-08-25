@@ -62,7 +62,7 @@ def test_rec_inner_lstm():
       Forward
       """
       loop = nn.Loop(axis=axis)
-      loop.state.lstm = self.lstm.default_initial_state()
+      loop.state.lstm = self.lstm.default_initial_state(batch_dims=x.batch_dims_ordered(remove=axis))
       with loop:
         x_ = loop.unstack(x)
         y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, axis=nn.single_step_dim)

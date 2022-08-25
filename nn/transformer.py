@@ -373,9 +373,6 @@ class Transformer(nn.Module):
     """
     assert self.model_dim in source.shape, (
       f"{self}: Input {source} feature dimension is not matching Transformer model dimension {self.model_dim}")
-    batch_dims = list(source.shape_ordered)
-    batch_dims.remove(source_spatial_axis)
-    batch_dims.remove(self.model_dim)
     memory = self.encoder(source, axis=source_spatial_axis)
     search = None
     if isinstance(target, nn.SearchFuncInterface):
@@ -384,7 +381,8 @@ class Transformer(nn.Module):
     if target is not None:
       assert target_spatial_axis, f"{self}: Target spatial axis must be specified when target is given"
     loop = nn.Loop(axis=target_spatial_axis)
-    loop.state = state if state else self.default_initial_state(batch_dims=batch_dims)
+    loop.state = state if state else self.default_initial_state(
+      batch_dims=memory.batch_dims_ordered(remove=source_spatial_axis))
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
       output, loop.state.decoder = self.decoder(

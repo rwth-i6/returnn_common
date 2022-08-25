@@ -84,10 +84,6 @@ class Decoder(nn.Module):
     """
     Make one decoder step (train and/or recognition).
     """
-    batch_dims = list(encoder.shape_ordered)
-    batch_dims.remove(encoder_spatial_axis)
-    batch_dims.remove(encoder.feature_dim)
-
     # TODO ...
     search = None
     if isinstance(target, nn.SearchFuncInterface):
@@ -97,7 +93,8 @@ class Decoder(nn.Module):
       assert axis, f"{self}: Target spatial axis must be specified when target is given"
 
     loop = nn.Loop(axis=axis)
-    loop.state = state if state else self.default_initial_state(batch_dims=batch_dims)
+    loop.state = state if state else self.default_initial_state(
+      batch_dims=encoder.batch_dims_ordered(remove=encoder_spatial_axis))
     with loop:
 
       if self.label_predict_enc is None:
@@ -194,6 +191,7 @@ class Decoder(nn.Module):
 
   def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> Optional[nn.LayerState]:
     """default init state"""
+    # TODO ...
 
 
 # TODO enc ctx module
