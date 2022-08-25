@@ -60,6 +60,7 @@ BlacklistLayerClassNames = {
   "rand_int",  # random instead
   "constant",
   "random",
+  "range_in_axis",
 
   "RecStepInfoLayer",
   "_TemplateLayer",

@@ -90,7 +90,7 @@ def random_mask_v2(x: nn.Tensor, *,
         pos=nn.gather(indices, axis=k_dim, position=i), max_amount=max_dims, mask_value=mask_value)
   else:
     loop = nn.Loop(axis=k_dim)
-    k_dim_indices = nn.range_in_axis(indices, axis=k_dim)
+    k_dim_indices = nn.range_over_dim(k_dim)
     loop.state.x = x
     with loop:
       i = loop.unstack(k_dim_indices)
@@ -118,7 +118,7 @@ def _mask_v2(x: nn.Tensor, *,
   dim = nn.length(x, axis=mask_axis)
   amount = nn.random_uniform(shape=pos.shape_ordered, minval=1, maxval=max_amount + 1, dtype="int32")
   pos2 = nn.minimum(pos + amount, dim)
-  idxs = nn.range_in_axis(x, axis=mask_axis)  # (dim,)
+  idxs = nn.range_over_dim(mask_axis)  # (dim,)
   cond = nn.compare_bc(idxs, ">=", pos) & nn.compare_bc(idxs, "<", pos2)  # (batch,dim)
   x = nn.where(cond, mask_value, x)
   return x

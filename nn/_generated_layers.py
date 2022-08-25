@@ -507,38 +507,6 @@ def range(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def range_in_axis(
-                  source: nn.Tensor,
-                  *,
-                  axis: nn.Dim,
-                  dtype: str = NotSpecified,
-                  sparse: bool = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Assume that the input is e.g. (B,T,D), and you specify axis="T", you will get (B=1,T,D=1),
-  where the specified axis is filled with ``tf.range``.
-  See also :class:`RangeLayer`.
-
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param str dtype:
-  :param bool sparse:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'axis': axis,
-    'dtype': dtype,
-    'sparse': sparse,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'range_in_axis',
-    'from': source,
-    **args}, name=name or 'range_in_axis')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def range_from_length(
                       source: nn.Tensor,
                       *,

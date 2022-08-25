@@ -145,7 +145,7 @@ def test_loop_axis_indices():
   class _Net(nn.Module):
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       loop = nn.Loop(axis=axis)
-      indices = nn.range_in_axis(x, axis=axis)
+      indices = nn.range_over_dim(axis)
       loop.state.x = nn.zeros([nn.batch_dim, x.feature_dim], dtype=indices.dtype)
       with loop:
         i = loop.unstack(indices)
@@ -191,7 +191,7 @@ def test_loop_full_seq_last():
     k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.shape_ordered))
   # indices should be sorted, and of shape (batch,num), entries (int32) in [0,dim)
   loop = nn.Loop(axis=k_dim)
-  k_dim_indices = nn.range_in_axis(indices, axis=k_dim)
+  k_dim_indices = nn.range_over_dim(k_dim)
   loop.state.x = x
   with loop:
     i = loop.unstack(k_dim_indices)

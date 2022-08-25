@@ -194,25 +194,30 @@ def dim_match_priority_when_needed(dim: nn.Dim, *other_dims: nn.Dim) -> nn.Dim:
   return dim
 
 
-def range_for_dim(dim: nn.Dim, *, dim_source: Optional[nn.Tensor] = None, sparse: bool = False) -> nn.Tensor:
+def range_over_dim(dim: nn.Dim,
+                   *,
+                   dtype: str = nn.NotSpecified,
+                   sparse: bool = False,
+                   ) -> nn.Tensor:
   """
-  range [0,dim-1] for dim
+  Creates a tensor with shape [dim] with values 0,1,2,...,dim-1.
+  In RETURNN, this is the range_in_axis layer.
 
   :param nn.Dim dim:
-  :param nn.Tensor dim_source: only needed for dynamic dims currently. might not be needed at some later point.
+  :param str dtype: default is int32
   :param bool sparse:
+  :return: layer
   """
-  if dim.dimension is None:
-    # We need to wrap nn.range_in_axis. For that, we need some source data which contains this dim.
-    # This is also needed for proper dependency resolution.
-    if dim_source:
-      assert dim in dim_source.shape
-      return nn.range_in_axis(dim_source, axis=dim, sparse=sparse)
-    # We might get a layer via dim.src_data when we keep some history of data sources.
-    # But we don't have that yet and also not sure if this is the best solution.
-    raise NotImplementedError(f"range_for_dim({dim}) not implemented for dynamic dims yet")
-  out, _ = nn.range(start=0, limit=dim.dimension, out_spatial_dim=dim, sparse=sparse)
-  return out
+  args = {}
+  if sparse:
+    args["sparse"] = True
+  if dtype is not nn.NotSpecified:
+    args["dtype"] = dtype
+  return nn.make_layer({
+    'class': 'range_in_axis',
+    'from': nn.get_dim_deps(dim),
+    'axis': dim,
+    **args}, name='range_over_dim')
 
 
 def sparse_to_dense(source: nn.Tensor, *,
@@ -228,7 +233,7 @@ def sparse_to_dense(source: nn.Tensor, *,
   """
   assert source.data.sparse
   axis = source.data.sparse_dim
-  indices = range_for_dim(axis, dim_source=source, sparse=True)
+  indices = range_over_dim(axis, sparse=True)
   return nn.where(source == indices, label_value, other_value)
 
 
