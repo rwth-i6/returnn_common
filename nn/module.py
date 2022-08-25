@@ -3,7 +3,7 @@ Base module class, :class:`Module`.
 """
 
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Iterator, Callable, TypeVar
+from typing import Dict, Any, Optional, Sequence, List, Tuple, Union, Set, Iterator, Callable, TypeVar
 from returnn.util.basic import NotSpecified
 from .. import nn
 
@@ -88,7 +88,7 @@ class Module:
   def __repr__(self):
     return f"<{self.__class__.__name__}>"
 
-  def default_initial_state(self) -> Optional[nn.LayerState]:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> Optional[nn.LayerState]:
     """
     :return: default initial state, to be used if the module (layer) has recurrent (hidden) state.
       When a module has recurrent state,
@@ -98,7 +98,7 @@ class Module:
     """
     state = nn.LayerState()
     for key, mod in self.named_children(recurse=False):
-      sub_state = mod.default_initial_state()
+      sub_state = mod.default_initial_state(batch_dims=batch_dims)
       if sub_state:
         state[key] = sub_state
     if state:
@@ -292,7 +292,7 @@ class ReturnnWrappedLayerBase(Module):
         return nn.LayerState(h=h, c=c)
     return nn.LayerState(_get_last_hidden_state(layer, out_dim=out_dim, name=name))
 
-  def default_initial_state(self) -> nn.LayerState:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
     """
     :return: default initial state
     """
@@ -304,7 +304,7 @@ class ReturnnWrappedLayerBase(Module):
       if isinstance(unit, str):
         if "lstm" in unit.lower():
           out_dim = getattr(self, "out_dim")
-          return nn.LayerState(h=zeros([nn.batch_dim, out_dim]), c=zeros([nn.batch_dim, out_dim]))
+          return nn.LayerState(h=zeros(list(batch_dims) + [out_dim]), c=zeros(list(batch_dims) + [out_dim]))
       raise NotImplementedError(f"{self}.default_initial_state for RecLayer with unit {unit!r}")
     raise NotImplementedError(f"{self}.default_initial_state")
 

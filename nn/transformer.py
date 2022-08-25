@@ -8,7 +8,7 @@ https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
 from __future__ import annotations
 
 import copy as _copy
-from typing import Optional, Any, Union, Callable, Tuple
+from typing import Optional, Any, Union, Callable, Tuple, Sequence
 from .. import nn
 
 
@@ -237,11 +237,11 @@ class TransformerDecoder(nn.Module):
 
     return output, state
 
-  def default_initial_state(self) -> nn.LayerState:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
     """
     initial state declaration
     """
-    return self.layers.default_initial_state()
+    return self.layers.default_initial_state(batch_dims=batch_dims)
 
 
 class Transformer(nn.Module):
@@ -373,6 +373,9 @@ class Transformer(nn.Module):
     """
     assert self.model_dim in source.shape, (
       f"{self}: Input {source} feature dimension is not matching Transformer model dimension {self.model_dim}")
+    batch_dims = list(source.shape_ordered)
+    batch_dims.remove(source_spatial_axis)
+    batch_dims.remove(self.model_dim)
     memory = self.encoder(source, axis=source_spatial_axis)
     search = None
     if isinstance(target, nn.SearchFuncInterface):
@@ -381,7 +384,7 @@ class Transformer(nn.Module):
     if target is not None:
       assert target_spatial_axis, f"{self}: Target spatial axis must be specified when target is given"
     loop = nn.Loop(axis=target_spatial_axis)
-    loop.state = state if state else self.default_initial_state()
+    loop.state = state if state else self.default_initial_state(batch_dims=batch_dims)
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
       output, loop.state.decoder = self.decoder(
@@ -402,10 +405,10 @@ class Transformer(nn.Module):
 
     return memory, out_logits, out_labels, loop.state
 
-  def default_initial_state(self) -> nn.LayerState:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
     """
     initial state declaration
     """
     return nn.LayerState(
-      target=nn.constant(value=self.target_bos_symbol, shape=[nn.batch_dim], sparse_dim=self.target_dim),
-      decoder=self.decoder.default_initial_state())
+      target=nn.constant(value=self.target_bos_symbol, shape=batch_dims, sparse_dim=self.target_dim),
+      decoder=self.decoder.default_initial_state(batch_dims=batch_dims))

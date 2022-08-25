@@ -2,7 +2,7 @@
 Basic RNNs.
 """
 
-from typing import Optional, Union, Dict, List, Tuple, Callable, Any
+from typing import Optional, Union, Dict, Sequence, List, Tuple, Callable, Any
 from .. import nn
 
 
@@ -81,13 +81,13 @@ class _Rec(nn.Module):
     out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(out)
     return out, out_state
 
-  def default_initial_state(self) -> nn.LayerState:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
     """
     :return: default initial state
     """
     from .const import zeros
     if "lstm" in self.unit.lower():
-      return nn.LayerState(h=zeros([nn.batch_dim, self.out_dim]), c=zeros([nn.batch_dim, self.out_dim]))
+      return nn.LayerState(h=zeros(list(batch_dims) + [self.out_dim]), c=zeros(list(batch_dims) + [self.out_dim]))
     raise NotImplementedError(f"{self}.default_initial_state for RecLayer with unit {self.unit!r}")
 
 

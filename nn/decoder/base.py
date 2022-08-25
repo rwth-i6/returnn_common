@@ -17,7 +17,7 @@ TODO this is all work-in-progress. the transducer-fullsum was the base for this 
 """
 
 from __future__ import annotations
-from typing import Union, Optional, Tuple
+from typing import Union, Optional, Sequence, Tuple
 from enum import Enum
 import dataclasses
 from ... import nn
@@ -84,6 +84,10 @@ class Decoder(nn.Module):
     """
     Make one decoder step (train and/or recognition).
     """
+    batch_dims = list(encoder.shape_ordered)
+    batch_dims.remove(encoder_spatial_axis)
+    batch_dims.remove(encoder.feature_dim)
+
     # TODO ...
     search = None
     if isinstance(target, nn.SearchFuncInterface):
@@ -91,8 +95,9 @@ class Decoder(nn.Module):
       target = None
     if target is not None:
       assert axis, f"{self}: Target spatial axis must be specified when target is given"
+
     loop = nn.Loop(axis=axis)
-    loop.state = state if state else self.default_initial_state()
+    loop.state = state if state else self.default_initial_state(batch_dims=batch_dims)
     with loop:
 
       if self.label_predict_enc is None:
@@ -187,7 +192,7 @@ class Decoder(nn.Module):
     # TODO dataclass out instead...
     return out_labels, loop.axis, loop.state
 
-  def default_initial_state(self) -> Optional[nn.LayerState]:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> Optional[nn.LayerState]:
     """default init state"""
 
 

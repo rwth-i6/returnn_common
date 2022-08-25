@@ -2,7 +2,7 @@
 Attention, self-attention, auto-regressive self-attention
 """
 
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, Sequence
 from .. import nn
 from ..py_compat import Protocol
 
@@ -50,7 +50,7 @@ class GenericSelfAttention(nn.Module):
     self.qkv = nn.Linear(self.qkv_dim_total)
     self.att_dropout = att_dropout
 
-  def default_initial_state(self) -> nn.LayerState:
+  def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
     """
     For causal attention.
     """
@@ -61,8 +61,8 @@ class GenericSelfAttention(nn.Module):
     # The reason it works right now is that we do an optimization where we replace zero init state by 0.
     expand_dim = nn.SpatialDim("self_att_expand_dim_init", 0)
     return nn.LayerState(
-      k_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.key_dim_per_head])),
-      v_accum=nn.LayerState(nn.zeros([nn.batch_dim, expand_dim, self.num_heads, self.value_dim_per_head])))
+      k_accum=nn.LayerState(nn.zeros(list(batch_dims) + [expand_dim, self.num_heads, self.key_dim_per_head])),
+      v_accum=nn.LayerState(nn.zeros(list(batch_dims) + [expand_dim, self.num_heads, self.value_dim_per_head])))
 
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim,
                causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
