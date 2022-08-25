@@ -23,7 +23,7 @@ def test_cond():
       self.linear_false = nn.Linear(out_dim)
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
-      with nn.Cond(nn.length(x, axis=nn.batch_dim) % 2 == 0) as cond:
+      with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
         cond.true = self.linear_true(x)
         cond.false = self.linear_false(x)
         x = cond.result
@@ -41,7 +41,7 @@ def test_cond_shared_params():
       self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
-      with nn.Cond(nn.length(x, axis=nn.batch_dim) % 2 == 0) as cond:
+      with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
         cond.true = self.linear(x)
         cond.false = self.linear(x * 2.)
         x = cond.result
@@ -69,11 +69,11 @@ def test_cond_twice_shared_params():
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       x = self.pre_linear(x)
-      with nn.Cond(nn.length(x, axis=nn.batch_dim) % 2 == 0) as cond:
+      with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
         cond.true = self.linear_true(x)
         cond.false = self.linear_false(x)
         x = cond.result
-      with nn.Cond(nn.length(x, axis=nn.batch_dim) % 2 == 1) as cond:
+      with nn.Cond(nn.length(nn.batch_dim) % 2 == 1) as cond:
         cond.true = self.linear_true(x)
         cond.false = self.linear_false(x)
         x = cond.result
@@ -93,7 +93,7 @@ def test_cond_random():
       self.rnd = nn.Random()
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
-      with nn.Cond(nn.length(x, axis=nn.batch_dim) % 2 == 0) as cond:
+      with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
         cond.true = x + self.rnd.normal(x.shape_ordered)
         cond.false = x
         x = cond.result

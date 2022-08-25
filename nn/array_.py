@@ -7,14 +7,39 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-def dim_value(source: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+def dim_value(dim: nn.Dim) -> Union[nn.Tensor, int]:
   """
   :return: like tf.shape(source)[axis], or specifically max(nn.length(source, axis=axis))
   """
-  length = nn.length(source, axis=axis)
-  if not length.shape:
-    return length
-  return nn.reduce(length, mode="max", axis=length.shape_ordered)
+  if dim.dimension is not None:
+    return dim.dimension
+  length_ = nn.length(dim)
+  if not length_.shape:
+    return length_
+  return nn.reduce(length_, mode="max", axis=length_.shape_ordered)
+
+
+def length(dim: nn.Dim,
+           *,
+           dtype: str = NotSpecified,
+           sparse: bool = False,
+           ) -> nn.Tensor:
+  """
+  :param nn.Dim dim:
+  :param str dtype: default is int32
+  :param bool sparse:
+  :return: individual sequence lengths of dim tag (commonly shape [B])
+  """
+  args = {}
+  if dtype is not nn.NotSpecified:
+    args["dtype"] = dtype
+  if sparse:
+    args["sparse"] = True
+  return nn.make_layer({
+    'class': 'length',
+    'from': nn.get_dim_deps(dim),
+    'axis': dim,
+    **args}, name='length')
 
 
 def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:

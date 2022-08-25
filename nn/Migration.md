@@ -225,7 +225,7 @@ See [here](https://github.com/rwth-i6/returnn/issues/1077#issuecomment-118492954
 To get the same behavior as before:
 ```python
 ctc_loss = nn.ctc_loss(...)
-ctc_loss.mark_as_loss(custom_inv_norm_factor=nn.length(targets, axis=targets_time_dim))
+ctc_loss.mark_as_loss(custom_inv_norm_factor=nn.length(targets_time_dim))
 ```
 
 

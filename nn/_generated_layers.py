@@ -303,36 +303,6 @@ def scatter_nd(
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def length(
-           source: nn.Tensor,
-           *,
-           axis: nn.Dim,
-           dtype: str = NotSpecified,
-           sparse: bool = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Returns the length of sources as (B,), via input size_placeholder.
-
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param str dtype:
-  :param bool sparse:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'axis': axis,
-    'dtype': dtype,
-    'sparse': sparse,
-    }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'length',
-    'from': source,
-    **args}, name=name or 'length')
-
-
-# noinspection PyShadowingBuiltins,PyShadowingNames
 def softmax(
             source: nn.Tensor,
             *,

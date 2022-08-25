@@ -115,7 +115,7 @@ def _mask_v2(x: nn.Tensor, *,
   :param max_amount: inclusive
   :param mask_value:
   """
-  dim = nn.length(x, axis=mask_axis)
+  dim = nn.length(mask_axis)
   amount = nn.random_uniform(shape=pos.shape_ordered, minval=1, maxval=max_amount + 1, dtype="int32")
   pos2 = nn.minimum(pos + amount, dim)
   idxs = nn.range_over_dim(mask_axis)  # (dim,)

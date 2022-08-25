@@ -61,6 +61,7 @@ BlacklistLayerClassNames = {
   "constant",
   "random",
   "range_in_axis",
+  "length",
 
   "RecStepInfoLayer",
   "_TemplateLayer",
