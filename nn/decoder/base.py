@@ -77,7 +77,7 @@ class Decoder(nn.Module):
   def __call__(self, *,
                encoder: nn.Tensor,
                encoder_spatial_axis: nn.Dim,
-               target: Optional[Union[nn.Tensor, nn.SearchFuncInterface]] = None,
+               target: Union[nn.Tensor, nn.SearchFuncInterface],
                axis: Optional[nn.Dim] = None,
                state: Optional[nn.LayerState] = None,
                ) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
