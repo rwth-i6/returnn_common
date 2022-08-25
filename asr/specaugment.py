@@ -29,7 +29,7 @@ def specaugment_v2(x: nn.Tensor, *,
 
   with nn.Cond(nn.train_flag() | (not only_on_train)) as cond:
     x_masked = x
-    spatial_len = nn.dim_value(x, axis=spatial_dim)
+    spatial_len = nn.dim_value(spatial_dim)
     # time mask
     x_masked = random_mask_v2(
       x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,

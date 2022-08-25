@@ -30,7 +30,7 @@ def test_nn_transformer_search():
     data, source_spatial_axis=time_dim,
     target=nn.SearchFunc(
       beam_size=3,
-      max_seq_len=nn.dim_value(data, axis=time_dim)))
+      max_seq_len=nn.dim_value(time_dim)))
   out_labels.mark_as_default_output()
 
   config_code = nn.get_returnn_config().get_complete_py_code_str(transformer)
