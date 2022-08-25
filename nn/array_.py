@@ -23,13 +23,15 @@ def length(dim: nn.Dim,
            *,
            dtype: str = NotSpecified,
            sparse: bool = False,
-           ) -> nn.Tensor:
+           ) -> Union[nn.Tensor, int]:
   """
   :param nn.Dim dim:
   :param str dtype: default is int32
   :param bool sparse:
   :return: individual sequence lengths of dim tag (commonly shape [B])
   """
+  if dim.dimension is not None:
+    return dim.dimension
   args = {}
   if dtype is not nn.NotSpecified:
     args["dtype"] = dtype
