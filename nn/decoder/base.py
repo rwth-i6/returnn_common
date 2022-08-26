@@ -33,6 +33,13 @@ class LabelTopology(Enum):
   TIME_SYNC_LABEL_LOOP = 3
   WITH_VERTICAL = 4
 
+  @classmethod
+  def is_time_sync(cls, topo: LabelTopology) -> bool:
+    """
+    :return: whether the given topology is time-synchronous
+    """
+    return topo in (cls.TIME_SYNC_PEAKY, cls.TIME_SYNC_LABEL_LOOP)
+
 
 class Decoder(nn.Module):
   """
@@ -99,12 +106,20 @@ class Decoder(nn.Module):
       batch_dims=encoder.batch_dims_ordered(remove=encoder_spatial_axis))
     with loop:
 
-      encoder_frame_idx = ...  # TODO...
+      encoder_frame_idx = None
+      if self.label_topology != LabelTopology.LABEL_SYNC:
+        encoder_frame_idx = loop.state.encoder_frame_idx
+
       encoder_frame = None
-      if (
+      if (  # only get it when we really need it
             isinstance(self.label_predict_enc, IDecoderLabelSyncAlignDepRnn) or
             isinstance(self.predictor, IDecoderJointBaseLogProb)):
-        encoder_frame = ...  # TODO align dep. or unstack if time-sync
+        if LabelTopology.is_time_sync(self.label_topology):
+          assert axis in (nn.single_step_dim, encoder_spatial_axis)
+          encoder_frame = loop.unstack(encoder)
+        else:
+          assert encoder_frame_idx is not None, f"{self}: invalid label topology {self.label_topology}?"
+          encoder_frame = nn.gather(encoder, axis=encoder_spatial_axis, position=encoder_frame_idx)
 
       if self.label_predict_enc is None:
         label_predict_enc = None
@@ -140,6 +155,7 @@ class Decoder(nn.Module):
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
         probs = self.predictor(label_sync_in=label_predict_enc)
         probs_type = "logits"
+        blank_idx = None
       elif isinstance(self.predictor, IDecoderJointBaseLogProb):
         assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
@@ -163,6 +179,7 @@ class Decoder(nn.Module):
           raise TypeError(f"{self}: Unsupported predictor joint type {type(self.predictor)}")
         probs = predictor_out.prob_like_wb
         probs_type = predictor_out.prob_like_type
+        blank_idx = predictor_out.blank_idx
       else:
         raise TypeError(f"{self}: Unsupported predictor type {type(self.predictor)}")
 
@@ -184,6 +201,15 @@ class Decoder(nn.Module):
         loop.end(loop.state.label_nb == self.target_eos_symbol, include_eos=False)
       else:
         loop.state.label_wb = align_label
+
+      if encoder_frame_idx is not None:
+        if LabelTopology.is_time_sync(self.label_topology):
+          loop.state.encoder_frame_idx = encoder_frame_idx + 1
+        elif self.label_topology == LabelTopology.WITH_VERTICAL:
+          assert blank_idx is not None
+          loop.state.encoder_frame_idx = encoder_frame_idx + nn.cast(align_label == blank_idx, dtype="int32")
+        else:
+          raise ValueError(f"{self}: Unexpected label topology {self.label_topology}")
 
       out_labels = loop.stack(align_label) if target is None else None
       # TODO? out_logits = loop.stack(logits)  # TODO not necessarily logits...

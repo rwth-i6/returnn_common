@@ -88,6 +88,7 @@ class Loop:
     self._last_frames = {}  # type: Dict[nn.NameCtx, nn.Tensor]  # inner name -> outer
     self.axis = axis
     self.end_ref = None  # type: Optional[nn.Tensor]
+    self._iter_idx_ref = None  # type: Optional[nn.Tensor]
 
   def __repr__(self):
     return f"<{self.__class__.__name__} {self.name_ctx.get_abs_name_repr()}>"
@@ -241,6 +242,20 @@ class Loop:
       self.extra_opts.pop("max_seq_len_via", None)
     else:
       self.extra_opts["max_seq_len_via"] = value
+
+  @property
+  def iter_idx(self) -> nn.Tensor:
+    """
+    The index of the current iteration, inside the loop. This is a scalar. This always starts with 0.
+
+    """
+    assert self._entered_scope and not self._exited_scope
+    if self._iter_idx_ref is not None:
+      return self._iter_idx_ref
+    self._iter_idx_ref = self.name_ctx.get_child_layer_ref(
+      ":i", data=nn.Data(
+        ":i", dtype="int32", dim_tags=(), sparse_dim=self.axis, control_flow_ctx=self.control_flow_ctx))
+    return self._iter_idx_ref
 
 
 class LoopModule(nn.Module):
