@@ -78,6 +78,7 @@ class Decoder(nn.Module):
                encoder: nn.Tensor,
                encoder_spatial_axis: nn.Dim,
                target: Union[nn.Tensor, nn.SearchFuncInterface],
+               label_scores_ext: Optional[IDecoderLabelSyncStateScaledLogProbs] = None,
                axis: Optional[nn.Dim] = None,
                state: Optional[nn.LayerState] = None,
                ) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
@@ -119,52 +120,38 @@ class Decoder(nn.Module):
       else:
         raise TypeError(f"{self}: Unsupported label_predict_enc type {type(self.label_predict_enc)}")
 
-      # TODO join all align label cases
-      #  we want to allow for LM fusion, ILM, and thus need to have the nb label prob separate
-
       if isinstance(self.predictor, IDecoderLabelSyncLogits):
         assert self.label_topology == LabelTopology.LABEL_SYNC, f"{self}: Label topology must be label-sync"
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
         probs = self.predictor(label_sync_in=label_predict_enc)
         probs_type = "logits"
-      elif isinstance(self.predictor, IDecoderJointNoStateLogProb):
+      elif isinstance(self.predictor, IDecoderJointBaseLogProb):
         assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
         encoder_frame = ...  # TODO share with above
-        predictor_out = self.predictor(time_sync_in=encoder_frame, label_sync_in=label_predict_enc)
-        probs = predictor_out.prob_like_wb
-        probs_type = predictor_out.prob_like_type
-      elif isinstance(self.predictor, IDecoderJointAlignStateLogProb):
-        assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
-        assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
-        encoder_frame = ...  # TODO share with above
-        predictor_out, loop.state.predictor = self.predictor(
-          time_sync_in=encoder_frame,
-          label_sync_in=label_predict_enc,
-          prev_align_label=loop.state.label_wb,
-          state=loop.state.predictor)
-        probs = predictor_out.prob_like_wb
-        probs_type = predictor_out.prob_like_type
-      elif isinstance(self.predictor, IDecoderJointNoCtxLogProb):
-        assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
-        assert label_predict_enc is None, f"{self}: Label predict encoder not used"
-        encoder_frame = ...  # TODO share with above
-        predictor_out = self.predictor(time_sync_in=encoder_frame)
-        probs = predictor_out.prob_like_wb
-        probs_type = predictor_out.prob_like_type
-      elif isinstance(self.predictor, IDecoderAlignStateLogProb):
-        assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
-        assert label_predict_enc is None, f"{self}: Label predict encoder not used"
-        encoder_frame = ...  # TODO share with above
-        predictor_out, loop.state.predictor = self.predictor(
-          time_sync_in=encoder_frame,
-          prev_align_label=loop.state.label_wb,
-          state=loop.state.predictor)
+        if isinstance(self.predictor, IDecoderJointNoStateLogProb):
+          predictor_out = self.predictor(time_sync_in=encoder_frame, label_sync_in=label_predict_enc)
+        elif isinstance(self.predictor, IDecoderJointAlignStateLogProb):
+          predictor_out, loop.state.predictor = self.predictor(
+            time_sync_in=encoder_frame,
+            label_sync_in=label_predict_enc,
+            prev_align_label=loop.state.label_wb,
+            state=loop.state.predictor)
+        elif isinstance(self.predictor, IDecoderJointNoCtxLogProb):
+          predictor_out = self.predictor(time_sync_in=encoder_frame)
+        elif isinstance(self.predictor, IDecoderAlignStateLogProb):
+          predictor_out, loop.state.predictor = self.predictor(
+            time_sync_in=encoder_frame,
+            prev_align_label=loop.state.label_wb,
+            state=loop.state.predictor)
+        else:
+          raise TypeError(f"{self}: Unsupported predictor joint type {type(self.predictor)}")
         probs = predictor_out.prob_like_wb
         probs_type = predictor_out.prob_like_type
       else:
         raise TypeError(f"{self}: Unsupported predictor type {type(self.predictor)}")
 
+      # TODO use label_scores_ext
       # TODO loss handling here? in that case, cleverly do the most efficient?
       # TODO logits instead of log probs?
       # TODO see below, related is whether and we output
@@ -286,6 +273,66 @@ class DecoderJointLogProbSeparatedOutput(IDecoderJointLogProbOutput):
   log_prob_not_blank: nn.Tensor  # log(-expm1(log_prob_blank)) but you maybe could calc it more directly
 
 
+class IGenericLanguageModelLogits(nn.Module):
+  """
+  Generic language model.
+  This interface should be usable both for training (operating on the whole sequence)
+  and recognition (operating per step).
+  It returns logits.
+  """
+  def __call__(self, *,
+               prev_label: nn.Tensor,
+               axis: nn.Dim = nn.single_step_dim,
+               state: Optional[nn.LayerState]
+               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
+    raise NotImplementedError
+
+  def as_decoder_scaled_log_probs(self, *,
+                                  scale: Union[nn.Tensor, float] = 1.
+                                  ) -> IDecoderLabelSyncStateScaledLogProbs:
+    """
+    :return: interface
+    """
+    return _IDecoderScaledLogProbsFromLm(language_model=self, scale=scale)
+
+
+class IDecoderLabelSyncStateScaledLogProbs:
+  """
+  For example, a language model.
+  This interface is used for both the external LM fusion,
+  and also internal LM subtraction.
+  The internal LM estimation can fit into this interface.
+  The score returned here could be:
+    log P_extLM(a_s | ...) - log P_ILM(a_s | ...).
+  This interface is not a nn.Module because this would dynamically be added to Decoder.__call__.
+  """
+  def __call__(self, *,
+               prev_label: nn.Tensor,
+               state: Optional[nn.LayerState]
+               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
+    raise NotImplementedError
+
+
+class _IDecoderScaledLogProbsFromLm(IDecoderLabelSyncStateScaledLogProbs):
+  def __init__(self, *,
+               language_model: IGenericLanguageModelLogits,
+               scale: Union[nn.Tensor, float] = 1.,
+               ):
+    super(_IDecoderScaledLogProbsFromLm, self).__init__()
+    self.language_model = language_model
+    self.scale = scale
+
+  def __call__(self, *,
+               prev_label: nn.Tensor,
+               state: Optional[nn.LayerState]
+               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
+    logits, state = self.language_model(prev_label=prev_label, axis=nn.single_step_dim, state=state)
+    res = nn.log_softmax(logits, axis=logits.feature_dim)
+    if not isinstance(self.scale, (float, int)) or self.scale != 1:
+      res *= self.scale
+    return res, state
+
+
 class IDecoderLabelSyncLogits(nn.Module):
   """
   For simple (maybe attention-based) encoder-decoder models,
@@ -299,7 +346,18 @@ class IDecoderLabelSyncLogits(nn.Module):
     raise NotImplementedError
 
 
-class IDecoderJointNoStateLogProb(nn.Module):
+class IDecoderJointBaseLogProb(nn.Module):
+  """
+  Joint network for transducer-like models (e.g. the original RNN-T).
+  Base interface.
+  It shares that it always outputs a :class:`IDecoderJointLogProbOutput`,
+  and always gets in time_sync_in.
+  """
+  def __call__(self, **kwargs) -> IDecoderJointLogProbOutput:
+    raise NotImplementedError
+
+
+class IDecoderJointNoStateLogProb(IDecoderJointBaseLogProb):
   """
   Joint network for transducer-like models (e.g. the original RNN-T):
 
@@ -318,7 +376,7 @@ class IDecoderJointNoStateLogProb(nn.Module):
     raise NotImplementedError
 
 
-class IDecoderJointAlignStateLogProb(nn.Module):
+class IDecoderJointAlignStateLogProb(IDecoderJointBaseLogProb):
   """
   Joint network for transducer-like models (specifically the extended transducer model):
 
@@ -335,7 +393,7 @@ class IDecoderJointAlignStateLogProb(nn.Module):
     raise NotImplementedError
 
 
-class IDecoderJointNoCtxLogProb(nn.Module):
+class IDecoderJointNoCtxLogProb(IDecoderJointBaseLogProb):
   """
   Joint network for CTC-like models, having no dependence on the label context:
 
@@ -347,7 +405,7 @@ class IDecoderJointNoCtxLogProb(nn.Module):
     raise NotImplementedError
 
 
-class IDecoderAlignStateLogProb(nn.Module):
+class IDecoderAlignStateLogProb(IDecoderJointBaseLogProb):
   """
   Joint network for transducer-like models, no explicit nb label dep, only align-label (like RNA):
 
