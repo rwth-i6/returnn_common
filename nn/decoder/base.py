@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Union, Optional, Sequence, Tuple
 from enum import Enum
 import dataclasses
+from contextlib import nullcontext
 from ... import nn
 
 
@@ -98,27 +99,41 @@ class Decoder(nn.Module):
       batch_dims=encoder.batch_dims_ordered(remove=encoder_spatial_axis))
     with loop:
 
+      encoder_frame_idx = ...  # TODO...
+      encoder_frame = None
+      if (
+            isinstance(self.label_predict_enc, IDecoderLabelSyncAlignDepRnn) or
+            isinstance(self.predictor, IDecoderJointBaseLogProb)):
+        encoder_frame = ...  # TODO align dep. or unstack if time-sync
+
       if self.label_predict_enc is None:
         label_predict_enc = None
-      elif isinstance(self.label_predict_enc, IDecoderLabelSyncRnn):
-        label_predict_enc, loop.state.label_predict_enc = self.label_predict_enc(
-          prev_label=loop.state.label_nb,
-          encoder_seq=encoder,
-          state=loop.state.label_predict_enc)
-      elif isinstance(self.label_predict_enc, IDecoderLabelSyncLabelsOnlyRnn):
-        label_predict_enc, loop.state.label_predict_enc = self.label_predict_enc(
-          prev_label=loop.state.label_nb,
-          state=loop.state.label_predict_enc)
-      elif isinstance(self.label_predict_enc, IDecoderLabelSyncAlignDepRnn):
-        encoder_frame = ...  # TODO align dep. or unstack if time-sync
-        label_predict_enc, loop.state.label_predict_enc = self.label_predict_enc(
-          prev_label=loop.state.label_nb,
-          encoder_seq=encoder,
-          encoder_frame=encoder_frame,
-          encoder_frame_idx=...,  # TODO...
-          state=loop.state.label_predict_enc)
       else:
-        raise TypeError(f"{self}: Unsupported label_predict_enc type {type(self.label_predict_enc)}")
+        if self.label_topology == LabelTopology.LABEL_SYNC:
+          comp_context_mgr = nullcontext()
+        else:
+          comp_mask = ...  # TODO prev align label was non-blank...
+          comp_context_mgr = nn.MaskedComputation(mask=comp_mask)
+        with comp_context_mgr:
+          if isinstance(self.label_predict_enc, IDecoderLabelSyncRnn):
+            label_predict_enc, loop.state.label_predict_enc = self.label_predict_enc(
+              prev_label=loop.state.label_nb,
+              encoder_seq=encoder,
+              state=loop.state.label_predict_enc)
+          elif isinstance(self.label_predict_enc, IDecoderLabelSyncLabelsOnlyRnn):
+            label_predict_enc, loop.state.label_predict_enc = self.label_predict_enc(
+              prev_label=loop.state.label_nb,
+              state=loop.state.label_predict_enc)
+          elif isinstance(self.label_predict_enc, IDecoderLabelSyncAlignDepRnn):
+            assert encoder_frame is not None
+            label_predict_enc, loop.state.label_predict_enc = self.label_predict_enc(
+              prev_label=loop.state.label_nb,
+              encoder_seq=encoder,
+              encoder_frame=encoder_frame,
+              encoder_frame_idx=encoder_frame_idx,
+              state=loop.state.label_predict_enc)
+          else:
+            raise TypeError(f"{self}: Unsupported label_predict_enc type {type(self.label_predict_enc)}")
 
       if isinstance(self.predictor, IDecoderLabelSyncLogits):
         assert self.label_topology == LabelTopology.LABEL_SYNC, f"{self}: Label topology must be label-sync"
@@ -128,7 +143,7 @@ class Decoder(nn.Module):
       elif isinstance(self.predictor, IDecoderJointBaseLogProb):
         assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
-        encoder_frame = ...  # TODO share with above
+        assert encoder_frame is not None
         if isinstance(self.predictor, IDecoderJointNoStateLogProb):
           predictor_out = self.predictor(time_sync_in=encoder_frame, label_sync_in=label_predict_enc)
         elif isinstance(self.predictor, IDecoderJointAlignStateLogProb):
