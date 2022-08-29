@@ -64,6 +64,7 @@ class Loop:
     if not axis or axis is NotSpecified:
       self._has_given_axis = False
       axis = nn.SpatialDim(f"{name}-dim")
+    assert isinstance(axis, nn.Dim)
     self.extra_opts = {
       {"max_seq_len": "max_seq_len_via"}.get(key, key): value
       for (key, value) in locals().items()
