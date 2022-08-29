@@ -78,7 +78,7 @@ def binary_cross_entropy(*,
 
   A value `pos_weight > 1` decreases the false negative count, hence increasing
   the recall.
-  Conversely setting `pos_weight < 1` decreases the false positive count and
+  Conversely, setting `pos_weight < 1` decreases the false positive count and
   increases the precision.
   This can be seen from the fact that `pos_weight` is introduced as a
   multiplicative coefficient for the positive labels term
