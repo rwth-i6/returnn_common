@@ -184,3 +184,26 @@ def window_step(
     axis=nn.single_step_dim,
     name=name)
   return out, state
+
+
+def boolean_mask(source: nn.Tensor, *,
+                 mask: nn.Tensor,
+                 in_spatial_dim: nn.Dim,
+                 out_spatial_dim: Optional[nn.Dim] = None
+                 ) -> Tuple[nn.Tensor, nn.Dim]:
+  """
+  Applies the mask on the source tensor, i.e. reducing the axis.
+
+  For mask of shape [B,T], source of shape [B,T,D],
+  it would return shape [B,T',D], where T' = sum(mask, axis=T).
+  """
+  if not out_spatial_dim:
+    out_spatial_dim = nn.SpatialDim(f"{mask.name_ctx.get_abs_name()}:spatial")
+  return nn.make_layer(
+    {
+      "class": "masked_computation",
+      "mask": mask,
+      "in_spatial_dim": in_spatial_dim,
+      "out_spatial_dim": out_spatial_dim,
+      "unit": {"class": "copy", "from": source}
+    }, name="boolean_mask"), out_spatial_dim
