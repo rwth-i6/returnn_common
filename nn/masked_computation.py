@@ -51,7 +51,9 @@ class MaskedComputation:
 
   """
 
-  def __init__(self, mask: nn.Tensor, *, name: str = "masked_computation"):
+  def __init__(self,
+               mask: nn.Tensor, *,
+               name: str = "masked_computation"):
     """
     :param nn.Tensor mask: bool, shape [batch]
     """
@@ -99,10 +101,13 @@ class MaskedComputationModule(nn.Module):
     """
     name_ctx = self.masked_computation.name_ctx
     out = name_ctx.children["output"].layer_ref
+    loop = nn.NameCtx.inner_loop()
+    assert loop, f"{self}: need to be inside loop"
     return nn.make_layer(
       {
         "class": "masked_computation",
         "mask": self.masked_computation.mask,
+        "in_spatial_dim": loop.axis,
         "unit": {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()}
       },
       name=name_ctx,
