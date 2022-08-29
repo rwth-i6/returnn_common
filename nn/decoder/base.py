@@ -1,5 +1,5 @@
 """
-Generic decoder interface.
+Generic decoder interface and implementation.
 
 This is supposed to cover the decoder of an attention-based encoder-decoder and of a transducer.
 
@@ -73,6 +73,7 @@ class Decoder(nn.Module):
                target_dim: nn.Dim,
                target_bos_symbol: int = 0,
                target_eos_symbol: int = 0,
+               target_blank_symbol: Optional[int] = None,
                ):
     super().__init__()
     self.label_topology = label_topology
@@ -81,6 +82,9 @@ class Decoder(nn.Module):
     self.target_dim = target_dim  # includes blank if not label-sync
     self.target_bos_symbol = target_bos_symbol
     self.target_eos_symbol = target_eos_symbol
+    if self.label_topology != LabelTopology.LABEL_SYNC:
+      assert target_blank_symbol is not None, f"{self} need target_blank_symbol with non-label-sync topology"
+    self.target_blank_symbol = target_blank_symbol
 
   def __call__(self, *,
                encoder: nn.Tensor,
@@ -127,7 +131,13 @@ class Decoder(nn.Module):
         if self.label_topology == LabelTopology.LABEL_SYNC:
           comp_context_mgr = nullcontext()
         else:
-          comp_mask = ...  # TODO prev align label was non-blank...
+          if target is not None and not isinstance(self.label_predict_enc, IDecoderLabelSyncAlignDepRnn):
+            # We are not align dep, i.e. don't need the current encoder frame,
+            # and we also have the targets, thus we can directly operate in the target non-blank frames.
+            # This allows to make the training criterion more efficient below.
+            comp_mask = target != self.target_blank_symbol
+          else:
+            comp_mask = loop.state.label_wb != self.target_blank_symbol
           comp_context_mgr = nn.MaskedComputation(mask=comp_mask)
         with comp_context_mgr:
           if isinstance(self.label_predict_enc, IDecoderLabelSyncRnn):
@@ -155,7 +165,6 @@ class Decoder(nn.Module):
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
         probs = self.predictor(label_sync_in=label_predict_enc)
         probs_type = "logits"
-        blank_idx = None
       elif isinstance(self.predictor, IDecoderJointBaseLogProb):
         assert self.label_topology != LabelTopology.LABEL_SYNC, f"{self}: Label topology must not be label-sync"
         assert label_predict_enc is not None, f"{self}: Label predict encoder must be specified"
@@ -179,7 +188,12 @@ class Decoder(nn.Module):
           raise TypeError(f"{self}: Unsupported predictor joint type {type(self.predictor)}")
         probs = predictor_out.prob_like_wb
         probs_type = predictor_out.prob_like_type
-        blank_idx = predictor_out.blank_idx
+        assert predictor_out.blank_idx == self.target_blank_symbol
+        if predictor_out.direct_logits_nb is not None:
+          # TODO ...
+          # nn.cross_entropy(...)
+          # nn.binary_cross_entropy()
+          pass
       else:
         raise TypeError(f"{self}: Unsupported predictor type {type(self.predictor)}")
 
@@ -206,8 +220,8 @@ class Decoder(nn.Module):
         if LabelTopology.is_time_sync(self.label_topology):
           loop.state.encoder_frame_idx = encoder_frame_idx + 1
         elif self.label_topology == LabelTopology.WITH_VERTICAL:
-          assert blank_idx is not None
-          loop.state.encoder_frame_idx = encoder_frame_idx + nn.cast(align_label == blank_idx, dtype="int32")
+          loop.state.encoder_frame_idx = (
+            encoder_frame_idx + nn.cast(align_label == self.target_blank_symbol, dtype="int32"))
         else:
           raise ValueError(f"{self}: Unexpected label topology {self.label_topology}")
 
@@ -257,6 +271,7 @@ class IDecoderJointLogProbOutput:
     """
     :return: shape (...,D) where is number of classes *with* blank, log probs
     """
+    # Default implementation uses log_prob_nb and log_prob_not_blank to derive it.
     assert self.__class__.log_prob_nb is not IDecoderJointLogProbOutput.log_prob_nb
     log_prob_nb = self.log_prob_nb
     log_prob_blank = nn.expand_dim(self.log_prob_blank, dim=nn.FeatureDim("blank", 1))
@@ -274,6 +289,10 @@ class IDecoderJointLogProbOutput:
     """
     :return: shape (...,D) where is number of classes *without* blank, log probs
     """
+    # Default implementation uses direct_logits_nb if possible.
+    if self.direct_logits_nb is not None:
+      return nn.log_softmax(self.direct_logits_nb, axis=self.direct_logits_nb.feature_dim)
+    # Otherwise use log_prob_wb and log_prob_not_blank to derive it.
     assert self.__class__.log_prob_wb is not IDecoderJointLogProbOutput.log_prob_wb
     log_prob_wb = self.log_prob_wb
     if self.blank_idx == 0:
@@ -286,10 +305,18 @@ class IDecoderJointLogProbOutput:
     return log_prob_nb
 
   @property
+  def direct_logits_nb(self) -> Optional[nn.Tensor]:
+    """
+    :return: logits for non-blank labels
+    """
+    return None
+
+  @property
   def log_prob_blank(self) -> nn.Tensor:
     """
     :return: log prob of blank
     """
+    # Default implementation uses log_prob_wb to derive it.
     assert self.__class__.log_prob_wb is not IDecoderJointLogProbOutput.log_prob_wb
     log_prob_wb = self.log_prob_wb
     return nn.gather(log_prob_wb, position=self.blank_idx, axis=log_prob_wb.feature_dim)
