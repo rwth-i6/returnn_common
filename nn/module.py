@@ -120,6 +120,14 @@ class Module:
     return name
 
   def __call__(self, *args, **kwargs) -> Union[nn.Tensor, Tuple[nn.Tensor, nn.LayerState], Any]:
+    """
+    Main module call.
+
+    Note that there is nothing really specific about this method.
+    Your module can have other methods as well,
+    and you don't necessarily need to define this.
+    Only certain other functions or modules like Sequential make use of it.
+    """
     raise NotImplementedError
 
   def __setattr__(self, key: str, value):
