@@ -51,7 +51,7 @@ class ITransducerDecoderFullSum(ITransducerDecoder, ABC):
     raise NotImplementedError
 
 
-def search_transducer(decoder: ITransducerDecoderBase, *,
+def search_transducer(decoder: ITransducerDecoder, *,
                       encoder: nn.Tensor,
                       encoder_spatial_dim: nn.Dim
                       ) -> (nn.Tensor, nn.Tensor):
