@@ -33,6 +33,43 @@ def test_specaugment_v2():
   dummy_run_net_single_custom(code_str)
 
 
+def test_random_mask_v2_via_get_network():
+  # https://github.com/rwth-i6/returnn_common/issues/199
+  from returnn.config import Config
+  from returnn.tf.engine import Engine
+  from returnn.datasets import init_dataset
+
+  feat_dim = nn.FeatureDim("feat", 5)
+  time_dim = nn.SpatialDim("time")
+  audio = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim])
+
+  def _config_get_network(epoch: int, **_kwargs) -> dict:
+    # noinspection PyStatementEffect
+    epoch  # unused
+    nn.reset_default_root_name_ctx()
+    x = nn.get_extern_data(audio)
+
+    from ..asr import specaugment
+    masked = specaugment.random_mask_v2(
+      x=x, mask_axis=time_dim, broadcast_axis=x.feature_dim, min_num=1, max_num=2, max_dims=3)
+    print(masked)
+    masked.mark_as_default_output()
+
+    net_dict = nn.get_returnn_config().get_net_dict_raw_dict(nn.Module())
+    return net_dict
+
+  config = Config({
+    "task": "train", "num_epochs": 1, "start_epoch": 1,
+    "get_network": _config_get_network,
+    "extern_data": {audio.name: {"dim_tags": [nn.batch_dim, time_dim, feat_dim], "available_for_inference": True}},
+  })
+  train_dataset = init_dataset(
+    {"class": "DummyDataset", "input_dim": feat_dim.dimension, "output_dim": 5, "num_seqs": 3})
+  engine = Engine(config)
+  engine.init_train_from_config(config, train_data=train_dataset)
+  engine.forward_single(train_dataset, seq_idx=0)
+
+
 def test_specaugment_v2_real_example_audio():
   nn.reset_default_root_name_ctx()
 
