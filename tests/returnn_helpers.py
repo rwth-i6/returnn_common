@@ -24,11 +24,12 @@ def make_scope():
       yield session
 
 
-def make_feed_dict(data_list, n_batch=3, n_time=7):
+def make_feed_dict(data_list, n_batch=3, n_time=7, same_time: bool = False):
   """
   :param returnn.tf.network.ExternData data_list:
   :param int n_batch:
   :param int n_time:
+  :param bool same_time:
   :rtype: dict[tf.Tensor,numpy.ndarray|list[int|float]]
   """
   from returnn.tf.network import ExternData
@@ -59,7 +60,8 @@ def make_feed_dict(data_list, n_batch=3, n_time=7):
           dyn_size_v = numpy.concatenate(
             [dyn_size_v, rnd.randint(1, n_time + 1, size=(n_batch - dyn_size_v.shape[0],))], axis=0)
         d[dyn_size] = dyn_size_v
-        n_time += 1
+        if not same_time:
+          n_time += 1
     print("%r %r: shape %r" % (data, data.placeholder, shape))
     if data.sparse:
       d[data.placeholder] = rnd.randint(0, data.dim or 13, size=shape, dtype=data.dtype)
