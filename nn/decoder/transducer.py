@@ -60,9 +60,12 @@ class ITransducerDecoderFullSum(ITransducerDecoderBase, ABC):
     raise NotImplementedError
 
 
-def search_transducer(decoder: ITransducerDecoderBase, *, encoder: nn.Tensor) -> (nn.Tensor, nn.Tensor):
+def search_transducer(decoder: ITransducerDecoderBase, *,
+                      encoder: nn.Tensor,
+                      encoder_spatial_dim: nn.Dim
+                      ) -> (nn.Tensor, nn.Tensor):
   """
   Perform search. Return
   """
+  decoder, encoder, encoder_spatial_dim  # noqa  # TODO
   # TODO...
-
