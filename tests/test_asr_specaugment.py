@@ -7,7 +7,8 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 import typing
 import os
-from .returnn_helpers import dummy_run_net_single_custom, config_net_dict_via_serialized, make_scope
+from .returnn_helpers import dummy_config_net_dict, dummy_run_net, \
+  dummy_run_net_single_custom, config_net_dict_via_serialized, make_scope
 
 if typing.TYPE_CHECKING:
   from .. import nn
@@ -31,6 +32,17 @@ def test_specaugment_v2():
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   code_str += "debug_runtime_sanity_checks = True\n\n"
   dummy_run_net_single_custom(code_str)
+
+
+def test_specaugment_v2_in_module_call():
+  # https://github.com/rwth-i6/returnn_common/issues/199
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      from ..asr.specaugment import specaugment_v2
+      return specaugment_v2(x, spatial_dim=axis, global_train_step_dependent=False, only_on_train=False)
+
+  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  dummy_run_net(config)
 
 
 def test_random_mask_v2_via_get_network():
