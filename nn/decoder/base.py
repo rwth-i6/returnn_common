@@ -40,6 +40,32 @@ class LabelTopology(Enum):
     return topo in (cls.TIME_SYNC_PEAKY, cls.TIME_SYNC_LABEL_LOOP)
 
 
+class IDecoder:
+  """
+  Generic decoder interface
+  """
+
+  @property
+  def label_topology(self) -> LabelTopology:
+    """
+    label topology
+    """
+    raise NotImplementedError
+
+  def next_log_prob(self, *,
+                    prev_label: nn.Tensor,
+                    state: nn.LayerState
+                    ) -> (nn.Tensor, nn.LayerState):
+    """
+    :return: probs over labels, new state
+
+    The labels are alignment labels (incl blank) in case the label topology is not label-sync.
+
+    This is used for the search.
+    """
+    raise NotImplementedError
+
+
 class IDecoderJointLogProbOutput:
   """
   What :class:`IDecoderJointLogProb` returns.

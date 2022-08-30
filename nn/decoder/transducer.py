@@ -15,28 +15,19 @@ TODO
 from __future__ import annotations
 from abc import ABC
 from ... import nn
+from .base import IDecoder
 
 
-class ITransducerDecoderBase:
+class ITransducerDecoder(IDecoder, ABC):
   """
-  Generic transducer interface
+  Generic transducer interface.
+
+  Just the same as IDecoder actually, only that the label topology is not label-sync,
+  but it is still flexible on what label topology we use, e.g. with vertical transitions or not.
   """
-  def __init__(self):
-    pass
-
-  def next_align_frame_log_prob(self, *,
-                                prev_align_label: nn.Tensor,
-                                state: nn.LayerState
-                                ) -> (nn.Tensor, nn.LayerState):
-    """
-    :return: probs over align label (incl blank), new state
-
-    This is used for the search.
-    """
-    raise NotImplementedError
 
 
-class ITransducerDecoderFullSum(ITransducerDecoderBase, ABC):
+class ITransducerDecoderFullSum(ITransducerDecoder, ABC):
   """
   Covers the standard transducer, where full-sum over all possible alignments is feasible.
   """
