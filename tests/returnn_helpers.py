@@ -140,23 +140,25 @@ def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: ret
 # noinspection PyShadowingNames
 def dummy_run_net_single_custom(config_code_str: str, *,
                                 make_feed_dict=make_feed_dict,
-                                default_out_dim_tag_order: Optional[Sequence[Union[nn.Dim, str]]] = None
+                                default_out_dim_tag_order: Optional[Sequence[Union[nn.Dim, str]]] = None,
+                                eval_flag: bool = False,
                                 ) -> Dict[str, numpy.ndarray]:
   """
   :param config_code_str: e.g. via get_complete_py_code_str
   :param make_feed_dict: func
   :param default_out_dim_tag_order: if given, for the fetch, will order the dims this way
+  :param eval_flag: losses are computed if True
   """
   config_dict, net_dict = config_net_dict_via_serialized(config_code_str)
   from returnn.config import Config
   from returnn.tf.network import TFNetwork
   config = Config(config_dict)
   with make_scope() as session:
-    net = TFNetwork(config=config, train_flag=False)
+    net = TFNetwork(config=config, train_flag=False, eval_flag=eval_flag)
     net.construct_from_dict(net_dict)
     net.initialize_params(session)
     feed_dict = make_feed_dict(net.extern_data)
-    fetches = net.get_fetches_dict()
+    fetches = net.get_fetches_dict(should_eval=eval_flag)
     have_default_out = False
     for layer in net.get_output_layers():
       if layer.get_absolute_name() == "output":
