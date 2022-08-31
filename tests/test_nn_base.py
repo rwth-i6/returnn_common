@@ -452,7 +452,9 @@ def test_parameter_not_initialized():
   try:
     params = list(net.parameters())
   except Exception as exc:
+    # nn.Linear does not know in_dim yet, so params are not initialized
     print("Expected exception:", exc)
+    assert "not initialized, params unknown" in str(exc)
   else:
     raise Exception(f"No exception. Got params = {params!r}")
 
