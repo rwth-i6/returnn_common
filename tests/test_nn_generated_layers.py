@@ -82,3 +82,41 @@ def test_repeat_without_out_dim():
   engine = Engine(config)
   engine.init_train_from_config(config, train_data=train_dataset)
   engine.train()
+
+
+def test_repeat_without_out_dim_same_as_input():
+  # https://github.com/rwth-i6/returnn_common/issues/200
+  from returnn.config import Config
+  from returnn.tf.engine import Engine
+  from returnn.datasets import init_dataset
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  out_dim = nn.FeatureDim("out", 5)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
+
+  def _config_get_network(epoch: int, **_kwargs) -> dict:
+    # noinspection PyStatementEffect
+    epoch  # unused
+    nn.reset_default_root_name_ctx()
+    net = nn.Linear(out_dim)
+    y = net(nn.get_extern_data(x))
+    out, dim = nn.repeat(y, repetitions=1, axis=time_dim)
+    out.mark_as_default_output()
+    y.mark_as_loss()
+    net_dict = nn.get_returnn_config().get_net_dict_raw_dict(nn.Module())
+    return net_dict
+
+  config = Config({
+    "task": "train", "num_epochs": 1, "start_epoch": 1,
+    "get_network": _config_get_network,
+    "extern_data": {x.name: {"dim_tags": [nn.batch_dim, time_dim, in_dim], "available_for_inference": True}},
+  })
+  train_dataset = init_dataset(
+    {"class": "DummyDataset", "input_dim": in_dim.dimension, "output_dim": 5, "num_seqs": 3})
+  engine = Engine(config)
+  engine.init_train_from_config(config, train_data=train_dataset)
+  net_out = engine.network.get_default_output_layer().output
+  assert net_out.dim_tags == (nn.batch_dim, time_dim, out_dim)
+  assert "time" in repr(net_out.dim_tags[1])
+  assert "time" in repr(engine.network.extern_data.get_default_input_data().get_time_dim_tag())
+  engine.train()
