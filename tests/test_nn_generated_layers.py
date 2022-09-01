@@ -124,6 +124,7 @@ def test_repeat_without_out_dim_same_as_input():
 
 def test_repeat_as_loss():
   # https://github.com/rwth-i6/returnn_common/issues/201
+  nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
   in_dim = nn.FeatureDim("in", 3)
   x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
