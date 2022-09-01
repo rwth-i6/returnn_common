@@ -120,3 +120,15 @@ def test_repeat_without_out_dim_same_as_input():
   assert "time" in repr(net_out.dim_tags[1])
   assert "time" in repr(engine.network.extern_data.get_default_input_data().get_time_dim_tag())
   engine.train()
+
+
+def test_repeat_as_loss():
+  # https://github.com/rwth-i6/returnn_common/issues/201
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
+  out, dim = nn.repeat(nn.get_extern_data(x), repetitions=1, axis=time_dim, out_dim=time_dim)
+  out.mark_as_default_output()
+  out.mark_as_loss()
+  config_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config_str, eval_flag=True)
