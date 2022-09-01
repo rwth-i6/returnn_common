@@ -956,7 +956,11 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
           "raised the exception:\n",
           f"  {type(exc).__name__} {exc!s}\n",
           "(See above for the RETURNN exception traceback.)"]
-        raise ReturnnConstructTemplateException("".join(msgs)) from exc
+        # Use `with_traceback`, such that the user directly sees the full traceback,
+        # and also that debuggers stop right where it matters.
+        # Still use `from exc` to keep the original exception,
+        # which might additionally look nicer in the output.
+        raise ReturnnConstructTemplateException("".join(msgs)).with_traceback(exc.__traceback__) from exc
       return InternalLayer(name=name, network=net, output=out_data)
 
   # Use construct_layer to automatically handle more complex logic such as subnetworks.
