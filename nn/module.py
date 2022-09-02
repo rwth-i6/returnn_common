@@ -4,7 +4,7 @@ Base module class, :class:`Module`.
 
 from __future__ import annotations
 from typing import Dict, Any, Optional, Sequence, List, Tuple, Union, Set, Iterator, Callable, TypeVar
-from returnn.util.basic import NotSpecified
+from returnn.util.basic import NotSpecified, OptionalNotImplementedError
 from .. import nn
 
 
@@ -128,7 +128,7 @@ class Module:
     and you don't necessarily need to define this.
     Only certain other functions or modules like Sequential make use of it.
     """
-    raise NotImplementedError
+    raise OptionalNotImplementedError
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
