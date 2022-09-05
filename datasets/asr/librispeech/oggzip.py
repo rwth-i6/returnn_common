@@ -51,11 +51,16 @@ class Librispeech(DatasetConfig):
     """
     Get extern data
     """
+    from returnn.tf.util.data import FeatureDim, SpatialDim, batch_dim
+    time_dim = SpatialDim("time")
+    feature_dim = FeatureDim("audio", self.audio_dim)
+    out_spatial_dim = SpatialDim("out-spatial")
+    classes_dim = FeatureDim("vocab", dimension=self.vocab.get_num_classes())
     return {
-      "data": {"dim": self.audio_dim},
+      "data": {"dim_tags": [batch_dim, time_dim, feature_dim]},
       "classes": {
-        "sparse": True,
-        "dim": self.vocab.get_num_classes(),
+        "dim_tags": [batch_dim, out_spatial_dim],
+        "sparse_dim": classes_dim,
         "vocab": self.vocab.get_opts()},
     }
 

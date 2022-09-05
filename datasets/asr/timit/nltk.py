@@ -37,9 +37,13 @@ class NltkTimit(DatasetConfig):
     """
     Get extern data
     """
+    from returnn.tf.util.data import FeatureDim, SpatialDim, batch_dim
+    feature_dim = FeatureDim("audio", self.audio_dim)
+    classes_dim = FeatureDim("phonemes", 61)
+    time_dim = SpatialDim("time")
     return {
-      "data": {"dim": self.audio_dim},
-      "classes": {"sparse": True, "dim": 61},
+      "data": {"dim_tags": [batch_dim, time_dim, feature_dim]},
+      "classes": {"dim_tags": [batch_dim, time_dim], "sparse_dim": classes_dim},
     }
 
   def get_train_dataset(self) -> Dict[str, Any]:
