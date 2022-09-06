@@ -8,6 +8,7 @@ For further documentation, see:
 
 * [RETURNN common homepage](https://github.com/rwth-i6/returnn_common) has an introduction and small usage examples
 * [RETURNN common principles](https://github.com/rwth-i6/returnn_common/wiki/RETURNN-common-principles)
+* [RETURNN common conventions](https://github.com/rwth-i6/returnn_common/blob/main/nn/Conventions.md).
 * Docstrings in the code. It is anyway very recommended to use an IDE to be able to use auto-completion, and the IDE would also automatically show you the documentation.
 * [`nn.base` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/base.py). `nn.base` defines many important base classes such as `nn.Tensor`, `nn.Module`, and has some high-level explanation of how it works internally
 * [`nn.naming` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/naming.py). `nn.naming` defines the layer names and parameter names, i.e. how a model (via `nn.Module`) and all intermediate computations map to RETURNN layers.
@@ -21,7 +22,7 @@ For many aspects and design decision, RETURNN common follows the PyTorch API.
 
 How to define or create the config,
 how to write Sisyphus setups, etc.:
-There is no definite recommended way yet.
+There is no definite, recommended way yet.
 We are still figuring out what the nicest way is.
 It's also up to you.
 It's very flexible and basically allows

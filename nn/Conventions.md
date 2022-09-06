@@ -1,0 +1,30 @@
+# Conventions
+
+Code and pattern conventions.
+
+Also see  [the RETURNN migration guide](https://github.com/rwth-i6/returnn_common/blob/main/nn/Migration.md).
+
+## `nn.Module` vs function
+
+Once it has trainable parameters (`nn.Parameter`),
+it should be a class, deriving from `nn.Module`.
+Otherwise, it should be a function.
+
+## Recurrent state
+
+All state is explicit
+([discussion](https://github.com/rwth-i6/returnn_common/issues/31)).
+Functions or modules would get a `state: nn.LayerState` argument
+for the previous state
+and return a `nn.LayerState` for the new state.
+
+## Stepwise vs sequence operation
+
+E.g. [`torch.nn.LSTMCell`](https://pytorch.org/docs/stable/generated/torch.nn.LSTMCell.html#torch.nn.LSTMCell)
+vs [`torch.nn.LSTM`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html).
+
+In RETURNN-common, that is a unified interface,
+where a function in any case gets an `axis` (or `spatial_dim` or so) argument,
+and there is the special `nn.single_step_dim` to indicate that it should operate on a single step.
+In both case, it would get and return a `nn.LayerState` object.
+([Discussion](https://github.com/rwth-i6/returnn_common/issues/81).)
