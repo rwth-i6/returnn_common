@@ -102,7 +102,7 @@ class MaskedComputationModule(nn.Module):
     name_ctx = self.masked_computation.name_ctx
     out = name_ctx.children["output"].layer_ref
     loop = nn.NameCtx.inner_loop()
-    assert loop, f"{self}: need to be inside loop"
+    assert loop, f"{self}: need to be inside loop"  # not implemented otherwise
     return nn.make_layer(
       {
         "class": "masked_computation",
