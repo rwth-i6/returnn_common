@@ -182,8 +182,6 @@ class Tensor:
     :return: ordered batch dims
     """
     batch_dims = list(self.shape_ordered)
-    if self.feature_dim:
-      batch_dims.remove(self.feature_dim)
     if isinstance(remove, nn.Dim):
       batch_dims.remove(remove)
     else:

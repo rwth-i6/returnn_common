@@ -382,7 +382,7 @@ class Transformer(nn.Module):
       assert target_spatial_axis, f"{self}: Target spatial axis must be specified when target is given"
     loop = nn.Loop(axis=target_spatial_axis)
     loop.state = state if state else self.default_initial_state(
-      batch_dims=memory.batch_dims_ordered(remove=source_spatial_axis))
+      batch_dims=memory.batch_dims_ordered(remove=(source_spatial_axis, memory.feature_dim)))
     with loop:
       prev_target_embed = self.target_embedding(loop.state.target)
       output, loop.state.decoder = self.decoder(

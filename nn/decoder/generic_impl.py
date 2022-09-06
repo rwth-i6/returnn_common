@@ -84,7 +84,7 @@ class Decoder(nn.Module):
 
     loop = nn.Loop(axis=axis)
     loop.state = state if state else self.default_initial_state(
-      batch_dims=encoder.batch_dims_ordered(remove=encoder_spatial_axis))
+      batch_dims=encoder.batch_dims_ordered(remove=(encoder_spatial_axis, encoder.feature_dim)))
     with loop:
 
       encoder_frame_idx = None
