@@ -16,6 +16,7 @@ but only once you call it with actual inputs,
 then it will perform the actual computation
 (create a RETURNN layer, or the corresponding RETURNN layer dict).
 
+See [the wiki](https://github.com/rwth-i6/returnn_common/wiki) for a starting point for documentation.
 
 ## Usage examples
 
