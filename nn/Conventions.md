@@ -26,6 +26,16 @@ which should return a `nn.LayerState`
 with a reasonable default initial state
 for the recurrent `__call__` method.
 
+TODO what if it is just a function?
+A separate `..._default_initial_state` function?
+
+Examples:
+
+* `nn.LSTM`
+* `nn.rec_cum_sum`
+* `nn.rec_cum_concat`
+* `nn.CausalSelfAttention`
+
 
 ## Stepwise vs sequence operation
 
