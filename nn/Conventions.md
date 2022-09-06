@@ -2,7 +2,8 @@
 
 Code and pattern conventions.
 
-Also see  [the RETURNN migration guide](https://github.com/rwth-i6/returnn_common/blob/main/nn/Migration.md).
+Also see [the RETURNN migration guide](https://github.com/rwth-i6/returnn_common/blob/main/nn/Migration.md)
+and [Translating TF or PyTorch or other code to RETURNN-common](https://github.com/rwth-i6/returnn_common/wiki/Translating-TF-or-PyTorch-or-other-code-to-returnn_common).
 
 
 ## `nn.Module` vs function
