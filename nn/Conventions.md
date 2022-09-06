@@ -62,3 +62,21 @@ Examples:
 * `nn.rec_cum_sum`
 * `nn.rec_cum_concat`
 * `nn.CausalSelfAttention`
+
+
+## Operations on an axis or dimension
+
+Such functions get an `axis: nn.Dim` or `spatial_dim: nn.Dim` argument.
+If they generate a new axis, they should return it as well.
+In that case, the input is often called `in_spatial_dim`,
+and there might be an optional `out_spatial_dim`,
+which can be predefined, or otherwise is automatically created
+(and in any case returned then).
+
+Examples:
+
+* `nn.Conv1d` etc
+* `nn.pool1d` etc
+* `nn.reduce`
+* `nn.dropout`
+* `nn.rec_cum_concat`
