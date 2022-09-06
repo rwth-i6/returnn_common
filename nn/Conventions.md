@@ -12,6 +12,14 @@ Once it has trainable parameters (`nn.Parameter`),
 it should be a class, deriving from `nn.Module`.
 Otherwise, it should be a function.
 
+Examples:
+
+* `nn.Linear`
+* `nn.relu`
+* `nn.SelfAttention`
+* `nn.dot_attention`
+* `nn.dropout`
+
 
 ## Recurrent state
 
