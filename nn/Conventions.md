@@ -47,3 +47,10 @@ where a function in any case gets an `axis` (or `spatial_dim` or so) argument,
 and there is the special `nn.single_step_dim` to indicate that it should operate on a single step.
 In both case, it would get and return a `nn.LayerState` object.
 ([Discussion](https://github.com/rwth-i6/returnn_common/issues/81).)
+
+Examples:
+
+* `nn.LSTM`
+* `nn.rec_cum_sum`
+* `nn.rec_cum_concat`
+* `nn.CausalSelfAttention`
