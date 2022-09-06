@@ -12,6 +12,7 @@ For further documentation, see:
 * [`nn.base` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/base.py). `nn.base` defines many important base classes such as `nn.Tensor`, `nn.Module`, and has some high-level explanation of how it works internally
 * [`nn.naming` docstring](https://github.com/rwth-i6/returnn_common/blob/main/nn/naming.py). `nn.naming` defines the layer names and parameter names, i.e. how a model (via `nn.Module`) and all intermediate computations map to RETURNN layers.
 * [Missing pieces for first release](https://github.com/rwth-i6/returnn_common/issues/32) and [Intermediate usage before first release](https://github.com/rwth-i6/returnn_common/issues/98). This is an overview, also linking to now completed issues. The issues often come with some discussion where you find the rationality behind certain design decisions.
+* [Translating TF or PyTorch or other code to returnn common](https://github.com/rwth-i6/returnn_common/wiki/Translating-TF-or-PyTorch-or-other-code-to-returnn-common)
 
 For many aspects and design decision, RETURNN common follows the PyTorch API.
 
