@@ -118,3 +118,6 @@ and the unified per-step and sequence-level interface,
 but the sequence-level interface should be simple,
 i.e. not covering search.
 Search would be done by the caller, using the step-wise interface.
+
+**TODO** This still does not cover all relevant cases.
+E.g. for transducer, the case of full-sum training...
