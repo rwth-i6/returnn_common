@@ -34,7 +34,7 @@ which should return a `nn.LayerState`
 with a reasonable default initial state
 for the recurrent `__call__` method.
 
-TODO what if it is just a function?
+**TODO** what if it is just a function?
 A separate `..._default_initial_state` function?
 
 Examples:
@@ -104,3 +104,17 @@ Examples:
 
 * `nn.reduce` `axis`
 * `nn.Conv1d` `in_spatial_dim`
+
+
+## Training vs recognition
+
+Sometimes it requires different code,
+or makes it difficult to cover both cases efficiently in the same code.
+
+**TODO** what to do then?
+
+Use common code as much as possible,
+and the unified per-step and sequence-level interface,
+but the sequence-level interface should be simple,
+i.e. not covering search.
+Search would be done by the caller, using the step-wise interface.
