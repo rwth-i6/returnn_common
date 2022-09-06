@@ -80,3 +80,27 @@ Examples:
 * `nn.reduce`
 * `nn.dropout`
 * `nn.rec_cum_concat`
+
+
+## Dimensions
+
+Any dimensions (static or dynamic) are given as `nn.Dim`.
+
+Examples:
+
+* `nn.Linear` `out_dim`
+* `nn.Conv1d` etc `out_dim`
+
+Creating a new dimension is via `nn.SpatialDim`, `nn.FeatureDim`.
+Getting the dimension value is via `nn.dim_value`,
+or its encoded sequence lengths via `nn.length`.
+
+
+## Axes
+
+Any axes are specified via `nn.Dim`.
+
+Examples:
+
+* `nn.reduce` `axis`
+* `nn.Conv1d` `in_spatial_dim`
