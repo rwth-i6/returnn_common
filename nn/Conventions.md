@@ -121,3 +121,12 @@ Search would be done by the caller, using the step-wise interface.
 
 **TODO** This still does not cover all relevant cases.
 E.g. for transducer, the case of full-sum training...
+
+**TODO** Even for encoder-decoder, it's unclear.
+The prev targets (inputs to the decoder),
+are they part of the state?
+But then it would just be a single target
+and not a sequence.
+If this is supposed to support a sequence,
+it can not be part of the state
+(on this level of the interface).
