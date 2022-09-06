@@ -4,11 +4,13 @@ Code and pattern conventions.
 
 Also see  [the RETURNN migration guide](https://github.com/rwth-i6/returnn_common/blob/main/nn/Migration.md).
 
+
 ## `nn.Module` vs function
 
 Once it has trainable parameters (`nn.Parameter`),
 it should be a class, deriving from `nn.Module`.
 Otherwise, it should be a function.
+
 
 ## Recurrent state
 
@@ -17,6 +19,12 @@ All state is explicit
 Functions or modules would get a `state: nn.LayerState` argument
 for the previous state
 and return a `nn.LayerState` for the new state.
+
+Modules would provide the `default_initial_state` method,
+which should return a `nn.LayerState`
+with a reasonable default initial state
+for the recurrent `__call__` method.
+
 
 ## Stepwise vs sequence operation
 
