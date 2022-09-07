@@ -44,17 +44,17 @@ class BlstmEncoder(nn.Module):
     if rec_weight_dropout:
       raise NotImplementedError  # TODO ...
 
-  def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
+  def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> (nn.Tensor, nn.Dim):
     for i, lstm in enumerate(self.layers):
       if i > 0:
         red = self.time_reduction[i - 1] if (i - 1) < len(self.time_reduction) else 1
         if red > 1:
-          x = nn.pool1d(x, mode="max", padding="same", pool_size=red, in_spatial_dim=spatial_dim)
+          x, spatial_dim = nn.pool1d(x, mode="max", padding="same", pool_size=red, in_spatial_dim=spatial_dim)
         if self.dropout:
           x = nn.dropout(x, dropout=self.dropout, axis=x.feature_dim)
       assert isinstance(lstm, BlstmSingleLayer)
       x = lstm(x, axis=spatial_dim)
-    return x
+    return x, spatial_dim
 
 
 class BlstmSingleLayer(nn.Module):
