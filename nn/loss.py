@@ -21,6 +21,7 @@ also see:
 
 """
 
+from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Union
 from .. import nn
 if TYPE_CHECKING:
@@ -275,6 +276,8 @@ def _transducer_full_sum_log_prob_eval_layer_func(
   labels_spatial_dim: nn.Dim,
   blank_index: int,
 ) -> tf.Tensor:
+  from returnn.tf.layers.basic import LayerBase
+  assert isinstance(self, LayerBase)
   log_probs = source(0, auto_convert=False, as_data=True)
   labels = source(1, auto_convert=False, as_data=True)
   assert isinstance(log_probs, nn.Data) and isinstance(labels, nn.Data)
