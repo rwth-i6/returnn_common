@@ -97,6 +97,15 @@ class VocabConfig:
     """
     raise NotImplementedError
 
+  # noinspection PyMethodMayBeStatic
+  def get_eos_idx(self) -> Optional[int]:
+    """end-of-sequence (EOS)"""
+    return None
+
+  def get_bos_idx(self) -> Optional[int]:
+    """beginning-of-sequence (BOS)"""
+    return self.get_eos_idx()
+
 
 class VocabConfigStatic(VocabConfig):
   """
