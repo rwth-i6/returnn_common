@@ -14,6 +14,11 @@ because RETURNN will handle the proper accumulation.
 
 To use some tensor as a loss in RETURNN,
 call :func:`nn.Tensor.mark_as_loss`.
+
+Despite the functions in this module,
+also see:
+* :func:`nn.ctc_loss`
+
 """
 
 from typing import Optional, Union
