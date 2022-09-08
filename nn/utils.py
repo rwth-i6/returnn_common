@@ -399,3 +399,16 @@ def ctc_greedy_decode(logits: nn.Tensor, *,
   decoded_sparse_dim = feature_dim.sub_left(1) if blank_index == 0 else feature_dim - 1
   decoded = nn.reinterpret_set_sparse_dim(decoded, decoded_sparse_dim)
   return decoded, out_spatial_dim
+
+
+def prev_target_seq(targets: nn.Tensor, *, spatial_dim: nn.Dim, bos_idx: int) -> nn.Tensor:
+  """
+  shift by one
+  """
+  y, dim_ = nn.slice(targets, axis=spatial_dim, slice_end=-1)
+  pad_dim = nn.SpatialDim("dummy", 1)
+  pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.feature_dim)
+  y = nn.concat((pad_value, pad_dim), (y, dim_))
+  dim_ = pad_dim + dim_
+  y, _ = nn.reinterpret_new_dim(y, in_dim=dim_, out_dim=spatial_dim)
+  return y
