@@ -21,8 +21,11 @@ also see:
 
 """
 
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 from .. import nn
+if TYPE_CHECKING:
+  import tensorflow as tf
+  from returnn.tf.layers.basic import LayerBase
 
 
 def cross_entropy(*, target: nn.Tensor, estimated: nn.Tensor, estimated_type: str,
@@ -218,3 +221,102 @@ def mean_squared_difference(a: nn.Tensor, b: nn.Tensor, *, axis: Optional[nn.Dim
     assert a.feature_dim
     axis = a.feature_dim
   return nn.reduce(nn.squared_difference(a, b), mode="mean", axis=axis)
+
+
+def transducer_time_sync_full_sum_neg_log_prob(
+  log_probs: nn.Tensor, *,
+  labels: nn.Tensor,
+  input_spatial_dim: nn.Dim,
+  labels_spatial_dim: nn.Dim,
+  blank_index: int = -1,
+) -> nn.Tensor:
+  """
+  Computes the RNA loss between a sequence of activations and a
+  ground truth labeling.
+
+  https://github.com/rwth-i6/warp-rna
+
+  Args:
+      log_probs: A >=3-D Tensor of floats.  The dimensions
+                   should be (B..., T, U, V), where B is the minibatch index,
+                   T is the time index, U is the prediction network sequence
+                   length, and V indexes over activations for each
+                   symbol in the alphabet.
+      labels: A >=1-D Tensor of ints, shape (B...,U) a padded label sequences to make sure
+                   labels for the minibatch are same length.
+      input_spatial_dim:
+      labels_spatial_dim:
+      blank_index: int, the label value/index that the RNA
+                   calculation should use as the blank label
+  Returns:
+      >=0-D float Tensor, shape (B...), the cost of each example in the minibatch
+      (as negative log probabilities).
+  """
+  return nn.make_layer({
+    "class": "eval",
+    "from": [log_probs, labels],
+    # Pickling/serialization of the func ref should work when this is a global function of this module.
+    # But depending on your setup, there might anyway not be any serialization.
+    "eval": _transducer_full_sum_log_prob_eval_layer_func,
+    "eval_locals": {
+      "blank_index": blank_index,
+      "input_spatial_dim": input_spatial_dim,
+      "labels_spatial_dim": labels_spatial_dim,
+    },
+    "out_type": _transducer_full_sum_log_prob_eval_layer_out,
+  })
+
+
+def _transducer_full_sum_log_prob_eval_layer_func(
+  *,
+  self: LayerBase,
+  source,
+  input_spatial_dim: nn.Dim,
+  labels_spatial_dim: nn.Dim,
+  blank_index: int,
+) -> tf.Tensor:
+  log_probs = source(0, auto_convert=False, as_data=True)
+  labels = source(1, auto_convert=False, as_data=True)
+  assert isinstance(log_probs, nn.Data) and isinstance(labels, nn.Data)
+  batch_dims = list(self.output.dim_tags)
+  feat_dim = log_probs.feature_dim_or_sparse_dim
+  if blank_index < 0:
+    blank_index += feat_dim.dimension
+  assert 0 <= blank_index < feat_dim.dimension
+  assert labels.sparse_dim.dimension <= feat_dim.dimension
+  # Move axes into the right order (no-op if they already are).
+  log_probs = log_probs.copy_compatible_to(
+    nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, labels_spatial_dim, feat_dim]), check_dtype=False)
+  labels = labels.copy_compatible_to(
+    nn.Data("labels", dim_tags=batch_dims + [labels_spatial_dim]), check_dtype=False)
+  input_lengths = input_spatial_dim.dyn_size_ext.copy_compatible_to(
+    nn.Data("input_lengths", dim_tags=batch_dims), check_dtype=False)
+  label_lengths = labels_spatial_dim.dyn_size_ext.copy_compatible_to(
+    nn.Data("label_lengths", dim_tags=batch_dims), check_dtype=False)
+  from returnn.extern.WarpRna import rna_loss
+  return rna_loss(
+    log_probs=log_probs.placeholder,
+    labels=labels.placeholder,
+    input_lengths=input_lengths.placeholder,
+    label_lengths=label_lengths.placeholder,
+    blank_label=blank_index)
+
+
+def _transducer_full_sum_log_prob_eval_layer_out(
+  *,
+  name: str,
+  sources: list[LayerBase],
+  input_spatial_dim: nn.Dim,
+  labels_spatial_dim: nn.Dim,
+  **_kwargs
+) -> nn.Data:
+  from returnn.tf.layers.basic import LayerBase
+  log_probs, labels = sources
+  assert isinstance(log_probs, LayerBase) and isinstance(labels, LayerBase)
+  dim_tags = list(log_probs.output.dim_tags)
+  # Remove all dims used here -- batch dim(s) remain.
+  dim_tags.remove(log_probs.output.feature_dim_or_sparse_dim)
+  dim_tags.remove(input_spatial_dim)
+  dim_tags.remove(labels_spatial_dim)
+  assert set(dim_tags + [labels_spatial_dim]) == set(labels.output.dim_tags)  # same batch dims
+  return nn.Data("%s_output" % name, dim_tags=dim_tags)
