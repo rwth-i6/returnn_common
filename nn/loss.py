@@ -22,7 +22,7 @@ also see:
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, List
 from .. import nn
 if TYPE_CHECKING:
   import tensorflow as tf
@@ -296,7 +296,7 @@ def _transducer_full_sum_log_prob_eval_layer_func(
     nn.Data("input_lengths", dim_tags=batch_dims), check_dtype=False)
   label_lengths = labels_spatial_dim.dyn_size_ext.copy_compatible_to(
     nn.Data("label_lengths", dim_tags=batch_dims), check_dtype=False)
-  from returnn.extern.WarpRna import rna_loss
+  from returnn.extern.WarpRna import rna_loss  # noqa
   return rna_loss(
     log_probs=log_probs.placeholder,
     labels=labels.placeholder,
@@ -308,7 +308,7 @@ def _transducer_full_sum_log_prob_eval_layer_func(
 def _transducer_full_sum_log_prob_eval_layer_out(
   *,
   name: str,
-  sources: list[LayerBase],
+  sources: List[LayerBase],
   input_spatial_dim: nn.Dim,
   labels_spatial_dim: nn.Dim,
   **_kwargs
