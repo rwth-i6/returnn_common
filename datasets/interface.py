@@ -41,7 +41,7 @@ class DatasetConfig:
     """name of main dataset"""
     raise NotImplementedError
 
-  def get_main_dataset(self) -> Dict[str]:
+  def get_main_dataset(self) -> Dict[str, Any]:
     """
     More generic function, when this API is used for other purpose than training,
     e.g. recognition, generating alignment, collecting some statistics, etc,
