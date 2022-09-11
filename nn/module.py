@@ -292,6 +292,9 @@ class ReturnnWrappedLayerBase(Module):
     layer_class = layer.layer_dict["class"]
     if layer_class in {"cum_concat", "cumsum"}:
       return nn.LayerState(layer)  # the layer output itself is its state
+    if layer_class == "window":
+      return nn.LayerState(_get_last_hidden_state(layer, out_dim=layer.feature_dim, name=name))
+    # This is some very generic fallback code, which probably does not work correctly in some cases.
     out_dim = layer.layer_dict["out_dim"]
     if layer_class == "rec" and isinstance(layer.layer_dict["unit"], str):
       if "lstm" in layer.layer_dict["unit"].lower():
