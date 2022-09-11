@@ -265,7 +265,7 @@ def transducer_time_sync_full_sum_neg_log_prob(
       "labels_spatial_dim": labels_spatial_dim,
     },
     "out_type": _transducer_full_sum_log_prob_eval_layer_out,
-  })
+  }, name="transducer_time_sync_full_sum_neg_log_prob")
 
 
 def _transducer_full_sum_log_prob_eval_layer_func(
