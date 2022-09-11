@@ -28,6 +28,9 @@ class BlstmEncoder(nn.Module):
         if n <= 1:
           break
     assert isinstance(time_reduction, (tuple, list))
+    assert num_layers > 0
+    if num_layers == 1:
+      assert not time_reduction, f"time_reduction {time_reduction} not supported for single layer"
     while len(time_reduction) > num_layers - 1:
       time_reduction[:2] = [time_reduction[0] * time_reduction[1]]
     self.time_reduction = time_reduction
