@@ -768,7 +768,7 @@ class ReturnnConfigSerializer:
     "  Dim, batch_dim, single_step_dim,"
     " SpatialDim, FeatureDim, ImplicitDynSizeDim, ImplicitSparseDim)\n\n")
 
-  def get_base_extern_data_py_code_str(self, *, other_opts: bool = True) -> str:
+  def get_base_extern_data_py_code_str(self) -> str:
     """
     :return: serialized config, i.e. Python code
     """
@@ -780,10 +780,26 @@ class ReturnnConfigSerializer:
 
     code_lines = [
       self._ImportPyCodeStr,
-      "use_tensorflow = True\n" if other_opts else "",
-      f"behavior_version = {self._behavior_version}\n\n" if other_opts else "",
+      "use_tensorflow = True\n",
+      f"behavior_version = {self._behavior_version}\n\n",
       f"{self._dim_tags_proxy.py_code_str()}\n",
       f"extern_data = {pformat(extern_data_raw)}\n",
+    ]
+    return "".join(code_lines)
+
+  @classmethod
+  def get_base_extern_data_py_code_str_direct(cls, extern_data: Dict[str, Any]) -> str:
+    """
+    directly get serialized Python code via extern data
+    """
+    dim_tags_proxy = ReturnnDimTagsProxy()
+    from ..utils.pprint import pformat
+    extern_data = dim_tags_proxy.collect_dim_tags_and_transform_config(extern_data)
+
+    code_lines = [
+      cls._ImportPyCodeStr,
+      f"{dim_tags_proxy.py_code_str()}\n",
+      f"extern_data = {pformat(extern_data)}\n",
     ]
     return "".join(code_lines)
 
