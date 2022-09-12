@@ -48,6 +48,7 @@ class BlstmEncoder(nn.Module):
       raise NotImplementedError  # TODO ...
 
   def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> (nn.Tensor, nn.Dim):
+    out_spatial_dim = nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:spatial")
     for i, lstm in enumerate(self.layers):
       if i > 0:
         red = self.time_reduction[i - 1] if (i - 1) < len(self.time_reduction) else 1
@@ -57,6 +58,7 @@ class BlstmEncoder(nn.Module):
           x = nn.dropout(x, dropout=self.dropout, axis=x.feature_dim)
       assert isinstance(lstm, BlstmSingleLayer)
       x = lstm(x, axis=spatial_dim)
+    spatial_dim.declare_same_as(out_spatial_dim)
     return x, spatial_dim
 
 
