@@ -292,10 +292,14 @@ def _transducer_full_sum_log_prob_eval_layer_func(
     nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, labels_spatial_dim, feat_dim]), check_dtype=False)
   labels = labels.copy_compatible_to(
     nn.Data("labels", dim_tags=batch_dims + [labels_spatial_dim], sparse_dim=labels.sparse_dim), check_dtype=False)
-  input_lengths = input_spatial_dim.dyn_size_ext.copy_compatible_to(
-    nn.Data("input_lengths", dim_tags=batch_dims), check_dtype=False)
-  label_lengths = labels_spatial_dim.dyn_size_ext.copy_compatible_to(
-    nn.Data("label_lengths", dim_tags=batch_dims), check_dtype=False)
+  input_lengths = (
+    input_spatial_dim
+    .get_dyn_size_ext_for_batch_ctx(log_probs.batch, log_probs.control_flow_ctx)
+    .copy_compatible_to(nn.Data("input_lengths", dim_tags=batch_dims), check_dtype=False))
+  label_lengths = (
+    labels_spatial_dim
+    .get_dyn_size_ext_for_batch_ctx(log_probs.batch, log_probs.control_flow_ctx)
+    .copy_compatible_to(nn.Data("label_lengths", dim_tags=batch_dims), check_dtype=False))
   from returnn.extern.WarpRna import rna_loss  # noqa
   return rna_loss(
     log_probs=log_probs.placeholder,
