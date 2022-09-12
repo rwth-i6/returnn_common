@@ -89,9 +89,14 @@ def concat(*sources: Tuple[nn.Tensor, nn.Dim],
   """
   Concatenates multiple sources in the specified dimension.
   """
+  assert sources
   opts = {}
   if allow_broadcast:
     opts["allow_broadcast"] = True
+  else:
+    dims = sources[0][0].shape - {sources[0][1]}
+    for src, dim in sources:
+      assert src.shape - {dim} == dims, f"concat {sources}, need allow_broadcast=True"
   return nn.make_layer(
     {"class": "concat", "from": sources, **opts},
     name=name or "concat", name_ctx_ignore_top_stack_frames=1)
