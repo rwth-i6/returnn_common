@@ -408,7 +408,7 @@ def prev_target_seq(targets: nn.Tensor, *, spatial_dim: nn.Dim, bos_idx: int) ->
   y, dim_ = nn.slice(targets, axis=spatial_dim, slice_end=-1)
   pad_dim = nn.SpatialDim("dummy", 1)
   pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.feature_dim)
-  y = nn.concat((pad_value, pad_dim), (y, dim_))
+  y = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
   dim_ = pad_dim + dim_
   y, _ = nn.reinterpret_new_dim(y, in_dim=dim_, out_dim=spatial_dim)
   return y
