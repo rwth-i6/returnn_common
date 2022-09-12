@@ -14,6 +14,19 @@ else:
   from returnn_common import nn  # noqa
 
 
+def test_merge_dims():
+  nn.reset_default_root_name_ctx()
+  time = nn.SpatialDim("time")
+  spatial_static = nn.SpatialDim("extra-spatial", 10)
+  feat = nn.FeatureDim("feat", 3)
+  data = nn.get_extern_data(nn.Data('data', dim_tags=[nn.batch_dim, time, feat, spatial_static]))
+  out, _ = nn.merge_dims(data, axes=[spatial_static, feat], out_dim=nn.FeatureDim("out", None))
+  out.verify_out_shape({nn.batch_dim, time, out.feature_dim})
+  out.mark_as_default_output()
+  config = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config)
+
+
 def test_range_from_length():
   # https://github.com/rwth-i6/returnn_common/issues/134
   class _Net(nn.Module):
