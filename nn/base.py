@@ -767,6 +767,8 @@ def make_layer(layer_dict: LayerDictRaw, *,
     name_ctx.module.calls.append(name_ctx)
   for tag in layer.data.dim_tags:
     _register_dim_deps_when_novel(tag, [layer])
+  # Debug out. Similar as RETURNN template log. Maybe put this behind a flag? Anyway, useful for now.
+  print(layer)
   return layer
 
 
