@@ -47,6 +47,7 @@ class PreConvNet(nn.Module):
     self.conv1 = nn.Conv2d(out_dim=dim, padding="same", filter_size=filter_size)
 
   def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
+    batch_dims = x.batch_dims_ordered((x.feature_dim, spatial_dim))
     extra_spatial_dim = x.feature_dim
     feat_dim = nn.FeatureDim("dummy-feature", 1)
     x = nn.expand_dim(x, dim=feat_dim)
@@ -56,4 +57,5 @@ class PreConvNet(nn.Module):
     x, _ = self.conv1(x, in_spatial_dims=(spatial_dim, extra_spatial_dim), in_dim=feat_dim)
     x, extra_spatial_dim = nn.pool1d(x, in_spatial_dim=extra_spatial_dim, pool_size=2, mode="max", padding="same")
     x, _ = nn.merge_dims(x, axes=(extra_spatial_dim, feat_dim), out_dim=nn.FeatureDim("conv-net-feature", None))
+    x.verify_out_shape(set(batch_dims) | {x.feature_dim, spatial_dim})
     return x
