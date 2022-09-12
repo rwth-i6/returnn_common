@@ -291,7 +291,7 @@ def _transducer_full_sum_log_prob_eval_layer_func(
   log_probs = log_probs.copy_compatible_to(
     nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, labels_spatial_dim, feat_dim]), check_dtype=False)
   labels = labels.copy_compatible_to(
-    nn.Data("labels", dim_tags=batch_dims + [labels_spatial_dim]), check_dtype=False)
+    nn.Data("labels", dim_tags=batch_dims + [labels_spatial_dim], sparse_dim=labels.sparse_dim), check_dtype=False)
   input_lengths = input_spatial_dim.dyn_size_ext.copy_compatible_to(
     nn.Data("input_lengths", dim_tags=batch_dims), check_dtype=False)
   label_lengths = labels_spatial_dim.dyn_size_ext.copy_compatible_to(
