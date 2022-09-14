@@ -417,7 +417,7 @@ def prev_target_seq(
     If False, the output will be of the same shape as the targets, i.e. have the same length.
     This means that we cut off the last symbol (via slicing).
     If True, the output will be one longer than the targets.
-  :return: targets with BOS prepended, e.g. [B,S+1] or [B,S] depending on same_length
+  :return: targets with BOS prepended, e.g. [B,S+1] or [B,S] depending on out_one_longer
   """
   if out_one_longer:
     y, dim_ = targets, spatial_dim
