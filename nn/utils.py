@@ -426,8 +426,7 @@ def prev_target_seq(
     y, dim_ = nn.slice(targets, axis=spatial_dim, slice_end=-1)
   pad_dim = nn.SpatialDim("bos-prefix", 1)
   pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.feature_dim)
-  y = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
-  dim__ = pad_dim + dim_
+  y, dim__ = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
   dim__.declare_same_as(1 + dim_)
   if out_one_longer:
     y.verify_out_shape(set(batch_dims) | {dim__})

@@ -31,7 +31,7 @@ def test_rec_ff():
       loop.state.h = nn.zeros([nn.batch_dim, self.rec_linear.out_dim])
       with loop:
         x_ = loop.unstack(x)
-        loop.state.h = self.rec_linear(nn.concat((x_, x_.feature_dim), (loop.state.h, self.rec_linear.out_dim)))
+        loop.state.h = self.rec_linear(nn.concat_features(x_, loop.state.h))
         y = loop.stack(loop.state.h)
       return y
 
@@ -109,8 +109,7 @@ def test_rec_hidden():
       Forward
       """
       y, state = self.lstm(x, axis=axis)
-      res = nn.concat(
-        (y, self.lstm.out_dim), (state.h, self.lstm.out_dim), (state.c, self.lstm.out_dim), allow_broadcast=True)
+      res = nn.concat_features(y, state.h, state.c, allow_broadcast=True)
       return res
 
   net = _Net()

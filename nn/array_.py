@@ -85,7 +85,8 @@ def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) ->
 
 def concat(*sources: Tuple[nn.Tensor, nn.Dim],
            allow_broadcast=False,
-           name: Optional[str] = None) -> nn.Tensor:
+           name: Optional[str] = None
+           ) -> (nn.Tensor, nn.Dim):
   """
   Concatenates multiple sources in the specified dimension.
   """
@@ -97,9 +98,10 @@ def concat(*sources: Tuple[nn.Tensor, nn.Dim],
     dims = sources[0][0].shape - {sources[0][1]}
     for src, dim in sources:
       assert src.shape - {dim} == dims, f"concat {sources}, need allow_broadcast=True"
+  out_dim = nn.Dim(kind=sources[0][1].kind, description=f"{nn.NameCtx.current_ctx().get_abs_name()}:concat")
   return nn.make_layer(
-    {"class": "concat", "from": sources, **opts},
-    name=name or "concat", name_ctx_ignore_top_stack_frames=1)
+    {"class": "concat", "from": sources, "out_dim": out_dim, **opts},
+    name=name or "concat", name_ctx_ignore_top_stack_frames=1), out_dim
 
 
 def concat_features(*sources: nn.Tensor, allow_broadcast=False) -> nn.Tensor:
@@ -111,7 +113,9 @@ def concat_features(*sources: nn.Tensor, allow_broadcast=False) -> nn.Tensor:
   for src in sources:
     assert src.feature_dim is not None
     src_pairs.append((src, src.feature_dim))
-  return concat(*src_pairs, allow_broadcast=allow_broadcast)
+  res, out_dim = concat(*src_pairs, allow_broadcast=allow_broadcast)
+  assert res.feature_dim == out_dim
+  return res
 
 
 def cum_concat_step(
