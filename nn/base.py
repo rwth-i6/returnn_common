@@ -792,6 +792,11 @@ def get_extern_data(data: Data) -> Tensor:
         scope.global_batch = nn.BatchInfo.make_global_batch_info(
           tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
       else:
+        # We need some global batch info, and this needs a tensor (e.g. placeholder),
+        # but we don't have any tensor yet, nor do we want to create any tensors at this point.
+        # So we pass the dummy value -1.
+        # Such dummy global batch info with -1 will be handled specially in RETURNN init_batch_info,
+        # and it will be replaced with the real global batch.
         scope.global_batch = nn.BatchInfo.make_global_batch_info(-1)
     if not data.batch:
       data.batch = scope.global_batch
