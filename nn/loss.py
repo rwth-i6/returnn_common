@@ -289,7 +289,8 @@ def _transducer_full_sum_log_prob_eval_layer_func(
   assert labels.sparse_dim.dimension <= feat_dim.dimension
   # Move axes into the right order (no-op if they already are).
   log_probs = log_probs.copy_compatible_to(
-    nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, labels_spatial_dim, feat_dim]), check_dtype=False)
+    nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, 1 + labels_spatial_dim, feat_dim]),
+    check_dtype=False)
   labels = labels.copy_compatible_to(
     nn.Data("labels", dim_tags=batch_dims + [labels_spatial_dim], sparse_dim=labels.sparse_dim), check_dtype=False)
   input_lengths = (
@@ -324,6 +325,6 @@ def _transducer_full_sum_log_prob_eval_layer_out(
   # Remove all dims used here -- batch dim(s) remain.
   dim_tags.remove(log_probs.output.feature_dim_or_sparse_dim)
   dim_tags.remove(input_spatial_dim)
-  dim_tags.remove(labels_spatial_dim)
+  dim_tags.remove(1 + labels_spatial_dim)
   assert set(dim_tags + [labels_spatial_dim]) == set(labels.output.dim_tags)  # same batch dims
   return nn.Data("%s_output" % name, dim_tags=dim_tags)
