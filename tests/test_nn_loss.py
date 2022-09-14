@@ -42,7 +42,7 @@ def test_cross_entropy():
 def test_mark_as_loss():
   nn.reset_default_root_name_ctx()
   mod, loss = _make_dummy_model_with_ce_out()
-  loss.mark_as_loss()
+  loss.mark_as_loss("ce")
 
   config_code = nn.get_returnn_config().get_complete_py_code_str(mod)
   config, net_dict = config_net_dict_via_serialized(config_code)
@@ -52,7 +52,7 @@ def test_mark_as_loss():
 def _functional_mark_as_loss(x: nn.Tensor):
   x *= 2.
   x = nn.minimum(x, 10.)
-  x.mark_as_loss()
+  x.mark_as_loss("x")
 
 
 def test_mark_as_loss_in_subnet():

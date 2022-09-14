@@ -60,5 +60,5 @@ class HybridHMM(IHybridHMM):
     if train:
       assert out_spatial_dim in targets.shape
       ce_loss = nn.sparse_softmax_cross_entropy_with_logits(logits=out_embed, targets=targets, axis=self.out_dim)
-      ce_loss.mark_as_loss()
+      ce_loss.mark_as_loss("ce")
     return nn.log_softmax(out_embed, axis=self.out_dim), None

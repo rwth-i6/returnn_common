@@ -103,7 +103,7 @@ def test_random_normal_shape_get_network():
     # net = nn.Linear(out_dim)
     out = net(nn.get_extern_data(x))
     out.mark_as_default_output()
-    out.mark_as_loss()
+    out.mark_as_loss("dummy")
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(net)
     pprint(net_dict)
     return net_dict
@@ -138,7 +138,7 @@ def test_random_normal_shape_get_network_with_time():
     # net = nn.Linear(out_dim)
     out = net(nn.get_extern_data(x))
     out.mark_as_default_output()
-    out.mark_as_loss()
+    out.mark_as_loss("dummy")
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(net)
     return net_dict
 
@@ -180,7 +180,7 @@ def test_random_normal_train_epoch():
     # net = nn.Linear(out_dim)
     out = net(nn.get_extern_data(x))
     out.mark_as_default_output()
-    out.mark_as_loss()
+    out.mark_as_loss("dummy")
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(net)
     return net_dict
 

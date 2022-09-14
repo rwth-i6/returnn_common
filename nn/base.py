@@ -267,7 +267,9 @@ class Tensor:
     """
     return self.name_ctx.get_abs_name()
 
-  def mark_as_loss(self, *,
+  def mark_as_loss(self,
+                   name: str,
+                   *,
                    scale: Optional[float] = 1.0,
                    as_error: bool = False,
                    use_normalized_loss: bool = False,
@@ -284,6 +286,7 @@ class Tensor:
     This currently uses :class:`AsIsLoss` in RETURNN
     but this is an implementation detail and might change.
 
+    :param name: name of the loss. this name is used for reporting by RETURNN, and also for LR scheduling.
     :param scale: scale the loss by this factor for the training optimizer
       (but not for any reporting). setting to 0.0 has the effect that this loss is not used by the optimizer.
     :param as_error: if True, this loss is reported as an error instead of a loss,
@@ -314,11 +317,7 @@ class Tensor:
       Basically, for all reporting, it uses sum(loss) * sum(custom_inv_norm_factor).
     """
     root_scope = self.name_ctx.root
-    res = self
-    if self.name_ctx.parent is not root_scope:
-      res = nn.copy(self, name=root_scope.get_new_child(suggested_name=self.name_ctx.get_abs_name(join_str="_")))
-    assert not res.is_ref, f"mark_as_loss can only be called on a layer, not a layer-ref {self}."
-    assert "loss" not in res.layer_dict
+    res = nn.copy(self, name=root_scope.get_new_child(suggested_name=name))
     res.layer_dict["loss"] = "as_is"
     loss_opts = {}
     if scale is not None and scale != 1:

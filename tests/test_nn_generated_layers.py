@@ -81,7 +81,7 @@ def test_repeat_without_out_dim():
     y = net(nn.get_extern_data(x))
     out, dim = nn.repeat(y, repetitions=2, axis=time_dim)
     out.mark_as_default_output()
-    y.mark_as_loss()
+    y.mark_as_loss("y")
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(nn.Module())
     return net_dict
 
@@ -115,7 +115,7 @@ def test_repeat_without_out_dim_same_as_input():
     y = net(nn.get_extern_data(x))
     out, dim = nn.repeat(y, repetitions=1, axis=time_dim)
     out.mark_as_default_output()
-    y.mark_as_loss()
+    y.mark_as_loss("y")
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(nn.Module())
     return net_dict
 
@@ -143,6 +143,6 @@ def test_repeat_as_loss():
   x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
   out, dim = nn.repeat(nn.get_extern_data(x), repetitions=1, axis=time_dim, out_dim=time_dim)
   out.mark_as_default_output()
-  out.mark_as_loss()
+  out.mark_as_loss("y")
   config_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   dummy_run_net_single_custom(config_str, eval_flag=True)
