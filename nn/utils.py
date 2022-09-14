@@ -405,7 +405,7 @@ def prev_target_seq(
   targets: nn.Tensor, *,
   spatial_dim: nn.Dim,
   bos_idx: int,
-  same_length: bool
+  out_one_longer: bool
 ) -> (nn.Tensor, nn.Dim):
   """
   shift by one
@@ -413,23 +413,23 @@ def prev_target_seq(
   :param targets: e.g. [B,S]. assumes S>0 if same_length
   :param spatial_dim: e.g. S
   :param bos_idx: e.g. 0
-  :param same_length:
-    If True, the output will be of the same shape as the targets, i.e. have the same length.
+  :param out_one_longer:
+    If False, the output will be of the same shape as the targets, i.e. have the same length.
     This means that we cut off the last symbol (via slicing).
-    If False, the output will be one longer than the targets.
+    If True, the output will be one longer than the targets.
   :return: targets with BOS prepended, e.g. [B,S+1] or [B,S] depending on same_length
   """
-  if same_length:
-    y, dim_ = nn.slice(targets, axis=spatial_dim, slice_end=-1)
-  else:
+  if out_one_longer:
     y, dim_ = targets, spatial_dim
+  else:
+    y, dim_ = nn.slice(targets, axis=spatial_dim, slice_end=-1)
   pad_dim = nn.SpatialDim("bos-prefix", 1)
   pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.feature_dim)
   y = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
   dim__ = pad_dim + dim_
   dim__.declare_same_as(1 + dim_)
-  if same_length:
+  if out_one_longer:
+    return y, dim__
+  else:
     y, _ = nn.reinterpret_new_dim(y, in_dim=dim__, out_dim=spatial_dim)
     return y, spatial_dim
-  else:
-    return y, dim__
