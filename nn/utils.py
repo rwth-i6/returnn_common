@@ -419,6 +419,7 @@ def prev_target_seq(
     If True, the output will be one longer than the targets.
   :return: targets with BOS prepended, e.g. [B,S+1] or [B,S] depending on out_one_longer
   """
+  batch_dims = targets.batch_dims_ordered(spatial_dim)
   if out_one_longer:
     y, dim_ = targets, spatial_dim
   else:
@@ -429,7 +430,9 @@ def prev_target_seq(
   dim__ = pad_dim + dim_
   dim__.declare_same_as(1 + dim_)
   if out_one_longer:
+    y.verify_out_shape(set(batch_dims) | {dim__})
     return y, dim__
   else:
     y, _ = nn.reinterpret_new_dim(y, in_dim=dim__, out_dim=spatial_dim)
+    y.verify_out_shape(set(batch_dims) | {spatial_dim})
     return y, spatial_dim
