@@ -429,9 +429,9 @@ def prev_target_seq(
   y, dim__ = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
   dim__.declare_same_as(1 + dim_)
   if out_one_longer:
-    y.verify_out_shape(set(batch_dims) | {dim__})
+    y.verify_out_shape(set(batch_dims) | {dim__, targets.feature_dim})
     return y, dim__
   else:
     y, _ = nn.reinterpret_new_dim(y, in_dim=dim__, out_dim=spatial_dim)
-    y.verify_out_shape(set(batch_dims) | {spatial_dim})
+    y.verify_out_shape(set(batch_dims) | {spatial_dim, targets.feature_dim})
     return y, spatial_dim
