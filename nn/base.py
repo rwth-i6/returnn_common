@@ -890,11 +890,10 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
   from returnn.tf.network import TFNetwork, ExternData
   from returnn.tf.layers.base import InternalLayer, LayerBase
   from returnn.util import BehaviorVersion
-  from returnn.config import Config
-  config = Config({
-    "behavior_version": min_returnn_behavior_version,
-  })
-  BehaviorVersion.set(min_returnn_behavior_version)
+  from returnn.config import get_global_config
+  config = get_global_config(auto_create=True)
+  config.typed_dict.setdefault("behavior_version", min_returnn_behavior_version)
+  BehaviorVersion.set(config.typed_dict["behavior_version"])
   loop = nn.NameCtx.inner_loop()  # Note: for control_flow_ctx, we should also check Cond
   net = TFNetwork(
     config=config, extern_data=ExternData(), name="dummy_net",
