@@ -1520,25 +1520,23 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
       continue
 
     # find module from module method or function
-    func = get_func_from_code_object(frame.f_code, frame=frame)
     mod = None
     # In case of a method, func will point to the original function (FunctionType), not the MethodType.
     # We use a more generic method: The first argument of the function (frame.f_code.co_varnames[0])
     # is usually `self` in a method. If this is a module, we use it.
     if frame.f_code.co_varnames and isinstance(frame.f_locals.get(frame.f_code.co_varnames[0]), nn.Module):
       mod = frame.f_locals[frame.f_code.co_varnames[0]]
-    elif (isinstance(func, types.FunctionType)
-          and (
-              any(isinstance(v, nn.Tensor) for v in frame.f_locals.values())
-              or frame is top_frame)):
-      if func.__module__ == _generated_layers.__name__:  # ignore those
-        frame = frame.f_back
-        continue
-      if func in _FuncToFunctional:
-        mod = _FuncToFunctional[func]
-      else:
-        mod = nn.Functional(func)
-        _FuncToFunctional[func] = mod
+    elif any(isinstance(v, nn.Tensor) for v in frame.f_locals.values()) or frame is top_frame:
+      func = get_func_from_code_object(frame.f_code, frame=frame)
+      if isinstance(func, types.FunctionType):
+        if func.__module__ == _generated_layers.__name__:  # ignore those
+          frame = frame.f_back
+          continue
+        if func in _FuncToFunctional:
+          mod = _FuncToFunctional[func]
+        else:
+          mod = nn.Functional(func)
+          _FuncToFunctional[func] = mod
     if mod is not None and id(mod) not in module_ids:
       calls = [
         call_ctx for call_ctx in mod.calls
