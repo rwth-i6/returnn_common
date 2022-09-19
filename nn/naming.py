@@ -1520,7 +1520,7 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
       continue
 
     # find module from module method or function
-    func = get_func_from_code_object(frame.f_code)
+    func = get_func_from_code_object(frame.f_code, frame=frame)
     mod = None
     # In case of a method, func will point to the original function (FunctionType), not the MethodType.
     # We use a more generic method: The first argument of the function (frame.f_code.co_varnames[0])
