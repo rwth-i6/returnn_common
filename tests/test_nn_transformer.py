@@ -7,6 +7,7 @@ from __future__ import annotations
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
 from .utils import assert_equal
+from .hash_helpers import short_hash
 from tensorflow.python.util import nest
 import typing
 
@@ -35,6 +36,9 @@ def test_nn_transformer_search():
 
   config_code = nn.get_returnn_config().get_complete_py_code_str(transformer)
   config, net_dict = config_net_dict_via_serialized(config_code)
+
+  # Print it now, such that we can see it in the test output, and see when it changes.
+  print("*** network hash:", short_hash(net_dict))
 
   dec_self_att_layer_dict = (
     net_dict["loop"]["unit"]["decoder"]["subnetwork"]["layers.0"]["subnetwork"]["self_attn"]["subnetwork"]["k_accum"])

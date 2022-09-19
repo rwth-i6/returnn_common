@@ -80,10 +80,13 @@ def setup():
     mod = importlib.import_module(_expected_mod_name)
     assert vars(mod) is globals()
 
-  import returnn_common  # noqa  # test import
-
-  import returnn
+  import returnn  # also test import
   print("RETURNN:", returnn.__long_version__, returnn.__file__)
+
+  import returnn_common  # also test import
+  from returnn.util.basic import git_describe_head_version
+  print(
+    "RETURNN-common:", git_describe_head_version(os.path.dirname(returnn_common.__file__)), returnn_common.__file__)
 
   import returnn.util.basic as util
   util.init_thread_join_hack()
