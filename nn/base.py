@@ -150,6 +150,8 @@ class Tensor:
         parts.append(repr(self.data.placeholder))
     if not self.is_ref:
       parts.append(f"via {self.name_ctx.module if self.name_ctx.module else self.layer_dict.get('class', '?')!r}")
+    if self.data and self.data.control_flow_ctx:
+      parts.append(f"ctx={self.data.control_flow_ctx.repr_inner()}")
     return f"<{' '.join(parts)}>"
 
   @property
