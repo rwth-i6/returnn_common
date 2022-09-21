@@ -1532,6 +1532,9 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
         if func.__module__ == _generated_layers.__name__:  # ignore those
           frame = frame.f_back
           continue
+        if func.__name__.startswith("<"):  # e.g. <dictcomp> or so
+          frame = frame.f_back  # also ignore
+          continue
         if func in _FuncToFunctional:
           mod = _FuncToFunctional[func]
         else:
