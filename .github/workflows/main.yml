@@ -102,5 +102,5 @@ jobs:
     - name: Run test
       run: |
         export ${{ matrix.action }}
-        if [[ ! -z "$TEST" ]]; then pytest tests/test_$TEST.py; fi
+        if [[ ! -z "$TEST" ]]; then python -m pytest tests/test_$TEST.py; fi
         if [[ ! -z "$RUN" ]]; then $RUN; fi
