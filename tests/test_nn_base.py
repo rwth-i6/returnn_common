@@ -516,3 +516,36 @@ def test_returnn_config_direct_construction():
   engine = Engine(config)
   engine.init_train_from_config(config, train_data=train_dataset)
   engine.train()
+
+
+def test_param_name_deep():
+  # Access params from another subnet. Do this here by sharing the params in _SubNet.
+  # This caused NameCtx.get_name_in_ctx to break before.
+  class _SubNet(nn.Module):
+    def __init__(self, out_dim: nn.Dim):
+      super().__init__()
+      self.linear = nn.Linear(out_dim)
+
+    def __call__(self, x) -> nn.Tensor:
+      return self.linear(x)
+
+  class _Net(nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.out_dim = nn.FeatureDim("linear-out", 13)
+      self.sub = _SubNet(self.out_dim)
+      self.sub2 = _SubNet(self.out_dim)
+
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      y = self.sub(x)
+      # Can only assign params now due to lazy init...
+      self.sub2.linear.initialized = True
+      self.sub2.linear.in_dim = x.feature_dim
+      self.sub2.linear.weight = self.sub.linear.weight
+      self.sub2.linear.bias = self.sub.linear.bias
+      return y + self.sub2(x)
+
+  net = _Net()
+  config, net_dict = dummy_config_net_dict(net)
+  pprint(config)
+  dummy_run_net(config, net=net)
