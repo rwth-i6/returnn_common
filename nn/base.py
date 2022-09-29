@@ -53,6 +53,8 @@ from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Itera
 import itertools
 from weakref import WeakKeyDictionary
 from returnn.tf.util.data import *  # Dim, Data, and others
+# noinspection PyUnresolvedReferences
+from returnn.datasets.util.vocabulary import Vocabulary
 # noinspection PyProtectedMember
 from returnn.tf.util.data import _MarkedDim
 from tensorflow.python.util import nest
