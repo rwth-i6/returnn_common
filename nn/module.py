@@ -130,11 +130,19 @@ class Module:
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
+    sub_calls = []  # type: List[nn.NameCtx]
     if isinstance(value, Module):
       value._parents[(self, key)] = None
-    if isinstance(value, nn.Tensor):
+      sub_calls = value.calls
+    elif isinstance(value, nn.Tensor):
       if (self, key) not in value.parent_modules:
         value.parent_modules.append((self, key))
+      sub_calls = [value.name_ctx]
+    for sub_call in sub_calls:
+      for self_call in self.calls:
+        if self_call.root is sub_call.root and self_call.control_flow_ctx() is sub_call.control_flow_ctx():
+          sub_call.assign_parent(self_call, key)
+          break
 
   def parents_with_attr(self) -> Iterator[Tuple[nn.Module, str]]:
     """
