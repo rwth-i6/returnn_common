@@ -5,7 +5,7 @@ Test the base nn functionality
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict, config_net_dict_via_serialized
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim, config_net_dict_via_serialized
 from pprint import pprint
 from .utils import assert_equal
 import typing
@@ -21,7 +21,7 @@ def test_simple_net_linear():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x) -> nn.Tensor:
       """
@@ -43,8 +43,8 @@ def test_simple_net_linear_square_matrix():
     def __init__(self):
       super().__init__()
       out_dim = nn.FeatureDim("linear-out", 13)
-      self.linear = nn.Linear(out_dim)
-      self.linear2 = nn.Linear(out_dim)
+      self.linear = nn.Linear(dummy_default_in_dim, out_dim)
+      self.linear2 = nn.Linear(out_dim, out_dim)
 
     def __call__(self, x) -> nn.Tensor:
       """
@@ -98,8 +98,8 @@ def test_simple_net_share_params():
     def __init__(self):
       super().__init__()
       self.dim = nn.FeatureDim("linear-out", 13)
-      self.linear = nn.Linear(self.dim)
-      self.linear2 = nn.Linear(self.dim)
+      self.linear = nn.Linear(dummy_default_in_dim, self.dim)
+      self.linear2 = nn.Linear(self.dim, self.dim)
 
     def __call__(self, x) -> nn.Tensor:
       """
@@ -119,9 +119,9 @@ def test_simple_net_share_params():
 def test_explicit_root_ctx_sub():
   class _Net(nn.Module):
     # noinspection PyShadowingNames
-    def __init__(self, out_dim: nn.Dim, dropout=0.1):
+    def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, dropout=0.1):
       super().__init__()
-      self.linear = nn.Linear(out_dim)
+      self.linear = nn.Linear(in_dim, out_dim)
       self.dropout = dropout
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
@@ -133,8 +133,8 @@ def test_explicit_root_ctx_sub():
       return x
 
   with nn.NameCtx.new_root() as name_ctx:
-    net = _Net(out_dim=nn.FeatureDim("linear-out", 13))
-    out = net(nn.get_extern_data(nn.Data("data", shape=(None, 5))))
+    net = _Net(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+    out = net(nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, nn.SpatialDim("time"), dummy_default_in_dim])))
     assert isinstance(out, nn.Tensor)
     out.mark_as_default_output()
 
@@ -156,9 +156,9 @@ def test_root_mod_call_twice():
     Test block
     """
     # noinspection PyShadowingNames
-    def __init__(self, out_dim: nn.Dim, dropout=0.1):
+    def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, dropout=0.1):
       super().__init__()
-      self.linear = nn.Linear(out_dim)
+      self.linear = nn.Linear(in_dim, out_dim)
       self.dropout = dropout
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
@@ -170,9 +170,9 @@ def test_root_mod_call_twice():
       return x
 
   with nn.NameCtx.new_root() as name_ctx:
-    test_block = TestBlock(out_dim=nn.FeatureDim("linear-out", 13))
-    time_dim = nn.SpatialDim("time")
     in_dim = nn.FeatureDim("input", 5)
+    test_block = TestBlock(in_dim, nn.FeatureDim("linear-out", 13))
+    time_dim = nn.SpatialDim("time")
     y = test_block(nn.get_extern_data(nn.Data("input1", dim_tags=[nn.batch_dim, time_dim, in_dim])))
     z = test_block(nn.get_extern_data(nn.Data("input2", dim_tags=[nn.batch_dim, time_dim, in_dim])))
 
@@ -194,7 +194,7 @@ def test_multiple_returns_depth_1():
   class _SubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
@@ -226,7 +226,7 @@ def test_multiple_returns_depth_2():
   class _SubSubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
@@ -277,8 +277,8 @@ def test_from_call_variations():
   class _SubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
-      self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear2 = nn.Linear(self.linear.out_dim, nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
@@ -317,8 +317,9 @@ def test_from_call_variations2():
   class _SubNet(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
-      self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear2 = nn.Linear(self.linear.out_dim, nn.FeatureDim("linear-out", 13))
+      self.out_dim = self.linear2.out_dim
 
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
@@ -331,8 +332,9 @@ def test_from_call_variations2():
   class _SubNet2(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
-      self.linear2 = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear2 = nn.Linear(self.linear.out_dim, nn.FeatureDim("linear-out", 13))
+      self.out_dim = self.linear2.out_dim
 
     def __call__(self, x: nn.Tensor, y: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
@@ -347,7 +349,7 @@ def test_from_call_variations2():
       super().__init__()
       self.sub = _SubNet()
       self.sub2 = _SubNet2()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(self.sub.out_dim, nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
@@ -393,7 +395,8 @@ def test_deepcopy():
   import copy
 
   dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
-  layers = nn.Sequential(copy.deepcopy(nn.Linear(dim)) for dim in dims)
+  layers = nn.Sequential(copy.deepcopy(
+    nn.Linear(in_dim, out_dim)) for in_dim, out_dim in zip([dummy_default_in_dim] + dims, dims))
   config, net_dict = dummy_config_net_dict(layers)
   pprint(net_dict)
   assert "0" in net_dict
@@ -429,7 +432,7 @@ def test_parameter_weight_decay():
   time_dim = nn.SpatialDim("time")
   inputs = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim]))
 
-  net = nn.Linear(nn.FeatureDim("out", 4))
+  net = nn.Linear(feat_dim, nn.FeatureDim("out", 4))
   out = net(inputs)
   out.mark_as_default_output()
 
@@ -444,19 +447,6 @@ def test_parameter_weight_decay():
   config, net_dict = config_net_dict_via_serialized(config)
   assert "L2" in net_dict["weight"] and net_dict["weight"]["L2"] == 1.1
   dummy_run_net(config)
-
-
-def test_parameter_not_initialized():
-  nn.reset_default_root_name_ctx()
-  net = nn.Linear(nn.FeatureDim("out", 4))
-  try:
-    params = list(net.parameters())
-  except Exception as exc:
-    # nn.Linear does not know in_dim yet, so params are not initialized
-    print("Expected exception:", exc)
-    assert "not initialized, params unknown" in str(exc)
-  else:
-    raise Exception(f"No exception. Got params = {params!r}")
 
 
 def test_const_array_serialization():
@@ -499,7 +489,7 @@ def test_returnn_config_direct_construction():
     # noinspection PyStatementEffect
     epoch  # unused
     nn.reset_default_root_name_ctx()
-    net = nn.Linear(out_dim)
+    net = nn.Linear(in_dim, out_dim)
     out = net(nn.get_extern_data(x))
     out.mark_as_default_output()
     out.mark_as_loss("dummy")
@@ -522,30 +512,27 @@ def test_param_name_deep():
   # Access params from another subnet. Do this here by sharing the params in _SubNet.
   # This caused NameCtx.get_name_in_ctx to break before.
   class _SubNet(nn.Module):
-    def __init__(self, out_dim: nn.Dim):
+    def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim):
       super().__init__()
-      self.linear = nn.Linear(out_dim)
+      self.linear = nn.Linear(in_dim, out_dim)
 
     def __call__(self, x) -> nn.Tensor:
       return self.linear(x)
 
   class _Net(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim: nn.Dim):
       super().__init__()
+      self.in_dim = in_dim
       self.out_dim = nn.FeatureDim("linear-out", 13)
-      self.sub = _SubNet(self.out_dim)
-      self.sub2 = _SubNet(self.out_dim)
-
-    def __call__(self, x: nn.Tensor) -> nn.Tensor:
-      y = self.sub(x)
-      # Can only assign params now due to lazy init...
-      self.sub2.linear.initialized = True
-      self.sub2.linear.in_dim = x.feature_dim
+      self.sub = _SubNet(self.in_dim, self.out_dim)
+      self.sub2 = _SubNet(self.in_dim, self.out_dim)
       self.sub2.linear.weight = self.sub.linear.weight
       self.sub2.linear.bias = self.sub.linear.bias
-      return y + self.sub2(x)
 
-  net = _Net()
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      return self.sub(x) + self.sub2(x)
+
+  net = _Net(dummy_default_in_dim)
   config, net_dict = dummy_config_net_dict(net)
   pprint(config)
   dummy_run_net(config, net=net)

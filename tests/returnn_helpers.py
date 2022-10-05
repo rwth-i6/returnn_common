@@ -175,8 +175,11 @@ def dummy_run_net_single_custom(config_code_str: str, *,
     return session.run(fetches, feed_dict=feed_dict)
 
 
+dummy_default_in_dim = nn.FeatureDim("dummy_default_in_dim", 13)
+
+
 def dummy_config_net_dict(net: nn.Module, *,
-                          with_axis=False, in_dim: int = 13, reset_name_ctx: bool = True
+                          with_axis=False, in_dim: nn.Dim = dummy_default_in_dim, reset_name_ctx: bool = True
                           ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
   """
   :return: config, net_dict
@@ -184,7 +187,6 @@ def dummy_config_net_dict(net: nn.Module, *,
   if reset_name_ctx:
     nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
-  in_dim = nn.FeatureDim("input", in_dim)
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
   opts = {}
   if with_axis:
