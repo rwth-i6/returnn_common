@@ -37,13 +37,13 @@ class TransformerEncoderLayer(nn.Module):
     super().__init__()
     self.self_attn = _copy.deepcopy(self_attention)
 
-    self.linear_ff = nn.Linear(ff_dim)
-    self.linear_out = nn.Linear(out_dim)
+    self.linear_ff = nn.Linear(out_dim, ff_dim)
+    self.linear_out = nn.Linear(ff_dim, out_dim)
     self.activation = ff_activation
     self.norm_first = norm_first
     assert isinstance(norm, type)
-    self.self_att_norm = norm(eps=norm_eps)
-    self.ff_norm = norm()
+    self.self_att_norm = norm(out_dim, eps=norm_eps)
+    self.ff_norm = norm(out_dim)
     self.dropout = dropout
 
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
@@ -52,15 +52,11 @@ class TransformerEncoderLayer(nn.Module):
     The input has shape {B, T, F}.
     """
     if self.norm_first:
-      inp = inp + self._self_attention_block(
-        self.self_att_norm(inp, in_dim=inp.feature_dim), axis=axis)
-      inp = inp + self._feed_forward_block(
-        self.ff_norm(inp, in_dim=inp.feature_dim))
+      inp = inp + self._self_attention_block(self.self_att_norm(inp), axis=axis)
+      inp = inp + self._feed_forward_block(self.ff_norm(inp))
     else:
-      inp = self.self_att_norm(
-        inp + self._self_attention_block(inp, axis=axis), in_dim=inp.feature_dim)
-      inp = self.ff_norm(
-        inp + self._feed_forward_block(inp), in_dim=inp.feature_dim)
+      inp = self.self_att_norm(inp + self._self_attention_block(inp, axis=axis))
+      inp = self.ff_norm(inp + self._feed_forward_block(inp))
 
     return inp
 
@@ -81,20 +77,20 @@ class TransformerEncoder(nn.Module):
   """
   Defines the full Encoder of the standard transformer
   """
-  def __init__(self, encoder_layer: Union[TransformerEncoderLayer, Any], *, num_layers: int,
-               norm=nn.LayerNorm, norm_eps: float = 1e-6):
+  def __init__(self, encoder_layer: Union[TransformerEncoderLayer, Any], *,
+               num_layers: int,
+               norm: Optional[Callable[[nn.Tensor], nn.Tensor]]):
     """
     :param encoder_layer: Encoder layer to be stacked num_layers times (copies of it, no param sharing)
     :param num_layers: Number of layers
     :param norm: normalization function, e.g. nn.LayerNorm()
-    :param norm_eps: Epsilon value for layer normalization
     """
     super().__init__()
     import copy
     self.layers = nn.ModuleList([copy.deepcopy(encoder_layer) for _ in range(num_layers)])
 
     self.num_layers = num_layers
-    self.norm = norm(eps=norm_eps) if isinstance(norm, type) else norm
+    self.norm = norm
 
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """
@@ -106,7 +102,7 @@ class TransformerEncoder(nn.Module):
       output = mod(output, axis=axis)
 
     if self.norm is not None:
-      output = self.norm(output, in_dim=output.feature_dim)
+      output = self.norm(output)
 
     return output
 
@@ -139,13 +135,13 @@ class TransformerDecoderLayer(nn.Module):
     self.self_attn = _copy.deepcopy(causal_self_attention)
     self.attn = enc_dec_attention
 
-    self.linear_ff = nn.Linear(ff_dim)
-    self.linear_out = nn.Linear(out_dim)
+    self.linear_ff = nn.Linear(out_dim, ff_dim)
+    self.linear_out = nn.Linear(ff_dim, out_dim)
 
     assert isinstance(norm, type)
-    self.self_att_norm = norm(eps=norm_eps)
-    self.cross_att_norm = norm(eps=norm_eps)
-    self.ff_norm = norm(eps=norm_eps)
+    self.self_att_norm = norm(out_dim, eps=norm_eps)
+    self.cross_att_norm = norm(out_dim, eps=norm_eps)
+    self.ff_norm = norm(out_dim, eps=norm_eps)
     self.norm_first = norm_first
     self.activation = ff_activation
     self.dropout = dropout
@@ -161,20 +157,17 @@ class TransformerDecoderLayer(nn.Module):
     new_state = nn.LayerState()
     if self.norm_first:
       x_, new_state.self_attn = self._self_attention_block(
-        self.self_att_norm(inp, in_dim=inp.feature_dim), axis=axis, state=state.self_attn)
+        self.self_att_norm(inp), axis=axis, state=state.self_attn)
       inp = inp + x_
       inp = inp + self._multi_head_attention_block(
-        self.cross_att_norm(inp, in_dim=inp.feature_dim), mem=memory, mem_axis=memory_spatial_axis)
-      inp = inp + self._feed_forward_block(
-        self.ff_norm(inp, in_dim=inp.feature_dim))
+        self.cross_att_norm(inp), mem=memory, mem_axis=memory_spatial_axis)
+      inp = inp + self._feed_forward_block(self.ff_norm(inp))
     else:
       x_, new_state.self_attn = self._self_attention_block(inp, axis=axis, state=state.self_attn)
-      inp = self.self_att_norm(inp + x_, in_dim=inp.feature_dim)
+      inp = self.self_att_norm(inp + x_)
       inp = self.cross_att_norm(
-        inp + self._multi_head_attention_block(inp, mem=memory, mem_axis=memory_spatial_axis),
-        in_dim=inp.feature_dim)
-      inp = self.ff_norm(
-        inp + self._feed_forward_block(inp), in_dim=inp.feature_dim)
+        inp + self._multi_head_attention_block(inp, mem=memory, mem_axis=memory_spatial_axis))
+      inp = self.ff_norm(inp + self._feed_forward_block(inp))
 
     return inp, new_state
 
@@ -203,20 +196,18 @@ class TransformerDecoder(nn.Module):
   def __init__(self, *,
                decoder_layer: Union[TransformerDecoderLayer, Any],
                num_layers: int,
-               norm=nn.LayerNorm,
-               norm_eps: float = 1e-6):
+               norm: Optional[Callable[[nn.Tensor], nn.Tensor]]):
     """
     :param decoder_layer: Decoder layer to be stacked num_layers times
     :param num_layers: Number of layers
     :param norm: normalization function for output layer normalization
-    :param norm_eps: Epsilon value for output layer normalization
     """
     super().__init__()
     import copy
     self.layers = nn.ModuleList([copy.deepcopy(decoder_layer) for _ in range(num_layers)])
 
     self.num_layers = num_layers
-    self.norm = norm(eps=norm_eps) if isinstance(norm, type) else norm
+    self.norm = norm
 
   def __call__(self, inp: nn.Tensor, *,
                axis: nn.Dim,
@@ -233,7 +224,7 @@ class TransformerDecoder(nn.Module):
         output, axis=axis, memory=memory, memory_spatial_axis=memory_spatial_axis, state=state[key])
 
     if self.norm is not None:
-      output = self.norm(output, in_dim=output.feature_dim)
+      output = self.norm(output)
 
     return output, state
 
@@ -320,17 +311,18 @@ class Transformer(nn.Module):
       else:
         if enc_self_attention is None:
           enc_self_attention = nn.SelfAttention(
+            in_dim=model_dim,
             key_dim_total=model_dim, value_dim_total=model_dim, num_heads=num_heads, att_dropout=att_dropout)
         encoder_layer = TransformerEncoderLayer(
           out_dim=model_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, self_attention=enc_self_attention)
       self.encoder = TransformerEncoder(
-        encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm, norm_eps=norm_eps)
+        encoder_layer=encoder_layer, num_layers=num_encoder_layers, norm=norm(model_dim, eps=norm_eps))
 
     self.target_dim = target_dim
     self.target_bos_symbol = target_bos_symbol
     self.target_eos_symbol = target_eos_symbol
-    self.target_embedding = nn.Linear(model_dim)
+    self.target_embedding = nn.Linear(target_dim, model_dim)
 
     if custom_decoder is not None:
       self.decoder = custom_decoder
@@ -344,6 +336,7 @@ class Transformer(nn.Module):
       else:
         if dec_causal_self_attention is None:
           dec_causal_self_attention = nn.CausalSelfAttention(
+            in_dim=model_dim,
             key_dim_total=model_dim, value_dim_total=model_dim, num_heads=num_heads, att_dropout=att_dropout)
         if cross_attention is None:
           cross_attention = nn.dot_attention
@@ -351,9 +344,9 @@ class Transformer(nn.Module):
           out_dim=model_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
           norm_first=norm_first, causal_self_attention=dec_causal_self_attention, enc_dec_attention=cross_attention)
       self.decoder = TransformerDecoder(
-        decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm, norm_eps=norm_eps)
+        decoder_layer=decoder_layer, num_layers=num_decoder_layers, norm=norm(model_dim, eps=norm_eps))
 
-    self.output_projection = nn.Linear(target_dim)
+    self.output_projection = nn.Linear(model_dim, target_dim)
 
     self.model_dim = model_dim
     self.num_heads = num_heads
