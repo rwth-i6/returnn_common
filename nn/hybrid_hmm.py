@@ -20,7 +20,9 @@ class IHybridHMM(nn.Module):
 
   def __call__(self, source: nn.Tensor, *,
                state: Optional[nn.LayerState] = None,
-               train: bool = False, targets: Optional[nn.Tensor] = None) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
+               train: bool = False,
+               targets: Optional[nn.Tensor] = None
+               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     """
     :param source: [B,T,in_dim], although not necessarily in that order. we require that time_dim_axis is set.
     :param state: previous state
@@ -37,15 +39,18 @@ class HybridHMM(IHybridHMM):
   Hybrid NN-HMM
   """
 
-  def __init__(self, *, encoder: EncoderType, out_dim: nn.Dim):
+  def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *, encoder: EncoderType):
     super().__init__()
-    self.encoder = encoder
+    self.in_dim = in_dim
     self.out_dim = out_dim
-    self.out_projection = nn.Linear(out_dim)
+    self.encoder = encoder
+    self.out_projection = nn.Linear(encoder.out_dim, out_dim)
 
   def __call__(self, source: nn.Tensor, *,
                state: Optional[nn.LayerState] = None,
-               train: bool = False, targets: Optional[nn.Tensor] = None) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
+               train: bool = False,
+               targets: Optional[nn.Tensor] = None
+               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
     assert source.data.time_dim_axis is not None
     in_spatial_dim = source.data.dim_tags[source.data.time_dim_axis]
     assert state is None, f"{self} stateful hybrid HMM not supported yet"
