@@ -392,10 +392,10 @@ class NameCtx:
     #   So the root module call output must stay valid.
     #   Using self.root.move_layer_ref_here(...) would not really allow that the output is used
     #   because self.root does not have a valid layer name.
-    if root_module.calls:
-      root_mod_call = root_module.calls[0]
+    root_module_calls = [call for call in root_module.calls if call.root is self.root]
+    if root_module_calls:
+      root_mod_call = root_module_calls[0]
       assert root_mod_call.module is root_module
-      assert root_mod_call.root is self.root  # just not implemented otherwise
       if root_mod_call is not self:
         # root_mod_call.layer might be None if the subnet is not yet initialized.
         if root_mod_call.layer_ref is not None:
