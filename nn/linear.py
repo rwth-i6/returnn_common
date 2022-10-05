@@ -2,7 +2,6 @@
 Provides the :class:`Linear` module.
 """
 
-from typing import Optional
 from .. import nn
 
 
