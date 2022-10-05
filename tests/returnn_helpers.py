@@ -175,7 +175,7 @@ def dummy_run_net_single_custom(config_code_str: str, *,
     return session.run(fetches, feed_dict=feed_dict)
 
 
-dummy_default_in_dim = nn.FeatureDim("dummy_default_in_dim", 13)
+dummy_default_in_dim = nn.FeatureDim("input_dim", 13)
 
 
 def dummy_config_net_dict(net_maker: Callable[[], nn.Module], *,
