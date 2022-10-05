@@ -92,6 +92,5 @@ def test_cumcum():
       """
       return nn.cumsum(x, axis=axis)
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config, net=net)

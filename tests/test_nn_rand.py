@@ -25,8 +25,7 @@ def test_random_normal():
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       return x + self.rnd.normal(x.shape_ordered)
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net, reset_name_ctx=False)
+  config, net_dict, net = dummy_config_net_dict(_Net, reset_name_ctx=False)
   pprint(net_dict)
   dummy_run_net(config, net=net)
 
@@ -45,8 +44,7 @@ def test_random_multi_call():
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       return x + self.rnd.normal(x.shape_ordered) - self.rnd.normal(x.shape_ordered)
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net, reset_name_ctx=False)
+  config, net_dict, net = dummy_config_net_dict(_Net, reset_name_ctx=False)
   pprint(net_dict)
   dummy_run_net(config, net=net)
 
@@ -160,7 +158,7 @@ def test_random_normal_train_epoch():
   class _Net(nn.Module):
     def __init__(self):
       super(_Net, self).__init__()
-      self.linear = nn.Linear(in_dim)
+      self.linear = nn.Linear(in_dim, in_dim)
 
     def __call__(self, x_: nn.Tensor) -> nn.Tensor:
       return self.linear(x_ + nn.random_normal(x_.shape_ordered)) + x_

@@ -36,8 +36,7 @@ def test_range_from_length():
       t, _ = nn.range_from_length(durations)
       return t
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config, net=net)
 
 
@@ -77,7 +76,7 @@ def test_repeat_without_out_dim():
     # noinspection PyStatementEffect
     epoch  # unused
     nn.reset_default_root_name_ctx()
-    net = nn.Linear(out_dim)
+    net = nn.Linear(in_dim, out_dim)
     y = net(nn.get_extern_data(x))
     out, dim = nn.repeat(y, repetitions=2, axis=time_dim)
     out.mark_as_default_output()
@@ -111,7 +110,7 @@ def test_repeat_without_out_dim_same_as_input():
     # noinspection PyStatementEffect
     epoch  # unused
     nn.reset_default_root_name_ctx()
-    net = nn.Linear(out_dim)
+    net = nn.Linear(in_dim, out_dim)
     y = net(nn.get_extern_data(x))
     out, dim = nn.repeat(y, repetitions=1, axis=time_dim)
     out.mark_as_default_output()

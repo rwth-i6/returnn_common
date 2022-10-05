@@ -5,7 +5,7 @@ Test nn.rec
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim
 from .utils import assert_equal
 import typing
 
@@ -19,7 +19,7 @@ def test_simple_net_lstm():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.lstm = nn.LSTM(nn.FeatureDim("lstm-out", 13))
+      self.lstm = nn.LSTM(dummy_default_in_dim, nn.FeatureDim("lstm-out", 13))
 
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
@@ -28,8 +28,7 @@ def test_simple_net_lstm():
       x, _ = self.lstm(x, axis=axis)
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net, with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   assert "lstm" in net_dict
   input_dim = config["input_dim"]
   lstm_out_dim = config["lstm_out_dim"]

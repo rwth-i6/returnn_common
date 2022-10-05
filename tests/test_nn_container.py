@@ -4,7 +4,7 @@ Test nn.container
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim
 from builtins import range as range_
 from pprint import pprint
 import typing
@@ -20,7 +20,9 @@ def test_module_list():
     def __init__(self):
       super().__init__()
       self.base_dim = nn.FeatureDim("linear-out", 3)
-      self.ls = nn.ModuleList([nn.Linear(self.base_dim + i) for i in range_(4)])
+      dims = [self.base_dim + i for i in range_(4)]
+      in_dims = [dummy_default_in_dim] + dims[:-1]
+      self.ls = nn.ModuleList([nn.Linear(in_dim, out_dim) for in_dim, out_dim in zip(in_dims, dims)])
 
     def __call__(self, out: nn.Tensor) -> nn.Tensor:
       """
@@ -30,8 +32,7 @@ def test_module_list():
         out = layer(out)
       return out
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
 
   assert net_dict["ls.0"]["subnetwork"]["dot"]["from"][0] == "base:data:data"
   assert net_dict["ls.1"]["subnetwork"]["dot"]["from"][0] == "base:ls.0"
@@ -46,10 +47,9 @@ def test_sequential_base_case():
   class _TestSequential(nn.Module):
     def __init__(self):
       super().__init__()
-      self.seq = nn.Sequential(
-        nn.Linear(nn.FeatureDim("feat1", 1)),
-        nn.Linear(nn.FeatureDim("feat2", 2)),
-        nn.Linear(nn.FeatureDim("feat3", 3)))
+      dims = [nn.FeatureDim("feat1", 1), nn.FeatureDim("feat2", 2), nn.FeatureDim("feat3", 3)]
+      in_dims = [dummy_default_in_dim] + dims[:-1]
+      self.seq = nn.Sequential(nn.Linear(in_dim, out_dim) for in_dim, out_dim in zip(in_dims, dims))
 
     def __call__(self, data: nn.Tensor) -> nn.Tensor:
       """
@@ -58,8 +58,7 @@ def test_sequential_base_case():
       seq = self.seq(data)
       return seq
 
-  net = _TestSequential()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_TestSequential)
   pprint(net_dict)
 
   assert net_dict["seq"]["subnetwork"]["0"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
@@ -74,10 +73,11 @@ def test_sequential_named_case():
     def __init__(self):
       super().__init__()
       from collections import OrderedDict
+      dims = [nn.FeatureDim("linear1-out", 1), nn.FeatureDim("linear2-out", 2), nn.FeatureDim("linear3-out", 3)]
       x = OrderedDict()
-      x["one"] = nn.Linear(nn.FeatureDim("linear1-out", 1))
-      x["two"] = nn.Linear(nn.FeatureDim("linear2-out", 2))
-      x["three"] = nn.Linear(nn.FeatureDim("linear3-out", 3))
+      x["one"] = nn.Linear(dummy_default_in_dim, dims[0])
+      x["two"] = nn.Linear(dims[0], dims[1])
+      x["three"] = nn.Linear(dims[1], dims[2])
       self.seq = nn.Sequential(x)
 
     def __call__(self, data: nn.Tensor) -> nn.Tensor:
@@ -87,8 +87,7 @@ def test_sequential_named_case():
       seq = self.seq(data)
       return seq
 
-  net = _TestSequential()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_TestSequential)
 
   assert net_dict["seq"]["subnetwork"]["one"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
   assert net_dict["seq"]["subnetwork"]["two"]["subnetwork"]["dot"]["from"][0] == "base:one"
@@ -113,8 +112,7 @@ def test_parameter_list():
         data = nn.combine(data, param, kind="add", allow_broadcast_all_sources=True)
       return data
 
-  net = _TestParameterList()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_TestParameterList)
   pprint(net_dict)
 
   dummy_run_net(config, net=net)

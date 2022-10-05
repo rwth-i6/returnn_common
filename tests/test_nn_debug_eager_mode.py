@@ -22,7 +22,7 @@ def test_simple_linear():
   data = nn.get_extern_data(
     nn.Data("data_lin", dim_tags=[nn.batch_dim, nn.SpatialDim("time"), nn.FeatureDim("in", 5)]))
   assert data.data.placeholder is not None
-  lin = nn.Linear(nn.FeatureDim("lin", 10))
+  lin = nn.Linear(data.feature_dim, nn.FeatureDim("lin", 10))
   out = lin(data)
   assert lin.weight.data.placeholder is not None
   assert lin.bias.data.placeholder is not None

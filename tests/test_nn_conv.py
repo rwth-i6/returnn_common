@@ -5,7 +5,7 @@ Test nn.conv
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim
 import typing
 
 if typing.TYPE_CHECKING:
@@ -19,7 +19,7 @@ def test_conv1d():
     def __init__(self):
       super().__init__()
       # Use some downsampling + valid padding to test dim tag math.
-      self.conv = nn.Conv1d(nn.FeatureDim("out", 13), 4, strides=3, padding="valid")
+      self.conv = nn.Conv1d(dummy_default_in_dim, nn.FeatureDim("out", 13), 4, strides=3, padding="valid")
 
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
@@ -28,6 +28,5 @@ def test_conv1d():
       x, _ = self.conv(x, in_spatial_dim=axis)
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config, net=net)
