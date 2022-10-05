@@ -607,7 +607,7 @@ class NameCtx:
 
   def _get_suggested_name(self) -> str:
     # https://github.com/rwth-i6/returnn_common/issues/125
-    assert self.module  # this function would not be used in another way
+    assert self.module is not None  # this function would not be used in another way
     reserved_names = set(self.parent.children.keys()) | self._ReservedNames
     parent_module = self._get_parent_module()
     if parent_module:
