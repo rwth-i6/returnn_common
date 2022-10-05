@@ -18,16 +18,19 @@ class BlstmCnnSpecAugEncoder(BlstmEncoder):
   """
 
   def __init__(self,
-               num_layers: int = 6, lstm_dim: nn.Dim = nn.FeatureDim("lstm-dim", 1024),
+               in_dim: nn.Dim,
+               lstm_dim: nn.Dim = nn.FeatureDim("lstm-dim", 1024),
+               *,
+               num_layers: int = 6,
                time_reduction: Union[int, Tuple[int, ...]] = 6,
                with_specaugment=True,
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,):
     super(BlstmCnnSpecAugEncoder, self).__init__(
-      num_layers=num_layers, dim=lstm_dim, time_reduction=time_reduction,
+      in_dim=in_dim, dim=lstm_dim, num_layers=num_layers, time_reduction=time_reduction,
       l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
     self.with_specaugment = with_specaugment
-    self.pre_conv_net = PreConvNet()
+    self.pre_conv_net = PreConvNet(in_dim=in_dim)
 
   def __call__(self, x, *, spatial_dim: nn.Dim) -> (nn.Tensor, nn.Dim):
     if self.with_specaugment:
@@ -41,21 +44,24 @@ class PreConvNet(nn.Module):
   """
   2 layer pre conv net, usually used before a BLSTM
   """
-  def __init__(self, filter_size=(3, 3), dim: nn.Dim = nn.FeatureDim("feat", 32)):
+  def __init__(self, in_dim: nn.Dim, dim: nn.Dim = nn.FeatureDim("feat", 32), *, filter_size=(3, 3)):
     super(PreConvNet, self).__init__()
-    self.conv0 = nn.Conv2d(out_dim=dim, padding="same", filter_size=filter_size)
-    self.conv1 = nn.Conv2d(out_dim=dim, padding="same", filter_size=filter_size)
+    self._dummy_feat_dim = nn.FeatureDim("dummy-feature", 1)
+    self.conv0 = nn.Conv2d(self._dummy_feat_dim, out_dim=dim, padding="same", filter_size=filter_size)
+    self.conv1 = nn.Conv2d(dim, dim, padding="same", filter_size=filter_size)
+    self._final_extra_spatial_dim = in_dim.ceildiv_right(2).ceildiv_right(2)
+    self.out_dim = self._final_extra_spatial_dim * dim
 
   def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
     batch_dims = x.batch_dims_ordered((x.feature_dim, spatial_dim))
     extra_spatial_dim = x.feature_dim
-    feat_dim = nn.FeatureDim("dummy-feature", 1)
-    x = nn.expand_dim(x, dim=feat_dim)
-    x, _ = self.conv0(x, in_spatial_dims=(spatial_dim, extra_spatial_dim), in_dim=feat_dim)
+    x = nn.expand_dim(x, dim=self._dummy_feat_dim)
+    x, _ = self.conv0(x, in_spatial_dims=(spatial_dim, extra_spatial_dim))
     feat_dim = x.feature_dim
     x, extra_spatial_dim = nn.pool1d(x, in_spatial_dim=extra_spatial_dim, pool_size=2, mode="max", padding="same")
-    x, _ = self.conv1(x, in_spatial_dims=(spatial_dim, extra_spatial_dim), in_dim=feat_dim)
+    x, _ = self.conv1(x, in_spatial_dims=(spatial_dim, extra_spatial_dim))
     x, extra_spatial_dim = nn.pool1d(x, in_spatial_dim=extra_spatial_dim, pool_size=2, mode="max", padding="same")
+    self._final_extra_spatial_dim.declare_same_as(extra_spatial_dim)
     x, _ = nn.merge_dims(x, axes=(extra_spatial_dim, feat_dim), out_dim=nn.FeatureDim("conv-net-feature", None))
-    x.verify_out_shape(set(batch_dims) | {x.feature_dim, spatial_dim})
+    x.verify_out_shape(set(batch_dims) | {self.out_dim, spatial_dim})
     return x
