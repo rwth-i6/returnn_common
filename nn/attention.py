@@ -35,9 +35,11 @@ class GenericSelfAttention(nn.Module):
   """
   Shared base class for self attention
   """
-  def __init__(self, *, key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
+  def __init__(self, in_dim: nn.Dim, *,
+               key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
                att_dropout: float = 0.1):
     super().__init__()
+    self.in_dim = in_dim
     if isinstance(num_heads, int):
       num_heads = nn.SpatialDim("num_heads", num_heads)
     self.key_dim_total = key_dim_total
@@ -47,7 +49,7 @@ class GenericSelfAttention(nn.Module):
     self.num_heads = num_heads
     self.qkv_dim_total = 2 * key_dim_total + value_dim_total
     self.qkv_dim_per_head = 2 * self.key_dim_per_head + self.value_dim_per_head
-    self.qkv = nn.Linear(self.qkv_dim_total)
+    self.qkv = nn.Linear(in_dim, self.qkv_dim_total)
     self.att_dropout = att_dropout
 
   def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
