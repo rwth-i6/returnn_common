@@ -121,13 +121,7 @@ class _Conv(_ConvOrTransposedConv):
     for in_spatial_dim in in_spatial_dims:
       if in_spatial_dim not in source.shape:
         raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
-    out_spatial_dims = out_spatial_dims or _default_out_spatial_dims(
-      description_prefix=nn.NameCtx.current_ctx().get_abs_name(),
-      in_spatial_dims=in_spatial_dims,
-      filter_size=[d.dimension for d in self.filter_size],
-      strides=1 if not self.strides else self.strides,
-      dilation_rate=1 if not self.dilation_rate else self.dilation_rate,
-      padding=self.padding)
+    out_spatial_dims = out_spatial_dims or self.make_out_spatial_dims(in_spatial_dims)
     layer_dict = {
       "class": "conv", "from": source,
       "in_dim": self.in_dim, "in_spatial_dims": in_spatial_dims,
@@ -144,6 +138,16 @@ class _Conv(_ConvOrTransposedConv):
       layer_dict["bias"] = self.bias
     out = nn.make_layer(layer_dict, name="conv")
     return out, out_spatial_dims
+
+  def make_out_spatial_dims(self, in_spatial_dims: Sequence[nn.Dim]) -> Sequence[nn.Dim]:
+    """make new spatial dims for the output"""
+    return make_conv_out_spatial_dims(
+      description_prefix=nn.NameCtx.current_ctx().get_abs_name(),
+      in_spatial_dims=in_spatial_dims,
+      filter_size=[d.dimension for d in self.filter_size],
+      strides=1 if not self.strides else self.strides,
+      dilation_rate=1 if not self.dilation_rate else self.dilation_rate,
+      padding=self.padding)
 
 
 class Conv1d(_Conv):
@@ -319,7 +323,7 @@ def _pool_nd(
   assert len(pool_size) == nd
 
   if out_spatial_dims is None or out_spatial_dims is nn.NotSpecified:
-    out_spatial_dims = _default_out_spatial_dims(
+    out_spatial_dims = make_conv_out_spatial_dims(
       description_prefix=nn.NameCtx.current_ctx().get_abs_name(),
       in_spatial_dims=in_spatial_dims,
       filter_size=pool_size,
@@ -440,15 +444,18 @@ def pool3d(
     name=name)
 
 
-def _default_out_spatial_dims(*,
-                              description_prefix: str,
-                              in_spatial_dims: Sequence[nn.Dim],
-                              filter_size: Union[Sequence[int], int],
-                              strides: Union[Sequence[int], int],
-                              dilation_rate: Union[Sequence[int], int],
-                              padding: str,
-                              ) -> Sequence[nn.Dim]:
+def make_conv_out_spatial_dims(in_spatial_dims: Sequence[nn.Dim],
+                               *,
+                               filter_size: Union[Sequence[int], int],
+                               padding: str,
+                               strides: Union[Sequence[int], int] = 1,
+                               dilation_rate: Union[Sequence[int], int] = 1,
+                               description_prefix: Optional[str] = None,
+                               ) -> Sequence[nn.Dim]:
+  """create out spatial dims from in spatial dims"""
   from returnn.tf.layers.basic import ConvLayer
+  if not description_prefix:
+    description_prefix = nn.NameCtx.current_ctx().get_abs_name()
   nd = len(in_spatial_dims)
   if isinstance(filter_size, int):
     filter_size = [filter_size] * nd
