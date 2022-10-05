@@ -27,8 +27,8 @@ class ConformerPositionwiseFeedForward(nn.Module):
     self.dropout = dropout
     self.activation = activation
 
-    self.linear_ff = nn.Linear(ff_dim)
-    self.linear_out = nn.Linear(out_dim)
+    self.linear_ff = nn.Linear(out_dim, ff_dim)
+    self.linear_out = nn.Linear(ff_dim, out_dim)
 
   def __call__(self, inp: nn.Tensor) -> nn.Tensor:
     """forward"""
@@ -53,10 +53,10 @@ class ConformerConvBlock(nn.Module):
     """
     super().__init__()
 
-    self.positionwise_conv1 = nn.Linear(2 * out_dim)
+    self.positionwise_conv1 = nn.Linear(out_dim, 2 * out_dim)
     self.depthwise_conv = nn.Conv1d(
-      out_dim=out_dim, filter_size=kernel_size, groups=out_dim.dimension, padding='same')
-    self.positionwise_conv2 = nn.Linear(out_dim)
+      out_dim, out_dim, filter_size=kernel_size, groups=out_dim.dimension, padding='same')
+    self.positionwise_conv2 = nn.Linear(out_dim, out_dim)
     self.norm = norm
 
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
@@ -76,13 +76,15 @@ class ConformerConvSubsample(nn.Module):
   """
 
   def __init__(
-        self, *, filter_sizes: List[Tuple[int, int]], out_dims: List[nn.Dim], dropout: float,
+        self, in_dim: nn.Dim, *,
+        out_dims: List[nn.Dim], dropout: float,
+        filter_sizes: List[Tuple[int, int]],
         pool_sizes: Optional[List[Tuple[int, int]]] = None,
         activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
         padding: str = 'same'):
     """
-    :param filter_sizes: a list of filter sizes for the conv layer
     :param out_dims: the number of output channels. last element is the output feature dimension
+    :param filter_sizes: a list of filter sizes for the conv layer
     :param dropout: the dropout value
     :param pool_sizes: a list of pooling factors applied after conv layer
     :param activation: the activation function
@@ -96,17 +98,25 @@ class ConformerConvSubsample(nn.Module):
 
     self.conv_layers = nn.ModuleList()
     assert len(filter_sizes) == len(out_dims) > 0
+    self._dummy_in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
+    prev_out_dim = self._dummy_in_dim
+    second_spatial_dim = in_dim
     for filter_size, out_dim in zip(filter_sizes, out_dims):
       self.conv_layers.append(
-        nn.Conv2d(filter_size=filter_size, out_dim=out_dim, padding=padding))
+        nn.Conv2d(prev_out_dim, out_dim, filter_size=filter_size, padding=padding))
+      second_spatial_dim, = nn.make_conv_out_spatial_dims(
+        [second_spatial_dim], filter_size=filter_size[1], padding=padding)
+      prev_out_dim = out_dim
+    self._final_second_spatial_dim = second_spatial_dim
+    self.out_dim = second_spatial_dim * prev_out_dim
 
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
     in_spatial_dims = [in_spatial_dim, inp.feature_dim]
-    in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
+    in_dim = self._dummy_in_dim
     x = nn.expand_dim(inp, dim=in_dim)
     for i, conv_layer in enumerate(self.conv_layers):
-      x, in_spatial_dims = conv_layer(x, in_dim=in_dim, in_spatial_dims=in_spatial_dims)
+      x, in_spatial_dims = conv_layer(x, in_spatial_dims=in_spatial_dims)
       in_dim = conv_layer.out_dim
       x = self.activation(x)
       if self.pool_sizes and i < len(self.pool_sizes):
@@ -115,7 +125,8 @@ class ConformerConvSubsample(nn.Module):
           pool_size=self.pool_sizes[i], padding='same', mode='max')
       if self.dropout:
         x = nn.dropout(x, axis=in_dim, dropout=self.dropout)
-    out, _ = nn.merge_dims(x, axes=[in_spatial_dims[-1], in_dim])
+    self._final_second_spatial_dim.declare_same_as(in_spatial_dims[-1])
+    out, _ = nn.merge_dims(x, axes=[self._final_second_spatial_dim, in_dim])
     return out, in_spatial_dims[0]
 
 
@@ -155,48 +166,48 @@ class ConformerEncoderLayer(nn.Module):
       ff_dim = out_dim * 4
     self.ffn1 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=ff_activation)
-    self.ffn1_layer_norm = nn.LayerNorm()
+    self.ffn1_layer_norm = nn.LayerNorm(out_dim)
 
     self.ffn2 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=ff_activation)
-    self.ffn2_layer_norm = nn.LayerNorm()
+    self.ffn2_layer_norm = nn.LayerNorm(out_dim)
 
     if conv_norm is nn.NotSpecified:
-      conv_norm = nn.BatchNorm(use_mask=False)
+      conv_norm = nn.BatchNorm(out_dim, use_mask=False)
     self.conv_block = ConformerConvBlock(
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
-    self.conv_layer_norm = nn.LayerNorm()
+    self.conv_layer_norm = nn.LayerNorm(out_dim)
 
     self.self_att = nn.SelfAttention(
-      key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
-    self.self_att_layer_norm = nn.LayerNorm()
+      out_dim, key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
+    self.self_att_layer_norm = nn.LayerNorm(out_dim)
 
-    self.final_layer_norm = nn.LayerNorm()
+    self.final_layer_norm = nn.LayerNorm(out_dim)
 
   def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     """forward"""
     # FFN
-    x_ffn1_ln = self.ffn1_layer_norm(inp, in_dim=inp.feature_dim)
+    x_ffn1_ln = self.ffn1_layer_norm(inp)
     x_ffn1 = self.ffn1(x_ffn1_ln)
     x_ffn1_out = 0.5 * nn.dropout(x_ffn1, axis=inp.feature_dim, dropout=self.dropout) + inp
 
     # MHSA
-    x_mhsa_ln = self.self_att_layer_norm(x_ffn1_out, in_dim=inp.feature_dim)
+    x_mhsa_ln = self.self_att_layer_norm(x_ffn1_out)
     x_mhsa = self.self_att(x_mhsa_ln, axis=axis)
     x_mhsa_out = x_mhsa + x_ffn1_out
 
     # Conv
-    x_conv_ln = self.conv_layer_norm(x_mhsa_out, in_dim=inp.feature_dim)
+    x_conv_ln = self.conv_layer_norm(x_mhsa_out)
     x_conv = self.conv_block(x_conv_ln, axis=axis)
     x_conv_out = nn.dropout(x_conv, axis=inp.feature_dim, dropout=self.dropout) + x_mhsa_out
 
     # FFN
-    x_ffn2_ln = self.ffn2_layer_norm(x_conv_out, in_dim=inp.feature_dim)
+    x_ffn2_ln = self.ffn2_layer_norm(x_conv_out)
     x_ffn2 = self.ffn2(x_ffn2_ln)
     x_ffn2_out = 0.5 * nn.dropout(x_ffn2, axis=inp.feature_dim, dropout=self.dropout) + x_conv_out
 
     # last LN layer
-    return self.final_layer_norm(x_ffn2_out, in_dim=inp.feature_dim)
+    return self.final_layer_norm(x_ffn2_out)
 
 
 class ConformerEncoder(nn.Module):
@@ -205,6 +216,7 @@ class ConformerEncoder(nn.Module):
   """
 
   def __init__(self,
+               in_dim: nn.Dim,
                out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
                *,
                num_layers: int,
@@ -234,12 +246,13 @@ class ConformerEncoder(nn.Module):
     self.dropout = dropout
 
     self.conv_subsample_layer = ConformerConvSubsample(
+      in_dim=in_dim,
+      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
       filter_sizes=[(3, 3), (3, 3)],
       pool_sizes=[(2, 2), (2, 2)],
-      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
       dropout=dropout)
 
-    self.linear = nn.Linear(self.out_dim, with_bias=False)
+    self.linear = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
 
     if custom_encoder_layer:
       encoder_layer = custom_encoder_layer
