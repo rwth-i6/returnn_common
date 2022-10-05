@@ -85,10 +85,10 @@ class _Conv(_ConvOrTransposedConv):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
+               in_dim: nn.Dim,
                out_dim: nn.Dim,
                filter_size: Union[Sequence[Union[int, nn.Dim]], int, nn.Dim],
                *,
-               in_dim: Optional[nn.Dim] = None,
                padding: str,
                strides: Optional[Union[int, Sequence[int]]] = None,
                dilation_rate: Optional[Union[int, Sequence[int]]] = None,
@@ -108,7 +108,7 @@ class _Conv(_ConvOrTransposedConv):
     :param int groups: grouped convolution
     :param bool with_bias: if True, will add a bias to the output features
     """
-    super().__init__(out_dim=out_dim, filter_size=filter_size, in_dim=in_dim, padding=padding, with_bias=with_bias)
+    super().__init__(in_dim=in_dim, out_dim=out_dim, filter_size=filter_size, padding=padding, with_bias=with_bias)
     self.strides = strides
     self.dilation_rate = dilation_rate
     self.groups = groups
@@ -153,10 +153,10 @@ class Conv1d(_Conv):
   nd = 1
 
   def __init__(self,
+               in_dim: nn.Dim,
                out_dim: nn.Dim,
                filter_size: Union[int, nn.Dim],
                *,
-               in_dim: Optional[nn.Dim] = None,
                padding: str,
                strides: Optional[int] = None,
                dilation_rate: Optional[int] = None,
@@ -175,8 +175,8 @@ class Conv1d(_Conv):
     :param bool with_bias: if True, will add a bias to the output features
     """
     super().__init__(
-      out_dim=out_dim, filter_size=[filter_size],
-      in_dim=in_dim, padding=padding, strides=strides, dilation_rate=dilation_rate,
+      in_dim=in_dim, out_dim=out_dim, filter_size=[filter_size],
+      padding=padding, strides=strides, dilation_rate=dilation_rate,
       groups=groups, with_bias=with_bias)
 
   __call__ = _ConvOrTransposedConv._call_nd1
@@ -207,10 +207,10 @@ class _TransposedConv(_ConvOrTransposedConv):
 
   # noinspection PyShadowingBuiltins,PyShadowingNames
   def __init__(self,
+               in_dim: nn.Dim,
                out_dim: nn.Dim,
                filter_size: Sequence[Union[int, nn.Dim]],
                *,
-               in_dim: Optional[nn.Dim] = None,
                padding: str,
                remove_padding: Union[Sequence[int], int] = 0,
                output_padding: Optional[Union[Sequence[Optional[int]], int]] = None,
@@ -227,7 +227,7 @@ class _TransposedConv(_ConvOrTransposedConv):
     :param Dim|None in_dim:
     :param bool with_bias: whether to add a bias. enabled by default
     """
-    super().__init__(out_dim=out_dim, filter_size=filter_size, in_dim=in_dim, padding=padding, with_bias=with_bias)
+    super().__init__(in_dim=in_dim, out_dim=out_dim, filter_size=filter_size, padding=padding, with_bias=with_bias)
     self.strides = strides
     self.remove_padding = remove_padding
     self.output_padding = output_padding
