@@ -71,8 +71,6 @@ class Module:
   although there are no strict rules.
   """
 
-  initialized = True  # if your module dos lazy init of params, e.g. auto in-dim, set this initially to False
-
   def __init__(self):
     """
     By convention, any options to the module or module are passed to the constructor,
@@ -194,8 +192,6 @@ class Module:
     memo = set()  # over name contexts because we cannot hash layer refs
 
     def _iter_params(module: Module, prefix: str) -> Iterator[Tuple[str, nn.Parameter]]:
-      if not module.initialized:
-        raise Exception(f"Module {module} not initialized, params unknown")
       for key, value in vars(module).items():
         if isinstance(value, nn.Parameter) and value.name_ctx not in memo:
           sub_prefix = prefix + ('.' if prefix else '') + key

@@ -160,31 +160,6 @@ def reinterpret_set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str 
     name=name)
 
 
-def check_in_feature_dim_lazy_init(
-      source: nn.Tensor, in_dim: Optional[nn.Dim], mod_in_dim: Optional[nn.Dim],
-      lazy_init: Callable[[nn.Dim], Any]) -> nn.Tensor:
-  """
-  This is a helper function for modules which want to lazily support assigning the in_dim.
-  """
-  if mod_in_dim:
-    if in_dim:
-      if in_dim != mod_in_dim:
-        raise ValueError(f"in_dim {in_dim} does not match module in_dim {mod_in_dim}")
-    if mod_in_dim in source.shape:
-      return source  # all fine
-    raise ValueError(f"{source} does not have feature dim {mod_in_dim}")
-  # Not yet initialized.
-  if in_dim:
-    if in_dim not in source.shape:
-      raise ValueError(f"invalid in_dim {in_dim} for {source}")
-    lazy_init(in_dim)
-    return source
-  if not source.feature_dim:
-    raise ValueError(f"{source} has no feature dim. define the in_dim explicitly")
-  lazy_init(source.feature_dim)
-  return source
-
-
 def dim_match_priority_when_needed(dim: nn.Dim, *other_dims: nn.Dim) -> nn.Dim:
   """
   :return: maybe copy of dim with higher match_priority if needed to distinguish from other_dims

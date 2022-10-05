@@ -15,13 +15,11 @@ class _ConvOrTransposedConv(nn.Module):
   _transposed: bool
   groups: Optional[int] = None
 
-  initialized = False  # lazy init
-
   def __init__(self,
+               in_dim: nn.Dim,
                out_dim: nn.Dim,
                filter_size: Union[Sequence[Union[int, nn.Dim]], int, nn.Dim],
                *,
-               in_dim: Optional[nn.Dim],
                padding: str,
                with_bias: bool,
                ):
@@ -33,6 +31,8 @@ class _ConvOrTransposedConv(nn.Module):
     :param Dim|None in_dim:
     """
     super().__init__()
+    assert isinstance(in_dim, nn.Dim) and isinstance(out_dim, nn.Dim)
+    self.in_dim = in_dim
     self.out_dim = out_dim
     if isinstance(filter_size, (int, nn.Dim)):
       if self.nd in (None, 1):
@@ -47,28 +47,21 @@ class _ConvOrTransposedConv(nn.Module):
     self.filter_size = [
       s if isinstance(s, nn.Dim) else nn.SpatialDim(f"filter-dim{i}", s)
       for i, s in enumerate(filter_size)]
-    self.in_dim = in_dim
     self.padding = padding
-    self.with_bias = with_bias
-    self.filter = None  # type: Optional[nn.Parameter]
-    self.bias = None  # type: Optional[nn.Parameter]
-    if in_dim:
-      self._lazy_init(in_dim)
-
-  def _lazy_init(self, in_dim: nn.Dim):
-    self.in_dim = in_dim
     filter_in_dim = in_dim
     if self.groups is not None and self.groups > 1:
       filter_in_dim //= self.groups
     filter_in_dim = nn.dim_match_priority_when_needed(filter_in_dim, self.out_dim)
+    self.filter_in_dim = filter_in_dim
     self.filter = nn.Parameter(
       self.filter_size +
-      ([filter_in_dim, self.out_dim] if not self._transposed else [self.out_dim, filter_in_dim]))
+      ([self.filter_in_dim, self.out_dim] if not self._transposed else [self.out_dim, self.filter_in_dim]))
     self.filter.initial = nn.init.Glorot()
+    self.with_bias = with_bias
+    self.bias = None  # type: Optional[nn.Parameter]
     if self.with_bias:
       self.bias = nn.Parameter([self.out_dim])
       self.bias.initial = 0.
-    self.initialized = True
 
   def _call_nd1(self, source: nn.Tensor, *,
                 in_dim: Optional[nn.Dim] = None,
@@ -121,11 +114,9 @@ class _Conv(_ConvOrTransposedConv):
     self.groups = groups
 
   def __call__(self, source: nn.Tensor, *,
-               in_dim: Optional[nn.Dim] = None,
                in_spatial_dims: Sequence[nn.Dim],
                out_spatial_dims: Optional[Sequence[nn.Dim]] = None,
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
-    source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     for in_spatial_dim in in_spatial_dims:
       if in_spatial_dim not in source.shape:
         raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
@@ -242,11 +233,9 @@ class _TransposedConv(_ConvOrTransposedConv):
     self.output_padding = output_padding
 
   def __call__(self, source: nn.Tensor, *,
-               in_dim: Optional[nn.Dim] = None,
                in_spatial_dims: Sequence[nn.Dim],
                out_spatial_dims: Optional[Sequence[nn.Dim]] = None,
                ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
-    source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
     if not out_spatial_dims:
       out_spatial_dims = [
         nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:out-spatial-dim{i}")

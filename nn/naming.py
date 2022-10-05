@@ -1471,7 +1471,6 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
     nn.NameCtx.__init__.__code__,
     nn.NameCtx.current_ctx.__code__,
     nn.make_layer.__code__,
-    nn.check_in_feature_dim_lazy_init.__code__,
     nn.Loop.__init__.__code__,
     nn.Cond.__init__.__code__,
     nn.MaskedComputation.__init__.__code__,
