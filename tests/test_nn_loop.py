@@ -20,7 +20,8 @@ def test_rec_ff():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.rec_linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      out_dim = nn.FeatureDim("linear-out", 13)
+      self.rec_linear = nn.Linear(dummy_default_in_dim + out_dim, out_dim)
 
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
