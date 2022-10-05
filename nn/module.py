@@ -80,8 +80,8 @@ class Module:
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
     # Also note that the current code does not clean this up when you do delattr later or so.
-    self._parents = {}  # type: Dict[Tuple[Module, str], None]  # (parent,attrib) -> None
-    self.calls = []  # type: List[nn.NameCtx]
+    self._parents = _ModuleParents()  # type: Dict[Tuple[Module, str], None]  # (parent,attrib) -> None
+    self.calls = _ModuleCalls()  # type: List[nn.NameCtx]
 
   def __repr__(self):
     return f"<{self.__class__.__name__}>"
@@ -333,3 +333,16 @@ class ReturnnWrappedLayerBase(Module):
     else:
       if state is not NotSpecified:
         args['initial_state'] = state
+
+
+class _CollectionEmptyDeepCopyMixin:
+  def __deepcopy__(self, memo):
+    return type(self)()
+
+
+class _ModuleParents(dict, _CollectionEmptyDeepCopyMixin):
+  """list of parents should not be copied when copying a module"""
+
+
+class _ModuleCalls(list, _CollectionEmptyDeepCopyMixin):
+  """list of calls should not be copied when copying a module"""
