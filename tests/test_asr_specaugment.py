@@ -41,7 +41,7 @@ def test_specaugment_v2_in_module_call():
       from ..asr.specaugment import specaugment_v2
       return specaugment_v2(x, spatial_dim=axis, global_train_step_dependent=False, only_on_train=False)
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config)
 
 
