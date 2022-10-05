@@ -245,8 +245,9 @@ class Tensor:
       # The actual logic is not so important
       # as the final name_scope is always fixed in any case.
       # https://github.com/rwth-i6/returnn_common/issues/125
-      if parent_module.calls:
-        parent_name_ctx = parent_module.calls[0]
+      parent_module_calls = [call for call in parent_module.calls if call.root is ref_ctx.root]
+      if parent_module_calls:
+        parent_name_ctx = parent_module_calls[0]
         sub_name = attr
         if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
           sub_name = parent_name_ctx.name + "_" + sub_name
