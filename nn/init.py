@@ -9,7 +9,13 @@ import math
 from .. import nn
 
 
-class VarianceScaling:
+class ParamInit:
+  """API for param init"""
+  def __call__(self, shape: Sequence[nn.Dim], dtype: str) -> nn.Tensor:
+    ...
+
+
+class VarianceScaling(ParamInit):
   """
   Provides a generalized way for initializing weights.
   All the common initialization methods are special cases

@@ -593,8 +593,8 @@ class Parameter(Tensor):
     return self.layer_dict.get("init_by_layer")
 
   @initial.setter
-  def initial(self, value: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.VarianceScaling]]):
-    if isinstance(value, nn.init.VarianceScaling):
+  def initial(self, value: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.ParamInit]]):
+    if isinstance(value, nn.init.ParamInit):
       value = value(shape=self.shape_ordered, dtype=self.dtype)
     if value is None or isinstance(value, nn.Tensor):
       self.layer_dict.pop("init", None)
