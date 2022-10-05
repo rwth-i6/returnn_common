@@ -595,7 +595,7 @@ class Parameter(Tensor):
   @initial.setter
   def initial(self, value: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.VarianceScaling]]):
     if isinstance(value, nn.init.VarianceScaling):
-      value = value(self.shape_ordered)
+      value = value(shape=self.shape_ordered, dtype=self.dtype)
     if value is None or isinstance(value, nn.Tensor):
       self.layer_dict.pop("init", None)
       if isinstance(value, nn.Tensor) and not value.name_ctx.parent.can_access_children_from_root:
