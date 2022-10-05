@@ -55,7 +55,7 @@ class VarianceScaling:
       scale /= max(1., (fan_in + fan_out) / 2.)
     return self._random(shape=shape, dtype=dtype, scale=scale)
 
-  def _random(self, shape, scale, dtype=None) -> nn.Tensor:
+  def _random(self, shape: Sequence[nn.Dim], scale: float, dtype=None) -> nn.Tensor:
     if self.distribution in {"truncated_normal", "normal"}:
       # constant taken from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
       stddev = math.sqrt(scale) / .87962566103423978
