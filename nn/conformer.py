@@ -101,11 +101,14 @@ class ConformerConvSubsample(nn.Module):
     self._dummy_in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
     prev_out_dim = self._dummy_in_dim
     second_spatial_dim = in_dim
-    for filter_size, out_dim in zip(filter_sizes, out_dims):
+    for i, (filter_size, out_dim) in enumerate(zip(filter_sizes, out_dims)):
       self.conv_layers.append(
         nn.Conv2d(prev_out_dim, out_dim, filter_size=filter_size, padding=padding))
       second_spatial_dim, = nn.make_conv_out_spatial_dims(
         [second_spatial_dim], filter_size=filter_size[1], padding=padding)
+      if self.pool_sizes and i < len(self.pool_sizes):
+        second_spatial_dim, = nn.make_conv_out_spatial_dims(
+          [second_spatial_dim], filter_size=self.pool_sizes[i][1], strides=self.pool_sizes[i][1], padding='same')
       prev_out_dim = out_dim
     self._final_second_spatial_dim = second_spatial_dim
     self.out_dim = second_spatial_dim * prev_out_dim
