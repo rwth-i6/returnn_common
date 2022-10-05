@@ -22,7 +22,7 @@ def _make_dummy_model_with_ce_out() -> Tuple[nn.Module, nn.Tensor]:
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
   targets = nn.get_extern_data(nn.Data("classes", dim_tags=[nn.batch_dim, time_dim], sparse_dim=out_dim))
 
-  linear = nn.Linear(out_dim)
+  linear = nn.Linear(in_dim, out_dim)
   out = linear(data)
   loss = nn.cross_entropy(target=targets, estimated=out, estimated_type="logits")
   return linear, loss

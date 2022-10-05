@@ -35,5 +35,5 @@ def test_ones_like_new_spatial_dim():
       assert set(y.data.dim_tags) != set(x.data.dim_tags)
       return nn.ones_like(y) + y
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config)

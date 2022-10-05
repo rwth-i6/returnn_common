@@ -4,7 +4,7 @@ Test nn.cond
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim
 
 import typing
 
@@ -19,8 +19,8 @@ def test_cond():
     def __init__(self):
       super().__init__()
       out_dim = nn.FeatureDim("linear-out", 13)
-      self.linear_true = nn.Linear(out_dim)
-      self.linear_false = nn.Linear(out_dim)
+      self.linear_true = nn.Linear(dummy_default_in_dim, out_dim)
+      self.linear_false = nn.Linear(dummy_default_in_dim, out_dim)
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
@@ -29,8 +29,7 @@ def test_cond():
         x = cond.result
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config, net=net)
 
 
@@ -38,7 +37,7 @@ def test_cond_shared_params():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.linear = nn.Linear(nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
@@ -47,8 +46,7 @@ def test_cond_shared_params():
         x = cond.result
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   engine = dummy_run_net(config, net=net)
   params = engine.network.get_params_list()
   print(params)
@@ -57,15 +55,13 @@ def test_cond_shared_params():
 
 
 def test_cond_twice_shared_params():
-  nn.reset_default_root_name_ctx()
-
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
       out_dim = nn.FeatureDim("linear-out", 13)
-      self.pre_linear = nn.Linear(out_dim)
-      self.linear_true = nn.Linear(out_dim, in_dim=out_dim)
-      self.linear_false = nn.Linear(out_dim, in_dim=out_dim)
+      self.pre_linear = nn.Linear(dummy_default_in_dim, out_dim)
+      self.linear_true = nn.Linear(out_dim, out_dim)
+      self.linear_false = nn.Linear(out_dim, out_dim)
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       x = self.pre_linear(x)
@@ -79,14 +75,11 @@ def test_cond_twice_shared_params():
         x = cond.result
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net, reset_name_ctx=False)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config, net=net)
 
 
 def test_cond_random():
-  nn.reset_default_root_name_ctx()
-
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
@@ -99,6 +92,5 @@ def test_cond_random():
         x = cond.result
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net, reset_name_ctx=False)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config, net=net)

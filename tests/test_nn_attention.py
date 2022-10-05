@@ -5,7 +5,7 @@ Test nn.attention
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim
 from pprint import pprint
 import typing
 
@@ -20,6 +20,7 @@ def test_self_attention():
     def __init__(self):
       super().__init__()
       self.self_att = nn.SelfAttention(
+        in_dim=dummy_default_in_dim,
         key_dim_total=nn.FeatureDim("key-dim-total", 21),
         value_dim_total=nn.FeatureDim("value-dim-total", 33),
         num_heads=3)
@@ -28,7 +29,6 @@ def test_self_attention():
       """forward"""
       return self.self_att(x, axis=axis)
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net, with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   pprint(net_dict)
   dummy_run_net(config, net=net)

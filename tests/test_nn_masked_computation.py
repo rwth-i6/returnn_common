@@ -4,7 +4,7 @@ Test nn.masked_computation
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim
 
 import typing
 from .utils import assert_equal
@@ -19,7 +19,7 @@ def test_masked_computation_lstm():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.lstm = nn.LSTM(nn.FeatureDim("out", 13))
+      self.lstm = nn.LSTM(dummy_default_in_dim, nn.FeatureDim("out", 13))
 
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
@@ -36,8 +36,7 @@ def test_masked_computation_lstm():
         y = loop.stack(loop.state.lstm_out)
       return y
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net=net, with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   engine = dummy_run_net(config, net=net)
   params = engine.network.get_params_list()
   print(params)
