@@ -270,10 +270,11 @@ def test_multiple_returns_depth_2():
 
 def test_from_call_variations():
   class _SubNet(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim: nn.Dim):
       super().__init__()
-      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(in_dim, nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(self.linear.out_dim, nn.FeatureDim("linear-out", 13))
+      self.out_dim = self.linear2.out_dim
 
     def __call__(self, x: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor]:
       """
@@ -286,8 +287,8 @@ def test_from_call_variations():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.sub = _SubNet()
-      self.sub2 = _SubNet()
+      self.sub = _SubNet(dummy_default_in_dim)
+      self.sub2 = _SubNet(self.sub.out_dim)
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
@@ -309,9 +310,9 @@ def test_from_call_variations():
 
 def test_from_call_variations2():
   class _SubNet(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim: nn.Dim):
       super().__init__()
-      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(in_dim, nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(self.linear.out_dim, nn.FeatureDim("linear-out", 13))
       self.out_dim = self.linear2.out_dim
 
@@ -324,9 +325,9 @@ def test_from_call_variations2():
       return x, x_
 
   class _SubNet2(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim: nn.Dim):
       super().__init__()
-      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(in_dim, nn.FeatureDim("linear-out", 13))
       self.linear2 = nn.Linear(self.linear.out_dim, nn.FeatureDim("linear-out", 13))
       self.out_dim = self.linear2.out_dim
 
@@ -341,9 +342,9 @@ def test_from_call_variations2():
   class _Net(nn.Module):
     def __init__(self):
       super().__init__()
-      self.sub = _SubNet()
-      self.sub2 = _SubNet2()
+      self.sub = _SubNet(dummy_default_in_dim)
       self.linear = nn.Linear(self.sub.out_dim, nn.FeatureDim("linear-out", 13))
+      self.sub2 = _SubNet2(self.sub.linear.out_dim)
 
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
@@ -389,8 +390,9 @@ def test_deepcopy():
 
   dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
   config, net_dict, net = dummy_config_net_dict(
-    lambda: nn.Sequential(copy.deepcopy(
-      nn.Linear(in_dim, out_dim)) for in_dim, out_dim in zip([dummy_default_in_dim] + dims, dims)))
+    lambda: nn.Sequential(
+      copy.deepcopy(nn.Linear(in_dim, out_dim))
+      for in_dim, out_dim in zip([dummy_default_in_dim] + dims, dims)))
   pprint(net_dict)
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
