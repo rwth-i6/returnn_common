@@ -218,6 +218,24 @@ class NameCtx:
   def __hash__(self):
     return hash(id(self))
 
+  def __copy__(self):
+    """
+    Normally we would not want to get a new name ctx with ``ctx != copy(ctx)``.
+
+    :return: self
+    :rtype: NameCtx
+    """
+    return self
+
+  def __deepcopy__(self, memo=None):
+    """
+    Normally we would not want to get a new name ctx with ``ctx != deepcopy(ctx)``.
+
+    :return: self
+    :rtype: NameCtx
+    """
+    return self
+
   def assign_parent(self, parent: NameCtx, suggested_name: Optional[str] = None):
     """
     Assign or reassign parent to this name context.
