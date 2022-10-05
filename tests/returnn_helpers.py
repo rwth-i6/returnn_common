@@ -4,7 +4,7 @@ Helpers for RETURNN
 
 from __future__ import annotations
 import typing
-from typing import Dict, Tuple, Sequence, Union, Any, Optional
+from typing import Dict, Tuple, Sequence, Union, Any, Optional, Callable
 import contextlib
 import numpy
 import tensorflow as tf
@@ -178,14 +178,15 @@ def dummy_run_net_single_custom(config_code_str: str, *,
 dummy_default_in_dim = nn.FeatureDim("dummy_default_in_dim", 13)
 
 
-def dummy_config_net_dict(net: nn.Module, *,
+def dummy_config_net_dict(net_maker: Callable[[], nn.Module], *,
                           with_axis=False, in_dim: nn.Dim = dummy_default_in_dim, reset_name_ctx: bool = True
-                          ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+                          ) -> Tuple[Dict[str, Any], Dict[str, Any], nn.Module]:
   """
-  :return: config, net_dict
+  :return: config, net_dict, net
   """
   if reset_name_ctx:
     nn.reset_default_root_name_ctx()
+  net = net_maker()
   time_dim = nn.SpatialDim("time")
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
   opts = {}
@@ -198,7 +199,7 @@ def dummy_config_net_dict(net: nn.Module, *,
   out.mark_as_default_output()
 
   config_code = nn.get_returnn_config().get_complete_py_code_str(net)
-  return config_net_dict_via_serialized(config_code)
+  return config_net_dict_via_serialized(config_code) + (net,)
 
 
 def config_net_dict_via_serialized(config_code: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:

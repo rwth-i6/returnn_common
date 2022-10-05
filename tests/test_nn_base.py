@@ -19,18 +19,17 @@ else:
 
 def test_simple_net_linear():
   class _Net(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim):
       super().__init__()
-      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      self.linear = nn.Linear(in_dim, out_dim)
 
-    def __call__(self, x) -> nn.Tensor:
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
       """
       Forward
       """
       return self.linear(x)
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(lambda: _Net(dummy_default_in_dim, nn.FeatureDim("linear-out", 13)))
   assert "linear" in net_dict
   pprint(config)
   dummy_run_net(config, net=net)
@@ -54,8 +53,7 @@ def test_simple_net_linear_square_matrix():
       x = self.linear2(x)
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config, net=net)
 
 
@@ -68,7 +66,7 @@ def test_simple_net_arithmetic():
       x = 1. / x + x * 2.
       return x
 
-  config, net_dict = dummy_config_net_dict(_Net())
+  config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config)
 
 
@@ -85,7 +83,7 @@ def test_functional_auto_name_ctx():
       x = _functional_example(x)
       return x
 
-  config, net_dict = dummy_config_net_dict(net=_Net())
+  config, net_dict, net = dummy_config_net_dict(_Net)
   assert "_functional_example" in net_dict
   assert_equal(net_dict["_functional_example"]["class"], "subnetwork")
   assert_equal(net_dict["_functional_example_0"]["class"], "subnetwork")
@@ -110,8 +108,7 @@ def test_simple_net_share_params():
       x = self.linear2(x)
       return x
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   assert "linear2" in net_dict
   dummy_run_net(config, net=net)
 
@@ -215,8 +212,7 @@ def test_multiple_returns_depth_1():
       out, add_out = self.sub(x)
       return out
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub"
   dummy_run_net(config)
@@ -259,8 +255,7 @@ def test_multiple_returns_depth_2():
       out, add_out = self.sub(x)
       return out
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub"
   assert net_dict["sub"]["subnetwork"]["output"]["from"] == "sub"
@@ -302,8 +297,7 @@ def test_from_call_variations():
       out2, add_out2 = self.sub2(add_out)
       return out2
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   pprint(net_dict)
   assert net_dict["output"]["from"] == "sub2"
   assert net_dict["sub"]["subnetwork"]["linear"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
@@ -360,8 +354,7 @@ def test_from_call_variations2():
       out2, add_out2 = self.sub2(add_out, lin)
       return out2
 
-  net = _Net()
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(_Net)
   pprint(net_dict)
 
 
@@ -395,9 +388,9 @@ def test_deepcopy():
   import copy
 
   dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
-  layers = nn.Sequential(copy.deepcopy(
-    nn.Linear(in_dim, out_dim)) for in_dim, out_dim in zip([dummy_default_in_dim] + dims, dims))
-  config, net_dict = dummy_config_net_dict(layers)
+  config, net_dict, net = dummy_config_net_dict(
+    lambda: nn.Sequential(copy.deepcopy(
+      nn.Linear(in_dim, out_dim)) for in_dim, out_dim in zip([dummy_default_in_dim] + dims, dims)))
   pprint(net_dict)
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
@@ -458,7 +451,7 @@ def test_const_array_serialization():
         shape=[x.feature_dim])
       return x + c
 
-  config, net_dict = dummy_config_net_dict(net=_Net())
+  config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config)
 
 
@@ -471,7 +464,7 @@ def test_asr_specaug_v1_eval_func_serialization():
       from ..asr.specaugment import specaugment_v1
       return specaugment_v1(x)
 
-  config, net_dict = dummy_config_net_dict(net=_Net(), with_axis=True)
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config)
 
 
@@ -532,7 +525,6 @@ def test_param_name_deep():
     def __call__(self, x: nn.Tensor) -> nn.Tensor:
       return self.sub(x) + self.sub2(x)
 
-  net = _Net(dummy_default_in_dim)
-  config, net_dict = dummy_config_net_dict(net)
+  config, net_dict, net = dummy_config_net_dict(lambda: _Net(dummy_default_in_dim))
   pprint(config)
   dummy_run_net(config, net=net)
