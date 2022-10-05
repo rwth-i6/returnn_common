@@ -2,7 +2,7 @@
 Some generic utils (which doesn't fit into math_, array_, etc)
 """
 
-from typing import Optional, Union, Sequence, Tuple, Callable, Any
+from typing import Optional, Union, Sequence, Tuple, Callable
 from .. import nn
 
 
