@@ -570,7 +570,7 @@ class Parameter(Tensor):
     # The name will be inferred by the parent modules and the attribute chain.
     # The name_ctx object will be completed by this information later.
     # See Tensor.get_name_in_ctx().
-    name_ctx = nn.NameCtx(name="parameter", parent=None)
+    name_ctx = nn.NameCtx(name="<unnamed-param>", parent=None)
     data = Data("parameter", dim_tags=list(shape), dtype=dtype)
     layer_dict = {"class": "variable", "shape": list(shape), "param_name": "param"}
     if dtype is not None:
