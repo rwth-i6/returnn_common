@@ -34,27 +34,16 @@ class LayerNorm(nn.Module):
   For a more generic variant, see :func:`norm`.
   """
 
-  initialized = False  # lazy init
-
-  def __init__(self, *, in_dim: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None, eps: float = 1e-6):
+  def __init__(self, in_dim: Union[nn.Dim, Sequence[nn.Dim]], *, eps: float = 1e-6):
     super().__init__()
     self.in_dim = in_dim
     self.eps = eps
-    self.scale = None  # type: Optional[nn.Parameter]
-    self.bias = None  # type: Optional[nn.Parameter]
-    if in_dim:
-      self._lazy_init(in_dim)
-
-  def _lazy_init(self, in_dim: nn.Dim):
-    self.in_dim = in_dim
     self.scale = nn.Parameter((self.in_dim,))
     self.scale.initial = 1.
     self.bias = nn.Parameter((self.in_dim,))
     self.bias.initial = 0.
-    self.initialized = True
 
-  def __call__(self, x: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
-    x = nn.check_in_feature_dim_lazy_init(x, in_dim, self.in_dim, self._lazy_init)
+  def __call__(self, x: nn.Tensor) -> nn.Tensor:
     mean = nn.reduce(x, axis=self.in_dim, mode="mean")
     variance = nn.reduce(nn.squared_difference(x, mean), axis=self.in_dim, mode="mean", name="variance")
     norm_x = (x - mean) * nn.rsqrt(variance + self.eps)
@@ -95,9 +84,7 @@ class BatchNorm(nn.Module):
 
   """
 
-  initialized = False  # lazy init
-
-  def __init__(self, in_dim: Optional[nn.Dim] = None, *,
+  def __init__(self, in_dim: nn.Dim, *,
                affine: bool = True,
                momentum: float = 0.1, epsilon: float = 1e-3,
                use_mask: Optional[bool] = None,
@@ -115,33 +102,25 @@ class BatchNorm(nn.Module):
         and potentially allows for the use of an efficient fused op internally.
     """
     super().__init__()
+    assert isinstance(in_dim, nn.Dim)
     self.in_dim = in_dim
-    self.running_mean = None  # type: Optional[nn.Parameter]
-    self.running_variance = None  # type: Optional[nn.Parameter]
-    self.affine = affine
-    self.gamma = None  # type: Optional[nn.Parameter]
-    self.beta = None  # type: Optional[nn.Parameter]
     self.use_mask = use_mask
     self.momentum = momentum
     self.epsilon = epsilon
-    if in_dim:
-      self._lazy_init(in_dim)
-
-  def _lazy_init(self, in_dim: nn.Dim):
-    self.in_dim = in_dim
     self.running_mean = nn.Parameter([in_dim], auxiliary=True)
     self.running_mean.initial = 0.
     self.running_variance = nn.Parameter([in_dim], auxiliary=True)
     self.running_variance.initial = 1.
+    self.affine = affine
+    self.gamma = None  # type: Optional[nn.Parameter]
+    self.beta = None  # type: Optional[nn.Parameter]
     if self.affine:
       self.gamma = nn.Parameter([in_dim])
       self.gamma.initial = 1.
       self.beta = nn.Parameter([in_dim])
       self.beta.initial = 0.
-    self.initialized = True
 
-  def __call__(self, source: nn.Tensor, *, in_dim: Optional[nn.Dim] = None) -> nn.Tensor:
-    source = nn.check_in_feature_dim_lazy_init(source, in_dim, self.in_dim, self._lazy_init)
+  def __call__(self, source: nn.Tensor) -> nn.Tensor:
     # We wrap the RETURNN layer because we want efficient handling if possible,
     # which is potentially the use of a fused op,
     # and maybe reordering of dims.
