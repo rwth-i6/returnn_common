@@ -24,11 +24,13 @@ class _ConvOrTransposedConv(nn.Module):
                with_bias: bool,
                ):
     """
+    :param Dim in_dim:
     :param Dim out_dim:
     :param filter_size: (width,), (height,width) or (depth,height,width) for 1D/2D/3D conv.
       the input data ndim must match, or you can add dimensions via input_expand_dims or input_add_feature_dim.
       it will automatically swap the batch-dim to the first axis of the input data.
-    :param Dim|None in_dim:
+    :param padding: "same" or "valid"
+    :param with_bias:
     """
     super().__init__()
     assert isinstance(in_dim, nn.Dim) and isinstance(out_dim, nn.Dim)
@@ -64,13 +66,12 @@ class _ConvOrTransposedConv(nn.Module):
       self.bias.initial = 0.
 
   def _call_nd1(self, source: nn.Tensor, *,
-                in_dim: Optional[nn.Dim] = None,
                 in_spatial_dim: nn.Dim,
                 out_spatial_dim: Optional[nn.Dim] = None,
                 ) -> Tuple[nn.Tensor, nn.Dim]:
     assert self.nd == 1
     out, (out_spatial_dim,) = self.__class__.__base__.__call__(
-      self, source, in_dim=in_dim, in_spatial_dims=[in_spatial_dim],
+      self, source, in_spatial_dims=[in_spatial_dim],
       out_spatial_dims=[out_spatial_dim] if out_spatial_dim else None)
     return out, out_spatial_dim
 
@@ -96,11 +97,11 @@ class _Conv(_ConvOrTransposedConv):
                with_bias: bool = True,
                ):
     """
+    :param Dim in_dim:
     :param Dim out_dim:
     :param filter_size: (width,), (height,width) or (depth,height,width) for 1D/2D/3D conv.
       the input data ndim must match, or you can add dimensions via input_expand_dims or input_add_feature_dim.
       it will automatically swap the batch-dim to the first axis of the input data.
-    :param Dim|None in_dim:
     :param str padding: "same" or "valid"
     :param int|Sequence[int] strides: strides for the spatial dims,
       i.e. length of this tuple should be the same as filter_size, or a single int.
@@ -164,6 +165,7 @@ class Conv1d(_Conv):
                with_bias: bool = True,
                ):
     """
+    :param Dim in_dim:
     :param Dim out_dim:
     :param int|Dim filter_size:
     :param str padding: "same" or "valid"
@@ -171,7 +173,6 @@ class Conv1d(_Conv):
       i.e. length of this tuple should be the same as filter_size, or a single int.
     :param int|None dilation_rate: dilation for the spatial dims
     :param int groups: grouped convolution
-    :param Dim|None in_dim:
     :param bool with_bias: if True, will add a bias to the output features
     """
     super().__init__(
@@ -218,13 +219,13 @@ class _TransposedConv(_ConvOrTransposedConv):
                with_bias: bool = True,
                ):
     """
+    :param Dim in_dim:
     :param Dim out_dim:
     :param list[int] filter_size:
     :param list[int]|None strides: specifies the upscaling. by default, same as filter_size
     :param str padding: "same" or "valid"
     :param list[int]|int remove_padding:
     :param list[int|None]|int|None output_padding:
-    :param Dim|None in_dim:
     :param bool with_bias: whether to add a bias. enabled by default
     """
     super().__init__(in_dim=in_dim, out_dim=out_dim, filter_size=filter_size, padding=padding, with_bias=with_bias)
