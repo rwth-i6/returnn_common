@@ -99,6 +99,7 @@ class ConformerConvSubsample(nn.Module):
     self.conv_layers = nn.ModuleList()
     assert len(filter_sizes) == len(out_dims) > 0
     self._dummy_in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
+    self.in_dim = in_dim
     prev_out_dim = self._dummy_in_dim
     second_spatial_dim = in_dim
     for i, (filter_size, out_dim) in enumerate(zip(filter_sizes, out_dims)):
@@ -115,6 +116,7 @@ class ConformerConvSubsample(nn.Module):
 
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
+    assert inp.feature_dim == self.in_dim
     in_spatial_dims = [in_spatial_dim, inp.feature_dim]
     in_dim = self._dummy_in_dim
     x = nn.expand_dim(inp, dim=in_dim)
