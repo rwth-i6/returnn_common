@@ -135,6 +135,9 @@ def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: ret
     extra_fetches=extra_fetches,
     extra_fetches_callback=_extra_fetches_cb)
   forwarder.run(report_prefix=engine.get_epoch_str() + " forward")
+  if forwarder.run_exception:
+    raise forwarder.run_exception
+  assert forwarder.finalized
 
 
 # noinspection PyShadowingNames
