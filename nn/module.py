@@ -138,11 +138,16 @@ class Module:
       if (self, key) not in value.parent_modules:
         value.parent_modules.append((self, key))
       sub_calls = [value.name_ctx]
-    for sub_call in sub_calls:
-      for self_call in self.calls:
-        if self_call.root is sub_call.root and self_call.control_flow_ctx() is sub_call.control_flow_ctx():
-          sub_call.assign_parent(self_call, key)
-          break
+    if sub_calls:
+      if not self.calls:
+        nn.NameCtx.current_ctx()  # make sure self module gets some NameCtx
+      for sub_call in sub_calls:
+        for self_call in self.calls:
+          if (
+                sub_call.parent is None or  # not yet assigned, e.g. nn.Parameter
+                (self_call.root is sub_call.root and self_call.control_flow_ctx() is sub_call.control_flow_ctx())):
+            sub_call.assign_parent(self_call, key)
+            break
 
   def parents_with_attr(self) -> Iterator[Tuple[nn.Module, str]]:
     """
