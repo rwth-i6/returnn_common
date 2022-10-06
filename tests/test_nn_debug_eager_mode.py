@@ -36,7 +36,7 @@ def test_conformer():
   time_dim = nn.SpatialDim("time")
   data = nn.get_extern_data(
     nn.Data("data_conformer", dim_tags=[nn.batch_dim, time_dim, nn.FeatureDim("in", 5)]))
-  conformer = nn.ConformerEncoder(nn.FeatureDim("conformer", 10), num_layers=2, num_heads=2)
+  conformer = nn.ConformerEncoder(data.feature_dim, nn.FeatureDim("conformer", 10), num_layers=2, num_heads=2)
   out, out_spatial_dim = conformer(data, in_spatial_dim=time_dim)
   assert out.data.placeholder is not None
 
