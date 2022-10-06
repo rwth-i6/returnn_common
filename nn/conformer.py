@@ -116,8 +116,8 @@ class ConformerConvSubsample(nn.Module):
 
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
-    assert inp.feature_dim == self.in_dim
-    in_spatial_dims = [in_spatial_dim, inp.feature_dim]
+    assert self.in_dim in inp.shape
+    in_spatial_dims = [in_spatial_dim, self.in_dim]
     in_dim = self._dummy_in_dim
     x = nn.expand_dim(inp, dim=in_dim)
     for i, conv_layer in enumerate(self.conv_layers):
