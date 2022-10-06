@@ -595,7 +595,9 @@ class Parameter(Tensor):
 
   def __copy__(self):
     # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
-    return type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
+    res = type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
+    res.initial = self.initial
+    return res
 
   def __deepcopy__(self, memo=None):
     # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
