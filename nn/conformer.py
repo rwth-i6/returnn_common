@@ -255,7 +255,7 @@ class ConformerEncoder(nn.Module):
       pool_sizes=[(2, 2), (2, 2)],
       dropout=dropout)
 
-    self.linear = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
+    self.projection = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
 
     if custom_encoder_layer:
       encoder_layer = custom_encoder_layer
@@ -269,7 +269,7 @@ class ConformerEncoder(nn.Module):
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
     x_subsample, out_spatial_dim = self.conv_subsample_layer(inp, in_spatial_dim=in_spatial_dim)
-    x_linear = self.linear(x_subsample)
-    x = nn.dropout(x_linear, axis=self.linear.out_dim, dropout=self.dropout)
+    x_linear = self.projection(x_subsample)
+    x = nn.dropout(x_linear, axis=self.projection.out_dim, dropout=self.dropout)
     x = self.layers(x, axis=out_spatial_dim)
     return x, out_spatial_dim
