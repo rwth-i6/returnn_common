@@ -39,7 +39,7 @@ def test_conv1d_depthwise():
       # Use some downsampling + valid padding to test dim tag math.
       self.conv = nn.Conv1d(
         dummy_default_in_dim, nn.FeatureDim("out", 13), 4,
-        strides=3, groups=dummy_default_in_dim.dimension, padding="valid")
+        groups=dummy_default_in_dim.dimension, padding="valid")
 
     def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
       """
