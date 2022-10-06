@@ -143,9 +143,11 @@ class Module:
         nn.NameCtx.current_ctx()  # make sure self module gets some NameCtx
       for sub_call in sub_calls:
         for self_call in self.calls:
+          if self_call.control_flow_ctx() is not sub_call.control_flow_ctx():
+            continue
           if (
-                (sub_call.parent is None and self_call.control_flow_ctx() is None) or  # e.g. nn.Parameter
-                (self_call.root is sub_call.root and self_call.control_flow_ctx() is sub_call.control_flow_ctx())):
+                sub_call.parent is None or  # e.g. nn.Parameter
+                sub_call.root is self_call.root):
             sub_call.assign_parent(self_call, key)
             break
 
