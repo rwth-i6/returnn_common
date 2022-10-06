@@ -43,15 +43,77 @@ def test_nn_conformer():
   config_code = nn.get_returnn_config().get_complete_py_code_str(conformer)
   config, net_dict = config_net_dict_via_serialized(config_code)
 
-  collected_name_scopes = {}  # path -> name_scope
+  collected_var_names = set()
+  for name, p in conformer.named_parameters():
+    print(name, ":", p)
+    collected_var_names.add(name.replace(".", "/"))
 
-  def _collect_name_scope(path, x):
-    if path and path[-1] == "name_scope":
-      collected_name_scopes[path] = x
-
-  nest.map_structure_with_tuple_paths(_collect_name_scope, net_dict)
-  assert_equal(collected_name_scopes, {
-    ('conv_subsample_layer', 'subnetwork', 'conv_layers.0', 'name_scope'): 'conv_layers/0',
-    ('conv_subsample_layer', 'subnetwork', 'conv_layers.1', 'name_scope'): 'conv_layers/1'})
+  assert_equal(
+    collected_var_names,
+    {'conv_subsample_layer/conv_layers/0/bias',
+     'conv_subsample_layer/conv_layers/0/filter',
+     'conv_subsample_layer/conv_layers/1/bias',
+     'conv_subsample_layer/conv_layers/1/filter',
+     'layers/0/conv_block/depthwise_conv/bias',
+     'layers/0/conv_block/depthwise_conv/filter',
+     'layers/0/conv_block/norm/beta',
+     'layers/0/conv_block/norm/gamma',
+     'layers/0/conv_block/norm/running_mean',
+     'layers/0/conv_block/norm/running_variance',
+     'layers/0/conv_block/positionwise_conv1/bias',
+     'layers/0/conv_block/positionwise_conv1/weight',
+     'layers/0/conv_block/positionwise_conv2/bias',
+     'layers/0/conv_block/positionwise_conv2/weight',
+     'layers/0/conv_layer_norm/bias',
+     'layers/0/conv_layer_norm/scale',
+     'layers/0/ffn1/linear_ff/bias',
+     'layers/0/ffn1/linear_ff/weight',
+     'layers/0/ffn1/linear_out/bias',
+     'layers/0/ffn1/linear_out/weight',
+     'layers/0/ffn1_layer_norm/bias',
+     'layers/0/ffn1_layer_norm/scale',
+     'layers/0/ffn2/linear_ff/bias',
+     'layers/0/ffn2/linear_ff/weight',
+     'layers/0/ffn2/linear_out/bias',
+     'layers/0/ffn2/linear_out/weight',
+     'layers/0/ffn2_layer_norm/bias',
+     'layers/0/ffn2_layer_norm/scale',
+     'layers/0/final_layer_norm/bias',
+     'layers/0/final_layer_norm/scale',
+     'layers/0/self_att/qkv/bias',
+     'layers/0/self_att/qkv/weight',
+     'layers/0/self_att_layer_norm/bias',
+     'layers/0/self_att_layer_norm/scale',
+     'layers/1/conv_block/depthwise_conv/bias',
+     'layers/1/conv_block/depthwise_conv/filter',
+     'layers/1/conv_block/norm/beta',
+     'layers/1/conv_block/norm/gamma',
+     'layers/1/conv_block/norm/running_mean',
+     'layers/1/conv_block/norm/running_variance',
+     'layers/1/conv_block/positionwise_conv1/bias',
+     'layers/1/conv_block/positionwise_conv1/weight',
+     'layers/1/conv_block/positionwise_conv2/bias',
+     'layers/1/conv_block/positionwise_conv2/weight',
+     'layers/1/conv_layer_norm/bias',
+     'layers/1/conv_layer_norm/scale',
+     'layers/1/ffn1/linear_ff/bias',
+     'layers/1/ffn1/linear_ff/weight',
+     'layers/1/ffn1/linear_out/bias',
+     'layers/1/ffn1/linear_out/weight',
+     'layers/1/ffn1_layer_norm/bias',
+     'layers/1/ffn1_layer_norm/scale',
+     'layers/1/ffn2/linear_ff/bias',
+     'layers/1/ffn2/linear_ff/weight',
+     'layers/1/ffn2/linear_out/bias',
+     'layers/1/ffn2/linear_out/weight',
+     'layers/1/ffn2_layer_norm/bias',
+     'layers/1/ffn2_layer_norm/scale',
+     'layers/1/final_layer_norm/bias',
+     'layers/1/final_layer_norm/scale',
+     'layers/1/self_att/qkv/bias',
+     'layers/1/self_att/qkv/weight',
+     'layers/1/self_att_layer_norm/bias',
+     'layers/1/self_att_layer_norm/scale',
+     'projection/weight'})
 
   dummy_run_net(config, net=conformer)
