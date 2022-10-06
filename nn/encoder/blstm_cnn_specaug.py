@@ -25,14 +25,14 @@ class BlstmCnnSpecAugEncoder(BlstmEncoder):
                time_reduction: Union[int, Tuple[int, ...]] = 6,
                with_specaugment=True,
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,):
-    super(BlstmCnnSpecAugEncoder, self).__init__(
-      in_dim=in_dim, dim=lstm_dim, num_layers=num_layers, time_reduction=time_reduction,
-      l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
-
     self.with_specaugment = with_specaugment
     self.pre_conv_net = PreConvNet(in_dim=in_dim)
+    super(BlstmCnnSpecAugEncoder, self).__init__(
+      in_dim=self.pre_conv_net.out_dim, dim=lstm_dim,
+      num_layers=num_layers, time_reduction=time_reduction,
+      l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
-  def __call__(self, x, *, spatial_dim: nn.Dim) -> (nn.Tensor, nn.Dim):
+  def __call__(self, x, *, spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     if self.with_specaugment:
       x = specaugment_v2(x, spatial_dim=spatial_dim)
     x = self.pre_conv_net(x, spatial_dim=spatial_dim)
@@ -46,6 +46,7 @@ class PreConvNet(nn.Module):
   """
   def __init__(self, in_dim: nn.Dim, dim: nn.Dim = nn.FeatureDim("feat", 32), *, filter_size=(3, 3)):
     super(PreConvNet, self).__init__()
+    self.in_dim = in_dim
     self._dummy_feat_dim = nn.FeatureDim("dummy-feature", 1)
     self.conv0 = nn.Conv2d(self._dummy_feat_dim, out_dim=dim, padding="same", filter_size=filter_size)
     self.conv1 = nn.Conv2d(dim, dim, padding="same", filter_size=filter_size)
@@ -53,8 +54,9 @@ class PreConvNet(nn.Module):
     self.out_dim = self._final_extra_spatial_dim * dim
 
   def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
-    batch_dims = x.batch_dims_ordered((x.feature_dim, spatial_dim))
-    extra_spatial_dim = x.feature_dim
+    assert self.in_dim in x.shape
+    batch_dims = x.batch_dims_ordered((self.in_dim, spatial_dim))
+    extra_spatial_dim = self.in_dim
     x = nn.expand_dim(x, dim=self._dummy_feat_dim)
     x, _ = self.conv0(x, in_spatial_dims=(spatial_dim, extra_spatial_dim))
     feat_dim = x.feature_dim

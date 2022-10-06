@@ -40,10 +40,9 @@ class BlstmEncoder(nn.Module):
     self.dropout = dropout
     self.rec_weight_dropout = rec_weight_dropout
 
-    out_dims = [dim] * num_layers
-    in_dims = [in_dim] + out_dims[:-1]
-    self.layers = nn.ModuleList([BlstmSingleLayer(in_dims[i], out_dims[i]) for i in range(num_layers)])
-    self.out_dim = dim * 2
+    in_dims = [in_dim] + [2 * dim] * (num_layers - 1)
+    self.layers = nn.ModuleList([BlstmSingleLayer(in_dims[i], dim) for i in range(num_layers)])
+    self.out_dim = 2 * dim
 
     if l2:
       for param in self.parameters():
@@ -75,7 +74,7 @@ class BlstmSingleLayer(nn.Module):
     super(BlstmSingleLayer, self).__init__()
     self.fw = nn.LSTM(in_dim, out_dim)
     self.bw = nn.LSTM(in_dim, out_dim)
-    self.out_dim = out_dim * 2
+    self.out_dim = 2 * out_dim
 
   def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
     fw, _ = self.fw(x, axis=axis, direction=1)
