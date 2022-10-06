@@ -579,3 +579,17 @@ def test_param_name_deep():
   config, net_dict, net = dummy_config_net_dict(lambda: _Net(dummy_default_in_dim))
   pprint(config)
   dummy_run_net(config, net=net)
+
+
+def test_mod_early_setattr():
+  class _Net(nn.Module):
+    def __init__(self):
+      # before super().__init__()
+      self.linear = nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13))
+      super().__init__()
+
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      return self.linear(x)
+
+  config, net_dict, net = dummy_config_net_dict(_Net)
+  dummy_run_net(config, net=net)

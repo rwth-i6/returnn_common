@@ -71,10 +71,13 @@ class Module:
   although there are no strict rules.
   """
 
-  def __init__(self):
+  def __lazy_init__(self):
     """
-    By convention, any options to the module or module are passed to the constructor,
-    and potential changing inputs (other layers)
+    Note: This is like __init__, but it is not necessary to explicitly call it, thus the different name.
+    It will be called lazily, via __getattr__ or __setattr__.
+
+    By convention, any options to the module are passed to __init__,
+    and potential changing inputs (other tensors)
     are passed to :func:`__call__`.
     """
     # Actually we would want an ordered set for parents, but Python does not provide this.
@@ -127,6 +130,12 @@ class Module:
     Only certain other functions or modules like Sequential make use of it.
     """
     raise OptionalNotImplementedError
+
+  def __getattr__(self, key: str):
+    if key in {"_parents", "calls"}:
+      self.__lazy_init__()
+      return self.__dict__[key]  # should have it now
+    raise AttributeError(f"{self!r} has no attribute {key!r}")
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
