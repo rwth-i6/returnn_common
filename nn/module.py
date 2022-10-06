@@ -144,7 +144,7 @@ class Module:
       for sub_call in sub_calls:
         for self_call in self.calls:
           if (
-                sub_call.parent is None or  # not yet assigned, e.g. nn.Parameter
+                (sub_call.parent is None and self_call.control_flow_ctx() is None) or  # e.g. nn.Parameter
                 (self_call.root is sub_call.root and self_call.control_flow_ctx() is sub_call.control_flow_ctx())):
             sub_call.assign_parent(self_call, key)
             break
