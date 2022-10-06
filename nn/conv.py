@@ -109,10 +109,10 @@ class _Conv(_ConvOrTransposedConv):
     :param int groups: grouped convolution
     :param bool with_bias: if True, will add a bias to the output features
     """
+    self.groups = groups
     super().__init__(in_dim=in_dim, out_dim=out_dim, filter_size=filter_size, padding=padding, with_bias=with_bias)
     self.strides = strides
     self.dilation_rate = dilation_rate
-    self.groups = groups
 
   def __call__(self, source: nn.Tensor, *,
                in_spatial_dims: Sequence[nn.Dim],
