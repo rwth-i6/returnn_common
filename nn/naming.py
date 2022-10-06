@@ -344,14 +344,17 @@ class NameCtx:
     # Collect all used tensor names.
     used_names = {self}  # type: Set[nn.NameCtx]
     root = self.root
-    queue = list(self.marked_outputs + self.marked_losses)  # type: List[nn.Tensor]
+    queue = [
+      (tensor, [])  # (tensor, path), where the path is how we get to the tensor through the graph, for debugging
+      for tensor in self.marked_outputs + self.marked_losses]  # type: List[Tuple[nn.Tensor,List[nn.Tensor]]]
     while queue:
-      tensor = queue.pop(0)
+      tensor, src = queue.pop(0)
       if tensor.name_ctx is used_names:
         continue
+      src_ = src + [tensor]
       for dep in tensor.get_dependencies():
         if dep.name_ctx not in used_names:
-          queue.append(dep)
+          queue.append((dep, src_))
 
       # Parameters usually have no parent assigned at creation time.
       if not tensor.name_ctx.parent and tensor.name_ctx != root:
@@ -370,7 +373,7 @@ class NameCtx:
           continue  # skip early, to skip the extra checks below
         used_names.add(ctx)
         if ctx.layer_ref is not None and ctx.layer_ref is not tensor:
-          queue.append(ctx.layer_ref)
+          queue.append((ctx.layer_ref, src_))
 
     # Go through all names in the hierarchy and remove unused.
     visited = set()  # type: Set[nn.NameCtx]
