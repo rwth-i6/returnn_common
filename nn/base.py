@@ -594,11 +594,14 @@ class Parameter(Tensor):
     self.auxiliary = auxiliary
 
   def __copy__(self):
-    return self.__deepcopy__()
+    # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
+    return type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
 
   def __deepcopy__(self, memo=None):
     # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
-    return type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
+    res = self.__copy__()
+    res.parent_modules.extend((memo[id(m)], k) for m, k in self.parent_modules if id(m) in memo)
+    return res
 
   @property
   def initial(self) -> Optional[Union[nn.Tensor, RawTensorTypes]]:
