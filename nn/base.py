@@ -156,6 +156,14 @@ class Tensor:
       parts.append(f"ctx={self.data.control_flow_ctx.repr_inner()}")
     return f"<{' '.join(parts)}>"
 
+  def __copy__(self):
+    # Immutable, so return self. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
+    return self
+
+  def __deepcopy__(self, memo):
+    # Immutable, so return self. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
+    return self
+
   @property
   def shape(self) -> Set[Dim]:
     """
@@ -585,6 +593,13 @@ class Parameter(Tensor):
       name_ctx=name_ctx)
     self.auxiliary = auxiliary
 
+  def __copy__(self):
+    return self.__deepcopy__()
+
+  def __deepcopy__(self, memo=None):
+    # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
+    return type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
+
   @property
   def initial(self) -> Optional[Union[nn.Tensor, RawTensorTypes]]:
     """initial value of the parameter"""
@@ -643,6 +658,18 @@ class Parameter(Tensor):
       self.layer_dict["L2"] = value
     else:
       self.layer_dict.pop("L2", None)
+
+  @property
+  def trainable(self) -> Optional[bool]:
+    """trainable"""
+    return self.layer_dict.get("trainable", None)
+
+  @trainable.setter
+  def trainable(self, value: Optional[bool]):
+    if value is not None:
+      self.layer_dict["trainable"] = value
+    else:
+      self.layer_dict.pop("trainable", None)
 
 
 class LayerState(dict):
