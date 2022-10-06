@@ -387,16 +387,65 @@ def test_get_name_in_current_ctx():
 
 def test_deepcopy():
   import copy
-
   dims = [nn.FeatureDim(f"linear{i}-out", i + 3) for i in range(3)]
   config, net_dict, net = dummy_config_net_dict(
     lambda: nn.Sequential(
       copy.deepcopy(nn.Linear(in_dim, out_dim))
       for in_dim, out_dim in zip([dummy_default_in_dim] + dims, dims)))
+  assert isinstance(net, nn.Sequential)
+  lin1, lin2, lin3 = net
+  assert isinstance(lin1, nn.Linear)
+  assert (net, "0") in lin1._parents
   pprint(net_dict)
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
-  dummy_run_net(config)
+  dummy_run_net(config, net=net)
+
+
+def test_deepcopy2():
+  def _make_net():
+    import copy
+    lin = nn.Linear(dummy_default_in_dim, dummy_default_in_dim)
+    return nn.Sequential(copy.deepcopy(lin) for _ in range(3))
+
+  config, net_dict, net = dummy_config_net_dict(_make_net)
+  assert isinstance(net, nn.Sequential)
+  lin1, lin2, lin3 = net
+  assert isinstance(lin1, nn.Linear)
+  assert (net, "0") in lin1._parents
+  pprint(net_dict)
+  assert "0" in net_dict
+  assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
+  dummy_run_net(config, net=net)
+
+
+def test_deepcopy_deep():
+  class _Sub(nn.Module):
+    def __init__(self):
+      super(_Sub, self).__init__()
+      self.lin = nn.Linear(dummy_default_in_dim, dummy_default_in_dim)
+
+    def __call__(self, x):
+      return self.lin(x)
+
+  def _make_net():
+    import copy
+    sub = _Sub()
+    assert (sub, "lin") in sub.lin._parents
+    subs = [copy.deepcopy(sub) for _ in range(3)]
+    sub0 = subs[0]
+    assert (sub0, "lin") in sub0.lin._parents
+    return nn.Sequential(subs)
+
+  config, net_dict, net = dummy_config_net_dict(_make_net)
+  assert isinstance(net, nn.Sequential)
+  sub1, sub2, sub3 = net
+  assert isinstance(sub1, _Sub)
+  assert (net, "0") in sub1._parents
+  assert (sub1, "lin") in sub1.lin._parents
+  pprint(net_dict)
+  assert "0" in net_dict
+  dummy_run_net(config, net=net)
 
 
 def test_variable():
