@@ -350,14 +350,15 @@ class ReturnnWrappedLayerBase(Module):
         args['initial_state'] = state
 
 
-class _CollectionEmptyDeepCopyMixin:
+class _ModuleParents(dict):
+  """list of parents should not be copied when copying a module"""
+  def __deepcopy__(self, memo):
+    return {
+      (memo[id(m)], k): None for (m, k), _ in self.items()
+      if id(m) in memo}
+
+
+class _ModuleCalls(list):
+  """list of calls should not be copied when copying a module"""
   def __deepcopy__(self, memo):
     return type(self)()
-
-
-class _ModuleParents(dict, _CollectionEmptyDeepCopyMixin):
-  """list of parents should not be copied when copying a module"""
-
-
-class _ModuleCalls(list, _CollectionEmptyDeepCopyMixin):
-  """list of calls should not be copied when copying a module"""
