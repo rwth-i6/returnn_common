@@ -249,6 +249,9 @@ def check_params(net: nn.Module, engine: returnn.tf.engine.Engine):
   for param in engine.network.get_params_list():
     assert isinstance(param, tf.Variable)
     assert param.name.endswith("/param:0")
+    if "random" in param.name and "state_var" in param.name:
+      print("Note: Ignoring random state var:", param)
+      continue  # be relaxed about these
     tf_params.add(param.name[:-len("/param:0")])
 
   if rc_params != tf_params:
