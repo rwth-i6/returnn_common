@@ -34,11 +34,11 @@ def test_module_list():
 
   config, net_dict, net = dummy_config_net_dict(_Net)
 
-  assert net_dict["ls.0"]["subnetwork"]["dot"]["from"][0] == "base:data:data"
-  assert net_dict["ls.1"]["subnetwork"]["dot"]["from"][0] == "base:ls.0"
-  assert net_dict["ls.2"]["subnetwork"]["dot"]["from"][0] == "base:ls.1"
-  assert net_dict["ls.3"]["subnetwork"]["dot"]["from"][0] == "base:ls.2"
-  assert net_dict["output"]["from"] == "ls.3"
+  assert net_dict["ls"]["subnetwork"]["0"]["subnetwork"]["dot"]["from"][0] == "base:base:data:data"
+  assert net_dict["ls"]["subnetwork"]["1"]["subnetwork"]["dot"]["from"][0] == "base:0"
+  assert net_dict["ls"]["subnetwork"]["2"]["subnetwork"]["dot"]["from"][0] == "base:1"
+  assert net_dict["ls"]["subnetwork"]["3"]["subnetwork"]["dot"]["from"][0] == "base:2"
+  assert net_dict["output"]["from"] == "ls"
 
   dummy_run_net(config, net=net)
 
