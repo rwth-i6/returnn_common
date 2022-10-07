@@ -25,11 +25,13 @@ from returnn_common import nn
 
 
 class MyModelBlock(nn.Module):
-  def __init__(self, dim: nn.Dim, hidden: nn.Dim, dropout: float = 0.1):
+  def __init__(self, dim: nn.Dim, *,
+               hidden: nn.Dim = nn.FeatureDim("hidden", 2048),
+               dropout: float = 0.1):
     super().__init__()
-    self.layer_norm = nn.LayerNorm()
-    self.linear_out = nn.Linear(dim)
-    self.linear_hidden = nn.Linear(hidden)
+    self.layer_norm = nn.LayerNorm(dim)
+    self.linear_hidden = nn.Linear(dim, hidden)
+    self.linear_out = nn.Linear(hidden, dim)
     self.dropout = dropout
 
   def __call__(self, x: nn.Tensor) -> nn.Tensor:
@@ -46,10 +48,10 @@ In case you want to have this three times separately now:
 class MyModel(nn.Module):
   def __init__(self, dim: nn.Dim):
     super().__init__()
-    self.block1 = MyModelBlock(dim * 2, dim)
-    self.block2 = MyModelBlock(dim * 2, dim)
-    self.block3 = MyModelBlock(dim * 2, dim)
-    
+    self.block1 = MyModelBlock(dim)
+    self.block2 = MyModelBlock(dim)
+    self.block3 = MyModelBlock(dim)
+
   def __call__(self, x: nn.Tensor) -> nn.Tensor:
     x = self.block1(x)
     x = self.block2(x)
@@ -62,8 +64,8 @@ Or if you want to share the parameters but run this three times:
 class MyModel(nn.Module):
   def __init__(self, dim: nn.Dim):
     super().__init__()
-    self.block = MyModelBlock(dim * 2, dim)
-    
+    self.block = MyModelBlock(dim)
+
   def __call__(self, x: nn.Tensor) -> nn.Tensor:
     x = self.block(x)
     x = self.block(x)
