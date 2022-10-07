@@ -592,6 +592,7 @@ class Parameter(Tensor):
       data=data,
       name_ctx=name_ctx)
     self.auxiliary = auxiliary
+    self._initial = None  # type: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.ParamInit]]
 
   def __copy__(self):
     # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
@@ -606,19 +607,23 @@ class Parameter(Tensor):
     return res
 
   @property
-  def initial(self) -> Optional[Union[nn.Tensor, RawTensorTypes]]:
+  def initial(self) -> Optional[Union[nn.Tensor, RawTensorTypes, nn.init.ParamInit]]:
     """initial value of the parameter"""
-    if "init" in self.layer_dict:
-      return self.layer_dict["init"]
-    return self.layer_dict.get("init_by_layer")
+    return self._initial
 
   @initial.setter
   def initial(self, value: Optional[Union[nn.Tensor, RawTensorTypes, nn.init.ParamInit]]):
+    # Keep the original ParamInit, so that copies of the Parameter would have a different initial random value.
+    # https://github.com/rwth-i6/returnn_common/issues/216
+    self._initial = value
     if isinstance(value, nn.init.ParamInit):
       value = value(shape=self.shape_ordered, dtype=self.dtype)
-    if value is None or isinstance(value, nn.Tensor):
+    if value is None:
       self.layer_dict.pop("init", None)
-      if isinstance(value, nn.Tensor) and not value.name_ctx.parent.can_access_children_from_root:
+      self.layer_dict.pop("init_by_layer", None)
+    elif isinstance(value, nn.Tensor):
+      self.layer_dict.pop("init", None)
+      if not value.name_ctx.parent.can_access_children_from_root:
         accessible_parent = value.name_ctx.parent
         while not accessible_parent.can_access_children_from_root:
           accessible_parent = accessible_parent.parent

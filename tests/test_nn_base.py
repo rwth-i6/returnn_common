@@ -8,6 +8,7 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim, config_net_dict_via_serialized
 from pprint import pprint
 from .utils import assert_equal
+import numpy
 import typing
 from typing import Tuple
 
@@ -402,7 +403,7 @@ def test_deepcopy():
   dummy_run_net(config, net=net)
 
 
-def test_deepcopy2():
+def test_deepcopy_same_linear():
   def _make_net():
     import copy
     lin = nn.Linear(dummy_default_in_dim, dummy_default_in_dim)
@@ -416,7 +417,35 @@ def test_deepcopy2():
   pprint(net_dict)
   assert "0" in net_dict
   assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
+  collected_var_names = set()
+  for name, p in net.named_parameters():
+    print(name, ":", p)
+    collected_var_names.add(name.replace(".", "/"))
+  assert_equal(collected_var_names, {'0/bias', '0/weight', '1/bias', '1/weight', '2/bias', '2/weight'})
   dummy_run_net(config, net=net)
+
+
+def test_deepcopy_same_linear_diff_init():
+  # https://github.com/rwth-i6/returnn_common/issues/216
+  def _make_net():
+    import copy
+    lin = nn.Linear(dummy_default_in_dim, dummy_default_in_dim)
+    return nn.Sequential(copy.deepcopy(lin) for _ in range(3))
+
+  config, net_dict, net = dummy_config_net_dict(_make_net)
+  assert isinstance(net, nn.Sequential)
+  lin1, lin2, lin3 = net
+  assert isinstance(lin1, nn.Linear)
+  assert (net, "0") in lin1._parents
+  pprint(net_dict)
+  assert "0" in net_dict
+  assert_equal(net_dict["0"]["subnetwork"]["dot"]["from"][0], "base:data:data")
+  engine = dummy_run_net(config, net=net)
+  w0 = engine.network.get_layer("0/weight").params["param"].eval(engine.tf_session)
+  w1 = engine.network.get_layer("1/weight").params["param"].eval(engine.tf_session)
+  assert isinstance(w0, numpy.ndarray) and isinstance(w1, numpy.ndarray)
+  assert (w0 != 0.).any()
+  assert (w0 != w1).any()
 
 
 def test_deepcopy_deep():
