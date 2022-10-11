@@ -13,28 +13,28 @@ class _Rec(nn.Module):
   See :func:`__call__`.
   """
 
+  unit: str = None
+  param_list: Tuple[str] = ()
+
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
-               unit: str, param_list: List[Tuple[str, Callable[[], Tuple[nn.Dim, ...]]]],
-               unit_opts: Optional[Dict[str, Any]] = None):
+               unit: Optional[str] = None, unit_opts: Optional[Dict[str, Any]] = None,
+               param_list: Optional[Tuple[str]] = None):
     """
     :param out_dim: dimension tag for the output feature dimension
     :param unit: unit description string, see documentation for available recurrent cells
-    :param param_list: (str, callable) pairs where the callable (usually lambda) returns all parameter dims
-      (e.g. 1 for bias and 2 for weight matrices)
     :param in_dim: input feature dimension
     :param unit_opts: additional options for the recurrent unit
     """
     super().__init__()
     self.in_dim = in_dim
     self.out_dim = out_dim
-    self.unit = unit
+    if unit is not None:
+      self.unit = unit
+    else:
+      assert self.unit is not None
     self.unit_opts = unit_opts
-    self.param_list = param_list
-    for param, shape_func in self.param_list:
-      shape = shape_func()
-      param_ = nn.Parameter(shape)
-      param_.initial = nn.init.Glorot()
-      setattr(self, f"param_{param}", param_)
+    if param_list is not None:
+      self.param_list = param_list
 
   def __call__(self, source: nn.Tensor, *,
                axis: nn.Dim,
@@ -57,11 +57,10 @@ class _Rec(nn.Module):
       rec_layer_dict["unit_opts"] = self.unit_opts
     # We use the reuse_params mechanism from RETURNN to explicitly pass the parameters.
     reuse_params = {}
-    for param, shape_func in self.param_list:
+    for param in self.param_list:
       param_ = getattr(self, f"param_{param}")
       assert isinstance(param_, nn.Parameter)
-      shape = shape_func()
-      reuse_params[param] = {"layer_output": param_, "shape": shape}
+      reuse_params[param] = {"layer_output": param_, "shape": param_.shape_ordered}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     assert direction in [1, -1]
     if direction == -1:
@@ -86,31 +85,33 @@ class LSTM(_Rec):
   """
   LSTM. returns (output, state) tuple, where state is (h,c).
   """
+
+  unit = "nativelstm2"
+  param_list = ("W_re", "W", "b")
+
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim):
-    self.param_W_re = None  # type: Optional[nn.Parameter]
-    self.param_W = None  # type: Optional[nn.Parameter]
-    self.param_b = None  # type: Optional[nn.Parameter]
-    super().__init__(
-      in_dim=in_dim, out_dim=out_dim,
-      unit="nativelstm2",
-      param_list=[
-        ("W_re", lambda: (self.out_dim, 4 * self.out_dim)),
-        ("W", lambda: (self.in_dim, 4 * self.out_dim)),
-        ("b", lambda: (4 * self.out_dim,))])
+    super().__init__(in_dim=in_dim, out_dim=out_dim)
+    self.param_W_re = nn.Parameter((self.out_dim, 4 * self.out_dim))
+    self.param_W_re.initial = nn.init.Glorot()
+    self.param_W = nn.Parameter((self.in_dim, 4 * self.out_dim))
+    self.param_W.initial = nn.init.Glorot()
+    self.param_b = nn.Parameter((4 * self.out_dim,))
+    self.param_b.initial = 0.
 
 
 class ZoneoutLSTM(_Rec):
   """
   LSTM with zoneout. returns (output, state) tuple, where state is (h,c).
   """
+  unit = "zoneoutlstm"
+  param_list = ("kernel", "bias")
+
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
                zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0.):
-    self.param_kernel = None  # type: Optional[nn.Parameter]
-    self.param_bias = None  # type: Optional[nn.Parameter]
     super().__init__(
       in_dim=in_dim, out_dim=out_dim,
-      unit="zoneoutlstm",
-      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output},
-      param_list=[
-        ("kernel", lambda: (self.in_dim + self.out_dim, 4 * self.out_dim)),
-        ("bias", lambda: (4 * self.out_dim,))])
+      unit_opts={'zoneout_factor_cell': zoneout_factor_cell, 'zoneout_factor_output': zoneout_factor_output})
+    self.param_kernel = nn.Parameter((self.in_dim + self.out_dim, 4 * self.out_dim))
+    self.param_kernel.initial = nn.init.Glorot()
+    self.param_bias = nn.Parameter((4 * self.out_dim,))
+    self.param_bias.initial = 0.
