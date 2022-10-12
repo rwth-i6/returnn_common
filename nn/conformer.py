@@ -77,7 +77,8 @@ class ConformerConvSubsample(nn.Module):
 
   def __init__(
         self, in_dim: nn.Dim, *,
-        out_dims: List[nn.Dim], dropout: float,
+        out_dims: List[nn.Dim],
+        dropout: float,
         filter_sizes: List[Tuple[int, int]],
         pool_sizes: Optional[List[Tuple[int, int]]] = None,
         activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
