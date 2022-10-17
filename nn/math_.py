@@ -108,6 +108,16 @@ def log1p(x: nn.Tensor) -> nn.Tensor:
   return _activation(x, activation="log1p")
 
 
+def sin(x: nn.Tensor) -> nn.Tensor:
+  """sin"""
+  return _activation(x, activation="sin")
+
+
+def cos(x: nn.Tensor) -> nn.Tensor:
+  """cos"""
+  return _activation(x, activation="cos")
+
+
 def tanh(x: nn.Tensor) -> nn.Tensor:
   """tanh"""
   return _activation(x, activation="tanh")
