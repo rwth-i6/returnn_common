@@ -84,10 +84,10 @@ class GenericSelfAttention(nn.Module):
       k_accum=nn.LayerState(nn.zeros(list(batch_dims) + [expand_dim, self.num_heads, self.key_dim_per_head])),
       v_accum=nn.LayerState(nn.zeros(list(batch_dims) + [expand_dim, self.num_heads, self.value_dim_per_head])))
 
-  def __call__(self, source: nn.Tensor, *, axis: nn.Dim,
-               causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
-               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
-    """forward"""
+  def forward_qkv(self, source: nn.Tensor) -> Tuple[nn.Tensor, nn.Tensor, nn.Tensor]:
+    """
+    :return: q,k,v
+    """
     qkv = self.qkv(source)
     qkv = nn.split_dims(
       qkv, axis=self.qkv_dim_total, dims=(self.num_heads, self.qkv_dim_per_head), name="qkv_split_dims")
@@ -95,6 +95,13 @@ class GenericSelfAttention(nn.Module):
       qkv, axis=self.qkv_dim_per_head,
       out_dims=(self.key_dim_per_head, self.key_dim_per_head, self.value_dim_per_head),
       name="qkv_split")
+    return q, k, v
+
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim,
+               causal: Optional[bool] = None, state: Optional[nn.LayerState] = None
+               ) -> Tuple[nn.Tensor, Optional[nn.LayerState]]:
+    """forward"""
+    q, k, v = self.forward_qkv(source)
     if axis == nn.single_step_dim:
       assert causal is None or causal  # always causal for single step
       assert state
@@ -146,12 +153,66 @@ class CausalSelfAttention(GenericSelfAttention):
     return out, state
 
 
-class RelPosSelfAttention(nn.Module):
+class RelPosSelfAttention(GenericSelfAttention):
   """
   Self-attention with relative positional encoding, Transformer-XL style (https://arxiv.org/abs/1901.02860).
   It uses :func:`relative_positional_encoding`.
+
+  Code references, partly adapted from there:
+  https://github.com/espnet/espnet/blob/4138010fb66ad27a43e8bee48a4932829a0847ae/espnet/nets/pytorch_backend/transformer/embedding.py#L260
+  https://github.com/kimiyoung/transformer-xl/blob/44781ed21dbaec88b280f74d9ae2877f52b492a5/tf/model.py#L4
   """
-  # TODO
+  def __init__(self, in_dim: nn.Dim, proj_dim: Optional[nn.Dim], *,
+               key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
+               att_dropout: float = 0.1):
+    super(RelPosSelfAttention, self).__init__(
+      in_dim=in_dim, proj_dim=proj_dim,
+      key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads,
+      att_dropout=att_dropout)
+    # linear transformation for positional encoding
+    self.linear_pos = nn.Linear(self.in_dim, self.key_dim_total, with_bias=False)
+    # these two learnable bias are used in matrix c and matrix d
+    # as described in https://arxiv.org/abs/1901.02860 Section 3.3
+    self.pos_bias_u = nn.Parameter((self.num_heads, self.key_dim_per_head))
+    self.pos_bias_v = nn.Parameter((self.num_heads, self.key_dim_per_head))
+    self.pos_bias_u.initial = nn.init.Glorot()
+    self.pos_bias_v.initial = nn.init.Glorot()
+
+  def __call__(self, source: nn.Tensor, *, axis: nn.Dim, **_kwargs) -> nn.Tensor:
+    """forward"""
+    pos_emb, pos_emb_spatial_dim = relative_positional_encoding(axis, self.in_dim)
+    pos_emb = self.linear_pos(pos_emb)
+    pos_emb = nn.split_dims(pos_emb, axis=self.key_dim_total, dims=(self.num_heads, self.key_dim_per_head))
+    # pos_emb: (batch, head, 2*time1-1, d_k)
+
+    q, k, v = self.forward_qkv(source)
+    hist_dim = nn.SpatialDim(f"{axis.description}:kv")
+    k, _ = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=hist_dim, name="k_new_dim")
+    v, _ = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=hist_dim, name="v_new_dim")
+    q_with_bias_u = q + self.pos_bias_u  # (batch, head, time1, d_k)
+    q_with_bias_v = q + self.pos_bias_v  # (batch, head, time1, d_k)
+
+    # compute attention score
+    # first compute matrix a and matrix c
+    # as described in https://arxiv.org/abs/1901.02860 Section 3.3
+    # (batch, head, time1, time2)
+    matrix_ac = nn.dot(q_with_bias_u, k, reduce=self.key_dim_per_head)
+
+    # compute matrix b and matrix d
+    # (batch, head, time1, 2*time1-1)
+    matrix_bd = nn.dot(q_with_bias_v, pos_emb, reduce=self.key_dim_per_head)
+    matrix_bd = self.rel_shift(matrix_bd)  # TODO
+
+    scores = matrix_ac + matrix_bd  # (batch, head, time1, time2)
+    scores *= self.key_dim_per_head.dimension ** -0.5
+    att_weights = nn.softmax(scores, axis=hist_dim, name="att_weights")
+    att_weights = nn.dropout(att_weights, self.att_dropout, axis=hist_dim)
+    att = nn.dot(att_weights, v, reduce=hist_dim, name="att")
+    output, _ = nn.merge_dims(
+      att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
+    if self.proj:
+      output = self.proj(output)
+    return output
 
 
 _relative_positional_encoding_cache = weakref.WeakKeyDictionary()  # root name ctx -> (spatial_dim, feat_dim) -> enc
