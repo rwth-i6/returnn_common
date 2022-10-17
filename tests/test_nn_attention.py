@@ -20,7 +20,7 @@ def test_self_attention():
     def __init__(self):
       super().__init__()
       self.self_att = nn.SelfAttention(
-        in_dim=dummy_default_in_dim,
+        in_dim=dummy_default_in_dim, proj_dim=nn.FeatureDim("out", 5),
         key_dim_total=nn.FeatureDim("key-dim-total", 21),
         value_dim_total=nn.FeatureDim("value-dim-total", 33),
         num_heads=3)
