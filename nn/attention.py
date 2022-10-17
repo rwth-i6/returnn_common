@@ -180,4 +180,5 @@ def relative_positional_encoding(
   arg_cos = arg_sin + math.pi / 2.
   arg, feat_dim_ = nn.concat((arg_sin, feat2_dim), (arg_cos, feat2_dim))
   feat_dim_.declare_same_as(feat_dim)
+  arg.verify_out_shape({out_spatial_dim, feat_dim})
   return nn.sin(arg), out_spatial_dim
