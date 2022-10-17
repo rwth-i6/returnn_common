@@ -311,7 +311,7 @@ class Transformer(nn.Module):
       else:
         if enc_self_attention is None:
           enc_self_attention = nn.SelfAttention(
-            in_dim=model_dim,
+            in_dim=model_dim, proj_dim=model_dim,
             key_dim_total=model_dim, value_dim_total=model_dim, num_heads=num_heads, att_dropout=att_dropout)
         encoder_layer = TransformerEncoderLayer(
           out_dim=model_dim, ff_dim=ff_dim, dropout=dropout, ff_activation=ff_activation, norm_eps=norm_eps, norm=norm,
@@ -336,7 +336,7 @@ class Transformer(nn.Module):
       else:
         if dec_causal_self_attention is None:
           dec_causal_self_attention = nn.CausalSelfAttention(
-            in_dim=model_dim,
+            in_dim=model_dim, proj_dim=model_dim,
             key_dim_total=model_dim, value_dim_total=model_dim, num_heads=num_heads, att_dropout=att_dropout)
         if cross_attention is None:
           cross_attention = nn.dot_attention

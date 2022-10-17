@@ -38,11 +38,21 @@ class GenericSelfAttention(nn.Module):
 
   It uses :func:`dot_attention` for multi-headed dot-attention.
   """
-  def __init__(self, in_dim: nn.Dim, *,
+  def __init__(self, in_dim: nn.Dim, proj_dim: Optional[nn.Dim], *,
                key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
                att_dropout: float = 0.1):
+    """
+    :param in_dim: input dim
+    :param proj_dim: if given, will add a final linear projection to this dim.
+      otherwise no projection after the attention
+    :param key_dim_total: total key dim. should be a multiple of num_heads
+    :param value_dim_total: total value dim. should be a multiple of num_heads
+    :param num_heads: number of heads
+    :param att_dropout: dropout for attention weights
+    """
     super().__init__()
     self.in_dim = in_dim
+    self.out_dim = proj_dim if proj_dim else value_dim_total
     if isinstance(num_heads, int):
       num_heads = nn.SpatialDim("num_heads", num_heads)
     self.key_dim_total = key_dim_total
@@ -53,6 +63,10 @@ class GenericSelfAttention(nn.Module):
     self.qkv_dim_total = 2 * key_dim_total + value_dim_total
     self.qkv_dim_per_head = 2 * self.key_dim_per_head + self.value_dim_per_head
     self.qkv = nn.Linear(in_dim, self.qkv_dim_total)
+    if proj_dim:
+      self.proj = nn.Linear(value_dim_total, proj_dim)
+    else:
+      self.proj = None
     self.att_dropout = att_dropout
 
   def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> nn.LayerState:
@@ -103,6 +117,8 @@ class GenericSelfAttention(nn.Module):
     att = dot_attention(q, k, v, key_dim=self.key_dim_per_head, axis=hist_dim, att_dropout=self.att_dropout)
     output, _ = nn.merge_dims(
       att, axes=(self.num_heads, self.value_dim_per_head), out_dim=self.value_dim_total, name="output")
+    if self.proj:
+      output = self.proj(output)
     return output, new_state
 
 
