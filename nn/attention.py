@@ -3,6 +3,7 @@ Attention, self-attention, auto-regressive self-attention
 """
 
 from typing import Tuple, Union, Optional, Sequence
+import weakref
 from .. import nn
 from ..py_compat import Protocol
 
@@ -145,22 +146,33 @@ class CausalSelfAttention(GenericSelfAttention):
     return out, state
 
 
+class RelPosSelfAttention(nn.Module):
+  """
+  Self-attention with relative positional encoding, Transformer-XL style (https://arxiv.org/abs/1901.02860).
+  It uses :func:`relative_positional_encoding`.
+  """
+  # TODO
+
+
+_relative_positional_encoding_cache = weakref.WeakKeyDictionary()  # root name ctx -> (spatial_dim, feat_dim) -> enc
+
+
 def relative_positional_encoding(
   spatial_dim: nn.Dim, feat_dim: nn.Dim, *,
   dtype: str = "float32"
-) -> (nn.Tensor, nn.Dim):
+) -> Tuple[nn.Tensor, nn.Dim]:
   """
-  Implements relative positional encoding, Transformer-XL style (https://arxiv.org/abs/1901.02860).
+  Implements relative positional encoding, Transformer-XL style (https://arxiv.org/abs/1901.02860),
+  as used for example by :class:`RelPosSelfAttention`.
 
   Code references, partly adapted from there:
   https://github.com/espnet/espnet/blob/4138010fb66ad27a43e8bee48a4932829a0847ae/espnet/nets/pytorch_backend/transformer/embedding.py#L260
   https://github.com/kimiyoung/transformer-xl/blob/44781ed21dbaec88b280f74d9ae2877f52b492a5/tf/model.py#L4
 
-  Note that this encoding should ideally only be calculated once
+  Note that this encoding is stored in a cache so that it is only calculated once.
   and then reused.
-  It is then used for all relative-positional self-attention computations.
 
-  Note that we could extend the implementation later to also buffer it internally,
+  Note that we could extend the implementation later to also buffer it
   even across mini-batches, like the ESPnet implementation does,
   e.g. by storing it in an auxiliary variable and increasing its size when needed.
   But this is not done yet, to keep the code simple.
@@ -168,6 +180,10 @@ def relative_positional_encoding(
   :return: tensor of shape [spatial_dim * 2 - 1, feat_dim], and the out spatial dim (spatial_dim * 2 - 1).
     In the center is the rel pos i-j=0. All to the right are for i-j>0, all to the left for i-j<0.
   """
+  root_name_ctx = nn.NameCtx.top().root
+  cache = _relative_positional_encoding_cache.setdefault(root_name_ctx, {})
+  if (spatial_dim, feat_dim) in cache:
+    return cache[(spatial_dim, feat_dim)]
   import math
   position_pos = nn.range_over_dim(spatial_dim, dtype=dtype)
   position_neg = nn.range_over_dim(spatial_dim - 1, dtype=dtype)
@@ -180,5 +196,7 @@ def relative_positional_encoding(
   arg_cos = arg_sin + math.pi / 2.
   arg, feat_dim_ = nn.concat((arg_sin, feat2_dim), (arg_cos, feat2_dim))
   feat_dim_.declare_same_as(feat_dim)
-  arg.verify_out_shape({out_spatial_dim, feat_dim})
-  return nn.sin(arg), out_spatial_dim
+  emb = nn.sin(arg)
+  emb.verify_out_shape({out_spatial_dim, feat_dim})
+  cache[(spatial_dim, feat_dim)] = emb, out_spatial_dim
+  return emb, out_spatial_dim
