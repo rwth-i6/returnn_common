@@ -143,3 +143,41 @@ class CausalSelfAttention(GenericSelfAttention):
     assert not _kwargs
     out, state = super().__call__(source, causal=True, axis=axis, state=state)
     return out, state
+
+
+def relative_positional_encoding(
+  spatial_dim: nn.Dim, feat_dim: nn.Dim, *,
+  dtype: str = "float32"
+) -> (nn.Tensor, nn.Dim):
+  """
+  Implements relative positional encoding, Transformer-XL style (https://arxiv.org/abs/1901.02860).
+
+  Code references, partly adapted from there:
+  https://github.com/espnet/espnet/blob/4138010fb66ad27a43e8bee48a4932829a0847ae/espnet/nets/pytorch_backend/transformer/embedding.py#L260
+  https://github.com/kimiyoung/transformer-xl/blob/44781ed21dbaec88b280f74d9ae2877f52b492a5/tf/model.py#L4
+
+  Note that this encoding should ideally only be calculated once
+  and then reused.
+  It is then used for all relative-positional self-attention computations.
+
+  Note that we could extend the implementation later to also buffer it internally,
+  even across mini-batches, like the ESPnet implementation does,
+  e.g. by storing it in an auxiliary variable and increasing its size when needed.
+  But this is not done yet, to keep the code simple.
+
+  :return: tensor of shape [spatial_dim * 2 - 1, feat_dim], and the out spatial dim (spatial_dim * 2 - 1).
+    In the center is the rel pos i-j=0. All to the right are for i-j>0, all to the left for i-j<0.
+  """
+  import math
+  position_pos = nn.range_over_dim(spatial_dim, dtype=dtype)
+  position_neg = nn.range_over_dim(spatial_dim - 1, dtype=dtype)
+  position, out_spatial_dim = nn.concat(
+    (position_neg, spatial_dim - 1),
+    (position_pos, spatial_dim))
+  feat2_dim = feat_dim // 2
+  div_term = nn.exp(nn.range_over_dim(feat2_dim, dtype=dtype) * -(2. * math.log(10000.0) / feat_dim.dimension))
+  arg_sin = nn.combine_bc(position, '*', div_term)
+  arg_cos = arg_sin + math.pi / 2.
+  arg, feat_dim_ = nn.concat((arg_sin, feat2_dim), (arg_cos, feat2_dim))
+  feat_dim_.declare_same_as(feat_dim)
+  return nn.sin(arg), out_spatial_dim
