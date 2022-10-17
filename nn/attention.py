@@ -33,7 +33,10 @@ def dot_attention(query: nn.Tensor, keys: nn.Tensor, values: nn.Tensor, *,
 # noinspection PyAbstractClass
 class GenericSelfAttention(nn.Module):
   """
-  Shared base class for self attention
+  Shared base class for (non-causal) self attention (:class:`SelfAttention`)
+  and causal self attention (:class:`CausalSelfAttention`).
+
+  It uses :func:`dot_attention` for multi-headed dot-attention.
   """
   def __init__(self, in_dim: nn.Dim, *,
                key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
