@@ -127,9 +127,11 @@ def concat(*sources: Tuple[nn.Tensor, nn.Dim],
     for src, dim in sources:
       assert src.shape - {dim} == dims, f"concat {sources}, need allow_broadcast=True"
   out_dim = sum(d for _, d in sources)
-  return nn.make_layer(
+  res = nn.make_layer(
     {"class": "concat", "from": sources, "out_dim": out_dim, **opts},
-    name=name or "concat", name_ctx_ignore_top_stack_frames=1), out_dim
+    name=name or "concat", name_ctx_ignore_top_stack_frames=1)
+  out_dim = res.data.get_dim_tag_from_description(out_dim)  # maybe adapt batch info
+  return res, out_dim
 
 
 def concat_features(*sources: nn.Tensor, allow_broadcast=False) -> nn.Tensor:
