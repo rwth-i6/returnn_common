@@ -184,7 +184,7 @@ class ConformerEncoderLayer(nn.Module):
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
     self.conv_layer_norm = nn.LayerNorm(out_dim)
 
-    self.self_att = nn.SelfAttention(
+    self.self_att = nn.RelPosSelfAttention(
       out_dim, proj_dim=out_dim,
       key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
     self.self_att_layer_norm = nn.LayerNorm(out_dim)
