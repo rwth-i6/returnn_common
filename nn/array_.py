@@ -2,7 +2,7 @@
 Array (Tensor) functions
 """
 
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Sequence, Tuple, List, Union
 from returnn.util.basic import NotSpecified
 from .. import nn
 
@@ -42,6 +42,34 @@ def length(dim: nn.Dim,
     'from': nn.get_dim_deps(dim),
     'axis': dim,
     **args}, name='length')
+
+
+def reshape(source: nn.Tensor, old_dims: Sequence[nn.Dim], new_dims: Sequence[nn.Dim]) -> nn.Tensor:
+  """
+  Wraps tf.reshape.
+
+  You should use :func:`split_dims` or :func:`merge_dims`
+  when you want to split or merge dimensions.
+  This here is for doing any other kind of reshape.
+  This can be used for clever indexing, slicing, padding tricks.
+
+  :param source: e.g. (..., old_dims, ...)
+  :param old_dims: the old dims which should be reshaped into new_dims.
+    This should only cover those dims which should be reshaped,
+    not all the dims of the source.
+  :param new_dims: the new dims which should be reshaped from old_dims.
+    This is excluding any of the other dims in the source.
+  :return: e.g. (..., new_dims, ...)
+  """
+  return nn.make_layer(
+    {
+      "class": "reshape",
+      "from": source,
+      "old_dims": old_dims,
+      "new_dims": new_dims,
+      "extra_deps": nn.get_dim_deps(new_dims),
+    },
+    name="reshape")
 
 
 def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:
