@@ -1046,6 +1046,10 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
     raise ValueError(f"{dim} should not be auto-generated")  # strange to get this here in returnn-common
   if dim.generic or dim.special:
     raise ValueError(f"{dim} deps not defined for generic/special tags")
+  if dim.derived_from_op:
+    deps = get_dim_deps(dim.derived_from_op.inputs)
+    _dim_deps[dim] = deps
+    return deps
   if not dim.is_dim_known():
     raise ValueError(f"{dim} is not defined yet")
   if dim in _dim_deps:
@@ -1053,10 +1057,6 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
     if _deps_valid_in_cur_name_ctx(deps):
       return deps
     _dim_deps.pop(dim)
-  if dim.derived_from_op:
-    deps = get_dim_deps(dim.derived_from_op.inputs)
-    _dim_deps[dim] = deps
-    return deps
   # should not get here
   raise Exception(f"{dim} deps not defined (_register_dim_deps not called?)")
 
