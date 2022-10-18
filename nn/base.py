@@ -984,6 +984,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
       layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
       try:
         out_data = layer_class.get_out_data_from_opts(**layer_desc)
+        out_data = layer_class.fixup_out_data(out_data, **layer_desc)
       except Exception as exc:
         msgs = [
           "The RETURNN call\n",
