@@ -53,7 +53,7 @@ class ConformerConvBlock(nn.Module):
     """
     super().__init__()
 
-    self.positionwise_conv1 = nn.Linear(out_dim, 2 * out_dim)
+    self.positionwise_conv1 = nn.Linear(out_dim, out_dim * 2)
     self.depthwise_conv = nn.Conv1d(
       out_dim, out_dim, filter_size=kernel_size, groups=out_dim.dimension, padding='same')
     self.positionwise_conv2 = nn.Linear(out_dim, out_dim)
