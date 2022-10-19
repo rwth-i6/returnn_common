@@ -32,3 +32,14 @@ def test_self_attention():
   config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   pprint(net_dict)
   dummy_run_net(config, net=net)
+
+
+def test_relative_positional_encoding():
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      x, _ = nn.relative_positional_encoding(axis, x.feature_dim)
+      return x
+
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True, in_dim=nn.FeatureDim("in", 12))
+  pprint(net_dict)
+  dummy_run_net(config, net=net)
