@@ -227,6 +227,9 @@ class ConformerEncoder(nn.Module):
                out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
                *,
                num_layers: int,
+               subsample_conv_out_dims: List[nn.Dim],
+               subsample_conv_filter_sizes: List[Tuple[int, int]],
+               subsample_conv_pool_sizes: Optional[List[Tuple[int, int]]],
                ff_dim: nn.Dim = nn.NotSpecified,
                ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
                dropout: float = 0.1,
@@ -238,6 +241,9 @@ class ConformerEncoder(nn.Module):
     """
     :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
+    :param subsample_conv_out_dims: list of the output dimensions for each subsampling conv layer
+    :param subsample_conv_filter_sizes: list of filter sizes for each subsampling conv layer
+    :param subsample_conv_pool_sizes: list of pool sizes applied after each conv layer
     :param ff_dim: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
     :param ff_activation: activation function for feed-forward network
     :param dropout: the dropout value for the FF block
@@ -254,9 +260,9 @@ class ConformerEncoder(nn.Module):
 
     self.conv_subsample_layer = ConformerConvSubsample(
       in_dim=in_dim,
-      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
-      filter_sizes=[(3, 3), (3, 3)],
-      pool_sizes=[(2, 2), (2, 2)],
+      out_dims=subsample_conv_out_dims,
+      filter_sizes=subsample_conv_filter_sizes,
+      pool_sizes=subsample_conv_pool_sizes,
       dropout=dropout)
 
     self.projection = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
