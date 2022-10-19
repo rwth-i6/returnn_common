@@ -44,7 +44,7 @@ def length(dim: nn.Dim,
     **args}, name='length')
 
 
-def reshape(source: nn.Tensor, old_dims: Sequence[nn.Dim], new_dims: Sequence[nn.Dim]) -> nn.Tensor:
+def reshape(source: nn.Tensor, in_dims: Sequence[nn.Dim], out_dims: Sequence[nn.Dim]) -> nn.Tensor:
   """
   Wraps tf.reshape.
 
@@ -54,10 +54,10 @@ def reshape(source: nn.Tensor, old_dims: Sequence[nn.Dim], new_dims: Sequence[nn
   This can be used for clever indexing, slicing, padding tricks.
 
   :param source: e.g. (..., old_dims, ...)
-  :param old_dims: the old dims which should be reshaped into new_dims.
+  :param in_dims: the old dims which should be reshaped into new_dims.
     This should only cover those dims which should be reshaped,
     not all the dims of the source.
-  :param new_dims: the new dims which should be reshaped from old_dims.
+  :param out_dims: the new dims which should be reshaped from old_dims.
     This is excluding any of the other dims in the source.
   :return: e.g. (..., new_dims, ...)
   """
@@ -65,9 +65,9 @@ def reshape(source: nn.Tensor, old_dims: Sequence[nn.Dim], new_dims: Sequence[nn
     {
       "class": "reshape",
       "from": source,
-      "old_dims": old_dims,
-      "new_dims": new_dims,
-      "extra_deps": nn.get_dim_deps(new_dims),
+      "in_dims": in_dims,
+      "out_dims": out_dims,
+      "extra_deps": nn.get_dim_deps(out_dims),
     },
     name="reshape")
 
