@@ -67,7 +67,7 @@ NetDictRaw = Dict[str, LayerDictRaw]
 RawTensorTypes = Union[int, float, complex, numpy.number, numpy.ndarray, bool, str]
 OutShapeType = Union[Set[Union[Dim, _MarkedDim]], tuple, list]
 
-min_returnn_behavior_version = 12
+min_returnn_behavior_version = 14
 
 
 class Tensor:
