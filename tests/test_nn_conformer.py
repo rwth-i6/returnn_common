@@ -35,7 +35,8 @@ def test_nn_conformer():
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
   conformer = nn.ConformerEncoder(
     input_dim, nn.FeatureDim("out", 14), ff_dim=nn.FeatureDim("ff", 17),
-    num_heads=2, num_layers=2)
+    num_heads=2, num_layers=2, subsample_conv_out_dims=[32, 64],
+    subsample_conv_filter_sizes=[(3, 3), (3, 3)], subsample_conv_pool_sizes=[(2, 1), (2, 1)])
   out, _ = conformer(data, in_spatial_dim=time_dim)
   out.mark_as_default_output()
 
