@@ -43,3 +43,24 @@ def test_relative_positional_encoding():
   config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True, in_dim=nn.FeatureDim("in", 12))
   pprint(net_dict)
   dummy_run_net(config, net=net)
+
+
+def test_rel_pos_self_attention():
+  class _Net(nn.Module):
+    # noinspection PyShadowingNames
+    def __init__(self, in_dim: nn.FeatureDim):
+      super().__init__()
+      self.self_att = nn.RelPosSelfAttention(
+        in_dim=in_dim, proj_dim=nn.FeatureDim("out", 5),
+        key_dim_total=nn.FeatureDim("key-dim-total", 21),
+        value_dim_total=nn.FeatureDim("value-dim-total", 33),
+        num_heads=3)
+
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      """forward"""
+      return self.self_att(x, axis=axis)
+
+  in_dim = nn.FeatureDim("in", 12)
+  config, net_dict, net = dummy_config_net_dict(lambda: _Net(in_dim), with_axis=True, in_dim=in_dim)
+  pprint(net_dict)
+  dummy_run_net(config, net=net)
