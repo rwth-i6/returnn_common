@@ -82,6 +82,7 @@ BlacklistLayerClassNames = {
   "split_batch_time",  # should have different API. or just unflatten_batch?
   "loss",
   "transpose",
+  "reshape",  # explicitly
   "accumulate_mean",
   "framewise_statistics",
   "image_summary",
