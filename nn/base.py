@@ -231,10 +231,13 @@ class Tensor:
     This does not add out_shape to the layer dict as we already have that automatically.
     Thus, this is purely for verification here on returnn-common side.
 
+    Also, we are more relaxed here. We currently ignore missing implicit dims.
+    https://github.com/rwth-i6/returnn/issues/1153
+
     :return: self, such that you can write this as a chained op
     :rtype: Tensor
     """
-    self.data.verify_out_shape(out_shape)
+    self.data.verify_out_shape(out_shape, allow_missing_implicit_dims=True)
     return self
 
   def _assign_parent_name_ctx(self, *, ref_ctx: nn.NameCtx):
