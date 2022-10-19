@@ -227,7 +227,7 @@ class ConformerEncoder(nn.Module):
                out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
                *,
                num_layers: int,
-               subsample_conv_out_dims: List[int],
+               subsample_conv_out_dims: List[nn.Dim],
                subsample_conv_filter_sizes: List[Tuple[int, int]],
                subsample_conv_pool_sizes: Optional[List[Tuple[int, int]]],
                ff_dim: nn.Dim = nn.NotSpecified,
@@ -260,7 +260,7 @@ class ConformerEncoder(nn.Module):
 
     self.conv_subsample_layer = ConformerConvSubsample(
       in_dim=in_dim,
-      out_dims=[nn.FeatureDim(f"conv{idx+1}", out_dim) for idx, out_dim in enumerate(subsample_conv_out_dims)],
+      out_dims=subsample_conv_out_dims,
       filter_sizes=subsample_conv_filter_sizes,
       pool_sizes=subsample_conv_pool_sizes,
       dropout=dropout)
