@@ -280,8 +280,7 @@ class ConformerEncoder(nn.Module):
       in_dim=in_dim,
       out_dims=subsample_conv_out_dims,
       filter_sizes=subsample_conv_filter_sizes,
-      pool_sizes=subsample_conv_pool_sizes,
-      dropout=dropout)
+      pool_sizes=subsample_conv_pool_sizes)
 
     self.projection = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
 
