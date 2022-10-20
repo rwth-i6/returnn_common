@@ -130,6 +130,6 @@ def test_nn_conformer():
      'layers/1/self_att/linear_pos/weight',
      'layers/1/self_att_layer_norm/bias',
      'layers/1/self_att_layer_norm/scale',
-    })
+     })
 
   dummy_run_net(config, net=conformer)
