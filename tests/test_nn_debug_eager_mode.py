@@ -38,8 +38,12 @@ def test_conformer():
     nn.Data("data_conformer", dim_tags=[nn.batch_dim, time_dim, nn.FeatureDim("in", 5)]))
   conformer = nn.ConformerEncoder(
     data.feature_dim, nn.FeatureDim("conformer", 10), num_layers=2, num_heads=2,
-    subsample_conv_out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
-    subsample_conv_filter_sizes=[(3, 3), (3, 3)], subsample_conv_pool_sizes=[(2, 1), (2, 1)])
+    input_layer=nn.ConformerConvSubsample(
+      data.feature_dim,
+      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
+      filter_sizes=[(3, 3), (3, 3)], pool_sizes=[(2, 1), (2, 1)]
+    ),
+  )
   out, out_spatial_dim = conformer(data, in_spatial_dim=time_dim)
   assert out.data.placeholder is not None
 
