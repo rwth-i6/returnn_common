@@ -245,9 +245,8 @@ class ConformerEncoder(nn.Module):
                out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
                *,
                num_layers: int,
-               subsample_conv_out_dims: List[nn.Dim],
-               subsample_conv_filter_sizes: List[Tuple[int, int]],
-               subsample_conv_pool_sizes: Optional[List[Tuple[int, int]]],
+               input_layer: Union[ConformerConvSubsample, nn.Module, Any],
+               input_dropout: float = 0.1,
                ff_dim: nn.Dim = nn.NotSpecified,
                ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
                dropout: float = 0.1,
@@ -259,9 +258,8 @@ class ConformerEncoder(nn.Module):
     """
     :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
-    :param subsample_conv_out_dims: list of the output dimensions for each subsampling conv layer
-    :param subsample_conv_filter_sizes: list of filter sizes for each subsampling conv layer
-    :param subsample_conv_pool_sizes: list of pool sizes applied after each conv layer
+    :param input_layer: input/frontend/prenet with potential subsampling. (x, in_spatial_dim) -> (y, out_spatial_dim)
+    :param input_dropout: applied after input_projection(input_layer(x))
     :param ff_dim: the dimension of feed-forward layers. 2048 originally, or 4 times out_dim
     :param ff_activation: activation function for feed-forward network
     :param dropout: the dropout value for the FF block
@@ -273,16 +271,14 @@ class ConformerEncoder(nn.Module):
     """
     super().__init__()
 
+    self.in_dim = in_dim
     self.out_dim = out_dim
     self.dropout = dropout
 
-    self.conv_subsample_layer = ConformerConvSubsample(
-      in_dim=in_dim,
-      out_dims=subsample_conv_out_dims,
-      filter_sizes=subsample_conv_filter_sizes,
-      pool_sizes=subsample_conv_pool_sizes)
-
-    self.projection = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
+    # TODO once we figured out good defaults, we would create ConformerConvSubsample here when not given
+    self.input_layer = input_layer
+    self.input_projection = nn.Linear(self.input_layer.out_dim, self.out_dim, with_bias=False)
+    self.input_dropout = input_dropout
 
     if not encoder_layer:
       encoder_layer = ConformerEncoderLayer(
@@ -293,8 +289,8 @@ class ConformerEncoder(nn.Module):
 
   def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
-    x_subsample, out_spatial_dim = self.conv_subsample_layer(inp, in_spatial_dim=in_spatial_dim)
-    x_linear = self.projection(x_subsample)
-    x = nn.dropout(x_linear, axis=self.projection.out_dim, dropout=self.dropout)
+    x_subsample, out_spatial_dim = self.input_layer(inp, in_spatial_dim=in_spatial_dim)
+    x_linear = self.input_projection(x_subsample)
+    x = nn.dropout(x_linear, axis=self.input_projection.out_dim, dropout=self.input_dropout)
     x = self.layers(x, axis=out_spatial_dim)
     return x, out_spatial_dim

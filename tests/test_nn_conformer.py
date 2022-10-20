@@ -35,8 +35,13 @@ def test_nn_conformer():
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
   conformer = nn.ConformerEncoder(
     input_dim, nn.FeatureDim("out", 14), ff_dim=nn.FeatureDim("ff", 17),
-    num_heads=2, num_layers=2, subsample_conv_out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
-    subsample_conv_filter_sizes=[(3, 3), (3, 3)], subsample_conv_pool_sizes=[(2, 1), (2, 1)])
+    input_layer=nn.ConformerConvSubsample(
+      input_dim,
+      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
+      filter_sizes=[(3, 3), (3, 3)], pool_sizes=[(2, 1), (2, 1)]
+    ),
+    num_heads=2, num_layers=2,
+  )
   out, _ = conformer(data, in_spatial_dim=time_dim)
   out.mark_as_default_output()
 
@@ -50,10 +55,11 @@ def test_nn_conformer():
 
   assert_equal(
     collected_var_names,
-    {'conv_subsample_layer/conv_layers/0/bias',
-     'conv_subsample_layer/conv_layers/0/filter',
-     'conv_subsample_layer/conv_layers/1/bias',
-     'conv_subsample_layer/conv_layers/1/filter',
+    {'input_layer/conv_layers/0/bias',
+     'input_layer/conv_layers/0/filter',
+     'input_layer/conv_layers/1/bias',
+     'input_layer/conv_layers/1/filter',
+     'input_projection/weight',
      'layers/0/conv_block/depthwise_conv/bias',
      'layers/0/conv_block/depthwise_conv/filter',
      'layers/0/conv_block/norm/beta',
@@ -124,6 +130,6 @@ def test_nn_conformer():
      'layers/1/self_att/linear_pos/weight',
      'layers/1/self_att_layer_norm/bias',
      'layers/1/self_att_layer_norm/scale',
-     'projection/weight'})
+    })
 
   dummy_run_net(config, net=conformer)
