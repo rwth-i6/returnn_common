@@ -252,10 +252,10 @@ class Transformer(nn.Module):
                ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
                dropout: float = 0.1,
                att_dropout: float = 0.1,
-               custom_encoder: Optional[Union[TransformerEncoder, Any]] = None,
-               custom_decoder: Optional[Union[TransformerDecoder, Any]] = None,
-               custom_encoder_layer: Optional[Union[TransformerEncoderLayer, Any]] = None,
-               custom_decoder_layer: Optional[Union[TransformerDecoderLayer, Any]] = None,
+               encoder: Optional[Union[TransformerEncoder, Any]] = None,
+               decoder: Optional[Union[TransformerDecoder, Any]] = None,
+               encoder_layer: Optional[Union[TransformerEncoderLayer, Any]] = None,
+               decoder_layer: Optional[Union[TransformerDecoderLayer, Any]] = None,
                norm_eps: float = 1e-6,
                norm=nn.LayerNorm,
                norm_first: bool = True,
@@ -278,12 +278,12 @@ class Transformer(nn.Module):
     :param ff_activation: activation function
     :param dropout: Dropout value, PyTorch name: dropout
     :param att_dropout: dropout value for attention
-    :param custom_encoder: Custom Encoder to replace the standard encoder
-    :param custom_decoder: Custom Decoder to replace the standard decoder
-    :param custom_encoder_layer: Custom Encoder layer to replace the standard layer if custom_encoder and
+    :param encoder: Custom Encoder to replace the standard encoder
+    :param decoder: Custom Decoder to replace the standard decoder
+    :param encoder_layer: Custom Encoder layer to replace the standard layer if custom_encoder and
       custom_encoder_layer are given custom_encoder will be preferred.
       Copies of it will be made for each layer, so there is no automatic param sharing.
-    :param custom_decoder_layer: Custom Decoder layer to replace the standard layer if custom_decoder and
+    :param decoder_layer: Custom Decoder layer to replace the standard layer if custom_decoder and
       custom_decoder_layer are given custom_decoder will be preferred
       Copies of it will be made for each layer, so there is no automatic param sharing.
     :param norm_eps: Epsilon value for layer normalization
@@ -301,12 +301,11 @@ class Transformer(nn.Module):
     if ff_dim is nn.NotSpecified:
       ff_dim = model_dim * 4
 
-    if custom_encoder is not None:
-      self.encoder = custom_encoder
+    if encoder is not None:
+      self.encoder = encoder
       assert enc_self_attention is None
     else:
-      if custom_encoder_layer is not None:
-        encoder_layer = custom_encoder_layer
+      if encoder_layer is not None:
         assert enc_self_attention is None
       else:
         if enc_self_attention is None:
@@ -324,13 +323,12 @@ class Transformer(nn.Module):
     self.target_eos_symbol = target_eos_symbol
     self.target_embedding = nn.Linear(target_dim, model_dim)
 
-    if custom_decoder is not None:
-      self.decoder = custom_decoder
+    if decoder is not None:
+      self.decoder = decoder
       assert dec_causal_self_attention is None
       assert cross_attention is None
     else:
-      if custom_decoder_layer is not None:
-        decoder_layer = custom_decoder_layer
+      if decoder_layer is not None:
         assert dec_causal_self_attention is None
         assert cross_attention is None
       else:
