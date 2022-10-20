@@ -272,7 +272,7 @@ def relative_positional_encoding(
   position, out_spatial_dim = nn.concat(
     (position_neg, spatial_dim - 1),
     (position_pos, spatial_dim))
-  feat2_dim = feat_dim // 2
+  feat2_dim = feat_dim.div_left(2)
   div_term = nn.exp(nn.range_over_dim(feat2_dim, dtype=dtype) * -(2. * math.log(10000.0) / feat_dim.dimension))
   arg_sin = nn.combine_bc(position, '*', div_term)
   arg_cos = arg_sin + math.pi / 2.
