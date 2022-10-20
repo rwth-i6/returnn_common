@@ -448,7 +448,7 @@ def pool3d(
 
 def make_conv_out_spatial_dims(in_spatial_dims: Sequence[nn.Dim],
                                *,
-                               filter_size: Union[Sequence[int], int],
+                               filter_size: Union[Sequence[Union[int, nn.Dim]], int, nn.Dim],
                                padding: str,
                                strides: Union[Sequence[int], int] = 1,
                                dilation_rate: Union[Sequence[int], int] = 1,
@@ -459,8 +459,10 @@ def make_conv_out_spatial_dims(in_spatial_dims: Sequence[nn.Dim],
   if not description_prefix:
     description_prefix = nn.NameCtx.current_ctx().get_abs_name()
   nd = len(in_spatial_dims)
-  if isinstance(filter_size, int):
+  if isinstance(filter_size, (int, nn.Dim)):
     filter_size = [filter_size] * nd
+  filter_size = [d.dimension if isinstance(d, nn.Dim) else d for d in filter_size]
+  assert all(isinstance(s, int) for s in filter_size)
   if isinstance(strides, int):
     strides = [strides] * nd
   if isinstance(dilation_rate, int):
