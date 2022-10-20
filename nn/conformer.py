@@ -255,7 +255,7 @@ class ConformerEncoder(nn.Module):
                conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
                num_heads: int = 4,
                att_dropout: float = 0.1,
-               custom_encoder_layer: Optional[Union[ConformerEncoderLayer, Any]] = None):
+               encoder_layer: Optional[Union[ConformerEncoderLayer, nn.Module, Any]] = None):
     """
     :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
@@ -269,7 +269,7 @@ class ConformerEncoder(nn.Module):
     :param conv_norm: used for the conv block. Batch norm originally
     :param num_heads: the number of attention heads
     :param att_dropout: attention dropout value
-    :param custom_encoder_layer: an instance of :class:`ConformerEncoderLayer` or similar
+    :param encoder_layer: an instance of :class:`ConformerEncoderLayer` or similar
     """
     super().__init__()
 
@@ -284,9 +284,7 @@ class ConformerEncoder(nn.Module):
 
     self.projection = nn.Linear(self.conv_subsample_layer.out_dim, self.out_dim, with_bias=False)
 
-    if custom_encoder_layer:
-      encoder_layer = custom_encoder_layer
-    else:
+    if not encoder_layer:
       encoder_layer = ConformerEncoderLayer(
         out_dim=out_dim, ff_dim=ff_dim, ff_activation=ff_activation, dropout=dropout,
         conv_kernel_size=conv_kernel_size, conv_norm=conv_norm, num_heads=num_heads, att_dropout=att_dropout)
