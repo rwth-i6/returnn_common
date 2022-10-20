@@ -168,7 +168,7 @@ class ConformerEncoderLayer(nn.Module):
         dropout: float = 0.1,
         conv_kernel_size: int = 32,
         conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
-        num_heads: int = 8,
+        num_heads: int = 4,
         att_dropout: float = 0.1,
         ):
     """
