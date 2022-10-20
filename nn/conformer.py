@@ -72,21 +72,37 @@ class ConformerConvBlock(nn.Module):
 
 class ConformerConvSubsample(nn.Module):
   """
-  Conv 2D block with optional max-pooling
+  Conv 2D block with optional max-pooling or striding.
+
+  References:
+
+    https://github.com/espnet/espnet/blob/4138010fb66ad27a43e8bee48a4932829a0847ae/espnet/nets/pytorch_backend/transformer/subsampling.py#L162
+    https://github.com/rwth-i6/returnn-experiments/blob/5852e21f44d5450909dee29d89020f1b8d36aa68/2022-swb-conformer-hybrid-sat/table_1_and_2/reduced_dim.config#L226
+    (actually the latter is different...)
+
+  To get the ESPnet case, for example Conv2dSubsampling6, use these options
+  (out_dim is the model dim of the encoder)
+  (dropout is applied only afterwards as part of the pos-enc module (0.1) but not within):
+
+    out_dims=[out_dim, out_dim],  # ESPnet standard, but this might be too large
+    filter_sizes=[3, 5],
+    strides=[2, 3],
+    padding="valid",
   """
 
   def __init__(
         self, in_dim: nn.Dim, *,
         out_dims: List[nn.Dim],
-        dropout: float,
-        filter_sizes: List[Tuple[int, int]],
+        dropout: float = 0.,
+        filter_sizes: List[Union[int, Tuple[int, int]]],
+        strides: Optional[List[Union[int, Tuple[int, int]]]] = None,
         pool_sizes: Optional[List[Tuple[int, int]]] = None,
         activation: Callable[[nn.Tensor], nn.Tensor] = nn.relu,
         padding: str = 'same'):
     """
     :param out_dims: the number of output channels. last element is the output feature dimension
     :param filter_sizes: a list of filter sizes for the conv layer
-    :param dropout: the dropout value
+    :param dropout: dropout after each conv (or pool), applied on the channel dim
     :param pool_sizes: a list of pooling factors applied after conv layer
     :param activation: the activation function
     :param padding: 'same' or 'valid'
@@ -98,16 +114,18 @@ class ConformerConvSubsample(nn.Module):
     self.activation = activation
 
     self.conv_layers = nn.ModuleList()
-    assert len(filter_sizes) == len(out_dims) > 0
+    if strides is None:
+      strides = [1] * len(out_dims)
+    assert len(out_dims) == len(filter_sizes) == len(strides) > 0
     self._dummy_in_dim = nn.FeatureDim("dummy-input-feature-dim", 1)
     self.in_dim = in_dim
     prev_out_dim = self._dummy_in_dim
     second_spatial_dim = in_dim
-    for i, (filter_size, out_dim) in enumerate(zip(filter_sizes, out_dims)):
-      self.conv_layers.append(
-        nn.Conv2d(prev_out_dim, out_dim, filter_size=filter_size, padding=padding))
+    for i, (filter_size, stride, out_dim) in enumerate(zip(filter_sizes, strides, out_dims)):
+      conv = nn.Conv2d(prev_out_dim, out_dim, filter_size=filter_size, strides=stride, padding=padding)
+      self.conv_layers.append(conv)
       second_spatial_dim, = nn.make_conv_out_spatial_dims(
-        [second_spatial_dim], filter_size=filter_size[1], padding=padding)
+        [second_spatial_dim], filter_size=conv.filter_size[1], strides=conv.strides[1], padding=padding)
       if self.pool_sizes and i < len(self.pool_sizes):
         second_spatial_dim, = nn.make_conv_out_spatial_dims(
           [second_spatial_dim], filter_size=self.pool_sizes[i][1], strides=self.pool_sizes[i][1], padding='same')
