@@ -111,6 +111,8 @@ class _Conv(_ConvOrTransposedConv):
     """
     self.groups = groups
     super().__init__(in_dim=in_dim, out_dim=out_dim, filter_size=filter_size, padding=padding, with_bias=with_bias)
+    if isinstance(strides, int):
+      strides = [strides] * self.nd
     self.strides = strides
     self.dilation_rate = dilation_rate
 
