@@ -82,7 +82,6 @@ class ConformerConvSubsample(nn.Module):
 
   To get the ESPnet case, for example Conv2dSubsampling6, use these options
   (out_dim is the model dim of the encoder)
-  (dropout is applied only afterwards as part of the pos-enc module (0.1) but not within):
 
     out_dims=[out_dim, out_dim],  # ESPnet standard, but this might be too large
     filter_sizes=[3, 5],
@@ -93,7 +92,6 @@ class ConformerConvSubsample(nn.Module):
   def __init__(
         self, in_dim: nn.Dim, *,
         out_dims: List[nn.Dim],
-        dropout: float = 0.,
         filter_sizes: List[Union[int, Tuple[int, int]]],
         strides: Optional[List[Union[int, Tuple[int, int]]]] = None,
         pool_sizes: Optional[List[Tuple[int, int]]] = None,
@@ -102,14 +100,12 @@ class ConformerConvSubsample(nn.Module):
     """
     :param out_dims: the number of output channels. last element is the output feature dimension
     :param filter_sizes: a list of filter sizes for the conv layer
-    :param dropout: dropout after each conv (or pool), applied on the channel dim
     :param pool_sizes: a list of pooling factors applied after conv layer
     :param activation: the activation function
     :param padding: 'same' or 'valid'
     """
     super().__init__()
 
-    self.dropout = dropout
     self.pool_sizes = pool_sizes
     self.activation = activation
 
@@ -147,8 +143,6 @@ class ConformerConvSubsample(nn.Module):
         x, in_spatial_dims = nn.pool2d(
           x, in_spatial_dims=in_spatial_dims,
           pool_size=self.pool_sizes[i], padding='same', mode='max')
-      if self.dropout:
-        x = nn.dropout(x, axis=in_dim, dropout=self.dropout)
     self._final_second_spatial_dim.declare_same_as(in_spatial_dims[-1])
     out, _ = nn.merge_dims(x, axes=[self._final_second_spatial_dim, in_dim])
     return out, in_spatial_dims[0]
