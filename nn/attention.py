@@ -267,7 +267,7 @@ def relative_positional_encoding(
     return cache[(spatial_dim, feat_dim)]
   import math
   position_pos = nn.range_over_dim(spatial_dim, dtype=dtype)
-  position_neg = nn.range_over_dim(spatial_dim - 1, dtype=dtype)
+  position_neg = -nn.dim_value(spatial_dim) + nn.range_over_dim(spatial_dim - 1, dtype=dtype) + 1
   position, out_spatial_dim = nn.concat(
     (position_neg, spatial_dim - 1),
     (position_pos, spatial_dim))
