@@ -65,7 +65,6 @@ def random_mask_v2(x: nn.Tensor, *,
   :param max_num: inclusive
   :param max_dims: inclusive
   :param mask_value:
-  :rtype: tf.Tensor
   """
   batch_dims = list(x.shape_ordered)
   batch_dims.remove(mask_axis)
