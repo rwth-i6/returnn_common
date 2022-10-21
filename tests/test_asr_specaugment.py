@@ -82,6 +82,52 @@ def test_random_mask_v2_via_get_network():
   engine.forward_single(train_dataset, seq_idx=0)
 
 
+def test_specaugment_v2_via_get_network_train():
+  from returnn.config import Config
+  from returnn.tf.engine import Engine
+  from returnn.datasets import init_dataset
+
+  feat_dim = nn.FeatureDim("feat", 5)
+  classes_dim = nn.FeatureDim("classes", 5)
+  time_dim = nn.SpatialDim("time")
+  audio = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim])
+  classes = nn.Data("classes", dim_tags=[nn.batch_dim, time_dim], sparse_dim=classes_dim)
+
+  def _config_get_network(epoch: int, **_kwargs) -> dict:
+    # noinspection PyStatementEffect
+    epoch  # unused
+    nn.reset_default_root_name_ctx()
+    x = nn.get_extern_data(audio)
+    y = nn.get_extern_data(classes)
+
+    from ..asr import specaugment
+    masked = specaugment.specaugment_v2(
+      x=x, spatial_dim=time_dim, feature_dim=feat_dim)
+    print(masked)
+    net = nn.Linear(feat_dim, classes_dim)
+    logits = net(masked)
+    logits.mark_as_default_output()
+    loss = nn.sparse_softmax_cross_entropy_with_logits(logits=logits, targets=y, axis=classes_dim)
+    loss.mark_as_loss("ce")
+
+    net_dict = nn.get_returnn_config().get_net_dict_raw_dict(net)
+    return net_dict
+
+  config = Config({
+    "task": "train", "num_epochs": 1, "start_epoch": 1,
+    "get_network": _config_get_network,
+    "extern_data": {
+      audio.name: {"dim_tags": [nn.batch_dim, time_dim, feat_dim], "available_for_inference": True},
+      classes.name: {"dim_tags": [nn.batch_dim, time_dim], "sparse_dim": classes_dim},
+    },
+  })
+  train_dataset = init_dataset(
+    {"class": "DummyDataset", "input_dim": feat_dim.dimension, "output_dim": classes_dim.dimension, "num_seqs": 3})
+  engine = Engine(config)
+  engine.init_train_from_config(config, train_data=train_dataset)
+  engine.train()
+
+
 def test_specaugment_v2_real_example_audio():
   nn.reset_default_root_name_ctx()
 
