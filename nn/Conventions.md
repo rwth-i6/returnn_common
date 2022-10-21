@@ -73,7 +73,17 @@ and there might be an optional `out_spatial_dim`,
 which can be predefined, or otherwise is automatically created
 (and in any case returned then).
 
-Examples:
+On naming, this is a bit arbitrary (see [issue #120](https://github.com/rwth-i6/returnn_common/issues/120)).
+Current conventions:
+
+- `spatial_dim`: When it is clear that the dim is "spatial", e.g. used for recurrency, or convolution.
+- `in_spatial_dim`: spatial dim where there will be a potential different `out_spatial_dim` in the output
+- `axis`: When it is very generic, such as for `nn.reduce`
+- `in_dim`: usually the input feature dim or channel dim, and usually there is also an `out_dim` for the output feature dim
+
+If there can be potential multiple dims, it would use the plural form.
+
+Examples of functions and modules with such arguments:
 
 * `nn.Conv1d` etc
 * `nn.pool1d` etc

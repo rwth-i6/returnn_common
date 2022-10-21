@@ -37,13 +37,13 @@ class _Rec(nn.Module):
       self.param_list = param_list
 
   def __call__(self, source: nn.Tensor, *,
-               axis: nn.Dim,
+               spatial_dim: nn.Dim,
                state: Union[nn.LayerState, Dict[str, nn.Tensor], nn.Tensor, None, nn.NotSpecified] = nn.NotSpecified,
                direction: int = 1,
                ) -> Tuple[nn.Tensor, nn.LayerState]:
     """
     :param source:
-    :param axis: nn.single_step_dim specifies to operate for a single step
+    :param spatial_dim: nn.single_step_dim specifies to operate for a single step
     :param state: prev state when operating a single step or initial state when operating on an axis
     :param direction: 1 for forward direction, -1 for backward direction
     :return: out, out_state. out_state is the new or last state.
@@ -51,7 +51,7 @@ class _Rec(nn.Module):
     assert self.in_dim in source.shape
     rec_layer_dict = {
       "class": "rec", "from": source,
-      "in_dim": self.in_dim, "axis": axis, "out_dim": self.out_dim,
+      "in_dim": self.in_dim, "axis": spatial_dim, "out_dim": self.out_dim,
       "unit": self.unit}
     if self.unit_opts:
       rec_layer_dict["unit_opts"] = self.unit_opts
@@ -64,9 +64,9 @@ class _Rec(nn.Module):
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     assert direction in [1, -1]
     if direction == -1:
-      assert axis is not nn.single_step_dim, "Can not reverse direction for single step recurrent layers"
+      assert spatial_dim is not nn.single_step_dim, "Can not reverse direction for single step recurrent layers"
       rec_layer_dict["direction"] = -1
-    nn.ReturnnWrappedLayerBase.handle_recurrent_state(rec_layer_dict, axis=axis, state=state)
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(rec_layer_dict, axis=spatial_dim, state=state)
     out = nn.make_layer(rec_layer_dict, name="rec")
     out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(out)
     return out, out_state

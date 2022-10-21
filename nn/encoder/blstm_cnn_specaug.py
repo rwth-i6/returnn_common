@@ -32,12 +32,12 @@ class BlstmCnnSpecAugEncoder(BlstmEncoder):
       num_layers=num_layers, time_reduction=time_reduction,
       l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
-  def __call__(self, x, *, spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     if self.with_specaugment:
-      x = specaugment_v2(x, spatial_dim=spatial_dim)
-    x = self.pre_conv_net(x, spatial_dim=spatial_dim)
-    x, spatial_dim = super(BlstmCnnSpecAugEncoder, self).__call__(x, spatial_dim=spatial_dim)
-    return x, spatial_dim
+      source = specaugment_v2(source, spatial_dim=in_spatial_dim)
+    source = self.pre_conv_net(source, spatial_dim=in_spatial_dim)
+    source, in_spatial_dim = super(BlstmCnnSpecAugEncoder, self).__call__(source, in_spatial_dim=in_spatial_dim)
+    return source, in_spatial_dim
 
 
 class PreConvNet(nn.Module):

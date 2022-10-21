@@ -6,6 +6,7 @@ Ref: https://arxiv.org/abs/2005.08100
 from typing import Tuple, List, Callable, Optional, Union, Any
 import copy as _copy
 from .. import nn
+from .encoder.base import ISeqDownsamplingEncoder
 
 
 class ConformerPositionwiseFeedForward(nn.Module):
@@ -70,7 +71,7 @@ class ConformerConvBlock(nn.Module):
     return x_conv2
 
 
-class ConformerConvSubsample(nn.Module):
+class ConformerConvSubsample(ISeqDownsamplingEncoder):
   """
   Conv 2D block with optional max-pooling or striding.
 
@@ -129,12 +130,12 @@ class ConformerConvSubsample(nn.Module):
     self._final_second_spatial_dim = second_spatial_dim
     self.out_dim = second_spatial_dim * prev_out_dim
 
-  def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
-    assert self.in_dim in inp.shape
+    assert self.in_dim in source.shape
     in_spatial_dims = [in_spatial_dim, self.in_dim]
     in_dim = self._dummy_in_dim
-    x = nn.expand_dim(inp, dim=in_dim)
+    x = nn.expand_dim(source, dim=in_dim)
     for i, conv_layer in enumerate(self.conv_layers):
       x, in_spatial_dims = conv_layer(x, in_spatial_dims=in_spatial_dims)
       in_dim = conv_layer.out_dim
@@ -229,7 +230,7 @@ class ConformerEncoderLayer(nn.Module):
     return self.final_layer_norm(x_ffn2_out)
 
 
-class ConformerEncoder(nn.Module):
+class ConformerEncoder(ISeqDownsamplingEncoder):
   """
   Represents Conformer encoder architecture
   """
@@ -239,7 +240,7 @@ class ConformerEncoder(nn.Module):
                out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
                *,
                num_layers: int,
-               input_layer: Union[ConformerConvSubsample, nn.Module, Any],
+               input_layer: Union[ConformerConvSubsample, ISeqDownsamplingEncoder, nn.Module, Any],
                input_dropout: float = 0.1,
                ff_dim: nn.Dim = nn.NotSpecified,
                ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
@@ -281,9 +282,9 @@ class ConformerEncoder(nn.Module):
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
-  def __call__(self, inp: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
-    x_subsample, out_spatial_dim = self.input_layer(inp, in_spatial_dim=in_spatial_dim)
+    x_subsample, out_spatial_dim = self.input_layer(source, in_spatial_dim=in_spatial_dim)
     x_linear = self.input_projection(x_subsample)
     x = nn.dropout(x_linear, axis=self.input_projection.out_dim, dropout=self.input_dropout)
     x = self.layers(x, axis=out_spatial_dim)

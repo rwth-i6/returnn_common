@@ -4,9 +4,10 @@ Multi layer BLSTm
 
 from typing import Union, Tuple
 from ... import nn
+from .base import ISeqDownsamplingEncoder
 
 
-class BlstmEncoder(nn.Module):
+class BlstmEncoder(ISeqDownsamplingEncoder):
   """
   multi-layer BLSTM
   """
@@ -51,19 +52,20 @@ class BlstmEncoder(nn.Module):
     if rec_weight_dropout:
       raise NotImplementedError  # TODO ...
 
-  def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> (nn.Tensor, nn.Dim):
+  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
     out_spatial_dim = nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:spatial")
     for i, lstm in enumerate(self.layers):
       if i > 0:
         red = self.time_reduction[i - 1] if (i - 1) < len(self.time_reduction) else 1
         if red > 1:
-          x, spatial_dim = nn.pool1d(x, mode="max", padding="same", pool_size=red, in_spatial_dim=spatial_dim)
+          source, in_spatial_dim = nn.pool1d(
+            source, mode="max", padding="same", pool_size=red, in_spatial_dim=in_spatial_dim)
         if self.dropout:
-          x = nn.dropout(x, dropout=self.dropout, axis=x.feature_dim)
+          source = nn.dropout(source, dropout=self.dropout, axis=source.feature_dim)
       assert isinstance(lstm, BlstmSingleLayer)
-      x = lstm(x, axis=spatial_dim)
-    spatial_dim.declare_same_as(out_spatial_dim)
-    return x, spatial_dim
+      source = lstm(source, spatial_dim=in_spatial_dim)
+    in_spatial_dim.declare_same_as(out_spatial_dim)
+    return source, in_spatial_dim
 
 
 class BlstmSingleLayer(nn.Module):
@@ -76,7 +78,7 @@ class BlstmSingleLayer(nn.Module):
     self.bw = nn.LSTM(in_dim, out_dim)
     self.out_dim = 2 * out_dim
 
-  def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
-    fw, _ = self.fw(x, axis=axis, direction=1)
-    bw, _ = self.bw(x, axis=axis, direction=-1)
+  def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
+    fw, _ = self.fw(x, spatial_dim=spatial_dim, direction=1)
+    bw, _ = self.bw(x, spatial_dim=spatial_dim, direction=-1)
     return nn.concat_features(fw, bw)
