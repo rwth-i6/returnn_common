@@ -14,6 +14,7 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
   def __init__(self,
                in_dim: nn.Dim,
                dim: nn.Dim = nn.FeatureDim("lstm-dim", 1024),
+               *,
                num_layers: int = 6,
                time_reduction: Union[int, Tuple[int, ...]] = 6,
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,
