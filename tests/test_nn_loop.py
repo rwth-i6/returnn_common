@@ -65,7 +65,7 @@ def test_rec_inner_lstm():
       loop.state.lstm = self.lstm.default_initial_state(batch_dims=x.batch_dims_ordered(remove=(axis, x.feature_dim)))
       with loop:
         x_ = loop.unstack(x)
-        y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, axis=nn.single_step_dim)
+        y_, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, spatial_dim=nn.single_step_dim)
         y = loop.stack(y_)
       return y
 
@@ -106,7 +106,7 @@ def test_rec_hidden():
       """
       Forward
       """
-      y, state = self.lstm(x, axis=axis)
+      y, state = self.lstm(x, spatial_dim=axis)
       res = nn.concat_features(y, state.h, state.c, allow_broadcast=True)
       return res
 
@@ -129,7 +129,7 @@ def test_rec_hidden_initial():
       y = self.linear(x)
       state = None
       for _ in range_(3):
-        y, state = self.lstm(y, state=state, axis=axis)
+        y, state = self.lstm(y, state=state, spatial_dim=axis)
       return y
 
   config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)

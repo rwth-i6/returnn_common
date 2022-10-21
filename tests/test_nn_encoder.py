@@ -23,7 +23,7 @@ def test_nn_blstm_cnn_specaug():
 
   from returnn_common.nn.encoder.blstm_cnn_specaug import BlstmCnnSpecAugEncoder
   net = BlstmCnnSpecAugEncoder(input_dim, nn.FeatureDim("out", 14), num_layers=2)
-  out, _ = net(data, spatial_dim=time_dim)
+  out, _ = net(data, in_spatial_dim=time_dim)
   assert isinstance(out, nn.Tensor)
   assert out.feature_dim == net.out_dim
   out.mark_as_default_output()

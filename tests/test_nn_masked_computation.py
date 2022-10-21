@@ -32,7 +32,7 @@ def test_masked_computation_lstm():
         x_ = loop.unstack(x)
         mask = nn.reduce(x_, mode="mean", axis=x_.feature_dim) >= 0.  # [B]
         with nn.MaskedComputation(mask):
-          loop.state.lstm_out, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, axis=nn.single_step_dim)
+          loop.state.lstm_out, loop.state.lstm = self.lstm(x_, state=loop.state.lstm, spatial_dim=nn.single_step_dim)
         y = loop.stack(loop.state.lstm_out)
       return y
 

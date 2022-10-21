@@ -25,7 +25,7 @@ def test_simple_net_lstm():
       """
       Forward
       """
-      x, _ = self.lstm(x, axis=axis)
+      x, _ = self.lstm(x, spatial_dim=axis)
       return x
 
   config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
