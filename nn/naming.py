@@ -193,6 +193,7 @@ class NameCtx:
     self.children = {}  # type: Dict[str, NameCtx]
     self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
     self.global_batch = None  # type: Optional[nn.BatchInfo]  # only for the root name ctx
+    self.extra_net_dict = {}  # type: Dict[str, Any]  # only for the root name ctx
     self.marked_outputs = []  # type: List[nn.Tensor]
     self.marked_losses = []  # type: List[nn.Tensor]
     self.parent = parent if parent is not NotSpecified else self.current_ctx()
@@ -1055,6 +1056,7 @@ class NetDictBuilderCtx:
 
       layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
       net_dict[sub_name_ctx.name] = layer_dict
+    net_dict.update(net.name_ctx.extra_net_dict)
     return net_dict
 
   def _expected_layer_abs_name_scope(self, name_ctx: NameCtx) -> Optional[str]:
