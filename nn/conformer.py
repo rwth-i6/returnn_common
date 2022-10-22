@@ -54,7 +54,7 @@ class ConformerConvBlock(nn.Module):
     """
     super().__init__()
 
-    self.positionwise_conv1 = nn.Linear(out_dim, out_dim * 2)
+    self.positionwise_conv1 = nn.Linear(out_dim, 2 * out_dim)
     self.depthwise_conv = nn.Conv1d(
       out_dim, out_dim, filter_size=kernel_size, groups=out_dim.dimension, padding='same')
     self.positionwise_conv2 = nn.Linear(out_dim, out_dim)
@@ -182,7 +182,7 @@ class ConformerEncoderLayer(nn.Module):
     self.out_dim = out_dim
 
     if ff_dim is nn.NotSpecified:
-      ff_dim = out_dim * 4
+      ff_dim = 4 * out_dim
     self.ffn1 = ConformerPositionwiseFeedForward(
       out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=ff_activation)
     self.ffn1_layer_norm = nn.LayerNorm(out_dim)
