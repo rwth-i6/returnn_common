@@ -3,7 +3,7 @@
 Language model functions.
 """
 
-from ..datasets.interface import VocabConfig
+from ..datasets_old_2022_10.interface import VocabConfig
 from typing import Dict, Any
 
 

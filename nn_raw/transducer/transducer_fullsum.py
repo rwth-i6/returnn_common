@@ -64,7 +64,7 @@ from .. import lstm
 from .recomb_recog import targetb_recomb_recog
 from .loss import rnnt_loss, rnnt_loss_out_type
 from ..collect_out_str import make_out_str_func
-from ...datasets.interface import TargetConfig
+from ...datasets_old_2022_10.interface import TargetConfig
 
 
 class Context:

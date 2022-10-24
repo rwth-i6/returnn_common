@@ -72,7 +72,7 @@ class Librispeech(DatasetConfig):
 
   def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
     """
-    Get eval datasets
+    Get eval datasets_old_2022_10
     """
     return {
       "dev": self.get_dataset("dev", train=False, subset=3000),
