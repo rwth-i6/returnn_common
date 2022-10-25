@@ -3,8 +3,14 @@
 Use this file as a RETURNN config.
 
 Here we demonstrate how to define a simple model and how to setup training.
+Also see: https://github.com/rwth-i6/returnn_common/wiki/RETURNN-example-config
 
 This config is similar as the pure-RETURNN demo-tf-native-lstm.12ax.config.
+
+Run as::
+
+  returnn/rnn.py returnn_common/demos/nn-model.returnn-config.py
+
 """
 
 import sys
