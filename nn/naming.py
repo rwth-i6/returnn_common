@@ -1547,10 +1547,10 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
     elif any(isinstance(v, nn.Tensor) for v in frame.f_locals.values()) or frame is top_frame:
       func = get_func_from_code_object(frame.f_code, frame=frame)
       if isinstance(func, types.FunctionType):
-        if func.__module__ == _generated_layers.__name__:  # ignore those
+        if func.__module__ in {_generated_layers.__name__, "copy"}:  # ignore those
           frame = frame.f_back
           continue
-        if func.__name__.startswith("<"):  # e.g. <dictcomp> or so
+        if func.__name__.startswith("<") or func.__name__.startswith("__"):  # e.g. <dictcomp> or __copy__ or so
           frame = frame.f_back  # also ignore
           continue
         if func in _FuncToFunctional:
