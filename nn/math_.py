@@ -246,10 +246,14 @@ def combine(
     a, b = ["source(0)" if s is tensor else str(s) for s in sources]
     bin_ops = {"add": "+", "sub": "-", "mul": "*", "truediv": "/", "floordiv": "//", "mod": "%", "pow": "**"}
     if kind in bin_ops:
-      return nn.make_layer({"class": "eval", "from": tensor, "eval": f"{a} {bin_ops[kind]} {b}"}, name=name or kind)
+      return nn.make_layer(
+        {"class": "eval", "from": tensor, "eval": f"{a} {bin_ops[kind]} {b}"},
+        name=name or kind, name_ctx_ignore_top_stack_frames=1)
     funcs = {"maximum": "tf.maximum", "minimum": "tf.minimum"}
     if kind in funcs:
-      return nn.make_layer({"class": "eval", "from": tensor, "eval": f"{funcs[kind]}({a}, {b})"}, name=name or kind)
+      return nn.make_layer(
+        {"class": "eval", "from": tensor, "eval": f"{funcs[kind]}({a}, {b})"},
+        name=name or kind, name_ctx_ignore_top_stack_frames=1)
   sources = [nn.convert_to_tensor(x) for x in sources]
   args = {
     'class': 'combine',
@@ -257,7 +261,7 @@ def combine(
     'kind': kind,
   }
   args.update(_args_allow_broadcast_all_sources(sources, "combine", allow_broadcast_all_sources))
-  return nn.make_layer(args, name=name or kind)
+  return nn.make_layer(args, name=name or kind, name_ctx_ignore_top_stack_frames=1)
 
 
 def combine_bc(a: Union[nn.Tensor, nn.RawTensorTypes],
