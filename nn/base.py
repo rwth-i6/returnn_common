@@ -984,7 +984,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     # Creates only a template layer.
     def _add_layer(name: str, layer_class: Type[LayerBase], **layer_desc) -> LayerBase:
       # noinspection PyProtectedMember
-      layer_desc = net._create_layer_layer_desc(name=out_name, layer_desc=layer_desc, template=True)
+      layer_desc = net._create_layer_layer_desc(name=name, layer_desc=layer_desc, template=True)
       try:
         out_data = layer_class.get_out_data_from_opts(**layer_desc)
         out_data = layer_class.fixup_out_data(out_data, **layer_desc)
@@ -1004,7 +1004,9 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
         # Still use `from exc` to keep the original exception,
         # which might additionally look nicer in the output.
         raise ReturnnConstructTemplateException("".join(msgs)).with_traceback(exc.__traceback__) from exc
-      return InternalLayer(name=name, network=net, output=out_data)
+      layer_ = InternalLayer(name=name, network=net, output=out_data)
+      net.layers[name] = layer_
+      return layer_
 
   # Use construct_layer to automatically handle more complex logic such as subnetworks.
   layer = net.construct_layer(net_dict=net_dict, name=out_name, add_layer=_add_layer)

@@ -622,3 +622,24 @@ def test_mod_early_setattr():
 
   config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config, net=net)
+
+
+def test_make_layer_subnet_deep():
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      # There used to be a bug in make_layer / _data_from_layer_dict,
+      # where such construction with multiple sources to the input
+      # would cause an exponential grow of construction calls by the number of layers,
+      # so the following code would almost loop infinitely.
+      num_layers = 100
+      subnet = {
+        "output": {"class": "copy", "from": f"deep{num_layers}"},
+        "deep0": {"class": "copy", "from": "data"},
+        "deep1": {"class": "copy", "from": "data"},
+      }
+      for i in range(1, num_layers):
+        subnet[f"deep{i + 1}"] = {"class": "combine", "kind": "add", "from": [f"deep{i}", f"deep{i - 1}"]}
+      return nn.make_layer({"class": "subnetwork", "from": x, "subnetwork": subnet}, name="subnet")
+
+  config, net_dict, net = dummy_config_net_dict(_Net)
+  dummy_run_net(config, net=net)
