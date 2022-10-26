@@ -253,6 +253,9 @@ def transducer_time_sync_full_sum_neg_log_prob(
       >=0-D float Tensor, shape (B...), the cost of each example in the minibatch
       (as negative log probabilities).
   """
+  assert isinstance(log_probs, nn.Tensor) and isinstance(labels, nn.Tensor)
+  assert isinstance(input_spatial_dim, nn.Dim) and isinstance(labels_spatial_dim, nn.Dim)
+  assert isinstance(blank_index, int)
   return nn.make_layer({
     "class": "eval",
     "from": [log_probs, labels],
