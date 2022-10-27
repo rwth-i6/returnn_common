@@ -45,6 +45,21 @@ def test_specaugment_v2_in_module_call():
   dummy_run_net(config)
 
 
+def test_random_mask_v2_zero_num():
+  # https://github.com/rwth-i6/returnn/issues/1190
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+      from ..asr.specaugment import random_mask_v2
+      return random_mask_v2(
+        x, mask_axis=axis, broadcast_axis=x.feature_dim,
+        # nn.constant is relevant to trigger the bug.
+        # This will cause the dynamic loop to run.
+        min_num=nn.constant(0), max_num=nn.constant(0), max_dims=1)
+
+  config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
+  dummy_run_net(config)
+
+
 def test_random_mask_v2_via_get_network():
   # https://github.com/rwth-i6/returnn_common/issues/199
   from returnn.config import Config
