@@ -1048,8 +1048,6 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
     raise TypeError(f"expected nn.Dim, got {type(dim)}")
   if dim.dimension is not None:  # static dim -> no deps
     return []
-  if dim.auto_generated:
-    raise ValueError(f"{dim} should not be auto-generated")  # strange to get this here in returnn-common
   if dim.generic or dim.special:
     raise ValueError(f"{dim} deps not defined for generic/special tags")
   if dim in _dim_deps:
