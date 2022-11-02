@@ -41,6 +41,7 @@ class GenericSelfAttention(nn.Module):
   """
   def __init__(self, in_dim: nn.Dim, proj_dim: Optional[nn.Dim], *,
                key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
+               with_bias: bool = True,
                att_dropout: float = 0.1):
     """
     :param in_dim: input dim
@@ -49,6 +50,9 @@ class GenericSelfAttention(nn.Module):
     :param key_dim_total: total key dim. should be a multiple of num_heads
     :param value_dim_total: total value dim. should be a multiple of num_heads
     :param num_heads: number of heads
+    :param with_bias: whether to add bias to qkv and proj linear projections.
+      Was False in original Transformer, but many recent implementations use True by default.
+      Also see: https://github.com/rwth-i6/returnn_common/issues/234.
     :param att_dropout: dropout for attention weights
     """
     super().__init__()
@@ -63,9 +67,9 @@ class GenericSelfAttention(nn.Module):
     self.num_heads = num_heads
     self.qkv_dim_total = 2 * key_dim_total + value_dim_total
     self.qkv_dim_per_head = 2 * self.key_dim_per_head + self.value_dim_per_head
-    self.qkv = nn.Linear(in_dim, self.qkv_dim_total)
+    self.qkv = nn.Linear(in_dim, self.qkv_dim_total, with_bias=with_bias)
     if proj_dim:
-      self.proj = nn.Linear(value_dim_total, proj_dim)
+      self.proj = nn.Linear(value_dim_total, proj_dim, with_bias=with_bias)
     else:
       self.proj = None
     self.att_dropout = att_dropout
