@@ -168,10 +168,12 @@ class RelPosSelfAttention(GenericSelfAttention):
   """
   def __init__(self, in_dim: nn.Dim, proj_dim: Optional[nn.Dim], *,
                key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
+               with_bias: bool = True,
                att_dropout: float = 0.1):
     super(RelPosSelfAttention, self).__init__(
       in_dim=in_dim, proj_dim=proj_dim,
       key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads,
+      with_bias=with_bias,
       att_dropout=att_dropout)
     # linear transformation for positional encoding
     self.linear_pos = nn.Linear(self.in_dim, self.key_dim_total, with_bias=False)
