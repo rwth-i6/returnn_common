@@ -88,8 +88,7 @@ def reshape(source: nn.Tensor, in_dims: Sequence[nn.Dim], out_dims: Sequence[nn.
 
 def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) -> nn.Tensor:
   """
-  Expand the source by the given dimension,
-  which should be 1.
+  Expand the source by the given dimension.
 
   Note that this is *never* needed for broadcasting.
   All broadcasting should always happen automatically.
@@ -99,7 +98,11 @@ def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) ->
   This can be reversed via :func:`squeeze`.
   """
   if dim.dimension != 1:
-    raise ValueError(f"{dim} is not a 1-dim")
+    return nn.make_layer(
+      {"class": "expand_dims", "from": source,
+       "axis": "feature" if dim.is_feature_dim() else "spatial",
+       "dim": dim},
+      name=name or "expand_dims")
   # We use SplitDimsLayer for this.
   # ExpandDimsLayer in RETURNN currently would allow to use a dim tag.
   # Now search for a good axis to split via some heuristics.
