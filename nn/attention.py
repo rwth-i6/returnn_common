@@ -160,7 +160,7 @@ class CausalSelfAttention(GenericSelfAttention):
 class RelPosSelfAttention(GenericSelfAttention):
   """
   Self-attention with relative positional encoding.
-  This covers both Shawn et al. self-att rel pos 2018,
+  This covers both Shawn et al. self-att rel pos 2018 (https://arxiv.org/abs/1803.02155),
   and Dai et al. Transformer-XL style 2019 (https://arxiv.org/abs/1901.02860).
 
   It uses :func:`relative_positional_encoding` or :class:`LearnedRelativePositionalEncoding`.
@@ -172,7 +172,7 @@ class RelPosSelfAttention(GenericSelfAttention):
   - learnable_pos_emb = True
   - separate_pos_emb_per_head = False (at least that was the RETURNN default)
 
-  To get Dai et al. Transformer-XL style:
+  To get Dai et al. Transformer-XL style 2019:
   - with_bias = False would be like the paper, however, in most implementations it is True (default)
   - with_linear_pos = True (default)
   - with_pos_bias = True (default)
