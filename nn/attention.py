@@ -308,7 +308,7 @@ class LearnedRelativePositionalEncoding(nn.Module):
     self.clipping = clipping
     self.clipped_spatial_dim = nn.SpatialDim(
       f"{nn.NameCtx.current_ctx().get_abs_name()}:learned-rel-pos",
-      dim=2 * clipping + 1)
+      dimension=2 * clipping + 1)
     self.pos_emb = nn.Parameter((self.clipped_spatial_dim, self.feat_dim), dtype=dtype)
 
   def __call__(self, spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
