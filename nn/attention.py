@@ -165,13 +165,15 @@ class RelPosSelfAttention(GenericSelfAttention):
 
   It uses :func:`relative_positional_encoding` or :class:`LearnedRelativePositionalEncoding`.
 
-  To get Shawn et al. self-att rel pos 2018:
+  To get Shawn et al. self-att rel pos 2018 / RETURNN SelfAttentionLayer + RelativePositionalEncodingLayer:
+  - with_bias = False (at least that was the RETURNN behavior)
   - with_linear_pos = False
   - with_pos_bias = False
   - learnable_pos_emb = True
   - separate_pos_emb_per_head = False (at least that was the RETURNN default)
 
   To get Dai et al. Transformer-XL style:
+  - with_bias = False would be like the paper, however, in most implementations it is True (default)
   - with_linear_pos = True (default)
   - with_pos_bias = True (default)
   - learnable_pos_emb = True (default)
@@ -242,8 +244,8 @@ class RelPosSelfAttention(GenericSelfAttention):
     hist_dim = nn.SpatialDim(f"{axis.description}:kv")
     k, _ = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=hist_dim, name="k_new_dim")
     v, _ = nn.reinterpret_new_dim(v, in_dim=axis, out_dim=hist_dim, name="v_new_dim")
-    q_with_bias_u = q + self.pos_bias_u  # (batch, head, time1, d_k)
-    q_with_bias_v = q + self.pos_bias_v  # (batch, head, time1, d_k)
+    q_with_bias_u = (q + self.pos_bias_u) if self.pos_bias_u is not None else q  # (batch, head, time1, d_k)
+    q_with_bias_v = (q + self.pos_bias_v) if self.pos_bias_v is not None else q  # (batch, head, time1, d_k)
 
     # compute attention score
     # first compute matrix a and matrix c
