@@ -159,36 +159,83 @@ class CausalSelfAttention(GenericSelfAttention):
 
 class RelPosSelfAttention(GenericSelfAttention):
   """
-  Self-attention with relative positional encoding, Transformer-XL style (https://arxiv.org/abs/1901.02860).
-  It uses :func:`relative_positional_encoding`.
+  Self-attention with relative positional encoding.
+  This covers both Shawn et al. self-att rel pos 2018,
+  and Dai et al. Transformer-XL style 2019 (https://arxiv.org/abs/1901.02860).
+
+  It uses :func:`relative_positional_encoding` or :class:`LearnedRelativePositionalEncoding`.
+
+  To get Shawn et al. self-att rel pos 2018:
+  - with_linear_pos = False
+  - with_pos_bias = False
+  - learnable_pos_emb = True
+  - separate_pos_emb_per_head = False (at least that was the RETURNN default)
+
+  To get Dai et al. Transformer-XL style:
+  - with_linear_pos = True (default)
+  - with_pos_bias = True (default)
+  - learnable_pos_emb = True (default)
+  - separate_pos_emb_per_head = True (default)
+
+  Further details:
+  https://github.com/rwth-i6/returnn_common/wiki/Relative-positional-encoding
 
   Code references, partly adapted from there:
   https://github.com/espnet/espnet/blob/4138010fb66ad27a43e8bee48a4932829a0847ae/espnet/nets/pytorch_backend/transformer/embedding.py#L260
   https://github.com/kimiyoung/transformer-xl/blob/44781ed21dbaec88b280f74d9ae2877f52b492a5/tf/model.py#L4
   """
+
   def __init__(self, in_dim: nn.Dim, proj_dim: Optional[nn.Dim], *,
                key_dim_total: nn.Dim, value_dim_total: nn.Dim, num_heads: Union[int, nn.Dim],
                with_bias: bool = True,
+               with_linear_pos: bool = True,
+               with_pos_bias: bool = True,
+               learnable_pos_emb: bool = False,
+               learnable_pos_emb_clipping: int = 16,
+               separate_pos_emb_per_head: bool = True,
                att_dropout: float = 0.1):
     super(RelPosSelfAttention, self).__init__(
       in_dim=in_dim, proj_dim=proj_dim,
       key_dim_total=key_dim_total, value_dim_total=value_dim_total, num_heads=num_heads,
       with_bias=with_bias,
       att_dropout=att_dropout)
+    self.separate_pos_emb_per_head = separate_pos_emb_per_head
+    if with_linear_pos:
+      self.pos_emb_feat_dim = self.in_dim
+    elif separate_pos_emb_per_head:
+      self.pos_emb_feat_dim = self.key_dim_total
+    else:
+      self.pos_emb_feat_dim = self.key_dim_per_head
     # linear transformation for positional encoding
-    self.linear_pos = nn.Linear(self.in_dim, self.key_dim_total, with_bias=False)
+    self.linear_pos = None
+    if with_linear_pos:
+      self.linear_pos = nn.Linear(
+        self.in_dim, self.key_dim_total if separate_pos_emb_per_head else self.key_dim_per_head,
+        with_bias=False)
+    self.learned_pos_emb = None
+    if learnable_pos_emb:
+      self.learned_pos_emb = LearnedRelativePositionalEncoding(
+        self.pos_emb_feat_dim, clipping=learnable_pos_emb_clipping)
     # these two learnable bias are used in matrix c and matrix d
     # as described in https://arxiv.org/abs/1901.02860 Section 3.3
-    self.pos_bias_u = nn.Parameter((self.num_heads, self.key_dim_per_head))
-    self.pos_bias_v = nn.Parameter((self.num_heads, self.key_dim_per_head))
-    self.pos_bias_u.initial = nn.init.Glorot()
-    self.pos_bias_v.initial = nn.init.Glorot()
+    self.pos_bias_u = None
+    self.pos_bias_v = None
+    if with_pos_bias:
+      self.pos_bias_u = nn.Parameter((self.num_heads, self.key_dim_per_head))
+      self.pos_bias_v = nn.Parameter((self.num_heads, self.key_dim_per_head))
+      self.pos_bias_u.initial = nn.init.Glorot()
+      self.pos_bias_v.initial = nn.init.Glorot()
 
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim, **_kwargs) -> nn.Tensor:
     """forward"""
-    pos_emb, pos_emb_spatial_dim = relative_positional_encoding(axis, self.in_dim)
-    pos_emb = self.linear_pos(pos_emb)
-    pos_emb = nn.split_dims(pos_emb, axis=self.key_dim_total, dims=(self.num_heads, self.key_dim_per_head))
+    if self.learned_pos_emb is not None:
+      pos_emb, pos_emb_spatial_dim = self.learned_pos_emb(axis)
+    else:
+      pos_emb, pos_emb_spatial_dim = relative_positional_encoding(axis, self.pos_emb_feat_dim)
+    if self.linear_pos is not None:
+      pos_emb = self.linear_pos(pos_emb)
+    if self.separate_pos_emb_per_head:
+      pos_emb = nn.split_dims(pos_emb, axis=self.key_dim_total, dims=(self.num_heads, self.key_dim_per_head))
     # pos_emb: (head, 2*time1-1, d_k)
 
     q, k, v = self.forward_qkv(source)
@@ -242,6 +289,54 @@ class RelPosSelfAttention(GenericSelfAttention):
 
 
 _relative_positional_encoding_cache = weakref.WeakKeyDictionary()  # root name ctx -> (spatial_dim, feat_dim) -> enc
+
+
+class LearnedRelativePositionalEncoding(nn.Module):
+  """
+  Learnable relative positional encoding.
+
+  E.g. as used in Shawn et al, 2018 (https://arxiv.org/abs/1803.02155).
+
+  https://github.com/rwth-i6/returnn_common/wiki/Relative-positional-encoding
+  """
+
+  def __init__(self, feat_dim: nn.Dim, *, clipping: int = 16, dtype: str = "float32"):
+    super(LearnedRelativePositionalEncoding, self).__init__()
+    self.feat_dim = feat_dim
+    self.clipping = clipping
+    self.clipped_spatial_dim = nn.SpatialDim(
+      f"{nn.NameCtx.current_ctx().get_abs_name()}:learned-rel-pos",
+      dim=2 * clipping + 1)
+    self.pos_emb = nn.Parameter((self.clipped_spatial_dim, self.feat_dim), dtype=dtype)
+
+  def __call__(self, spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    same interface as :func:`relative_positional_encoding`
+
+    :return: tensor of shape [spatial_dim * 2 - 1, feat_dim], and the out spatial dim (spatial_dim * 2 - 1).
+      In the center is the rel pos i-j=0. All to the right are for i-j>0, all to the left for i-j<0.
+    """
+    out_spatial_dim = spatial_dim - 1 + spatial_dim
+    with nn.Cond(nn.dim_value(spatial_dim) > self.clipping) as cond:
+      # True branch
+      left = nn.gather(self.pos_emb, axis=self.clipped_spatial_dim, position=0)
+      right = nn.gather(self.pos_emb, axis=self.clipped_spatial_dim, position=self.clipped_spatial_dim.dimension - 1)
+      remaining_dim = spatial_dim - self.clipping
+      left = nn.expand_dim(left, dim=remaining_dim)
+      right = nn.expand_dim(right, dim=remaining_dim)
+      cond.true, out_spatial_dim_ = nn.concat(
+        (left, remaining_dim),
+        (self.pos_emb, self.clipped_spatial_dim),
+        (right, remaining_dim))
+      out_spatial_dim_.declare_same_as(out_spatial_dim)
+
+      # False branch, spatial_dim <= self.clipping
+      cond.false, _ = nn.slice_nd(
+        self.pos_emb, axis=self.clipped_spatial_dim,
+        start=self.clipping - nn.dim_value(spatial_dim),
+        size=out_spatial_dim)
+
+    return cond.result, out_spatial_dim
 
 
 def relative_positional_encoding(
