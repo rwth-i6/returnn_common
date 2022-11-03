@@ -128,7 +128,7 @@ def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) ->
 def concat(*sources: Tuple[nn.Tensor, nn.Dim],
            allow_broadcast=False,
            name: Optional[str] = None
-           ) -> (nn.Tensor, nn.Dim):
+           ) -> Tuple[nn.Tensor, nn.Dim]:
   """
   Concatenates multiple sources in the specified dimension.
   """
