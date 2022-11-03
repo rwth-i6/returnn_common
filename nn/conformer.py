@@ -3,7 +3,8 @@ Conformer code.
 Ref: https://arxiv.org/abs/2005.08100
 """
 
-from typing import Tuple, List, Callable, Optional, Union, Any
+from __future__ import annotations
+from typing import Optional, Union, Any, Tuple, List, Dict, Callable
 import copy as _copy
 from .. import nn
 from .encoder.base import ISeqDownsamplingEncoder
@@ -164,6 +165,8 @@ class ConformerEncoderLayer(nn.Module):
         conv_kernel_size: int = 32,
         conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
         num_heads: int = 4,
+        self_att: Optional[Union[nn.RelPosSelfAttention, nn.Module, Any]] = None,
+        self_att_opts: Optional[Dict[str, Any]] = None,
         att_dropout: float = 0.1,
         ):
     """
@@ -174,6 +177,8 @@ class ConformerEncoderLayer(nn.Module):
     :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
     :param conv_norm: used for the conv block. Batch norm originally
     :param num_heads: the number of attention heads
+    :param self_att: the self-attention layer. RelPosSelfAttention originally and default
+    :param self_att_opts: options for the self-attention layer, for :class:`nn.RelPosSelfAttention`
     :param att_dropout: attention dropout value
     """
     super().__init__()
@@ -197,9 +202,15 @@ class ConformerEncoderLayer(nn.Module):
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
     self.conv_layer_norm = nn.LayerNorm(out_dim)
 
-    self.self_att = nn.RelPosSelfAttention(
-      out_dim, proj_dim=out_dim,
-      key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
+    if self_att:
+      self.self_att = self_att
+    else:
+      self_att_opts_ = dict(
+        in_dim=out_dim, proj_dim=out_dim,
+        key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
+      if self_att_opts:
+        self_att_opts_.update(self_att_opts)
+      self.self_att = nn.RelPosSelfAttention(**self_att_opts_)
     self.self_att_layer_norm = nn.LayerNorm(out_dim)
 
     self.final_layer_norm = nn.LayerNorm(out_dim)
@@ -249,7 +260,9 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
                conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
                num_heads: int = 4,
                att_dropout: float = 0.1,
-               encoder_layer: Optional[Union[ConformerEncoderLayer, nn.Module, Any]] = None):
+               encoder_layer: Optional[Union[ConformerEncoderLayer, nn.Module, Any]] = None,
+               encoder_layer_opts: Optional[Dict[str, Any]] = None,
+               ):
     """
     :param out_dim: the output feature dimension
     :param num_layers: the number of encoder layers
@@ -263,6 +276,7 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
     :param num_heads: the number of attention heads
     :param att_dropout: attention dropout value
     :param encoder_layer: an instance of :class:`ConformerEncoderLayer` or similar
+    :param encoder_layer_opts: options for the encoder layer
     """
     super().__init__()
 
@@ -276,9 +290,13 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
     self.input_dropout = input_dropout
 
     if not encoder_layer:
-      encoder_layer = ConformerEncoderLayer(
+      encoder_layer_opts_ = dict(
         out_dim=out_dim, ff_dim=ff_dim, ff_activation=ff_activation, dropout=dropout,
-        conv_kernel_size=conv_kernel_size, conv_norm=conv_norm, num_heads=num_heads, att_dropout=att_dropout)
+        conv_kernel_size=conv_kernel_size, conv_norm=conv_norm,
+        num_heads=num_heads, att_dropout=att_dropout)
+      if encoder_layer_opts:
+        encoder_layer_opts_.update(encoder_layer_opts)
+      encoder_layer = ConformerEncoderLayer(**encoder_layer_opts_)
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
