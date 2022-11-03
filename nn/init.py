@@ -84,8 +84,8 @@ class VarianceScaling(ParamInit):
 
 class Glorot(VarianceScaling):
   """
-  Xavier Glorot
-  http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
+  Xavier Glorot (http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf).
+  scale 1, fan_avg, uniform
   """
   scale = 1.0
   mode = "fan_avg"
@@ -94,8 +94,8 @@ class Glorot(VarianceScaling):
 
 class He(VarianceScaling):
   """
-  Kaiming He
-  https://arxiv.org/pdf/1502.01852.pdf
+  Kaiming He (https://arxiv.org/pdf/1502.01852.pdf).
+  scale 2, fan_in, normal
   """
   scale = 2.0
   mode = "fan_in"
@@ -107,7 +107,8 @@ HeNormal = He
 
 class HeUniform(He):
   """
-  He-init but using a uniform distribution.
+  He-init (:class:`He`) but using a uniform distribution.
+  scale 2, fan_in, uniform
   """
   distribution = "uniform"
 
