@@ -148,7 +148,7 @@ def dummy_run_net_single_custom(config_code_str: str, *,
                                 ) -> Dict[str, numpy.ndarray]:
   """
   :param config_code_str: e.g. via get_complete_py_code_str
-  :param make_feed_dict: func
+  :param make_feed_dict: func (ExternData) -> feed_dict
   :param default_out_dim_tag_order: if given, for the fetch, will order the dims this way
   :param eval_flag: losses are computed if True
   """
