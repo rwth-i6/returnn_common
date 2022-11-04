@@ -560,7 +560,9 @@ class Parameter(Tensor):
   def __init__(self, shape: Sequence[Dim], dtype: Optional[str] = None,
                *,
                trainable: Optional[bool] = None,
-               auxiliary: bool = False):
+               auxiliary: bool = False,
+               non_critical_for_restore: bool = False,
+               ):
     """
     :param shape:
     :param dtype:
@@ -570,6 +572,7 @@ class Parameter(Tensor):
       This usually implies that the parameter is not trainable, i.e. not to be updated by the optimizer,
       but usually has some custom update.
       This flag is not passed on to RETURNN but just used here for returnn-common logic.
+    :param non_critical_for_restore: if True, this parameter is not critical for restoring a model.
     """
     if not all(isinstance(dim, Dim) for dim in shape):
       raise TypeError(f"shape {shape} must be a sequence of Dim")
@@ -590,6 +593,8 @@ class Parameter(Tensor):
       trainable = False
     if trainable is not None:
       layer_dict["trainable"] = trainable
+    if non_critical_for_restore:
+      layer_dict["non_critical_for_restore"] = True
     super(Parameter, self).__init__(
       layer_dict=layer_dict,
       data=data,
