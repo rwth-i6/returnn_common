@@ -853,7 +853,7 @@ def get_extern_data(data: Data) -> Tensor:
   root_layer_name = f"data:{data.name}"
   out = _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
   for tag in data.dim_tags:
-    if not tag.is_batch_dim() and tag.dimension is None and not tag.dyn_size_ext:
+    if not tag.is_batch_dim() and tag.is_dynamic() and not tag.dyn_size_ext:
       # Undefined dynamic dim tag. Set default data template.
       tag.dyn_size_ext = Data(
         name=f"{data.name}_default_dyn_size_ext", dim_tags=[nn.batch_dim], dtype=data.size_dtype, batch=data.batch)
