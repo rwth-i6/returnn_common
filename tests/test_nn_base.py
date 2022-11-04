@@ -559,6 +559,7 @@ def test_returnn_config_direct_construction():
   x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
 
   def _config_get_network(epoch: int, **_kwargs) -> dict:
+    print("_config_get_network called")  # it's called multiple times
     # noinspection PyStatementEffect
     epoch  # unused
     nn.reset_default_root_name_ctx()
