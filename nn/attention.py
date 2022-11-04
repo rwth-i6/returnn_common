@@ -303,6 +303,12 @@ class LearnedRelativePositionalEncoding(nn.Module):
   """
 
   def __init__(self, feat_dim: nn.Dim, *, clipping: int = 16, dtype: str = "float32"):
+    """
+    :param feat_dim: feature dim, for the emb matrix and output
+    :param clipping: max distance to consider. emb matrix shape is [2 * clipping + 1, feat_dim].
+      The first and last frame will be the clipping frames.
+    :param dtype: for the emb matrix and output
+    """
     super(LearnedRelativePositionalEncoding, self).__init__()
     self.feat_dim = feat_dim
     self.clipping = clipping
@@ -319,11 +325,12 @@ class LearnedRelativePositionalEncoding(nn.Module):
       In the center is the rel pos i-j=0. All to the right are for i-j>0, all to the left for i-j<0.
     """
     out_spatial_dim = spatial_dim - 1 + spatial_dim
-    with nn.Cond(nn.dim_value(spatial_dim) > self.clipping) as cond:
+    mat_spatial_size = self.clipping + 1
+    with nn.Cond(nn.dim_value(spatial_dim) > mat_spatial_size) as cond:
       # True branch
       left = nn.gather(self.pos_emb, axis=self.clipped_spatial_dim, position=0)
       right = nn.gather(self.pos_emb, axis=self.clipped_spatial_dim, position=self.clipped_spatial_dim.dimension - 1)
-      remaining_dim = spatial_dim - self.clipping
+      remaining_dim = spatial_dim - mat_spatial_size
       left = nn.expand_dim(left, dim=remaining_dim)
       right = nn.expand_dim(right, dim=remaining_dim)
       cond.true, out_spatial_dim_ = nn.concat(
@@ -335,7 +342,7 @@ class LearnedRelativePositionalEncoding(nn.Module):
       # False branch, spatial_dim <= self.clipping
       cond.false, _ = nn.slice_nd(
         self.pos_emb, axis=self.clipped_spatial_dim,
-        start=self.clipping - nn.dim_value(spatial_dim),
+        start=mat_spatial_size - nn.dim_value(spatial_dim),
         size=out_spatial_dim)
 
     return cond.result, out_spatial_dim
