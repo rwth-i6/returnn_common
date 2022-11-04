@@ -70,7 +70,7 @@ def make_feed_dict(data_list, n_batch=3, n_time=7, same_time: bool = False):
   return d
 
 
-def dummy_run_net(config: Dict[str, Any], *, train: bool = False, net: Optional[nn.Module] = None):
+def dummy_run_net(config: Dict[str, Any], *, train: bool = False, net: Optional[nn.Module] = None, seq_len: int = 5):
   """
   Runs a couple of training iterations using some dummy dataset on the net dict.
   Use this to validate that the net dict is sane.
@@ -92,7 +92,7 @@ def dummy_run_net(config: Dict[str, Any], *, train: bool = False, net: Optional[
   config = Config({
     "train": {
       "class": "DummyDataset", "input_dim": n_data_dim, "output_dim": n_classes_dim,
-      "num_seqs": 2, "seq_len": 5},
+      "num_seqs": 2, "seq_len": seq_len},
     "debug_print_layer_output_template": True,
     "task": "train",  # anyway, to random init the net
     **config
