@@ -69,6 +69,7 @@ def test_rel_pos_self_attention():
 
 
 def test_rel_pos_self_attention_learnable():
+  # https://github.com/rwth-i6/returnn_common/issues/238
   class _Net(nn.Module):
     # noinspection PyShadowingNames
     def __init__(self, in_dim: nn.Dim):
@@ -101,6 +102,7 @@ def test_rel_pos_self_attention_learnable():
 
 
 def test_learned_rel_pos_enc():
+  # https://github.com/rwth-i6/returnn_common/issues/238
   class _Net(nn.Module):
     # noinspection PyShadowingNames
     def __init__(self, in_dim: nn.Dim):
