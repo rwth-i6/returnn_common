@@ -163,8 +163,8 @@ class ConformerEncoderLayer(nn.Module):
         ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
         dropout: float = 0.1,
         conv_kernel_size: int = 32,
-        conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
-        conv_norm_use_mask: bool = False,
+        conv_norm: Union[nn.BatchNorm, type, Any] = nn.NotSpecified,
+        conv_norm_opts: Optional[Dict[str, Any]] = None,
         num_heads: int = 4,
         self_att: Optional[Union[nn.RelPosSelfAttention, nn.Module, Any]] = None,
         self_att_opts: Optional[Dict[str, Any]] = None,
@@ -177,9 +177,11 @@ class ConformerEncoderLayer(nn.Module):
     :param dropout: the dropout value for the FF block
     :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
     :param conv_norm: used for the conv block. Batch norm originally
-    :param conv_norm_use_mask: whether to properly mask the spatial dim in batch norm.
-      Most existing implementations don't do this. Except of RETURNN.
-      It's faster when you don't do this.
+    :param conv_norm_opts: for nn.BatchNorm or other conv_norm type.
+      In case of nn.BatchNorm, uses use_mask=False by default.
+        use_mask means whether to properly mask the spatial dim in batch norm.
+        Most existing implementations don't do this. Except of RETURNN.
+        It's faster when you don't do this.
     :param num_heads: the number of attention heads
     :param self_att: the self-attention layer. RelPosSelfAttention originally and default
     :param self_att_opts: options for the self-attention layer, for :class:`nn.RelPosSelfAttention`
@@ -200,8 +202,12 @@ class ConformerEncoderLayer(nn.Module):
       out_dim=out_dim, ff_dim=ff_dim, dropout=dropout, activation=ff_activation)
     self.ffn2_layer_norm = nn.LayerNorm(out_dim)
 
-    if conv_norm is nn.NotSpecified:
-      conv_norm = nn.BatchNorm(out_dim, use_mask=conv_norm_use_mask)
+    if conv_norm is nn.NotSpecified or conv_norm is nn.BatchNorm:
+      conv_norm_opts = conv_norm_opts.copy() if conv_norm_opts else {}
+      conv_norm_opts.setdefault("use_mask", False)
+      conv_norm = nn.BatchNorm(out_dim, **conv_norm_opts)
+    elif isinstance(conv_norm, type):
+      conv_norm = conv_norm(out_dim, **(conv_norm_opts or {}))
     self.conv_block = ConformerConvBlock(
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
     self.conv_layer_norm = nn.LayerNorm(out_dim)
@@ -261,7 +267,7 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
                ff_activation: Callable[[nn.Tensor], nn.Tensor] = nn.swish,
                dropout: float = 0.1,
                conv_kernel_size: int = 32,
-               conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
+               conv_norm: Union[nn.BatchNorm, type, Any] = nn.NotSpecified,
                num_heads: int = 4,
                att_dropout: float = 0.1,
                encoder_layer: Optional[Union[ConformerEncoderLayer, nn.Module, Any]] = None,
