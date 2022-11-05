@@ -164,6 +164,7 @@ class ConformerEncoderLayer(nn.Module):
         dropout: float = 0.1,
         conv_kernel_size: int = 32,
         conv_norm: Union[nn.BatchNorm, Any] = nn.NotSpecified,
+        conv_norm_use_mask: bool = False,
         num_heads: int = 4,
         self_att: Optional[Union[nn.RelPosSelfAttention, nn.Module, Any]] = None,
         self_att_opts: Optional[Dict[str, Any]] = None,
@@ -176,6 +177,9 @@ class ConformerEncoderLayer(nn.Module):
     :param dropout: the dropout value for the FF block
     :param conv_kernel_size: the kernel size of depthwise convolution in the conv block
     :param conv_norm: used for the conv block. Batch norm originally
+    :param conv_norm_use_mask: whether to properly mask the spatial dim in batch norm.
+      Most existing implementations don't do this. Except of RETURNN.
+      It's faster when you don't do this.
     :param num_heads: the number of attention heads
     :param self_att: the self-attention layer. RelPosSelfAttention originally and default
     :param self_att_opts: options for the self-attention layer, for :class:`nn.RelPosSelfAttention`
@@ -197,7 +201,7 @@ class ConformerEncoderLayer(nn.Module):
     self.ffn2_layer_norm = nn.LayerNorm(out_dim)
 
     if conv_norm is nn.NotSpecified:
-      conv_norm = nn.BatchNorm(out_dim, use_mask=False)
+      conv_norm = nn.BatchNorm(out_dim, use_mask=conv_norm_use_mask)
     self.conv_block = ConformerConvBlock(
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
     self.conv_layer_norm = nn.LayerNorm(out_dim)
