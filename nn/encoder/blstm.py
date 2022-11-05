@@ -17,6 +17,7 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
                *,
                num_layers: int = 6,
                time_reduction: Union[int, Tuple[int, ...]] = 6,
+               allow_pool_last: bool = False,
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,
                ):
     super(BlstmEncoder, self).__init__()
@@ -33,9 +34,9 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
           break
     assert isinstance(time_reduction, (tuple, list))
     assert num_layers > 0
-    if num_layers == 1:
+    if num_layers == 1 and not allow_pool_last:
       assert not time_reduction, f"time_reduction {time_reduction} not supported for single layer"
-    while len(time_reduction) > num_layers - 1:
+    while len(time_reduction) > (num_layers if allow_pool_last else (num_layers - 1)):
       time_reduction[:2] = [time_reduction[0] * time_reduction[1]]
     self.time_reduction = time_reduction
 
@@ -57,14 +58,14 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
     out_spatial_dim = nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:spatial")
     for i, lstm in enumerate(self.layers):
       if i > 0:
-        red = self.time_reduction[i - 1] if (i - 1) < len(self.time_reduction) else 1
-        if red > 1:
-          source, in_spatial_dim = nn.pool1d(
-            source, mode="max", padding="same", pool_size=red, in_spatial_dim=in_spatial_dim)
         if self.dropout:
           source = nn.dropout(source, dropout=self.dropout, axis=source.feature_dim)
       assert isinstance(lstm, BlstmSingleLayer)
       source = lstm(source, spatial_dim=in_spatial_dim)
+      red = self.time_reduction[i] if i < len(self.time_reduction) else 1
+      if red > 1:
+        source, in_spatial_dim = nn.pool1d(
+          source, mode="max", padding="same", pool_size=red, in_spatial_dim=in_spatial_dim)
     in_spatial_dim.declare_same_as(out_spatial_dim)
     return source, in_spatial_dim
 
