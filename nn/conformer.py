@@ -310,10 +310,12 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
-  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim,
+               collected_outputs: Optional[Dict[str, nn.Tensor]] = None,
+               ) -> Tuple[nn.Tensor, nn.Dim]:
     """forward"""
     x_subsample, out_spatial_dim = self.input_layer(source, in_spatial_dim=in_spatial_dim)
     x_linear = self.input_projection(x_subsample)
     x = nn.dropout(x_linear, axis=self.input_projection.out_dim, dropout=self.input_dropout)
-    x = self.layers(x, axis=out_spatial_dim)
+    x = self.layers(x, axis=out_spatial_dim, collected_outputs=collected_outputs)
     return x, out_spatial_dim

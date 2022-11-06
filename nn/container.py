@@ -4,7 +4,7 @@ container functions
 
 from __future__ import annotations
 from .. import nn
-from typing import Iterable, Iterator, Union, Dict, Callable
+from typing import Optional, Iterable, Iterator, Union, Tuple, Dict, Callable
 
 
 _UnaryFuncT = Callable[[nn.Tensor], nn.Tensor]
@@ -54,6 +54,10 @@ class ModuleList(nn.Module):
   def __iter__(self) -> Iterator[_ModT]:
     return iter(self._get_modules().values())
 
+  def items(self) -> Iterable[Tuple[str, nn.Module]]:
+    """module items"""
+    return self._get_modules().items()
+
   def __getitem__(self, idx) -> Union[ModuleList, nn.Module]:
     from builtins import slice
     if isinstance(idx, slice):
@@ -72,12 +76,14 @@ class Sequential(ModuleList):
   """
   Sequential Module, takes callable of Modules which are then executed in sequence
   """
-  def __call__(self, inp, **kwargs) -> nn.Tensor:
+  def __call__(self, inp, *, collected_outputs: Optional[Dict[str, nn.Tensor]] = None, **kwargs) -> nn.Tensor:
     """
     Forward
     """
-    for module in self:
+    for name, module in self.items():
       inp = module(inp, **kwargs)
+      if collected_outputs is not None:
+        collected_outputs[name] = inp
     return inp
 
 
