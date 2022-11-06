@@ -317,5 +317,5 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
     x_subsample, out_spatial_dim = self.input_layer(source, in_spatial_dim=in_spatial_dim)
     x_linear = self.input_projection(x_subsample)
     x = nn.dropout(x_linear, axis=self.input_projection.out_dim, dropout=self.input_dropout)
-    x = self.layers(x, axis=out_spatial_dim, collected_outputs=collected_outputs)
+    x = self.layers(x, spatial_dim=out_spatial_dim, collected_outputs=collected_outputs)
     return x, out_spatial_dim
