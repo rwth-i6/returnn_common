@@ -61,11 +61,11 @@ class ConformerConvBlock(nn.Module):
     self.positionwise_conv2 = nn.Linear(out_dim, out_dim)
     self.norm = norm
 
-  def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+  def __call__(self, inp: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
     """forward"""
     x_conv1 = self.positionwise_conv1(inp)
     x_act = nn.gating(x_conv1)
-    x_depthwise_conv, _ = self.depthwise_conv(x_act, in_spatial_dim=axis)
+    x_depthwise_conv, _ = self.depthwise_conv(x_act, in_spatial_dim=spatial_dim)
     x_normed = self.norm(x_depthwise_conv)
     x_swish = nn.swish(x_normed)
     x_conv2 = self.positionwise_conv2(x_swish)
@@ -225,7 +225,7 @@ class ConformerEncoderLayer(nn.Module):
 
     self.final_layer_norm = nn.LayerNorm(out_dim)
 
-  def __call__(self, inp: nn.Tensor, *, axis: nn.Dim) -> nn.Tensor:
+  def __call__(self, inp: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
     """forward"""
     # FFN
     x_ffn1_ln = self.ffn1_layer_norm(inp)
@@ -234,12 +234,12 @@ class ConformerEncoderLayer(nn.Module):
 
     # MHSA
     x_mhsa_ln = self.self_att_layer_norm(x_ffn1_out)
-    x_mhsa = self.self_att(x_mhsa_ln, axis=axis)
+    x_mhsa = self.self_att(x_mhsa_ln, axis=spatial_dim)
     x_mhsa_out = x_mhsa + x_ffn1_out
 
     # Conv
     x_conv_ln = self.conv_layer_norm(x_mhsa_out)
-    x_conv = self.conv_block(x_conv_ln, axis=axis)
+    x_conv = self.conv_block(x_conv_ln, spatial_dim=spatial_dim)
     x_conv_out = nn.dropout(x_conv, axis=inp.feature_dim, dropout=self.dropout) + x_mhsa_out
 
     # FFN
