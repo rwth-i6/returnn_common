@@ -195,6 +195,7 @@ class RelPosSelfAttention(GenericSelfAttention):
                learnable_pos_emb: bool = False,
                learnable_pos_emb_clipping: int = 16,
                separate_pos_emb_per_head: bool = True,
+               pos_emb_dropout: float = 0.0,
                att_dropout: float = 0.1):
     super(RelPosSelfAttention, self).__init__(
       in_dim=in_dim, proj_dim=proj_dim,
@@ -227,6 +228,7 @@ class RelPosSelfAttention(GenericSelfAttention):
       self.pos_bias_v = nn.Parameter((self.num_heads, self.key_dim_per_head))
       self.pos_bias_u.initial = nn.init.Glorot()
       self.pos_bias_v.initial = nn.init.Glorot()
+    self.pos_emb_dropout = pos_emb_dropout
 
   def __call__(self, source: nn.Tensor, *, axis: nn.Dim, **_kwargs) -> nn.Tensor:
     """forward"""
@@ -234,6 +236,8 @@ class RelPosSelfAttention(GenericSelfAttention):
       pos_emb, pos_emb_spatial_dim = self.learned_pos_emb(axis)
     else:
       pos_emb, pos_emb_spatial_dim = relative_positional_encoding(axis, self.pos_emb_feat_dim)
+    if self.pos_emb_dropout:
+      pos_emb = nn.dropout(pos_emb, self.pos_emb_dropout, axis=pos_emb.shape_ordered)
     if self.linear_pos is not None:
       pos_emb = self.linear_pos(pos_emb)
     if self.separate_pos_emb_per_head:
