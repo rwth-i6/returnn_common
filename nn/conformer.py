@@ -166,7 +166,7 @@ class ConformerEncoderLayer(nn.Module):
         conv_norm: Union[nn.BatchNorm, type, Any] = nn.NotSpecified,
         conv_norm_opts: Optional[Dict[str, Any]] = None,
         num_heads: int = 4,
-        self_att: Optional[Union[nn.RelPosSelfAttention, nn.Module, Any]] = None,
+        self_att: Optional[Union[nn.RelPosSelfAttention, nn.Module, type, Any]] = None,
         self_att_opts: Optional[Dict[str, Any]] = None,
         att_dropout: float = 0.1,
         ):
@@ -212,15 +212,18 @@ class ConformerEncoderLayer(nn.Module):
       out_dim=out_dim, kernel_size=conv_kernel_size, norm=conv_norm)
     self.conv_layer_norm = nn.LayerNorm(out_dim)
 
-    if self_att:
-      self.self_att = self_att
-    else:
+    if self_att is None or isinstance(self_att, type):
       self_att_opts_ = dict(
         in_dim=out_dim, proj_dim=out_dim,
         key_dim_total=out_dim, value_dim_total=out_dim, num_heads=num_heads, att_dropout=att_dropout)
       if self_att_opts:
         self_att_opts_.update(self_att_opts)
-      self.self_att = nn.RelPosSelfAttention(**self_att_opts_)
+      if self_att is None:
+        self.self_att = nn.RelPosSelfAttention(**self_att_opts_)
+      else:
+        self.self_att = self_att(**self_att_opts_)
+    else:
+      self.self_att = self_att
     self.self_att_layer_norm = nn.LayerNorm(out_dim)
 
     self.final_layer_norm = nn.LayerNorm(out_dim)
