@@ -219,7 +219,7 @@ class TransformerDecoder(nn.Module):
     """
     output = inp
 
-    for key, mod in self.layers.named_modules(recurse=False):
+    for key, mod in self.layers.named_children():
       output, state[key] = mod(
         output, axis=axis, memory=memory, memory_spatial_axis=memory_spatial_axis, state=state[key])
 
