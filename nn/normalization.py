@@ -152,8 +152,11 @@ class BatchNorm(nn.Module):
 
 def normalize(a: nn.Tensor, *, axis: Union[nn.Dim, Sequence[nn.Dim]], epsilon: float = 1e-6) -> nn.Tensor:
   """
-  Calculates normalization for given layer, based on the input dims.
-  This does not support parameters as in :class:`NormLayer`, cf. :class:`Normalize`.
+  Mean- and variance-normalize some input in the given input dimension(s),
+  such that the resulting tensor has mean 0 and variance 1.
+
+  If you want that this can be shifted and scaled again,
+  you need additional parameters, cf. :class:`Normalize`.
 
   :param a: input
   :param axis: axis over which the mean and variance are computed
