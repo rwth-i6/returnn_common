@@ -549,9 +549,6 @@ class Tensor:
     return nn.compare(self, nn.convert_to_tensor(other), kind="greater_equal")
 
 
-ParamInitType = Union[nn.Tensor, RawTensorTypes, nn.init.ParamInit]
-
-
 class Parameter(Tensor):
   """
   This represents a (potential trainable) parameter,
@@ -603,7 +600,7 @@ class Parameter(Tensor):
       data=data,
       name_ctx=name_ctx)
     self.auxiliary = auxiliary
-    self._initial = None  # type: Optional[ParamInitType]
+    self._initial = None  # type: Optional[nn.init.ParamInitType]
 
   def __copy__(self):
     # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
@@ -623,12 +620,12 @@ class Parameter(Tensor):
     return res
 
   @property
-  def initial(self) -> Optional[ParamInitType]:
+  def initial(self) -> Optional[nn.init.ParamInitType]:
     """initial value of the parameter"""
     return self._initial
 
   @initial.setter
-  def initial(self, value: Optional[ParamInitType]):
+  def initial(self, value: Optional[nn.init.ParamInitType]):
     # Keep the original ParamInit, so that copies of the Parameter would have a different initial random value.
     # https://github.com/rwth-i6/returnn_common/issues/216
     self._initial = value

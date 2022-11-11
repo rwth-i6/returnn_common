@@ -4,7 +4,8 @@ Common parameter initialization functions.
 https://github.com/rwth-i6/returnn/wiki/Parameter-initialization
 """
 
-from typing import Sequence, Optional
+from __future__ import annotations
+from typing import Union, Sequence, Optional
 import math
 from .. import nn
 
@@ -13,6 +14,9 @@ class ParamInit:
   """API for param init"""
   def __call__(self, shape: Sequence[nn.Dim], dtype: str) -> nn.Tensor:
     raise NotImplementedError
+
+
+ParamInitType = Union[nn.Tensor, nn.RawTensorTypes, ParamInit]
 
 
 class VarianceScaling(ParamInit):
