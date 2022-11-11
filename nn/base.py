@@ -614,7 +614,7 @@ class Parameter(Tensor):
     res = type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
     res.parent_modules.extend((memo[id(m)], k) for m, k in self.parent_modules if id(m) in memo)
     if isinstance(self.initial, nn.init.ParamInit):
-      res.initial = deepcopy(self.initial, memo=memo)
+      res.initial = deepcopy(self.initial, memo=memo)  # noqa
     else:
       res.initial = self.initial
     return res
