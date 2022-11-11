@@ -148,6 +148,13 @@ def swish(x: nn.Tensor) -> nn.Tensor:
   return _activation(x, activation="swish")
 
 
+def square(x: nn.Tensor) -> nn.Tensor:
+  """
+  return x^2
+  """
+  return _activation(x, activation="square")
+
+
 def squared_difference(a: nn.Tensor, b: nn.Tensor, *, name: Optional[str] = None) -> nn.Tensor:
   """
   (a - b) ** 2. (conj(a-b) * (a-b) if a or b are complex.)
