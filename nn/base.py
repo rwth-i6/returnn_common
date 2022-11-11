@@ -613,8 +613,13 @@ class Parameter(Tensor):
 
   def __deepcopy__(self, memo=None):
     # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
-    res = self.__copy__()
+    from copy import deepcopy
+    res = type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
     res.parent_modules.extend((memo[id(m)], k) for m, k in self.parent_modules if id(m) in memo)
+    if isinstance(self.initial, nn.init.ParamInit):
+      res.initial = deepcopy(self.initial, memo=memo)
+    else:
+      res.initial = self.initial
     return res
 
   @property
