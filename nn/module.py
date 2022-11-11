@@ -98,7 +98,7 @@ class Module:
       This can be a nested structure and should match the structure of the ``state`` argument and returned value.
     """
     state = nn.LayerState()
-    for key, mod in self.named_children(recurse=False):
+    for key, mod in self.named_children():
       sub_state = mod.default_initial_state(batch_dims=batch_dims)
       if sub_state:
         state[key] = sub_state
@@ -172,32 +172,52 @@ class Module:
       if getattr(parent, attr, None) is self:
         yield parent, attr
 
-  def children(self, *, recurse: bool = True) -> Iterator[nn.Module]:
+  def children(self) -> Iterator[nn.Module]:
     """
-    Get all (immediate) children modules
+    Get all immediate children modules, excluding self.
     """
-    for name, child in self.named_children(recurse=recurse):
+    return self.modules(recurse=False, include_self=False)
+
+  def named_children(self) -> Iterator[Tuple[str, nn.Module]]:
+    """
+    Get all immediate children modules, excluding self.
+    """
+    return self.named_modules(recurse=False, include_self=False)
+
+  def modules(self, *, recurse: bool = True, include_self: bool = True) -> Iterator[nn.Module]:
+    """
+    Get all children modules, optionally recursively, maybe including self.
+    """
+    for name, child in self.named_modules(recurse=recurse, include_self=include_self):
       yield child
 
-  def named_children(self,
-                     *, recurse: bool = True, memo: Optional[Set[nn.Module]] = None, prefix: str = ''
-                     ) -> Iterator[Tuple[str, nn.Module]]:
+  def named_modules(self,
+                    *, recurse: bool = True, include_self: bool = True,
+                    memo: Optional[Set[nn.Module]] = None, prefix: str = ''
+                    ) -> Iterator[Tuple[str, nn.Module]]:
     """
     Get all children modules (excluding self)
     """
     if memo is None:
       memo = set()
-    for name, module in vars(self).items():
-      if not isinstance(module, Module):
-        continue
-      if module in memo:
-        continue
-      sub_prefix = prefix + ('.' if (prefix and not prefix.endswith(".")) else '') + name
-      memo.add(module)
-      yield sub_prefix, module
-      if recurse:
-        for name_, mod_ in module.named_children(recurse=True, memo=memo, prefix=sub_prefix):
-          yield name_, mod_
+    if self in memo:
+      return
+    memo.add(self)
+    if include_self:
+      yield prefix, self
+    queue = [(prefix, self)]  # type: List[Tuple[str, nn.Module]]
+    while queue:
+      prefix, mod = queue.pop(0)
+      for name, module in vars(mod).items():
+        if not isinstance(module, Module):
+          continue
+        if module in memo:
+          continue
+        sub_prefix = prefix + ('.' if (prefix and not prefix.endswith(".")) else '') + name
+        memo.add(module)
+        yield sub_prefix, module
+        if recurse:
+          queue.append((sub_prefix, module))
 
   def named_parameters(self, *, recurse: bool = True) -> Iterator[Tuple[str, nn.Parameter]]:
     """
@@ -214,20 +234,12 @@ class Module:
     https://github.com/rwth-i6/returnn_common/issues/149
     """
     memo = set()  # over name contexts because we cannot hash layer refs
-
-    def _iter_params(module: Module, prefix: str) -> Iterator[Tuple[str, nn.Parameter]]:
+    for prefix, module in (self.named_modules() if recurse else [("", self)]):
       for key, value in vars(module).items():
         if isinstance(value, nn.Parameter) and value.name_ctx not in memo:
           sub_prefix = prefix + ('.' if prefix else '') + key
           memo.add(value.name_ctx)
           yield sub_prefix, value
-
-    for name, param in _iter_params(module=self, prefix=''):
-      yield name, param
-    if recurse:
-      for child_prefix, child_mod in self.named_children(recurse=True):
-        for name, param in _iter_params(module=child_mod, prefix=child_prefix):
-          yield name, param
 
   def parameters(self, *, recurse: bool = True) -> Iterator[nn.Parameter]:
     """
@@ -251,8 +263,9 @@ class Module:
 
     :return: self
     """
+    # Use `children` here and not `modules` to allow any submodule to potentially overwrite the `apply` logic.
     for child in self.children():
-      fn(child)
+      child.apply(fn)
     fn(self)
     return self
 
