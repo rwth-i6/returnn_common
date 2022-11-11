@@ -7,55 +7,22 @@ from returnn.util.basic import NotSpecified
 from .. import nn
 
 
-# noinspection PyShadowingNames
-def make_dim_from_length(length: nn.Tensor, dim: Optional[nn.Dim] = None) -> nn.Dim:
+def convert_to_tensor(x: Union[nn.Tensor, int, float, complex, bool, str]) -> nn.Tensor:
   """
-  Given some length tensor, creates a dim tag for it.
+  In case it is not a :class:`Tensor` yet, it will make some constant.
   """
-  if dim is None:
-    dim = nn.SpatialDim(length.get_abs_name())
-  # The actual range tensor is never used, but this has the side effect to set up the dim tag.
-  r, dim = nn.range_from_length(length, out_spatial_dim=dim)
-  from .base import _register_dim_deps_when_novel
-  _register_dim_deps_when_novel(dim, [r])
-  return dim
+  if isinstance(x, nn.Tensor):
+    return x
+  return nn.constant(value=x)
 
 
-def dim_value(dim: nn.Dim) -> Union[nn.Tensor, int]:
+def constant_value(x: nn.Tensor) -> Optional[Union[int, float, complex, bool, str]]:
   """
-  :return: like tf.shape(source)[axis], or specifically max(nn.length(source, axis=axis))
+  If the tensor is a constant, return its value.
   """
-  if dim.dimension is not None:
-    return dim.dimension
-  length_ = nn.length(dim)
-  if not length_.shape:
-    return length_
-  return nn.reduce(length_, mode="max", axis=length_.shape_ordered)
-
-
-def length(dim: nn.Dim,
-           *,
-           dtype: str = NotSpecified,
-           sparse: bool = False,
-           ) -> Union[nn.Tensor, int]:
-  """
-  :param nn.Dim dim:
-  :param str dtype: default is int32
-  :param bool sparse:
-  :return: individual sequence lengths of dim tag (commonly shape [B])
-  """
-  if dim.dimension is not None:
-    return dim.dimension
-  args = {}
-  if dtype is not nn.NotSpecified:
-    args["dtype"] = dtype
-  if sparse:
-    args["sparse"] = True
-  return nn.make_layer({
-    'class': 'length',
-    'from': nn.get_dim_deps(dim),
-    'axis': dim,
-    **args}, name='length')
+  if x.layer_dict and x.layer_dict["class"] == "constant":
+    return x.layer_dict["value"]
+  return None
 
 
 def reshape(source: nn.Tensor, in_dims: Sequence[nn.Dim], out_dims: Sequence[nn.Dim]) -> nn.Tensor:
@@ -263,3 +230,64 @@ def boolean_mask(source: nn.Tensor, *,
       "out_spatial_dim": out_spatial_dim,
       "unit": {"class": "copy", "from": source}
     }, name="boolean_mask"), out_spatial_dim
+
+
+def gather_by_mask(x: nn.Tensor, *,
+                   mask: nn.Tensor,
+                   in_spatial_dim: nn.Dim,
+                   name: str = "masked"
+                   ) -> Tuple[nn.Tensor, nn.Dim]:
+  """
+  Like tf.boolean_mask.
+
+  :param x: apply mask to this tensor. for example [B,T,D]
+  :param mask: boolean tensor. has a subset of the same dims as x. for example [B,T]
+  :param in_spatial_dim: dim to mask/compress
+  :param name:
+  :return: (masked_tensor, out_spatial_dim), for example [B,T',D], where T' is potentially shorter than T.
+  """
+  out_spatial_dim = nn.Dim(description=(in_spatial_dim.description or "unknown") + ":masked", kind=in_spatial_dim.kind)
+  return nn.make_layer({
+    "class": "masked_computation", "from": x, "mask": mask,
+    "in_spatial_dim": in_spatial_dim, "out_spatial_dim": out_spatial_dim,
+    "unit": {"class": "copy", "from": "data"}}, name=name), out_spatial_dim
+
+
+def where(cond: nn.Tensor,
+          true_: Union[nn.Tensor, float, int],
+          false_: Union[nn.Tensor, float, int],
+          *, name: Optional[str] = None) -> nn.Tensor:
+  """
+  Wraps tf.where, which is SwitchLayer in RETURNN.
+
+  :return: true_ if cond else false_, elemwise.
+  """
+  return nn.make_layer({
+    'class': 'switch', "condition": cond, "true_from": true_, "false_from": false_}, name=name or 'where')
+
+
+def sparse_to_dense(source: nn.Tensor, *,
+                    label_value: Union[nn.Tensor, int, float],
+                    other_value: Union[nn.Tensor, int, float]) -> nn.Tensor:
+  """
+  Converts a sparse tensor to a dense one.
+
+  This is a more generic variant of "one_hot".
+
+  Note that usually this is not needed as most other functions should handle sparse tensors just fine
+  and much more efficiently than they would be with dense tensors.
+  """
+  assert source.data.sparse
+  axis = source.data.sparse_dim
+  indices = nn.range_over_dim(axis, sparse=True)
+  return nn.where(source == indices, label_value, other_value)
+
+
+def one_hot(source: nn.Tensor) -> nn.Tensor:
+  """
+  one_hot. special case of :func:`sparse_to_dense`.
+
+  Note that usually this is not needed as most other functions should handle sparse tensors just fine
+  and much more efficiently than they would be with dense tensors.
+  """
+  return sparse_to_dense(source, label_value=1., other_value=0.)
