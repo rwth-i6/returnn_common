@@ -38,9 +38,9 @@ class LayerNorm(nn.Module):
     super().__init__()
     self.in_dim = in_dim
     self.eps = eps
-    self.scale = nn.Parameter((self.in_dim,))
+    self.scale = nn.Parameter([self.in_dim] if isinstance(self.in_dim, nn.Dim) else self.in_dim)
     self.scale.initial = 1.
-    self.bias = nn.Parameter((self.in_dim,))
+    self.bias = nn.Parameter(self.scale.shape_ordered)
     self.bias.initial = 0.
 
   def __call__(self, x: nn.Tensor) -> nn.Tensor:
