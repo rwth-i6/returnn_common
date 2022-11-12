@@ -30,7 +30,7 @@ def make_feed_dict(data_list, n_batch=3, n_time=7, same_time: bool = False):
   :param int n_batch:
   :param int n_time:
   :param bool same_time:
-  :rtype: dict[tf.Tensor,numpy.ndarray|list[int|float]]
+  :rtype: dict[tf.Tensor,numpy.ndarray|list[int|float|bool]|int|float|bool]
   """
   from returnn.tf.network import ExternData
   if isinstance(data_list, ExternData):
@@ -145,22 +145,29 @@ def dummy_run_net_single_custom(config_code_str: str, *,
                                 make_feed_dict=make_feed_dict,
                                 default_out_dim_tag_order: Optional[Sequence[Union[nn.Dim, str]]] = None,
                                 eval_flag: bool = False,
+                                train_flag: bool = False,
                                 ) -> Dict[str, numpy.ndarray]:
   """
   :param config_code_str: e.g. via get_complete_py_code_str
   :param make_feed_dict: func (ExternData) -> feed_dict
   :param default_out_dim_tag_order: if given, for the fetch, will order the dims this way
   :param eval_flag: losses are computed if True
+  :param train_flag: use (dynamic) train flag if True
   """
   config_dict, net_dict = config_net_dict_via_serialized(config_code_str)
   from returnn.config import Config
   from returnn.tf.network import TFNetwork
   config = Config(config_dict)
   with make_scope() as session:
-    net = TFNetwork(config=config, train_flag=False, eval_flag=eval_flag)
+    train_flag_ = False
+    if train_flag:
+      train_flag_ = tf.compat.v1.placeholder(tf.bool, (), name="dyn_train_flag")
+    net = TFNetwork(config=config, train_flag=train_flag_, eval_flag=eval_flag)
     net.construct_from_dict(net_dict)
     net.initialize_params(session)
     feed_dict = make_feed_dict(net.extern_data)
+    if train_flag:
+      feed_dict[train_flag_] = True
     fetches = net.get_fetches_dict(should_eval=eval_flag)
     have_default_out = False
     for layer in net.get_output_layers():
