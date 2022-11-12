@@ -666,6 +666,15 @@ class Parameter(Tensor):
         var.assign(value_tf)
 
   @property
+  def initial_value(self) -> Optional[Union[nn.Tensor, nn.RawTensorTypes]]:
+    """
+    In case initial is a ParamInit, this will return the actual value.
+    """
+    if self.layer_dict.get("init_by_layer", None) is not None:
+      return self.layer_dict["init_by_layer"]
+    return self.layer_dict.get("init", None)
+
+  @property
   def weight_decay(self) -> float:
     """
     Weight decay, which is equivalent to L2 loss on the parameters for SGD.
