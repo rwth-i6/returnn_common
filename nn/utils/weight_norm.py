@@ -2,6 +2,15 @@ r"""
 Weight Normalization from https://arxiv.org/abs/1602.07868
 
 Code adapted from PyTorch implementation.
+
+See :func:`weight_norm` to apply weight normalization to one parameter of a module.
+
+It's usually not a good idea to just apply it everywhere,
+thus this is rather selective.
+For :class:`nn.Linear`, as described in the original paper,
+you want to apply it on the ``weight`` parameter only.
+Additionally, it is recommended to combine it with a special variant of batch-norm,
+only mean-normalizing the input.
 """
 
 from __future__ import annotations
