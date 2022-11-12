@@ -482,6 +482,23 @@ def setup():
       print(f"  :return: {', '.join(res_args)}", file=f)
       print('  """', file=f)
 
+      if sig.has_source_param():
+        if sig.need_multiple_sources():
+          print(
+            "  assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)",
+            file=f)
+        elif sig.support_multiple_sources():
+          print(
+            "  assert (\n"
+            "    isinstance(source, nn.Tensor) or\n"
+            "    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)))",
+            file=f)
+        else:
+          print("  assert isinstance(source, nn.Tensor)", file=f)
+      elif sig.explicit_source_list():
+        for i in range(sig.explicit_source_list()):
+          print(f"  assert isinstance(source{i + 1}, nn.Tensor)", file=f)
+
       if layer_class.layer_class in PerLayerOutDimArgs:
         for out_dim_arg in PerLayerOutDimArgs[layer_class.layer_class]:
           param = sig.params[out_dim_arg]
