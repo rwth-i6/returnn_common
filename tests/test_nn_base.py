@@ -665,3 +665,21 @@ def test_make_layer_subnet_deep():
 
   config, net_dict, net = dummy_config_net_dict(_Net)
   dummy_run_net(config, net=net)
+
+
+def test_linear_wrong_type():
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim])
+  x = nn.get_extern_data(x)
+  net = nn.Linear(in_dim, nn.FeatureDim("out", 5))
+  # This is deliberately wrong. We test that we get an error.
+  # If we would not get an error, RETURNN would later throw an error,
+  # but the RETURNN error somewhat confusing without further inspection.
+  try:
+    y = net({"foo": x})  # noqa
+  except TypeError as exc:
+    print("Got expected TypeError:", exc)
+  else:
+    raise Exception("did not get expected TypeError")
