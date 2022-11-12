@@ -2,7 +2,7 @@
 Basic RNNs.
 """
 
-from typing import Optional, Union, Dict, Sequence, List, Tuple, Callable, Any
+from typing import Optional, Union, Dict, Sequence, Tuple, Any
 from .. import nn
 
 
