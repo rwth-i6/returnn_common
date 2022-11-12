@@ -23,6 +23,7 @@ def variational_weight_noise(module: T_module, name: str, weight_noise_std: floa
   weight = getattr(module, name)
   assert isinstance(weight, nn.Parameter)
 
+  assert not hasattr(module, f"{name}_raw")
   setattr(module, f"{name}_raw", weight)
 
   with nn.Cond(nn.train_flag()) as cond:
