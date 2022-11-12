@@ -997,7 +997,12 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
 
   layer_dict = nest.map_structure(_map_layer_dict_elem, layer_dict)
   out_name = _get_unique_name(tensor.name_ctx.name)
-  net_dict = {out_name: layer_dict}
+  net_dict = {
+    out_name: layer_dict,
+    # Simple workaround in case the layer wants to access its previous layer.
+    # https://github.com/rwth-i6/returnn_common/issues/243
+    f"prev:{out_name}": {"class": "constant", "shape": ()}
+  }
 
   if nn.is_debug_eager_mode_enabled():
     _add_layer = None  # implies to really construct the layer

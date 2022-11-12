@@ -4,7 +4,8 @@ Test nn.loop
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_run_net_single_custom, dummy_default_in_dim
+from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_run_net_single_custom, dummy_default_in_dim, \
+  config_net_dict_via_serialized
 
 import typing
 from .utils import assert_equal
@@ -198,3 +199,34 @@ def test_loop_full_seq_last():
   code_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   code_str += "debug_runtime_sanity_checks = True\n\n"
   dummy_run_net_single_custom(code_str)
+
+
+def test_ctc_search():
+  nn.reset_default_root_name_ctx()
+
+  feat_dim = nn.FeatureDim("feat", 5)
+  time_dim = nn.SpatialDim("time")
+  classes_dim = nn.FeatureDim("classes", 3)
+
+  class _Model(nn.Module):
+    def __init__(self):
+      self.encoder = nn.Linear(feat_dim, nn.FeatureDim("enc", 10))
+      self.projection = nn.Linear(self.encoder.out_dim, classes_dim)
+
+  model = _Model()
+  enc = model.encoder(nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, feat_dim])))
+  loop = nn.Loop(axis=time_dim)
+  with loop:
+    enc = loop.unstack(enc)
+    logits = model.projection(enc)
+    log_prob = nn.log_softmax(logits, axis=classes_dim)
+    label = nn.choice(
+      log_prob, input_type="log_prob",
+      target=None, search=True, beam_size=3,
+      length_normalization=False)
+    res = loop.stack(label)
+  res.mark_as_default_output()
+
+  config_code = nn.get_returnn_config().get_complete_py_code_str(model)
+  config, net_dict = config_net_dict_via_serialized(config_code)
+  dummy_run_net(config)
