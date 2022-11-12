@@ -172,6 +172,42 @@ class Module:
       if getattr(parent, attr, None) is self:
         yield parent, attr
 
+  def get_deep(self, target: str) -> Any:
+    """
+    Returns the deep attrib given by ``target`` if it exists, otherwise throws an error.
+    """
+    if target == "":
+      return self
+
+    atoms: List[str] = target.split(".")
+    mod: Module = self
+
+    for item in atoms[:-1]:
+      if not hasattr(mod, item):
+        raise AttributeError(f"{mod} has no attribute `{item}`")
+      mod = getattr(mod, item)
+      if not isinstance(mod, nn.Module):
+        raise AttributeError(f"`{item}` is not an nn.Module")
+
+    return getattr(mod, atoms[-1])
+
+  def set_deep(self, target: str, value: Any) -> None:
+    """
+    Sets the deep attrib given by ``target`` to ``value``.
+    """
+    if target == "":
+      raise AttributeError("Cannot set root module")
+
+    if "." in target:
+      prefix, target = target.rsplit(".", 2)
+      mod = self.get_deep(prefix)
+      if not isinstance(mod, nn.Module):
+        raise AttributeError(f"{self}: `{prefix}` is not an nn.Module")
+    else:
+      mod = self
+
+    setattr(mod, target, value)
+
   def children(self) -> Iterator[nn.Module]:
     """
     Get all immediate children modules, excluding self.
