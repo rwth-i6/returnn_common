@@ -59,7 +59,7 @@ class _Rec(nn.Module):
     reuse_params = {}
     for param in self.param_list:
       param_ = getattr(self, f"param_{param}")
-      assert isinstance(param_, nn.Parameter)
+      assert isinstance(param_, nn.Tensor)
       reuse_params[param] = {"layer_output": param_, "shape": param_.shape_ordered}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     assert direction in [1, -1]
