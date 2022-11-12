@@ -29,7 +29,8 @@ def copy(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'copy: unexpected type for source {source!r}, need tensor')
   return nn.make_layer({
     'class': 'copy',
     'from': source,
@@ -53,7 +54,8 @@ def scaled_gradient(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'scaled_gradient: unexpected type for source {source!r}, need tensor')
   args = {
     'scale': scale,
     }
@@ -80,7 +82,8 @@ def math_norm(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'math_norm: unexpected type for source {source!r}, need tensor')
   args = {
     'p': p,
     'axis': axis,
@@ -129,7 +132,8 @@ def slice(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'slice: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'slice')}:out_dim")
@@ -181,7 +185,8 @@ def slice_nd(
   :param str|nn.NameCtx|None name:
   :return: layer, out_spatial_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'slice_nd: unexpected type for source {source!r}, need tensor')
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'slice_nd')}:out_spatial_dim")
@@ -232,7 +237,8 @@ def gather(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'gather: unexpected type for source {source!r}, need tensor')
   args = {
     'position': position,
     'axis': axis,
@@ -295,7 +301,8 @@ def scatter_nd(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'scatter_nd: unexpected type for source {source!r}, need tensor')
   args = {
     'position': position,
     'position_axis': position_axis,
@@ -344,7 +351,8 @@ def softmax(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'softmax: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'energy_factor': energy_factor,
@@ -387,7 +395,8 @@ def seq_len_mask(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'seq_len_mask: unexpected type for source {source!r}, need tensor')
   args = {
     'mask_value': mask_value,
     'axis': axis,
@@ -516,7 +525,8 @@ def range_from_length(
   :param str|nn.NameCtx|None name:
   :return: layer, out_spatial_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'range_from_length: unexpected type for source {source!r}, need tensor')
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range_from_length')}:out_spatial_dim")
   args = {
@@ -544,7 +554,8 @@ def batch_softmax(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'batch_softmax: unexpected type for source {source!r}, need tensor')
   return nn.make_layer({
     'class': 'batch_softmax',
     'from': source,
@@ -590,7 +601,8 @@ def rec_window(
   :param str|nn.NameCtx|None name:
   :return: layer, (window_dim, out_spatial_dim), out_state
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'rec_window: unexpected type for source {source!r}, need tensor')
   if window_dim is None or window_dim is NotSpecified:
     window_dim = nn.SpatialDim(f"{_name_str(name, 'rec_window')}:window_dim")
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
@@ -635,7 +647,8 @@ def rec_cum_sum(
   :param str|nn.NameCtx|None name:
   :return: layer, out_state
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'rec_cum_sum: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'additional_left_summand_per_element': additional_left_summand_per_element,
@@ -674,7 +687,8 @@ def pad(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'pad: unexpected type for source {source!r}, need tensor')
   args = {
     'axes': axes,
     'padding': padding,
@@ -711,7 +725,8 @@ def merge_dims(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'merge_dims: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     if any(d.is_batch_dim() for d in axes):
       kind = nn.Dim.Types.Batch
@@ -750,7 +765,8 @@ def _split(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'_split: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'out_dims': out_dims,
@@ -800,7 +816,8 @@ def split_dims(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'split_dims: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'dims': dims,
@@ -835,7 +852,8 @@ def flatten_batch(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'flatten_batch: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'batch_major': batch_major,
@@ -861,7 +879,8 @@ def unflatten_batch(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'unflatten_batch: unexpected type for source {source!r}, need tensor')
   return nn.make_layer({
     'class': 'unflatten_batch',
     'from': source,
@@ -899,7 +918,8 @@ def unflatten_nd(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'unflatten_nd: unexpected type for source {source!r}, need tensor')
   args = {
     'sizes': sizes,
     'num_axes': num_axes,
@@ -937,7 +957,8 @@ def repeat(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'repeat: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'repeat')}:out_dim")
@@ -970,7 +991,8 @@ def tile(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'tile: unexpected type for source {source!r}, need tensor')
   args = {
     'multiples': multiples,
     'out_dims': out_dims,
@@ -996,7 +1018,8 @@ def cast(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'cast: unexpected type for source {source!r}, need tensor')
   args = {
     'dtype': dtype,
     }
@@ -1027,7 +1050,8 @@ def dct(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'dct: unexpected type for source {source!r}, need tensor')
   args = {
     'type': type,
     'n': n,
@@ -1064,7 +1088,8 @@ def reduce(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'reduce: unexpected type for source {source!r}, need tensor')
   args = {
     'mode': mode,
     'axis': axis,
@@ -1097,7 +1122,8 @@ def reduce_out(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'reduce_out: unexpected type for source {source!r}, need tensor')
   args = {
     'mode': mode,
     'num_pieces': num_pieces,
@@ -1129,7 +1155,8 @@ def squeeze(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'squeeze: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'allow_no_op': allow_no_op,
@@ -1158,7 +1185,8 @@ def stack(
   :param str|nn.NameCtx|None name:
   :return: layer, out_spatial_dim
   """
-  assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)
+  if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):
+    raise TypeError(f'stack: unexpected type for source {source!r}, need sequence of tensors')
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'stack')}:out_spatial_dim")
   args = {
@@ -1197,7 +1225,8 @@ def prefix_in_time(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'prefix_in_time: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'prefix_in_time')}:out_dim")
@@ -1237,7 +1266,8 @@ def postfix_in_time(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'postfix_in_time: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'postfix_in_time')}:out_dim")
@@ -1275,7 +1305,8 @@ def time_chunking(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'time_chunking: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'time_chunking')}:out_dim")
@@ -1307,7 +1338,8 @@ def time_un_chunking(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'time_un_chunking: unexpected type for source {source!r}, need tensor')
   args = {
     'chunking_layer': chunking_layer,
     }
@@ -1357,8 +1389,10 @@ def dot(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source1, nn.Tensor)
-  assert isinstance(source2, nn.Tensor)
+  if not isinstance(source1, nn.Tensor):
+    raise TypeError(f'dot: unexpected type for source1 {source1!r}, need tensor')
+  if not isinstance(source2, nn.Tensor):
+    raise TypeError(f'dot: unexpected type for source2 {source2!r}, need tensor')
   args = {
     'reduce': reduce,
     'debug': debug,
@@ -1398,7 +1432,8 @@ def shift_axis(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'shift_axis: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'amount': amount,
@@ -1438,7 +1473,8 @@ def resize(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'resize: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'resize')}:out_dim")
@@ -1479,7 +1515,8 @@ def remove(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'remove: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'remove')}:out_dim")
@@ -1532,7 +1569,8 @@ def _combine(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)
+  if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):
+    raise TypeError(f'_combine: unexpected type for source {source!r}, need sequence of tensors')
   args = {
     'kind': kind,
     'allow_broadcast_all_sources': allow_broadcast_all_sources,
@@ -1577,9 +1615,10 @@ def _eval(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert (
+  if not (
     isinstance(source, nn.Tensor) or
-    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)))
+    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):
+      raise TypeError(f'_eval: unexpected type for source {source!r}, need one or multiple tensors')
   args = {
     'eval': eval,
     'allow_broadcast_all_sources': allow_broadcast_all_sources,
@@ -1633,9 +1672,10 @@ def _compare(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert (
+  if not (
     isinstance(source, nn.Tensor) or
-    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)))
+    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):
+      raise TypeError(f'_compare: unexpected type for source {source!r}, need one or multiple tensors')
   args = {
     'kind': kind,
     'value': value,
@@ -1683,7 +1723,8 @@ def _top_k(
   :param str|nn.NameCtx|None name:
   :return: layer, k_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'_top_k: unexpected type for source {source!r}, need tensor')
   if k_dim is None or k_dim is NotSpecified:
     k_dim = nn.SpatialDim(f"{_name_str(name, 'top_k')}:k_dim")
   args = {
@@ -1727,7 +1768,8 @@ def search_sorted(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'search_sorted: unexpected type for source {source!r}, need tensor')
   args = {
     'sorted_sequence': sorted_sequence,
     'values': values,
@@ -1793,7 +1835,8 @@ def forced_alignment(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'forced_alignment: unexpected type for source {source!r}, need tensor')
   args = {
     'align_target': align_target,
     'topology': topology,
@@ -1901,7 +1944,8 @@ def fast_baum_welch(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'fast_baum_welch: unexpected type for source {source!r}, need tensor')
   args = {
     'align_target': align_target,
     'align_target_key': align_target_key,
@@ -1938,7 +1982,8 @@ def synthetic_gradient(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'synthetic_gradient: unexpected type for source {source!r}, need tensor')
   args = {
     'gradient': gradient,
     'meta_loss_scale': meta_loss_scale,
@@ -1964,7 +2009,8 @@ def tikhonov_regularization(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'tikhonov_regularization: unexpected type for source {source!r}, need tensor')
   args = {
     'meta_loss_scale': meta_loss_scale,
     }
@@ -1991,7 +2037,8 @@ def print(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'print: unexpected type for source {source!r}, need tensor')
   args = {
     'summarize': summarize,
     'extra_print_args': extra_print_args,
@@ -2037,7 +2084,8 @@ def hdf_dump(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'hdf_dump: unexpected type for source {source!r}, need tensor')
   args = {
     'filename': filename,
     'extra': extra,
@@ -2071,7 +2119,8 @@ def _get_last_hidden_state(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'_get_last_hidden_state: unexpected type for source {source!r}, need tensor')
   args = {
     'out_dim': out_dim,
     'combine': combine,
@@ -2118,7 +2167,8 @@ def rec_unstack(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'rec_unstack: unexpected type for source {source!r}, need tensor')
   args = {
     'axis': axis,
     'declare_rec_time': declare_rec_time,
@@ -2204,7 +2254,8 @@ def choice(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'choice: unexpected type for source {source!r}, need tensor')
   args = {
     'target': target,
     'beam_size': beam_size,
@@ -2259,7 +2310,8 @@ def decide(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'decide: unexpected type for source {source!r}, need tensor')
   args = {
     'length_normalization': length_normalization,
     'search': search,
@@ -2290,7 +2342,8 @@ def choice_get_beam_scores(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'choice_get_beam_scores: unexpected type for source {source!r}, need tensor')
   return nn.make_layer({
     'class': 'choice_get_beam_scores',
     'from': source,
@@ -2310,7 +2363,8 @@ def choice_get_src_beams(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'choice_get_src_beams: unexpected type for source {source!r}, need tensor')
   return nn.make_layer({
     'class': 'choice_get_src_beams',
     'from': source,
@@ -2342,7 +2396,8 @@ def split_batch_beam(
   :param str|nn.NameCtx|None name:
   :return: layer, beam_dim
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'split_batch_beam: unexpected type for source {source!r}, need tensor')
   if beam_dim is None or beam_dim is NotSpecified:
     beam_dim = nn.SpatialDim(f"{_name_str(name, 'split_batch_beam')}:beam_dim")
   args = {
@@ -2389,7 +2444,8 @@ def positional_encoding(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'positional_encoding: unexpected type for source {source!r}, need tensor')
   args = {
     'out_dim': out_dim,
     'axis': axis,
@@ -2439,7 +2495,8 @@ def ken_lm_state(
   :param str|nn.NameCtx|None name:
   :return: layer, out_state
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'ken_lm_state: unexpected type for source {source!r}, need tensor')
   args = {
     'lm_file': lm_file,
     'vocab_file': vocab_file,
@@ -2527,7 +2584,8 @@ def edit_distance_table(
   :param str|nn.NameCtx|None name:
   :return: layer, out_dim, out_state
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'edit_distance_table: unexpected type for source {source!r}, need tensor')
   if out_dim is None or out_dim is NotSpecified:
     out_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'edit_distance_table')}:out_dim")
@@ -2573,7 +2631,8 @@ def optimal_completions(
   :param str|nn.NameCtx|None name:
   :return: layer
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'optimal_completions: unexpected type for source {source!r}, need tensor')
   args = {
     'debug': debug,
     'blank_idx': blank_idx,
@@ -2643,7 +2702,8 @@ def rec_cum_concat(
   :param str|nn.NameCtx|None name:
   :return: layer, out_spatial_dim, out_state
   """
-  assert isinstance(source, nn.Tensor)
+  if not isinstance(source, nn.Tensor):
+    raise TypeError(f'rec_cum_concat: unexpected type for source {source!r}, need tensor')
   if out_spatial_dim is None or out_spatial_dim is NotSpecified:
     out_spatial_dim = nn.Dim(
       kind=axis.kind, description=f"{_name_str(name, 'rec_cum_concat')}:out_spatial_dim")

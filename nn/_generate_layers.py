@@ -485,19 +485,27 @@ def setup():
       if sig.has_source_param():
         if sig.need_multiple_sources():
           print(
-            "  assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)",
+            "  if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):\n"
+            f"    raise TypeError(f'{name}: unexpected type for source {{source!r}}, need sequence of tensors')",
             file=f)
         elif sig.support_multiple_sources():
           print(
-            "  assert (\n"
+            "  if not (\n"
             "    isinstance(source, nn.Tensor) or\n"
-            "    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)))",
+            "    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):\n",
+            f"     raise TypeError(f'{name}: unexpected type for source {{source!r}}, need one or multiple tensors')",
             file=f)
         else:
-          print("  assert isinstance(source, nn.Tensor)", file=f)
+          print(
+            "  if not isinstance(source, nn.Tensor):\n"
+            f"    raise TypeError(f'{name}: unexpected type for source {{source!r}}, need tensor')",
+            file=f)
       elif sig.explicit_source_list():
         for i in range(sig.explicit_source_list()):
-          print(f"  assert isinstance(source{i + 1}, nn.Tensor)", file=f)
+          print(
+            f"  if not isinstance(source{i + 1}, nn.Tensor):\n"
+            f"    raise TypeError(f'{name}: unexpected type for source{i + 1} {{source{i + 1}!r}}, need tensor')",
+            file=f)
 
       if layer_class.layer_class in PerLayerOutDimArgs:
         for out_dim_arg in PerLayerOutDimArgs[layer_class.layer_class]:
