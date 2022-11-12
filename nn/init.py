@@ -12,7 +12,7 @@ from .. import nn
 
 class ParamInit:
   """API for param init"""
-  def __call__(self, shape: Sequence[nn.Dim], dtype: str) -> nn.Tensor:
+  def __call__(self, shape: Sequence[nn.Dim], dtype: str) -> Union[nn.Tensor, nn.RawTensorTypes]:
     raise NotImplementedError
 
 
