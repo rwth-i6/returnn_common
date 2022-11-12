@@ -5,7 +5,8 @@ Test the base nn functionality
 from __future__ import annotations
 
 from . import _setup_test_env  # noqa
-from .returnn_helpers import dummy_run_net, dummy_config_net_dict, dummy_default_in_dim, config_net_dict_via_serialized
+from .returnn_helpers import dummy_run_net, dummy_run_net_single_custom, \
+  dummy_config_net_dict, dummy_default_in_dim, config_net_dict_via_serialized
 from pprint import pprint
 from .utils import assert_equal
 import numpy
@@ -16,6 +17,26 @@ if typing.TYPE_CHECKING:
   from .. import nn
 else:
   from returnn_common import nn  # noqa
+
+
+def test_simple_linear():
+  config, net_dict, net = dummy_config_net_dict(
+    lambda: nn.Linear(dummy_default_in_dim, nn.FeatureDim("linear-out", 13)))
+  pprint(config)
+  dummy_run_net(config, net=net)
+
+
+def test_simple_linear_ex():
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim])
+  x = nn.get_extern_data(x)
+  net = nn.Linear(in_dim, nn.FeatureDim("out", 5))
+  y = net(x)
+  y.mark_as_default_output()
+  config_str = nn.get_returnn_config().get_complete_py_code_str(net)
+  dummy_run_net_single_custom(config_str, eval_flag=True)
 
 
 def test_simple_net_linear():
