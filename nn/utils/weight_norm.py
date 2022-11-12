@@ -58,6 +58,7 @@ def weight_norm(module: T_module, name: str = "weight", dim: Optional[nn.Dim] = 
   fn = WeightNorm(weight, dim)
 
   delattr(module, name)  # remove w from parameter list
+  assert not hasattr(module, f"{name}_normalized")
   setattr(module, f"{name}_normalized", fn)  # add weight norm functions
   setattr(module, name, fn.compute_weight())  # set it to calculated weight
 
