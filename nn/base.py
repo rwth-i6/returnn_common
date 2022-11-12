@@ -189,12 +189,14 @@ class Tensor:
     """
     return self.data.dim_tags
 
-  def batch_dims_ordered(self, remove: Union[nn.Dim, Sequence[nn.Dim]] = ()) -> List[Dim]:
+  def batch_dims_ordered(self, remove: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None) -> List[Dim]:
     """
     :return: ordered batch dims
     """
     batch_dims = list(self.shape_ordered)
-    if isinstance(remove, nn.Dim):
+    if not remove:
+      pass
+    elif isinstance(remove, nn.Dim):
       batch_dims.remove(remove)
     else:
       for remove_ in remove:
