@@ -9,3 +9,4 @@ from .gradient import *
 from .label_smoothing import *
 from .stochastic_depth import *
 from .targets import *
+from .weight_norm import weight_norm, remove_weight_norm
