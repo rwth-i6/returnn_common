@@ -56,3 +56,19 @@ def test_variational_weight_noise():
   y.mark_as_default_output()
   config_str = nn.get_returnn_config().get_complete_py_code_str(net)
   dummy_run_net_single_custom(config_str, train_flag=True)
+
+
+def test_weight_dropout():
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim])
+  x = nn.get_extern_data(x)
+  net = nn.Linear(in_dim, nn.FeatureDim("out", 5))
+  assert isinstance(net.weight, nn.Parameter)
+  nn.weight_dropout(net, "weight", 0.3)
+  assert not isinstance(net.weight, nn.Parameter) and isinstance(net.weight, nn.Tensor)
+  y = net(x)
+  y.mark_as_default_output()
+  config_str = nn.get_returnn_config().get_complete_py_code_str(net)
+  dummy_run_net_single_custom(config_str, train_flag=True)
