@@ -118,7 +118,6 @@ class HookedModuleCall:
     return hooked.setdefault_by_module(module)
 
   def _restore(self):
-    assert self.module_cls.__call__ is self
     self.module_cls.__call__ = self.orig_call
 
   def __init__(self, module_cls):
@@ -136,7 +135,7 @@ class HookedModuleCall:
         return hooked.call(partial(self.orig_call, module), module, *args, **kwargs)
       else:
         del self.hooks[hooked.module_id]
-    return module(*args, **kwargs)
+    return self.orig_call(module, *args, **kwargs)
 
   def setdefault_by_module(self, module: nn.Module) -> HookedModuleCallInstance:
     """
