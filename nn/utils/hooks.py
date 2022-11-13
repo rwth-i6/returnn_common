@@ -23,7 +23,7 @@ def register_call_post_hook(
   Executes the hook after func_or_module was executed
 
   :param func_or_module: function or module
-  :param hook: hook function. ``hook(func_or_module, input, output) -> None or modified output``.
+  :param hook: hook function. ``hook(func_or_module, input, output, **kwargs) -> None or modified output``.
     You can access ``func_or_module.__self__`` in case of a method to get the object (e.g. the module).
   :return: removable-handle
   """
@@ -45,7 +45,7 @@ class _Hooked:
     """Call"""
     result = call_func(*args, **kwargs)
     for hook in self.post_hooks.values():
-      hook_result = hook(arg_func, args, result)
+      hook_result = hook(arg_func, args, result, **kwargs)
       if hook_result is not None:
         result = hook_result
     return result
