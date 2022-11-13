@@ -26,6 +26,31 @@ def test_prev_target_seq():
   dummy_run_net_single_custom(config_str, eval_flag=True)
 
 
+def test_register_call_post_hook():
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim])
+  x = nn.get_extern_data(x)
+  net = nn.Linear(in_dim, nn.FeatureDim("out", 5))
+
+  _marker_attrib = "returnn_common_test_i_was_here"
+
+  def _hook(func, input, output):
+    print("hook called:", func, input, output)
+    output = output * 2.
+    setattr(output, _marker_attrib, True)
+    return output
+
+  nn.register_call_post_hook(net, _hook)
+
+  y = net(x)
+  assert getattr(y, _marker_attrib) is True
+  y.mark_as_default_output()
+  config_str = nn.get_returnn_config().get_complete_py_code_str(net)
+  dummy_run_net_single_custom(config_str, eval_flag=True)
+
+
 def test_weight_norm():
   nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
