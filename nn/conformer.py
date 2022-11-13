@@ -1,6 +1,9 @@
 """
-Conformer code.
+Conformer model, variant of Transformer with additional convolution, introduced for speech recognition.
 Ref: https://arxiv.org/abs/2005.08100
+
+About details of the specific implementation and other implementations, see:
+https://github.com/rwth-i6/returnn_common/issues/233
 """
 
 from __future__ import annotations
