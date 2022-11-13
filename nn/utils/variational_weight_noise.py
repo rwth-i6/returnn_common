@@ -17,6 +17,17 @@ def variational_weight_noise(module: T_module, name: str, weight_noise_std: floa
   :param module: module
   :param name: name of the weight parameter
   :param weight_noise_std: standard deviation of the weight noise
+
+  Example::
+
+      vn = 0.0075
+      for mod in self.encoder.modules():
+          if isinstance(mod, nn.LSTM):
+              nn.variational_weight_noise(mod, "param_W_re", vn)
+              nn.variational_weight_noise(mod, "param_W", vn)
+          elif isinstance(mod, nn.Linear):
+              nn.variational_weight_noise(mod, "weight", vn)
+
   """
   assert weight_noise_std > 0
   assert hasattr(module, name)
