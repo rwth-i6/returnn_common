@@ -36,6 +36,7 @@ def test_register_call_post_hook():
 
   _marker_attrib = "returnn_common_test_i_was_here"
 
+  # noinspection PyShadowingBuiltins
   def _hook(func, input, output):
     print("hook called:", func, input, output)
     output = output * 2.
