@@ -158,6 +158,10 @@ class ConformerEncoderLayer(nn.Module):
   Represents a conformer block
   """
 
+  # For old experiments. TODO: Remove this later.
+  # https://github.com/rwth-i6/returnn_common/issues/245
+  use_dropout_after_self_att = True
+
   def __init__(
         self,
         out_dim: nn.Dim = nn.FeatureDim("conformer-enc-default-out-dim", 512),
@@ -241,6 +245,8 @@ class ConformerEncoderLayer(nn.Module):
     # MHSA
     x_mhsa_ln = self.self_att_layer_norm(x_ffn1_out)
     x_mhsa = self.self_att(x_mhsa_ln, axis=spatial_dim)
+    if self.use_dropout_after_self_att:  # TODO if flag removed, just always use it
+      x_mhsa = nn.dropout(x_mhsa, axis=inp.feature_dim, dropout=self.dropout)
     x_mhsa_out = x_mhsa + x_ffn1_out
 
     # Conv
