@@ -26,6 +26,17 @@ def weight_dropout(
   :param name: name of the weight parameter
   :param dropout: dropout probability
   :param axis: axis to apply dropout on. see :func:`nn.dropout`
+
+  Example usage::
+
+      wdrop = 0.1
+      for mod in self.encoder.modules():
+          if isinstance(mod, nn.LSTM):
+              nn.weight_dropout(mod, "param_W_re", wdrop)
+              nn.weight_dropout(mod, "param_W", wdrop)
+          elif isinstance(mod, nn.Linear):
+              nn.weight_dropout(mod, "weight", wdrop)
+
   """
   assert hasattr(module, name)
   weight = getattr(module, name)
