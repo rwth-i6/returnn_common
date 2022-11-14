@@ -103,7 +103,7 @@ class ZoneoutLSTM(_Rec):
   LSTM with zoneout. returns (output, state) tuple, where state is (h,c).
   """
   unit = "zoneoutlstm"
-  _param_map_prefix = "rnn/lstm_cell/"
+  _param_map_prefix = "lstm_cell/"
 
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
                zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0.):
