@@ -77,7 +77,7 @@ def reinterpret_set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str 
   :return: source with sparse_dim set to out_dim
   """
   return nn.make_layer(
-    {"class": "reinterpret_data", "set_sparse_dim": out_dim, "from": source},
+    {"class": "reinterpret_data", "set_sparse": True, "set_sparse_dim": out_dim, "from": source},
     name=name)
 
 
