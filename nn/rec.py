@@ -14,11 +14,9 @@ class _Rec(nn.Module):
   """
 
   unit: str = None
-  param_list: Tuple[str] = ()
 
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
-               unit: Optional[str] = None, unit_opts: Optional[Dict[str, Any]] = None,
-               param_list: Optional[Tuple[str]] = None):
+               unit: Optional[str] = None, unit_opts: Optional[Dict[str, Any]] = None):
     """
     :param out_dim: dimension tag for the output feature dimension
     :param unit: unit description string, see documentation for available recurrent cells
@@ -33,8 +31,6 @@ class _Rec(nn.Module):
     else:
       assert self.unit is not None
     self.unit_opts = unit_opts
-    if param_list is not None:
-      self.param_list = param_list
 
   def __call__(self, source: nn.Tensor, *,
                spatial_dim: nn.Dim,
@@ -57,10 +53,13 @@ class _Rec(nn.Module):
       rec_layer_dict["unit_opts"] = self.unit_opts
     # We use the reuse_params mechanism from RETURNN to explicitly pass the parameters.
     reuse_params = {}
-    for param in self.param_list:
-      param_ = getattr(self, f"param_{param}")
-      assert isinstance(param_, nn.Tensor)
-      reuse_params[param] = {"layer_output": param_, "shape": param_.shape_ordered}
+    for param_name, param in vars(self).items():
+      if param_name.startswith("param_"):
+        param_name = param_name[len("param_"):]
+      else:
+        continue
+      assert isinstance(param, nn.Tensor)
+      reuse_params[param_name] = {"layer_output": param, "shape": param.shape_ordered}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     assert direction in [1, -1]
     if direction == -1:
@@ -87,7 +86,6 @@ class LSTM(_Rec):
   """
 
   unit = "nativelstm2"
-  param_list = ("W_re", "W", "b")
 
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim):
     super().__init__(in_dim=in_dim, out_dim=out_dim)
@@ -104,7 +102,6 @@ class ZoneoutLSTM(_Rec):
   LSTM with zoneout. returns (output, state) tuple, where state is (h,c).
   """
   unit = "zoneoutlstm"
-  param_list = ("kernel", "bias")
 
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
                zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0.):
