@@ -125,6 +125,15 @@ def random_bernoulli(
   return Random().bernoulli(shape=shape, dtype=dtype, p=p)
 
 
+def random_label(shape: Sequence[nn.Dim], sparse_dim: nn.Dim, dtype: str = "int32") -> nn.Tensor:
+  """
+  Random label
+  """
+  res = random_uniform(shape=shape, dtype=dtype, minval=0, maxval=sparse_dim.dimension)
+  res = nn.reinterpret_set_sparse_dim(res, sparse_dim)
+  return res
+
+
 def random(
            *,
            shape: Sequence[nn.Dim],
