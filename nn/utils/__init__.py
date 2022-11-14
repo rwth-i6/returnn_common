@@ -9,6 +9,7 @@ from .gradient import *
 from .hooks import register_call_post_hook
 from .label_smoothing import *
 from .stochastic_depth import *
+from .switchout import *
 from .targets import *
 from .variational_weight_noise import *
 from .weight_dropout import *
