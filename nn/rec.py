@@ -14,6 +14,7 @@ class _Rec(nn.Module):
   """
 
   unit: str = None
+  _param_map_prefix: str = ""
 
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
                unit: Optional[str] = None, unit_opts: Optional[Dict[str, Any]] = None):
@@ -59,7 +60,7 @@ class _Rec(nn.Module):
       else:
         continue
       assert isinstance(param, nn.Tensor)
-      reuse_params[param_name] = {"layer_output": param, "shape": param.shape_ordered}
+      reuse_params[self._param_map_prefix + param_name] = {"layer_output": param, "shape": param.shape_ordered}
     rec_layer_dict["reuse_params"] = {"map": reuse_params}
     assert direction in [1, -1]
     if direction == -1:
@@ -102,6 +103,7 @@ class ZoneoutLSTM(_Rec):
   LSTM with zoneout. returns (output, state) tuple, where state is (h,c).
   """
   unit = "zoneoutlstm"
+  _param_map_prefix = "rnn/lstm_cell/"
 
   def __init__(self, in_dim: nn.Dim, out_dim: nn.Dim, *,
                zoneout_factor_cell: float = 0., zoneout_factor_output: float = 0.):
