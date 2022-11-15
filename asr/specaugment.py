@@ -12,6 +12,8 @@ def specaugment_v2(x: nn.Tensor, *,
                    feature_dim: nn.Dim = nn.NotSpecified,
                    global_train_step_dependent: bool = True,
                    only_on_train: bool = True,
+                   max_consecutive_spatial_dims: int = 20,
+                   max_consecutive_feature_dims: int = nn.NotSpecified,
                    ) -> nn.Tensor:
   """
   SpecAugment reimplementation of :func:`specaugment_v1`
@@ -19,6 +21,8 @@ def specaugment_v2(x: nn.Tensor, *,
   if feature_dim is nn.NotSpecified:
     assert x.feature_dim
     feature_dim = x.feature_dim
+  if max_consecutive_feature_dims is nn.NotSpecified:
+    max_consecutive_feature_dims = feature_dim.dimension // 5
   if global_train_step_dependent:
     step = nn.global_train_step()
     step1 = nn.where(step >= 1000, 1, 0)
@@ -34,12 +38,12 @@ def specaugment_v2(x: nn.Tensor, *,
       x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
       min_num=nn.minimum(step1 + step2, spatial_len),
       max_num=nn.minimum(nn.maximum(spatial_len // 100, 2) * (1 + step1 + step2 * 2), spatial_len),
-      max_dims=20)
+      max_dims=max_consecutive_spatial_dims)
     # feature mask
     x_masked = random_mask_v2(
       x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim,
       min_num=step1 + step2, max_num=2 + step1 + step2 * 2,
-      max_dims=feature_dim.dimension // 5)
+      max_dims=max_consecutive_feature_dims)
     cond.true = x_masked
     cond.false = x
   return cond.result
