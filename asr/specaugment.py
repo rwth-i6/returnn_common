@@ -14,6 +14,7 @@ def specaugment_v2(x: nn.Tensor, *,
                    only_on_train: bool = True,
                    max_consecutive_spatial_dims: int = 20,
                    max_consecutive_feature_dims: int = nn.NotSpecified,
+                   num_spatial_mask_factor: int = 100,
                    ) -> nn.Tensor:
   """
   SpecAugment reimplementation of :func:`specaugment_v1`
@@ -37,7 +38,7 @@ def specaugment_v2(x: nn.Tensor, *,
     x_masked = random_mask_v2(
       x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
       min_num=nn.minimum(step1 + step2, spatial_len),
-      max_num=nn.minimum(nn.maximum(spatial_len // 100, 2) * (1 + step1 + step2 * 2), spatial_len),
+      max_num=nn.minimum(nn.maximum(spatial_len // num_spatial_mask_factor, 2) * (1 + step1 + step2 * 2), spatial_len),
       max_dims=max_consecutive_spatial_dims)
     # feature mask
     x_masked = random_mask_v2(
