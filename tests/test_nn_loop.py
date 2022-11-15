@@ -210,6 +210,7 @@ def test_ctc_search():
 
   class _Model(nn.Module):
     def __init__(self):
+      super(_Model, self).__init__()
       self.encoder = nn.Linear(feat_dim, nn.FeatureDim("enc", 10))
       self.projection = nn.Linear(self.encoder.out_dim, classes_dim)
 
