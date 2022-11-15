@@ -89,6 +89,7 @@ class WeightNorm(nn.Module):
   """
 
   def __init__(self, weight: nn.Parameter, dim: Optional[nn.Dim], eps=1e-6) -> None:
+    super(WeightNorm, self).__init__()
     self.dim = dim
     self.eps = eps
 
