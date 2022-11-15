@@ -12,30 +12,36 @@ from ... import nn
 from .blstm import BlstmEncoder
 
 
-class BlstmCnnSpecAugEncoder(BlstmEncoder):
+class BlstmCnnEncoder(BlstmEncoder):
   """
-  SpecAugment . PreCNN . BLSTM
+  PreCNN . BLSTM
   """
-
   def __init__(self,
                in_dim: nn.Dim,
                lstm_dim: nn.Dim = nn.FeatureDim("lstm-dim", 1024),
                *,
                num_layers: int = 6,
                time_reduction: Union[int, Tuple[int, ...]] = 6,
-               with_specaugment=True,
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,):
-    self.with_specaugment = with_specaugment
     self.pre_conv_net = PreConvNet(in_dim=in_dim)
-    super(BlstmCnnSpecAugEncoder, self).__init__(
+    super(BlstmCnnEncoder, self).__init__(
       in_dim=self.pre_conv_net.out_dim, dim=lstm_dim,
       num_layers=num_layers, time_reduction=time_reduction,
       l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
   def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
-    if self.with_specaugment:
-      source = specaugment_v2(source, spatial_dim=in_spatial_dim)
     source = self.pre_conv_net(source, spatial_dim=in_spatial_dim)
+    source, in_spatial_dim = super(BlstmCnnEncoder, self).__call__(source, in_spatial_dim=in_spatial_dim)
+    return source, in_spatial_dim
+
+
+class BlstmCnnSpecAugEncoder(BlstmCnnEncoder):
+  """
+  SpecAugment . PreCNN . BLSTM
+  """
+
+  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+    source = specaugment_v2(source, spatial_dim=in_spatial_dim)
     source, in_spatial_dim = super(BlstmCnnSpecAugEncoder, self).__call__(source, in_spatial_dim=in_spatial_dim)
     return source, in_spatial_dim
 

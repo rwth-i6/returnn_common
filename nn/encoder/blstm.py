@@ -21,6 +21,8 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,
                ):
     super(BlstmEncoder, self).__init__()
+    self.in_dim = in_dim
+    self.dim = dim
     self.num_layers = num_layers
 
     if isinstance(time_reduction, int):
