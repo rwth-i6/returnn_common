@@ -1559,6 +1559,8 @@ def _auto_setup_parent_name_ctx(*, ignore_top_stack_frames: int = 1) -> NameCtx:
           mod = nn.Functional(func)
           _FuncToFunctional[func] = mod
     if mod is not None and id(mod) not in module_ids:
+      # noinspection PyProtectedMember
+      mod._make_sure_initialized()
       calls = [
         call_ctx for call_ctx in mod.calls
         if call_ctx.root is cur_root_ctx

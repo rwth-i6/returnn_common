@@ -77,11 +77,19 @@ class Module:
     and potential changing inputs (other tensors)
     are passed to :func:`__call__`.
     """
+    # There is some external code which might have done an early call to __init__,
+    # so it can happen that this is called twice.
+    if hasattr(self, "calls"):
+      return
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
     # Also note that the current code does not clean this up when you do delattr later or so.
     self._parents = _ModuleParents()  # type: Dict[Tuple[Module, str], None]  # (parent,attrib) -> None
     self.calls = _ModuleCalls()  # type: List[nn.NameCtx]
+
+  def _make_sure_initialized(self):
+    if not hasattr(self, "calls"):
+      Module.__init__(self)
 
   def __repr__(self):
     return f"<{self.__class__.__name__}>"
