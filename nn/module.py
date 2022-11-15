@@ -79,8 +79,9 @@ class Module:
     """
     # There is some external code which might have done an early call to __init__,
     # so it can happen that this is called twice.
-    if hasattr(self, "calls"):
+    if getattr(self, "_module_init_was_called", False):
       return
+    self._module_init_was_called = True
     # Actually we would want an ordered set for parents, but Python does not provide this.
     # We abuse a dict as a set. This is ordered since Python 3.6, see #43.
     # Also note that the current code does not clean this up when you do delattr later or so.
@@ -88,7 +89,7 @@ class Module:
     self.calls = _ModuleCalls()  # type: List[nn.NameCtx]
 
   def _make_sure_initialized(self):
-    if not hasattr(self, "calls"):
+    if not getattr(self, "_module_init_was_called", False):
       Module.__init__(self)
 
   def __repr__(self):
