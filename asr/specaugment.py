@@ -25,7 +25,6 @@ def specaugment_v2(x: nn.Tensor, *,
     step2 = nn.where(step >= 2000, 1, 0)
   else:
     step1 = step2 = 1
-  time_factor = 1
 
   with nn.Cond(nn.train_flag() | (not only_on_train)) as cond:
     x_masked = x
@@ -35,7 +34,7 @@ def specaugment_v2(x: nn.Tensor, *,
       x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
       min_num=nn.minimum(step1 + step2, spatial_len),
       max_num=nn.minimum(nn.maximum(spatial_len // 100, 2) * (1 + step1 + step2 * 2), spatial_len),
-      max_dims=20 // time_factor)
+      max_dims=20)
     # feature mask
     x_masked = random_mask_v2(
       x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim,
