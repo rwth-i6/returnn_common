@@ -138,6 +138,7 @@ class Module:
 
   def __setattr__(self, key: str, value):
     super().__setattr__(key, value)
+    self._make_sure_initialized()
     sub_calls = []  # type: List[nn.NameCtx]
     if isinstance(value, Module):
       value._parents[(self, key)] = None
