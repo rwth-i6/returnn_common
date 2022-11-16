@@ -133,3 +133,42 @@ def test_nn_conformer():
      })
 
   dummy_run_net(config, net=conformer)
+
+
+def test_chunking_conformer():
+  # This test needs a huge stack size currently, due to the way RETURNN layer construction works currently.
+  # On RETURNN side, there is the option flat_net_construction to solve this,
+  # however, it's experimental and also does not work for this case.
+  # https://github.com/rwth-i6/returnn/issues/957
+  # https://stackoverflow.com/a/16248113/133374
+  import resource
+  import sys
+  try:
+    resource.setrlimit(resource.RLIMIT_STACK, (2 ** 29, -1))
+  except Exception as exc:
+    print(f"resource.setrlimit {type(exc).__name__}: {exc}")
+  sys.setrecursionlimit(10 ** 6)
+
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  input_dim = nn.FeatureDim("input", 10)
+  data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
+  conformer = nn.ConformerEncoder(
+    input_dim, nn.FeatureDim("out", 14), ff_dim=nn.FeatureDim("ff", 17),
+    input_layer=nn.ConformerConvSubsample(
+      input_dim,
+      out_dims=[nn.FeatureDim("conv1", 32), nn.FeatureDim("conv2", 64)],
+      filter_sizes=[(3, 3), (3, 3)],
+    ),
+    num_heads=2, num_layers=2,
+  )
+  window_dim = nn.SpatialDim("window", 50)
+  data, time_dim_ = nn.window(data, axis=time_dim, window_dim=window_dim, stride=25)
+  out, _ = conformer(data, in_spatial_dim=window_dim)
+  out.verify_out_shape({nn.batch_dim, time_dim_, window_dim, conformer.out_dim})
+
+  out.mark_as_default_output()
+
+  config_code = nn.get_returnn_config().get_complete_py_code_str(conformer)
+  config, net_dict = config_net_dict_via_serialized(config_code)
+  dummy_run_net(config, net=conformer)
