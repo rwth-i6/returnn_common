@@ -93,5 +93,6 @@ def label_smoothed_log_prob_gradient(log_prob: nn.Tensor, smoothing: Union[nn.Te
   dim = axis.dimension
   floor_prob = smoothing / (dim - 1)
   factor = 1. - dim * floor_prob
-  # This is expected to be the negative target prob, thus negative floor_prob.
-  return nn.scaled_gradient(log_prob, scale=factor, shift=-floor_prob)
+  # The gradient is expected to be the negative target prob, thus negative floor_prob.
+  # The gradient is expected to be 0. for masked frames, thus the clipping logic.
+  return nn.scaled_gradient(log_prob, scale=factor, shift=-floor_prob, clip_max_axis=axis)
