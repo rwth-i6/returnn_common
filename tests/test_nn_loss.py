@@ -7,6 +7,7 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
 import typing
 from typing import Tuple
+import unittest
 
 if typing.TYPE_CHECKING:
   from .. import nn
@@ -67,6 +68,10 @@ def test_mark_as_loss_in_subnet():
 
 
 def test_transducer_time_sync_full_sum_neg_log_prob():
+  from returnn.extern import WarpRna
+  if not WarpRna.is_checked_out():
+    raise unittest.SkipTest("WarpRna not checked out")
+
   nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
   in_dim = nn.FeatureDim("input", 2)
