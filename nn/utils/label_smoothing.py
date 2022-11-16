@@ -7,7 +7,7 @@ from typing import Optional, Union
 from ... import nn
 
 
-def label_smoothing(source: nn.Tensor, smoothing: Union[nn.Tensor, float],
+def label_smoothing(prob: nn.Tensor, smoothing: Union[nn.Tensor, float],
                     *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
   """
   Label smoothing, often used for cross entropy.
@@ -16,24 +16,24 @@ def label_smoothing(source: nn.Tensor, smoothing: Union[nn.Tensor, float],
   and the target label will get probability (1 - smoothing).
   """
   if not axis:
-    assert source.feature_dim
-    axis = source.feature_dim
-  if source.data.sparse:
-    assert source.data.sparse_dim == axis
-    return nn.smooth_one_hot(source, label_prob=1. - smoothing)
+    assert prob.feature_dim
+    axis = prob.feature_dim
+  if prob.data.sparse:
+    assert prob.data.sparse_dim == axis
+    return nn.smooth_one_hot(prob, label_prob=1. - smoothing)
   else:
-    assert axis in source.shape
+    assert axis in prob.shape
     # Make it consistent to the sparse case.
     # Value of 1.0 should result in (1 - smoothing).
     # Value of 0.0 should result in smoothing / (dim - 1).
     # Sum over all should still remain 1.0.
-    dim = source.data.sparse_dim.dimension
+    dim = prob.data.sparse_dim.dimension
     floor_prob = smoothing / (dim - 1)
     factor = 1. - dim * floor_prob
     # Case for source[i] == 0 is clear.
     # Case for source[i] == 1: 1 - dim * floor_prob + floor_prob = 1 + (1 - dim) * floor_prob = 1 - smoothing
     # Sum over all: 1 - dim * floor_prob + flor_prob * dim = 1
-    return source * factor + floor_prob
+    return prob * factor + floor_prob
 
 
 def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float]) -> nn.Tensor:
