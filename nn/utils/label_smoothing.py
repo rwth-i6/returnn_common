@@ -27,7 +27,7 @@ def label_smoothing(prob: nn.Tensor, smoothing: Union[nn.Tensor, float],
     # Value of 1.0 should result in (1 - smoothing).
     # Value of 0.0 should result in smoothing / (dim - 1).
     # Sum over all should still remain 1.0.
-    dim = prob.data.sparse_dim.dimension
+    dim = axis.dimension
     floor_prob = smoothing / (dim - 1)
     factor = 1. - dim * floor_prob
     # Case for prob[i] == 0 is clear.
