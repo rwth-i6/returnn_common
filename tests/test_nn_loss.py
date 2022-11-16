@@ -98,6 +98,7 @@ def test_transducer_time_sync_full_sum_neg_log_prob():
     x = source(0)
     assert isinstance(x, tf.Tensor)
 
+    # noinspection PyUnusedLocal
     def _custom_grad(op, grad):
       with tf.control_dependencies([tf.print("log_probs grad", grad)]):
         return tf.identity(grad)
