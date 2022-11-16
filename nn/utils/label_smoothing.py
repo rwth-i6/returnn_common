@@ -30,9 +30,9 @@ def label_smoothing(prob: nn.Tensor, smoothing: Union[nn.Tensor, float],
     dim = prob.data.sparse_dim.dimension
     floor_prob = smoothing / (dim - 1)
     factor = 1. - dim * floor_prob
-    # Case for source[i] == 0 is clear.
-    # Case for source[i] == 1: 1 - dim * floor_prob + floor_prob = 1 + (1 - dim) * floor_prob = 1 - smoothing
-    # Sum over all: 1 - dim * floor_prob + flor_prob * dim = 1
+    # Case for prob[i] == 0 is clear.
+    # Case for prob[i] == 1: 1 - dim * floor_prob + floor_prob = 1 + (1 - dim) * floor_prob = 1 - smoothing
+    # Sum over all: 1 - dim * floor_prob + floor_prob * dim = 1
     return prob * factor + floor_prob
 
 
