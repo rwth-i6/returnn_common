@@ -67,7 +67,7 @@ def test_mark_as_loss_in_subnet():
 
 
 def test_transducer_time_sync_full_sum_neg_log_prob():
-  nn.auto_setup_name_ctx_ignore_func(_make_dummy_model_with_ce_out)
+  nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
   in_dim = nn.FeatureDim("input", 2)
   hidden_dim = nn.FeatureDim("hidden", 7)
