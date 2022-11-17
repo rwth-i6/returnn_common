@@ -170,7 +170,7 @@ def split(source: nn.Tensor, *,
 
 def window(
       source: nn.Tensor, *,
-      axis: nn.Dim,
+      spatial_dim: nn.Dim,
       window_dim: nn.Dim,
       window_left: Optional[int] = NotSpecified,
       window_right: Optional[int] = NotSpecified,
@@ -185,10 +185,23 @@ def window(
   layer, (window_dim, out_spatial_dim), state = rec_window(
     source,
     window_dim=window_dim, window_left=window_left, window_right=window_right,
-    axis=axis, padding=padding, stride=stride,
+    axis=spatial_dim, padding=padding, stride=stride,
     name=name)
   del state
   return layer, out_spatial_dim
+
+
+def window_direct(
+  source: nn.Tensor, *,
+  axis: nn.Dim,
+  window_dim: nn.Dim,
+  padding: str = "same",
+  stride: int = 1,
+) -> Tuple[nn.Tensor, nn.Dim]:
+  """
+  :param source:
+  :param axis:
+  """
 
 
 def window_step(

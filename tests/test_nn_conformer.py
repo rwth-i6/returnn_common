@@ -163,7 +163,7 @@ def test_chunking_conformer():
     num_heads=2, num_layers=2,
   )
   window_dim = nn.SpatialDim("window", 50)
-  data, time_dim_ = nn.window(data, axis=time_dim, window_dim=window_dim, stride=25)
+  data, time_dim_ = nn.window(data, spatial_dim=time_dim, window_dim=window_dim, stride=25)
   out, _ = conformer(data, in_spatial_dim=window_dim)
   out.verify_out_shape({nn.batch_dim, time_dim_, window_dim, conformer.out_dim})
 
