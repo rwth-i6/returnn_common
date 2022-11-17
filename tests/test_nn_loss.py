@@ -68,13 +68,6 @@ def test_mark_as_loss_in_subnet():
 
 
 def test_transducer_time_sync_full_sum_neg_log_prob():
-  try:
-    from returnn.extern import WarpRna
-  except ImportError as exc:
-    raise unittest.SkipTest(f"WarpRna not found? {exc}")
-  if not WarpRna.is_checked_out():
-    raise unittest.SkipTest("WarpRna not checked out")
-
   nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
   in_dim = nn.FeatureDim("input", 2)
