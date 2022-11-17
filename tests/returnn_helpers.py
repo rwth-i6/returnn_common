@@ -141,20 +141,26 @@ def _dummy_forward_net_returnn(*, engine: returnn.tf.engine.Engine, dataset: ret
 
 
 # noinspection PyShadowingNames
-def dummy_run_net_single_custom(config_code_str: str, *,
+def dummy_run_net_single_custom(config: Union[str, Dict[str, Any]], *,
                                 make_feed_dict=make_feed_dict,
                                 default_out_dim_tag_order: Optional[Sequence[Union[nn.Dim, str]]] = None,
                                 eval_flag: bool = False,
                                 train_flag: bool = False,
                                 ) -> Dict[str, numpy.ndarray]:
   """
-  :param config_code_str: e.g. via get_complete_py_code_str
+  :param config: e.g. via get_complete_py_code_str() or get_config_raw_dict()
   :param make_feed_dict: func (ExternData) -> feed_dict
   :param default_out_dim_tag_order: if given, for the fetch, will order the dims this way
   :param eval_flag: losses are computed if True
   :param train_flag: use (dynamic) train flag if True
+  :return: dict with outputs. e.g. contains "layer:output". also specify default_out_dim_tag_order if possible.
   """
-  config_dict, net_dict = config_net_dict_via_serialized(config_code_str)
+  if isinstance(config, str):
+    config_dict, net_dict = config_net_dict_via_serialized(config)
+  else:
+    assert isinstance(config, dict)
+    config_dict = config
+    net_dict = config_dict["network"]
   from returnn.config import Config
   from returnn.tf.network import TFNetwork
   config = Config(config_dict)
@@ -170,6 +176,8 @@ def dummy_run_net_single_custom(config_code_str: str, *,
       feed_dict[train_flag_] = True
     fetches = net.get_fetches_dict(should_eval=eval_flag)
     have_default_out = False
+    for out in net.extern_data.data.values():
+      fetches[f"data:{out.name}"] = out.placeholder
     for layer in net.get_output_layers():
       if layer.get_absolute_name() == "output":
         have_default_out = True
