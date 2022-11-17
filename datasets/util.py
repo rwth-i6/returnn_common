@@ -31,5 +31,5 @@ def assert_path_type_sisyphus(var: Optional[FilePathType]):
   :param var: any file path variable
   """
   if var is not None and is_in_sisyphus_config():
-    if not isinstance(var, tk.Path):
+    if not isinstance(var, tk.Path):  # noqa
       raise TypeError("Please use tk.Path objects not strings as Dataset path definitions")
