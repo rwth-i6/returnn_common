@@ -280,7 +280,7 @@ def sparse_to_dense(source: nn.Tensor, *,
   assert source.data.sparse
   axis = source.data.sparse_dim
   indices = nn.range_over_dim(axis, sparse=True)
-  return nn.where(source == indices, label_value, other_value)
+  return nn.where(nn.compare_bc(source, "==", indices), label_value, other_value)
 
 
 def one_hot(source: nn.Tensor) -> nn.Tensor:
