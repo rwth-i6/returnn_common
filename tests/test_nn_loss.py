@@ -7,7 +7,6 @@ from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net, config_net_dict_via_serialized
 import typing
 from typing import Tuple
-import unittest
 
 if typing.TYPE_CHECKING:
   from .. import nn
