@@ -106,3 +106,50 @@ def test_window_stride():
   config_str = nn.get_returnn_config().get_config_raw_dict(nn.Module())
   res = dummy_run_net_single_custom(config_str, default_out_dim_tag_order=[time_dim_, win_dim, nn.batch_dim, in_dim])
   numpy.testing.assert_array_equal(res["layer:output"], naive_window(res["data:data"], win_dim.dimension, 3))
+
+
+def test_window_via_get_network():
+  from returnn.config import Config
+  from returnn.tf.engine import Engine
+  from returnn.datasets import init_dataset
+
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  out_dim = nn.FeatureDim("out", 4)
+  data = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
+
+  def _config_get_network(epoch: int, **_kwargs) -> dict:
+    print("_config_get_network called")  # it's called multiple times
+    # noinspection PyStatementEffect
+    epoch  # unused
+    nn.reset_default_root_name_ctx()
+    x = nn.get_extern_data(data)
+    time_dim_ = time_dim
+    win_dim = nn.SpatialDim("window", 3)
+    out, _ = nn.window(x, spatial_dim=time_dim_, window_dim=win_dim)
+    out.verify_out_shape({nn.batch_dim, time_dim_, win_dim, in_dim})
+    net = nn.Linear(in_dim, out_dim)  # just to have some params to optimize, for the test
+    y = net(x)
+    x, _ = nn.window(x, spatial_dim=time_dim_, window_dim=win_dim)
+    x = nn.reduce(out, mode="mean", axis=(win_dim, in_dim))
+    x.verify_out_shape({nn.batch_dim, time_dim_})
+    y = y + x
+    y.mark_as_output()
+    y = nn.reduce(y, mode="mean", axis=out_dim)
+    y.verify_out_shape({nn.batch_dim, time_dim_})
+    y.mark_as_loss("dummy")
+    print(nn.get_returnn_config().get_complete_py_code_str(net))
+    net_dict = nn.get_returnn_config().get_net_dict_raw_dict(net)
+    net_dict["#epoch"] = epoch  # trigger reinit
+    return net_dict
+
+  config = Config({
+    "task": "train", "num_epochs": 2, "start_epoch": 1,
+    "get_network": _config_get_network,
+    "extern_data": {data.name: {"dim_tags": data.dim_tags, "available_for_inference": True}},
+  })
+  train_dataset = init_dataset(
+    {"class": "DummyDataset", "input_dim": in_dim.dimension, "output_dim": 5, "num_seqs": 3})
+  engine = Engine(config)
+  engine.init_train_from_config(config, train_data=train_dataset)
+  engine.train()
