@@ -22,7 +22,8 @@ class Dataset(abc.ABC):
 
   def as_returnn_opts(self) -> Dict[str, Any]:
     """
-    :return: data dict for SprintDataset, OggZipDataset, etc
+    :return: data dict for SprintDataset, OggZipDataset or others,
+      so a dict that can be assigned as `train = {...}` or `dev = {...}` or within a MetaDataset
     """
     return self.additional_options or {}
 
@@ -44,7 +45,8 @@ class ControlDataset(Dataset, abc.ABC):
   ):
     """
     :param partition_epoch: partition the data into N parts
-    :param segment_file: text file (gzip/plain) or pkl containg list of sequence tags to use
+    :param segment_file: text file (gzip/plain) or pkl containg list of sequence tags to use,
+      maps to "seq_list_filter_file" internally.
     :param seq_ordering: see `https://returnn.readthedocs.io/en/latest/dataset_reference/index.html`_.
     :param random_subset: take a random subset of the data, this is typically used for "dev-train", a part
         of the training data which is used to see training scores without data augmentation
@@ -52,20 +54,23 @@ class ControlDataset(Dataset, abc.ABC):
     """
     super().__init__(additional_options=additional_options)
     self.partition_epoch = partition_epoch or 1
-    self.segment_file = segment_file
+    self.seq_list_filter_file = segment_file
     self.seq_ordering = seq_ordering
     self.random_subset = random_subset
 
-    assert_path_type_sisyphus(self.segment_file)
+    assert_path_type_sisyphus(self.seq_list_filter_file)
 
   def as_returnn_opts(self) -> Dict[str, Any]:
+    """
+    See `Dataset` definition
+    """
     d = {
       "partition_epoch": self.partition_epoch,
     }
     if self.seq_ordering:
       d["seq_ordering"] = self.seq_ordering
-    if self.segment_file:
-      d["seq_list_filter_file"] = self.segment_file
+    if self.seq_list_filter_file:
+      d["seq_list_filter_file"] = self.seq_list_filter_file
     if self.random_subset:
       d['fixed_random_subset'] = self.random_subset
     sd = super().as_returnn_opts()
@@ -125,6 +130,9 @@ class MetaDataset(Dataset):
     self.seq_order_control_dataset = seq_order_control_dataset
 
   def as_returnn_opts(self) -> Dict[str, Any]:
+    """
+    See `Dataset` definition
+    """
     d = {
       "class": "MetaDataset",
       "data_map": self.data_map,

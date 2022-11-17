@@ -10,6 +10,8 @@ try:
     _in_sisyphus_config = True
 except ImportError:
   FilePathType = str
+  tk = None
+  config_manager = None
 
 
 def is_in_sisyphus_config() -> bool:
@@ -27,4 +29,4 @@ def assert_path_type_sisyphus(var: Optional[FilePathType]):
   """
   if var is not None and is_in_sisyphus_config():
     if not isinstance(var, tk.Path):
-      raise TypeError("Please us tk.Path objects not strings as path definitions")
+      raise TypeError("Please use tk.Path objects not strings as Dataset path definitions")

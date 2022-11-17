@@ -20,6 +20,7 @@ class HDFDataset(ControlDataset):
     partition_epoch: Optional[int] = None,
     segment_file: Optional[FilePathType] = None,
     seq_ordering: Optional[str] = None,
+    random_subset: Optional[int] = None,
     additional_options: Optional[Dict[str, Any]] = None,
   ):
     """
@@ -27,12 +28,15 @@ class HDFDataset(ControlDataset):
     :param partition_epoch: partition the data into N parts
     :param segment_file: text file (gzip/plain) or pkl containg list of sequence tags to use.
     :param seq_ordering: see `https://returnn.readthedocs.io/en/latest/dataset_reference/index.html`_.
+    :param random_subset: take a random subset of the data, this is typically used for "dev-train", a part
+        of the training data which is used to see training scores without data augmentation
     :param additional_options: custom options directly passed to the dataset
     """
     super().__init__(
       partition_epoch=partition_epoch,
       segment_file=segment_file,
       seq_ordering=seq_ordering,
+      random_subset=random_subset,
       additional_options=additional_options,
     )
     self.files = files
@@ -45,6 +49,9 @@ class HDFDataset(ControlDataset):
     assert_path_type_sisyphus(segment_file)
 
   def as_returnn_opts(self) -> Dict[str, Any]:
+    """
+    See `Dataset` definition
+    """
     d = {
       "class": "HDFDataset",
       "files": self.files if isinstance(self.files, list) else [self.files],
