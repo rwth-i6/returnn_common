@@ -286,6 +286,8 @@ class RelPosSelfAttention(GenericSelfAttention):
     x_padded = nn.pad(x, axes=pos_emb_spatial_dim, padding=(1, 0), value=0.)  # [B,H,T,T*2]
     pos_emb_spatial_dim_ = 1 + pos_emb_spatial_dim
 
+    # Reshape + slice trickery. You need to draw the 2D arrays on paper to understand this.
+    # Also see similar trickery in :func:`window`.
     x_padded = nn.reshape(x_padded, (axis, pos_emb_spatial_dim_), (pos_emb_spatial_dim_, axis))  # [B,H,T*2,T]
     x_padded, pos_emb_spatial_dim_ = nn.slice(x_padded, axis=pos_emb_spatial_dim_, slice_start=1)  # [B,H,T*2-1,T]
     x_padded = nn.reshape(x_padded, (pos_emb_spatial_dim_, axis), (axis, pos_emb_spatial_dim_))  # [B,H,T,T*2-1]
