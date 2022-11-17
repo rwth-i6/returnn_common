@@ -169,6 +169,26 @@ def split(source: nn.Tensor, *,
 
 
 def window(
+  source: nn.Tensor, *,
+  spatial_dim: nn.Dim,
+  window_dim: nn.Dim,
+  padding: str = "same",
+  stride: int = 1,
+) -> Tuple[nn.Tensor, nn.Dim]:
+  """
+  Follows the same idea as RETURNN tf_util.windowed,
+  using clever padding and reshaping.
+
+  :param source:
+  :param spatial_dim:
+  :param window_dim:
+  :param padding: "same" or "valid"
+  :param stride:
+  """
+  return _window_direct(source, spatial_dim=spatial_dim, window_dim=window_dim, padding=padding, stride=stride)
+
+
+def _window_returnn_layer(
       source: nn.Tensor, *,
       spatial_dim: nn.Dim,
       window_dim: nn.Dim,
@@ -191,17 +211,56 @@ def window(
   return layer, out_spatial_dim
 
 
-def window_direct(
+def _window_direct(
   source: nn.Tensor, *,
-  axis: nn.Dim,
+  spatial_dim: nn.Dim,
   window_dim: nn.Dim,
   padding: str = "same",
   stride: int = 1,
 ) -> Tuple[nn.Tensor, nn.Dim]:
   """
+  Follows the same idea as RETURNN tf_util.windowed,
+  using clever padding and reshaping.
+
   :param source:
-  :param axis:
+  :param spatial_dim:
+  :param window_dim:
+  :param padding: "same" or "valid"
+  :param stride:
   """
+  assert window_dim.dimension is not None
+  n_time = spatial_dim
+  if padding == "same":
+    n_out_time = n_time
+    window_right = window_dim.ceildiv_right(2) - 1
+    window_left = window_dim // 2
+    n_time = window_left + n_time + window_right
+    source = nn.pad(
+      source, axes=spatial_dim, padding=(window_left.dimension, window_right.dimension),
+      out_dims=n_time)
+    # shape[0] == n_time + window - 1
+  elif padding == "valid":
+    n_out_time = n_time - window_dim + 1
+  else:
+    raise ValueError(f"invalid padding {padding!r}")
+  tiled_dimshuffle = nn.expand_dim(source, dim=window_dim)  # (window,n_time+window-1,...)
+  # We want to shift every dim*time block by one to the left.
+  # To do this, we interpret that we have one more time frame (i.e. n_time+window).
+  # We have to do some dimshuffling so that we get the right layout, then we can flatten,
+  # add some padding, and then dimshuffle it back.
+  # Then we can take out the first n_time frames.
+  tiled_flat, flat_dim = nn.merge_dims(tiled_dimshuffle, axes=(window_dim, n_time))
+  rem = window_dim
+  flat_dim_ext = flat_dim + rem
+  tiled_flat_pad_right = nn.pad(tiled_flat, axes=flat_dim, padding=(0, rem.dimension), out_dims=flat_dim_ext)
+  # add time frame, (window,n_time+window,...)
+  n_out_time_ext = n_out_time + window_dim
+  tiled_reshape_shift = nn.reshape(
+    tiled_flat_pad_right, in_dims=[flat_dim_ext], out_dims=[window_dim, n_out_time_ext])
+  final, _ = nn.slice_nd(tiled_reshape_shift, axis=n_out_time_ext, size=n_out_time)  # (window,n_time,...)
+  if stride > 1:
+    final, n_out_time = nn.slice(final, axis=n_out_time, slice_step=stride)
+  return final, n_out_time
 
 
 def window_step(
