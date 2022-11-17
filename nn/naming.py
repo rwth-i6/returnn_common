@@ -1263,7 +1263,7 @@ class ReturnnDimTagsProxy:
         assert len(dim.derived_from_op.inputs) == 2
         a, b = dim.derived_from_op.inputs
         return f"{self.dim_ref_repr(a)}.{func_map[dim.derived_from_op.kind]}({self.dim_ref_repr(b)})"
-      op_str = {"add": "+", "mul": "*", "truediv_right": "//"}[dim.derived_from_op.kind]
+      op_str = {"add": "+", "mul": "*", "truediv_right": "//", "floordiv_right": "//"}[dim.derived_from_op.kind]
       s = f" {op_str} ".join(self.dim_ref_repr(in_) for in_ in dim.derived_from_op.inputs)
       return f"({s})" if brackets else s
     assert ref, f"no ref for {dim}"
