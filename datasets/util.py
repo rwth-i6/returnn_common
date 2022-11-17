@@ -1,3 +1,6 @@
+"""
+Extra functions
+"""
 from typing import Optional, Union
 
 _in_sisyphus_config = False

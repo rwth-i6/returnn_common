@@ -1,9 +1,8 @@
 """
-Helper classes around RETURNN datasets
+Dataset helpers for datasets containing audio related data
 """
 __all__ = ["OggZipDataset"]
 
-from sisyphus import tk
 from typing import *
 
 from returnn_common.datasets.base import ControlDataset
@@ -46,7 +45,7 @@ class OggZipDataset(ControlDataset):
     files: Union[List[FilePathType], FilePathType],
     audio_options: Optional[Dict[str, Any]] = None,
     target_options: Optional[Dict[str, Any]] = None,
-    segment_file: Optional[tk.Path] = None,
+    segment_file: Optional[FilePathType] = None,
     # super parameters
     partition_epoch: Optional[int] = None,
     seq_ordering: Optional[str] = None,
@@ -61,7 +60,7 @@ class OggZipDataset(ControlDataset):
     :param target_options: parameters passed to the "targets" field of the dataset, used for the
         initialization of the vocabulary via `Vocabulary.create_vocab" in RETURNN.
     :param partition_epoch: partition the data into N parts
-    :param seq_list_filter_file: text file (gzip/plain) or pkl containg list of sequence tags to use
+    :param segment_file: text file (gzip/plain) or pkl containg list of sequence tags to use
     :param seq_ordering: see `https://returnn.readthedocs.io/en/latest/dataset_reference/index.html`_.
     :param random_subset: take a random subset of the data, this is typically used for "dev-train", a part
         of the training data which is used to see training scores without data augmentation
@@ -85,7 +84,6 @@ class OggZipDataset(ControlDataset):
     else:
       assert_path_type_sisyphus(files)
     assert_path_type_sisyphus(segment_file)
-
 
   def as_returnn_opts(self):
     """
