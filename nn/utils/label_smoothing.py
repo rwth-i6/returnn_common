@@ -3,7 +3,7 @@ Label smoothing
 """
 
 from __future__ import annotations
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
 from ... import nn
 
 
@@ -50,11 +50,15 @@ def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float]) ->
 
 
 def label_smoothed_log_prob_gradient(log_prob: nn.Tensor, smoothing: Union[nn.Tensor, float],
-                                     *, axis: Optional[nn.Dim] = None) -> nn.Tensor:
+                                     *,
+                                     axis: Optional[nn.Dim] = None,
+                                     exclude_labels: Optional[Sequence[int]] = None,
+                                     ) -> nn.Tensor:
   """
   :param log_prob: shape [...,D] (not necessarily the same as loss)
   :param smoothing: smoothing factor, for :func:`label_smoothing`
   :param axis: label axis. uses feature_dim by default
+  :param exclude_labels: list of labels to exclude from smoothing (e.g. blank)
 
   Assume some cross-entropy-like loss:
 
@@ -93,6 +97,13 @@ def label_smoothed_log_prob_gradient(log_prob: nn.Tensor, smoothing: Union[nn.Te
   dim = axis.dimension
   floor_prob = smoothing / (dim - 1)
   factor = 1. - dim * floor_prob
+  if exclude_labels:
+    indices = nn.range_over_dim(axis)
+    mask = True
+    for label in exclude_labels:
+      mask = mask & (indices != label)
+    factor = nn.where(mask, factor, 1.)
+    floor_prob = nn.where(mask, floor_prob, 0.)
   # The gradient is expected to be the negative target prob, thus negative floor_prob.
   # The gradient is expected to be 0. for masked frames, thus the clipping logic.
   return nn.scaled_gradient(log_prob, scale=factor, shift=-floor_prob, clip_max_axis=axis)
