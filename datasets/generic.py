@@ -1,12 +1,15 @@
 """
 Dataset helpers for datasets with generic content
 """
+
+from __future__ import annotations
+
 __all__ = ["HDFDataset"]
 
 from typing import Any, Dict, List, Optional, Union
 
-from returnn_common.datasets.base import ControlDataset
-from returnn_common.datasets.util import FilePathType, assert_path_type_sisyphus
+from .base import ControlDataset
+from .util import FilePathType, assert_path_type_sisyphus
 
 
 class HDFDataset(ControlDataset):

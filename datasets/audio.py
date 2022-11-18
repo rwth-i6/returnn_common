@@ -1,12 +1,15 @@
 """
 Dataset helpers for datasets containing audio related data
 """
+
+from __future__ import annotations
+
 __all__ = ["OggZipDataset"]
 
 from typing import *
 
-from returnn_common.datasets.base import ControlDataset
-from returnn_common.datasets.util import FilePathType, assert_path_type_sisyphus
+from .base import ControlDataset
+from .util import FilePathType, assert_path_type_sisyphus
 
 
 class OggZipDataset(ControlDataset):
@@ -51,7 +54,7 @@ class OggZipDataset(ControlDataset):
     seq_ordering: Optional[str] = None,
     random_subset: Optional[int] = None,
     # super-super parameters
-    additional_options: Optional[Dict] = None,
+    additional_options: Optional[Dict[str, Any]] = None,
   ):
     """
     :param files: one or multiple ogg zip file paths
@@ -85,7 +88,7 @@ class OggZipDataset(ControlDataset):
       assert_path_type_sisyphus(files)
     assert_path_type_sisyphus(segment_file)
 
-  def as_returnn_opts(self):
+  def as_returnn_opts(self) -> Dict[str, Any]:
     """
     See `Dataset` definition
     """

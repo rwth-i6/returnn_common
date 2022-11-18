@@ -1,12 +1,15 @@
 """
 Helper classes around RETURNN datasets
 """
+
+from __future__ import annotations
+
 __all__ = ["Dataset", "ControlDataset", "MetaDataset"]
 
 import abc
 from typing import *
 
-from returnn_common.datasets.util import FilePathType, assert_path_type_sisyphus
+from .util import FilePathType, assert_path_type_sisyphus
 
 
 class Dataset(abc.ABC):
@@ -14,7 +17,7 @@ class Dataset(abc.ABC):
   Basic interface to create parameter dictionaries for all datasets inheriting from `returnn.datasets.basic.Dataset`
   """
 
-  def __init__(self, *, additional_options: Optional[Dict]):
+  def __init__(self, *, additional_options: Optional[Dict[str, Any]]):
     """
     :param additional_options: any options not explicitly covered by the helper classes or for debugging purposes
     """
@@ -41,7 +44,7 @@ class ControlDataset(Dataset, abc.ABC):
     seq_ordering: Optional[str] = None,
     random_subset: Optional[int] = None,
     # super parameters
-    additional_options: Optional[Dict] = None,
+    additional_options: Optional[Dict[str, Any]] = None,
   ):
     """
     :param partition_epoch: partition the data into N parts
