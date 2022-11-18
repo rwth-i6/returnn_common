@@ -516,12 +516,26 @@ class Tensor:
       return nn.zeros_like(self)
     return nn.combine(self, other, kind="logical_and", name="logical_and")
 
+  def __rand__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, bool) and other is True:
+      return self
+    if isinstance(other, bool) and other is False:
+      return nn.zeros_like(self)
+    return nn.combine(other, self, kind="logical_and", name="logical_and")
+
   def __or__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
     if isinstance(other, bool) and other is True:
       return nn.ones_like(self)
     if isinstance(other, bool) and other is False:
       return self
     return nn.combine(self, other, kind="logical_or", name="logical_or")
+
+  def __ror__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
+    if isinstance(other, bool) and other is True:
+      return nn.ones_like(self)
+    if isinstance(other, bool) and other is False:
+      return self
+    return nn.combine(self, other, kind="logical_and", name="logical_and")
 
   def __abs__(self) -> Tensor:
     return nn.abs(self)

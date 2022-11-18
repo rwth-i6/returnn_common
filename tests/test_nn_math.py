@@ -94,3 +94,12 @@ def test_cumcum():
 
   config, net_dict, net = dummy_config_net_dict(_Net, with_axis=True)
   dummy_run_net(config, net=net)
+
+
+def test_logical_and():
+  nn.reset_default_root_name_ctx()
+  x = nn.get_extern_data(nn.Data('x', dim_tags=[nn.FeatureDim('x', 3)], dtype="bool"))
+  y = True & x
+  y.mark_as_default_output()
+  config = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config)
