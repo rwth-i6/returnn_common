@@ -21,7 +21,7 @@ def is_in_sisyphus_config() -> bool:
   """
   :return: returns true if the module was imported from within a Sisyphus config
   """
-  if config_manager and config_manager.current_config is not None:
+  if config_manager and config_manager.current_config is not None:  # noqa
     return True
   return False
 
