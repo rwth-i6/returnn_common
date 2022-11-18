@@ -9,7 +9,7 @@ __all__ = ["OggZipDataset"]
 from typing import *
 
 from .base import ControlDataset
-from .util import FilePathType, assert_path_type_sisyphus
+from .file_path_type import FilePathType, assert_path_type_sisyphus
 
 
 class OggZipDataset(ControlDataset):

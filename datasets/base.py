@@ -9,7 +9,7 @@ __all__ = ["Dataset", "ControlDataset", "MetaDataset"]
 import abc
 from typing import *
 
-from .util import FilePathType, assert_path_type_sisyphus
+from .file_path_type import FilePathType, assert_path_type_sisyphus
 
 
 class Dataset(abc.ABC):

@@ -9,7 +9,7 @@ __all__ = ["HDFDataset"]
 from typing import Any, Dict, List, Optional, Union
 
 from .base import ControlDataset
-from .util import FilePathType, assert_path_type_sisyphus
+from .file_path_type import FilePathType, assert_path_type_sisyphus
 
 
 class HDFDataset(ControlDataset):
