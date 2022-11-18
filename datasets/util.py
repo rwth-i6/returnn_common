@@ -11,8 +11,6 @@ try:
   from sisyphus import tk
   from sisyphus.loader import config_manager
   FilePathType = Union[tk.Path, str]
-  if config_manager.current_config is not None:
-    _in_sisyphus_config = True
 except ImportError:
   FilePathType = str
   tk = None
@@ -23,8 +21,9 @@ def is_in_sisyphus_config() -> bool:
   """
   :return: returns true if the module was imported from within a Sisyphus config
   """
-  global _in_sisyphus_config
-  return _in_sisyphus_config
+  if config_manager and config_manager.current_config is not None:
+    return True
+  return False
 
 
 def assert_path_type_sisyphus(var: Optional[FilePathType]):
