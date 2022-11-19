@@ -282,7 +282,7 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
                conv_norm: Union[nn.BatchNorm, type, Any] = nn.NotSpecified,
                num_heads: int = 4,
                att_dropout: float = 0.1,
-               encoder_layer: Optional[Union[ConformerEncoderLayer, nn.Module, Any]] = None,
+               encoder_layer: Optional[Union[ConformerEncoderLayer, nn.Module, type, Any]] = None,
                encoder_layer_opts: Optional[Dict[str, Any]] = None,
                ):
     """
@@ -311,14 +311,19 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
     self.input_projection = nn.Linear(self.input_layer.out_dim, self.out_dim, with_bias=False)
     self.input_dropout = input_dropout
 
-    if not encoder_layer:
+    if not encoder_layer or isinstance(encoder_layer, type):
       encoder_layer_opts_ = dict(
         out_dim=out_dim, ff_dim=ff_dim, ff_activation=ff_activation, dropout=dropout,
         conv_kernel_size=conv_kernel_size, conv_norm=conv_norm,
         num_heads=num_heads, att_dropout=att_dropout)
       if encoder_layer_opts:
         encoder_layer_opts_.update(encoder_layer_opts)
-      encoder_layer = ConformerEncoderLayer(**encoder_layer_opts_)
+      if not encoder_layer:
+        encoder_layer = ConformerEncoderLayer(**encoder_layer_opts_)
+      elif isinstance(encoder_layer, type):
+        encoder_layer = encoder_layer(**encoder_layer_opts_)
+      else:
+        raise TypeError(f"unexpected encoder_layer {encoder_layer!r}")
 
     self.layers = nn.Sequential(_copy.deepcopy(encoder_layer) for _ in range(num_layers))
 
