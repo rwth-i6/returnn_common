@@ -5,7 +5,7 @@ SpecAugment . PreCNN . BLSTM
 """
 
 
-from typing import Union, Tuple
+from typing import Tuple
 
 from ...asr.specaugment import specaugment_v2
 from ... import nn
