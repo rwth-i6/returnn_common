@@ -22,11 +22,12 @@ class BlstmCnnEncoder(BlstmEncoder):
                *,
                num_layers: int = 6,
                time_reduction: Union[int, Tuple[int, ...]] = 6,
+               allow_pool_last: bool = False,
                l2=0.0001, dropout=0.3, rec_weight_dropout=0.0,):
     self.pre_conv_net = PreConvNet(in_dim=in_dim)
     super(BlstmCnnEncoder, self).__init__(
       in_dim=self.pre_conv_net.out_dim, dim=lstm_dim,
-      num_layers=num_layers, time_reduction=time_reduction,
+      num_layers=num_layers, time_reduction=time_reduction, allow_pool_last=allow_pool_last,
       l2=l2, dropout=dropout, rec_weight_dropout=rec_weight_dropout)
 
   def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
