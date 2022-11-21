@@ -185,6 +185,9 @@ def dummy_run_net_single_custom(config: Union[str, Dict[str, Any]], *,
           out = layer.output
           out = out.copy_transpose([out.get_axis_from_description(a) for a in default_out_dim_tag_order])
           fetches["layer:output"] = out.placeholder
+          for i, tag in enumerate(out.dim_tags):
+            if tag.is_dynamic():
+              fetches[f"layer:output:size{i}"] = tag.dyn_size_ext.placeholder
           continue
       assert f"layer:{layer.name}" not in fetches
       fetches[f"layer:{layer.name}"] = layer.output.placeholder
