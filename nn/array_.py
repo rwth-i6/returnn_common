@@ -266,6 +266,82 @@ def _window_direct(
   return final, n_out_time
 
 
+def inverse_window(source: nn.Tensor, *,
+                   in_spatial_dim: nn.Dim,
+                   out_spatial_dim: nn.Dim,
+                   window_dim: nn.Dim,
+                   stride: int = 1,
+                   padding: str = "same",
+                   combine: str = "mean",
+                   ) -> nn.Tensor:
+  """
+  Inverse of :func:`window`.
+
+  :param source: [in_spatial_dim,window_dim,...]
+  :param in_spatial_dim: of source. over the individual windows (chunks)
+  :param out_spatial_dim: the original source before the window
+  :param window_dim:
+  :param stride:
+  :param padding: "same" or "valid"
+  :param combine: how to combine overlapping windows. currently only "mean" supported
+  """
+  assert window_dim.dimension is not None
+  n_time = out_spatial_dim
+  if padding == "same":
+    n_out_time = n_time
+    window_left = window_dim // 2
+  elif padding == "valid":
+    n_out_time = n_time - window_dim + 1
+    window_left = nn.SpatialDim("empty", 0)
+  else:
+    raise ValueError(f"invalid padding {padding!r}")
+  if stride > 1:
+    n_out_time = n_out_time.ceildiv_right(stride)
+  assert n_out_time == in_spatial_dim
+  # Max num overlapping windows: Depends on window_size and stride.
+  # Extreme case: stride == 1 -> window_size.
+  # Case stride == window_size: 1.
+  # Example stride = 2, window_size = 5: 3, ceildiv(5,2) = 3.
+  max_num_overlapping_windows = window_dim.ceildiv_right(stride)
+  # scatter_nd would work if there are no overlaps.
+  # Let's think about an example, window_size 5, stride 2, padding "same". Then we have up to 3 overlapping windows.
+  # Windows: XX012, 01234, 23456, 45678, ...
+  # Frame 0: -1,             win 0 offset 2, win 1 offset 0.
+  # Frame 1: win 0 offset 3, win 1 offset 1, -1.
+  # Frame 2: win 0 offset 4, win 1 offset 2, win 2 offset 0.
+  # Frame 3: win 1 offset 3, win 2 offset 1, -1.
+  # Frame 4: win 1 offset 4, win 2 offset 2, win 3 offset 0.
+  # Frame 5: win 2 offset 3, win 3 offset 1, -1.
+  # Same example with padding "valid":
+  # Windows: 01234, 23456, 45678, ...
+  # Frame 0: -1,             -1,             win 0 offset 0.
+  # Frame 1: -1,             win 0 offset 1, -1.
+  # Frame 2: -1,             win 0 offset 2, win 1 offset 0.
+  # Frame 3: win 0 offset 3, win 1 offset 1, -1.
+  # Frame 4: win 0 offset 4, win 1 offset 2, win 2 offset 0.
+  # Frame 5: win 1 offset 3, win 2 offset 1, -1.
+  # Generate [out_spatial_dim,window_dim,...] with the indices.
+  overlap_index = nn.range_over_dim(max_num_overlapping_windows)
+  indices = nn.range_over_dim(out_spatial_dim)
+  win_indices = (indices - window_dim.dimension // 2 + window_left.dimension - 1) // stride
+  win_indices = nn.combine_bc(win_indices, "+", overlap_index)  # [N,out_spatial_dim]
+  offset = (max_num_overlapping_windows.dimension - overlap_index - 1) * stride
+  offset = nn.combine_bc(offset, "+", indices) % window_dim.dimension
+  offset = offset - window_dim.dimension % stride  # [N,out_spatial_dim]
+  source_flat, in_spatial_with_win_dim = nn.merge_dims(source, axes=(in_spatial_dim, window_dim))
+  indices_ = win_indices * window_dim.dimension + offset  # [N,out_spatial_dim]
+  mask = (indices_ >= 0) & nn.compare_bc(indices_, "<", nn.length(in_spatial_with_win_dim))
+  indices_ = nn.where(mask, indices_, 0)
+  overlaps = nn.gather(source_flat, axis=in_spatial_dim, position=indices_)  # [N,out_spatial_dim,...]
+  overlaps = nn.where(mask, overlaps, 0)
+  counts = nn.reduce(nn.cast(mask, dtype="int32"), mode="sum", axis=max_num_overlapping_windows)  # [out_spatial_dim]
+  if combine == "mean":
+    res = nn.reduce(overlaps, mode="sum", axis=max_num_overlapping_windows) / counts  # [out_spatial_dim,...]
+  else:
+    raise ValueError(f"invalid combine {combine!r}")
+  return res
+
+
 def window_step(
       source: nn.Tensor, *, state: nn.LayerState,
       window_dim: nn.Dim,
