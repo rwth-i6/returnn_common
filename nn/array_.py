@@ -216,6 +216,7 @@ def _window_direct(
   spatial_dim: nn.Dim,
   window_dim: nn.Dim,
   padding: str = "same",
+  pad_value: Union[int, float] = NotSpecified,
   stride: int = 1,
 ) -> Tuple[nn.Tensor, nn.Dim]:
   """
@@ -236,8 +237,8 @@ def _window_direct(
     window_left = window_dim // 2
     n_time = window_left + n_time + window_right
     source = nn.pad(
-      source, axes=spatial_dim, padding=(window_left.dimension, window_right.dimension),
-      out_dims=n_time)
+      source, axes=spatial_dim, out_dims=n_time,
+      padding=(window_left.dimension, window_right.dimension), value=pad_value)
     # shape[0] == n_time + window - 1
   elif padding == "valid":
     n_out_time = n_time - window_dim + 1
@@ -252,7 +253,9 @@ def _window_direct(
   tiled_flat, flat_dim = nn.merge_dims(tiled_dimshuffle, axes=(window_dim, n_time))
   rem = window_dim
   flat_dim_ext = flat_dim + rem
-  tiled_flat_pad_right = nn.pad(tiled_flat, axes=flat_dim, padding=(0, rem.dimension), out_dims=flat_dim_ext)
+  tiled_flat_pad_right = nn.pad(
+    tiled_flat, axes=flat_dim, out_dims=flat_dim_ext,
+    padding=(0, rem.dimension), value=pad_value)
   # add time frame, (window,n_time+window,...)
   n_out_time_ext = n_out_time + window_dim
   tiled_reshape_shift = nn.reshape(
