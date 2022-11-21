@@ -96,17 +96,20 @@ def test_window():
 
 
 def test_window_stride():
-  nn.reset_default_root_name_ctx()
-  time_dim = nn.SpatialDim("time")
-  in_dim = nn.FeatureDim("in", 3)
-  x = nn.Data("data", dim_tags=[time_dim, nn.batch_dim, in_dim], available_for_inference=True)
-  x = nn.get_extern_data(x)
-  win_dim = nn.SpatialDim("window", 5)
-  out, time_dim_ = nn.window(x, spatial_dim=time_dim, window_dim=win_dim, stride=3)
-  out.mark_as_default_output()
-  config_str = nn.get_returnn_config().get_config_raw_dict(nn.Module())
-  res = dummy_run_net_single_custom(config_str, default_out_dim_tag_order=[time_dim_, win_dim, nn.batch_dim, in_dim])
-  numpy.testing.assert_array_equal(res["layer:output"], naive_window(res["data:data"], win_dim.dimension, 3))
+  for win_size, stride, padding in [(5, 3, "same"), (5, 3, "valid")]:
+    nn.reset_default_root_name_ctx()
+    time_dim = nn.SpatialDim("time")
+    in_dim = nn.FeatureDim("in", 3)
+    x = nn.Data("data", dim_tags=[time_dim, nn.batch_dim, in_dim], available_for_inference=True)
+    x = nn.get_extern_data(x)
+    win_dim = nn.SpatialDim(f"window{win_size}", win_size)
+    out, time_dim_ = nn.window(x, spatial_dim=time_dim, window_dim=win_dim, stride=stride, padding=padding)
+    out.mark_as_default_output()
+    config_str = nn.get_returnn_config().get_config_raw_dict(nn.Module())
+    res = dummy_run_net_single_custom(config_str, default_out_dim_tag_order=[time_dim_, win_dim, nn.batch_dim, in_dim])
+    numpy.testing.assert_array_equal(
+      res["layer:output"],
+      naive_window(res["data:data"], win_dim.dimension, stride, padding))
 
 
 def test_window_via_get_network():
