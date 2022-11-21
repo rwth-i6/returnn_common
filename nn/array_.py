@@ -2,7 +2,7 @@
 Array (Tensor) functions
 """
 
-from typing import Optional, Sequence, Tuple, List, Union
+from typing import Optional, Union, Sequence, Tuple, List, Dict
 from returnn.util.basic import NotSpecified
 from .. import nn
 
@@ -273,6 +273,7 @@ def inverse_window(source: nn.Tensor, *,
                    stride: int = 1,
                    padding: str = "same",
                    combine: str = "mean",
+                   _debug_outputs: Optional[Dict[str, nn.Tensor]] = None,
                    ) -> nn.Tensor:
   """
   Inverse of :func:`window`.
@@ -284,12 +285,13 @@ def inverse_window(source: nn.Tensor, *,
   :param stride:
   :param padding: "same" or "valid"
   :param combine: how to combine overlapping windows. currently only "mean" supported
+  :param _debug_outputs: if given, will add some debug outputs to this dict
   """
   assert window_dim.dimension is not None
   n_time = out_spatial_dim
   if padding == "same":
     n_out_time = n_time
-    window_left = window_dim // 2
+    window_left = window_dim.ceildiv_right(2) - 1
   elif padding == "valid":
     n_out_time = n_time - window_dim + 1
     window_left = nn.SpatialDim("empty", 0)
@@ -323,18 +325,25 @@ def inverse_window(source: nn.Tensor, *,
   # Generate [out_spatial_dim,window_dim,...] with the indices.
   overlap_index = nn.range_over_dim(max_num_overlapping_windows)
   indices = nn.range_over_dim(out_spatial_dim)
-  win_indices = (indices - window_dim.dimension // 2 + window_left.dimension - 1) // stride
+  if padding == "same":
+    indices_ = indices - window_left.dimension + window_dim.dimension % stride
+  elif padding == "valid":
+    indices_ = indices - stride + window_dim.dimension % stride
+  else:
+    raise ValueError(f"invalid padding {padding!r}")
+  win_indices = indices_ // stride
   win_indices = nn.combine_bc(win_indices, "+", overlap_index)  # [N,out_spatial_dim]
   offset = (max_num_overlapping_windows.dimension - overlap_index - 1) * stride
-  offset = nn.combine_bc(offset, "+", indices) % window_dim.dimension
-  offset = offset - window_dim.dimension % stride  # [N,out_spatial_dim]
+  offset = offset - (max_num_overlapping_windows.dimension * stride - window_dim.dimension)
+  offset = nn.combine_bc(offset, "+", indices_ % stride)
+  offset = nn.where(offset < window_dim.dimension, offset, -1)  # [N,out_spatial_dim]
   source_flat, in_spatial_with_win_dim = nn.merge_dims(source, axes=(in_spatial_dim, window_dim))
-  indices_ = win_indices * window_dim.dimension + offset  # [N,out_spatial_dim]
+  flat_indices = win_indices * window_dim.dimension + offset  # [N,out_spatial_dim]
   mask = (
     (win_indices >= 0) & (nn.compare_bc(win_indices, "<", nn.length(in_spatial_dim))) &
-    (offset >= 0) & (offset < window_dim.dimension))
-  indices_ = nn.where(mask, indices_, 0)
-  overlaps = nn.gather(source_flat, axis=in_spatial_with_win_dim, position=indices_)  # [N,out_spatial_dim,...]
+    (offset >= 0))
+  flat_indices = nn.where(mask, flat_indices, 0)
+  overlaps = nn.gather(source_flat, axis=in_spatial_with_win_dim, position=flat_indices)  # [N,out_spatial_dim,...]
   overlaps = nn.where(mask, overlaps, nn.zeros((), dtype=source.dtype))
   counts = nn.reduce(nn.cast(mask, dtype="int32"), mode="sum", axis=max_num_overlapping_windows)  # [out_spatial_dim]
   counts = nn.maximum(counts, 1)  # avoid division by zero
@@ -343,6 +352,12 @@ def inverse_window(source: nn.Tensor, *,
     res = res * (float(max_num_overlapping_windows.dimension) / nn.cast(counts, dtype=res.dtype))
   else:
     raise ValueError(f"invalid combine {combine!r}")
+  if _debug_outputs is not None:
+    _debug_outputs["win_indices"] = win_indices
+    _debug_outputs["offset"] = offset
+    _debug_outputs["counts"] = counts
+    _debug_outputs["mask"] = mask
+    _debug_outputs["overlaps"] = overlaps
   return res
 
 
