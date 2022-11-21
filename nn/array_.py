@@ -233,8 +233,8 @@ def _window_direct(
   n_time = spatial_dim
   if padding == "same":
     n_out_time = n_time
-    window_right = window_dim.ceildiv_right(2) - 1
-    window_left = window_dim // 2
+    window_right = window_dim // 2
+    window_left = window_dim.ceildiv_right(2) - 1
     n_time = window_left + n_time + window_right
     source = nn.pad(
       source, axes=spatial_dim, out_dims=n_time,
