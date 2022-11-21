@@ -163,11 +163,18 @@ def test_chunking_conformer():
     num_heads=2, num_layers=2,
   )
   window_dim = nn.SpatialDim("window", 50)
+
+  # chunking
   data, time_dim_ = nn.window(data, spatial_dim=time_dim, window_dim=window_dim, stride=25)
+
+  # conformer on chunks
   out, _ = conformer(data, in_spatial_dim=window_dim)
   out.verify_out_shape({nn.batch_dim, time_dim_, window_dim, conformer.out_dim})
 
-  out.mark_as_default_output()
+  # unchunking
+  out_ = nn.inverse_window(out, in_spatial_dim=time_dim_, out_spatial_dim=time_dim, window_dim=window_dim, stride=25)
+  out_.verify_out_shape({nn.batch_dim, time_dim, conformer.out_dim})
+  out_.mark_as_default_output()
 
   config_code = nn.get_returnn_config().get_complete_py_code_str(conformer)
   config, net_dict = config_net_dict_via_serialized(config_code)
