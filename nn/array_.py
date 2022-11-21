@@ -325,16 +325,10 @@ def inverse_window(source: nn.Tensor, *,
   # Generate [out_spatial_dim,window_dim,...] with the indices.
   overlap_index = nn.range_over_dim(max_num_overlapping_windows)
   indices = nn.range_over_dim(out_spatial_dim)
-  if padding == "same":
-    indices_ = indices - window_left.dimension + window_dim.dimension % stride
-  elif padding == "valid":
-    indices_ = indices - stride + window_dim.dimension % stride
-  else:
-    raise ValueError(f"invalid padding {padding!r}")
+  indices_ = indices + window_left.dimension - (max_num_overlapping_windows.dimension - 1) * stride
   win_indices = indices_ // stride
   win_indices = nn.combine_bc(win_indices, "+", overlap_index)  # [N,out_spatial_dim]
   offset = (max_num_overlapping_windows.dimension - overlap_index - 1) * stride
-  offset = offset - (max_num_overlapping_windows.dimension * stride - window_dim.dimension)
   offset = nn.combine_bc(offset, "+", indices_ % stride)
   offset = nn.where(offset < window_dim.dimension, offset, -1)  # [N,out_spatial_dim]
   source_flat, in_spatial_with_win_dim = nn.merge_dims(source, axes=(in_spatial_dim, window_dim))

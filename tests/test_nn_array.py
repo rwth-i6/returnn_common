@@ -3,6 +3,7 @@ Test nn.array_.
 """
 
 from __future__ import annotations
+
 from . import _setup_test_env  # noqa
 from .returnn_helpers import dummy_run_net_single_custom
 import typing
@@ -157,3 +158,82 @@ def test_window_via_get_network():
   engine = Engine(config)
   engine.init_train_from_config(config, train_data=train_dataset)
   engine.train()
+
+
+def test_inverse_window():
+  def make_feed_dict(data_list, n_batch=2, n_time=7):
+    """
+    :param returnn.tf.network.ExternData data_list:
+    :param int n_batch:
+    :param int n_time:
+    :rtype: dict[tf.Tensor,numpy.ndarray|list[int|float|bool]|int|float|bool]
+    """
+    from returnn.tf.network import ExternData
+    if isinstance(data_list, ExternData):
+      data_list = [value for (key, value) in sorted(data_list.data.items())]
+    feed_dict = {}
+    for data in data_list:
+      x_ = numpy.arange(n_batch * n_time * data.dim).reshape((n_batch, n_time, data.dim)) + 1.
+      seq_lens = [n_time] * n_batch
+      for b in range(n_batch):
+        seq_lens[b] -= b
+        x_[b, seq_lens[b]:] = 0.
+      feed_dict[data.placeholder] = x_
+      feed_dict[data.size_placeholder[0]] = numpy.array(seq_lens)
+    return feed_dict
+
+  for d, win_size, stride, padding in [
+    (1, 2, 2, "valid"),
+    (1, 3, 2, "valid"),
+    (1, 3, 1, "valid"),
+    (1, 5, 2, "same"),
+    (3, 5, 2, "same"),
+    (1, 2, 2, "same"),
+    (1, 2, 1, "same"),
+    (3, 5, 3, "same"),
+  ]:
+    print(f"*** d={d}, win_size={win_size}, stride={stride}, padding={padding}")
+    nn.reset_default_root_name_ctx()
+    time_dim = nn.SpatialDim("time")
+    in_dim = nn.FeatureDim(f"in{d}", d)
+    x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim])
+    x = nn.get_extern_data(x)
+    win_dim = nn.SpatialDim(f"window{win_size}", win_size)
+    windowed, win_spatial_dim = nn.window(
+      x, spatial_dim=time_dim,
+      window_dim=win_dim, stride=stride, padding=padding)
+    nn.copy(windowed, name="windowed").mark_as_output()
+    debug_outputs = {}
+    out = nn.inverse_window(
+      windowed, in_spatial_dim=win_spatial_dim, out_spatial_dim=time_dim,
+      window_dim=win_dim, stride=stride, padding=padding,
+      _debug_outputs=debug_outputs)
+    out.verify_out_shape({nn.batch_dim, time_dim, in_dim})
+    out.mark_as_default_output()
+    for name, v in debug_outputs.items():
+      nn.copy(v, name=f"debug_{name}").mark_as_output()
+    config_str = nn.get_returnn_config().get_config_raw_dict(nn.Module())
+    res = dummy_run_net_single_custom(
+      config_str,
+      make_feed_dict=make_feed_dict,
+      default_out_dim_tag_order=[nn.batch_dim, time_dim, in_dim])
+    for name, v in res.items():
+      print(f"{name}: {v.shape}")
+      print(v)
+    n_batch_, n_time_ = res["layer:output"].shape[:2]
+    seq_lens_ = res["layer:output:size1"]
+    for b_ in range(n_batch_):
+      seq_len_ = seq_lens_[b_]
+      if padding == "valid":
+        # Some frames might not be handled.
+        seq_len_ = ceildiv(seq_len_ - win_size + 1, stride) * stride
+      x_v = res["data:data"][b_, :seq_len_]
+      y_v = res["layer:output"][b_, :seq_len_]
+      if not numpy.allclose(x_v, y_v):
+        print("Error, not equal!")
+        print(f"*** d={d}, win_size={win_size}, stride={stride}, padding={padding}")
+        print(f"**** batch {b_}/{n_batch_}, seq_len {seq_len_}")
+        print("**** x_v:", x_v.tolist())
+        print("**** y_v:", y_v.tolist())
+        raise Exception("not equal")
+    print("*** ok")
