@@ -336,8 +336,8 @@ def inverse_window(source: nn.Tensor, *,
   overlaps = nn.where(mask, overlaps, nn.zeros((), dtype=source.dtype))
   counts = nn.reduce(nn.cast(mask, dtype="int32"), mode="sum", axis=max_num_overlapping_windows)  # [out_spatial_dim]
   if combine == "mean":
-    res = nn.reduce(overlaps, mode="sum", axis=max_num_overlapping_windows)  # [out_spatial_dim,...]
-    res = res / nn.cast(counts, dtype=res.dtype)
+    res = nn.reduce(overlaps, mode="mean", axis=max_num_overlapping_windows)  # [out_spatial_dim,...]
+    res = res * (float(max_num_overlapping_windows.dimension) / nn.cast(counts, dtype=res.dtype))
   else:
     raise ValueError(f"invalid combine {combine!r}")
   return res
