@@ -96,7 +96,7 @@ def test_window():
 
 
 def test_window_stride():
-  for win_size, stride, padding in [(5, 3, "same"), (5, 3, "valid")]:
+  for win_size, stride, padding in [(5, 3, "same"), (5, 3, "valid"), (2, 2, "valid")]:
     nn.reset_default_root_name_ctx()
     time_dim = nn.SpatialDim("time")
     in_dim = nn.FeatureDim("in", 3)
