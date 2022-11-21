@@ -330,7 +330,9 @@ def inverse_window(source: nn.Tensor, *,
   offset = offset - window_dim.dimension % stride  # [N,out_spatial_dim]
   source_flat, in_spatial_with_win_dim = nn.merge_dims(source, axes=(in_spatial_dim, window_dim))
   indices_ = win_indices * window_dim.dimension + offset  # [N,out_spatial_dim]
-  mask = (indices_ >= 0) & nn.compare_bc(indices_, "<", nn.length(in_spatial_with_win_dim))
+  mask = (
+    (win_indices >= 0) & (nn.compare_bc(win_indices, "<", nn.length(in_spatial_dim))) &
+    (offset >= 0) & (offset < window_dim.dimension))
   indices_ = nn.where(mask, indices_, 0)
   overlaps = nn.gather(source_flat, axis=in_spatial_with_win_dim, position=indices_)  # [N,out_spatial_dim,...]
   overlaps = nn.where(mask, overlaps, nn.zeros((), dtype=source.dtype))
