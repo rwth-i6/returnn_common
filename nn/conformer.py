@@ -308,7 +308,8 @@ class ConformerEncoder(ISeqDownsamplingEncoder):
 
     # TODO once we figured out good defaults, we would create ConformerConvSubsample here when not given
     self.input_layer = input_layer
-    self.input_projection = nn.Linear(self.input_layer.out_dim, self.out_dim, with_bias=False)
+    self.input_projection = nn.Linear(
+      self.input_layer.out_dim if self.input_layer else self.in_dim, self.out_dim, with_bias=False)
     self.input_dropout = input_dropout
 
     if not encoder_layer or isinstance(encoder_layer, type):
