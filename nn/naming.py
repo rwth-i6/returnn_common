@@ -994,7 +994,7 @@ class NetDictBuilderCtx:
             data_template.get_axis_from_description(outer_dim))
       dim_tags = list(data_template.dim_tags)
       for dim in dim_tags:
-        if dim.is_batch_dim() or dim.dimension is not None:
+        if dim.is_batch_dim() or not dim.is_dynamic():
           continue
         # We need dyn_size_ext to know the implicit dims, to correctly set out_shape.
         # If dyn_size_ext is not set yet, try to complete it.
