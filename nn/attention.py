@@ -382,19 +382,20 @@ def relative_positional_encoding(
   if (spatial_dim, feat_dim) in cache:
     return cache[(spatial_dim, feat_dim)]
   import math
-  position_pos = nn.range_over_dim(spatial_dim, dtype=dtype)
-  position_neg = -nn.dim_value(spatial_dim) + nn.range_over_dim(spatial_dim - 1) + 1
-  position_neg = nn.cast(position_neg, dtype=dtype)
-  position, out_spatial_dim = nn.concat(
-    (position_neg, spatial_dim - 1),
-    (position_pos, spatial_dim))
-  feat2_dim = feat_dim.div_left(2)
-  div_term = nn.exp(nn.range_over_dim(feat2_dim, dtype=dtype) * -(2. * math.log(10000.0) / feat_dim.dimension))
-  arg_sin = nn.combine_bc(position, '*', div_term)
-  arg_cos = arg_sin + math.pi / 2.
-  arg, feat_dim_ = nn.concat((arg_sin, feat2_dim), (arg_cos, feat2_dim))
-  feat_dim_.declare_same_as(feat_dim)
-  emb = nn.sin(arg)
-  emb.verify_out_shape({out_spatial_dim, feat_dim})
-  cache[(spatial_dim, feat_dim)] = emb, out_spatial_dim
-  return emb, out_spatial_dim
+  with nn.control_flow_ctx(None):
+    position_pos = nn.range_over_dim(spatial_dim, dtype=dtype)
+    position_neg = -nn.dim_value(spatial_dim) + nn.range_over_dim(spatial_dim - 1) + 1
+    position_neg = nn.cast(position_neg, dtype=dtype)
+    position, out_spatial_dim = nn.concat(
+      (position_neg, spatial_dim - 1),
+      (position_pos, spatial_dim))
+    feat2_dim = feat_dim.div_left(2)
+    div_term = nn.exp(nn.range_over_dim(feat2_dim, dtype=dtype) * -(2. * math.log(10000.0) / feat_dim.dimension))
+    arg_sin = nn.combine_bc(position, '*', div_term)
+    arg_cos = arg_sin + math.pi / 2.
+    arg, feat_dim_ = nn.concat((arg_sin, feat2_dim), (arg_cos, feat2_dim))
+    feat_dim_.declare_same_as(feat_dim)
+    emb = nn.sin(arg)
+    emb.verify_out_shape({out_spatial_dim, feat_dim})
+    cache[(spatial_dim, feat_dim)] = emb, out_spatial_dim
+    return emb, out_spatial_dim

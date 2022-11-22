@@ -51,6 +51,7 @@ from __future__ import annotations
 import numpy
 from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Iterable, Callable, Type
 import itertools
+import contextlib
 from weakref import WeakKeyDictionary
 from returnn.tf.util.data import *  # Dim, Data, and others
 # noinspection PyUnresolvedReferences
@@ -1127,3 +1128,29 @@ def _register_dim_deps_when_novel(dim: nn.Dim, deps: List[nn.Tensor]):
 
 def _deps_valid_in_cur_name_ctx(deps: List[nn.Tensor]) -> bool:
   return all(dep.name_ctx.root == nn.NameCtx.top().root for dep in deps)
+
+
+@contextlib.contextmanager
+def control_flow_ctx(ctx: Optional[ControlFlowContext]):
+  """
+  :param ControlFlowContext|None ctx:
+  :return: context manager
+  """
+  top_name_ctx = nn.NameCtx.top()
+  if top_name_ctx.control_flow_ctx() == ctx:
+    # nothing to do
+    yield
+    return
+  if not ctx:
+    name_ctx = top_name_ctx.root
+  else:
+    name_ctx = top_name_ctx
+    while name_ctx:
+      if name_ctx.new_control_flow_ctx == ctx:
+        break
+      name_ctx = name_ctx.parent
+    if not name_ctx:
+      raise Exception(f"control flow ctx {ctx} not found in current stack {top_name_ctx}")
+  assert name_ctx.control_flow_ctx() == ctx
+  with name_ctx:
+    yield
