@@ -135,8 +135,19 @@ def test_cond_chunking_conformer():
     print(f"resource.setrlimit {type(exc).__name__}: {exc}")
   sys.setrecursionlimit(10 ** 6)
 
-  from typing import Optional, Sequence, Dict, Tuple
-  import contextlib
+  from typing import Tuple
+
+  class Encoder(nn.Module):
+    """encoder"""
+    def __init__(self, in_dim: nn.Dim):
+      super(Encoder, self).__init__()
+      self.self_att = nn.RelPosSelfAttention(
+        in_dim, proj_dim=None, key_dim_total=nn.FeatureDim("keys", 2), value_dim_total=in_dim, num_heads=1)
+      self.out_dim = in_dim
+
+    def __call__(self, x: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+      x = self.self_att(x, axis=in_spatial_dim)
+      return x, in_spatial_dim
 
   class Model(nn.Module):
     """Model definition"""
@@ -145,23 +156,14 @@ def test_cond_chunking_conformer():
                  nb_target_dim: nn.Dim,
                  wb_target_dim: nn.Dim,
                  blank_idx: int,
-                 bos_idx: int,
                  ):
       super(Model, self).__init__()
       self.in_dim = in_dim
-      self.encoder = nn.ConformerEncoder(
-        in_dim,
-        nn.FeatureDim("enc", 4),
-        ff_dim=nn.FeatureDim("enc-ff", 8),
-        input_layer=None,
-        num_layers=1,
-        num_heads=2,
-      )
+      self.encoder = Encoder(in_dim)
 
       self.nb_target_dim = nb_target_dim
       self.wb_target_dim = wb_target_dim
       self.blank_idx = blank_idx
-      self.bos_idx = bos_idx  # for non-blank labels; for with-blank labels, we use bos_idx=blank_idx
 
       self.out_label_logits = nn.Linear(self.encoder.out_dim, wb_target_dim)
 
@@ -191,37 +193,6 @@ def test_cond_chunking_conformer():
       """decoder step, or operating on full seq"""
       logits = self.out_label_logits(enc)
       return logits
-
-  class DecoderLabelSync(nn.Module):
-    """
-    Often called the (I)LM part, or prediction network.
-    Runs label-sync, i.e. only on non-blank labels.
-    """
-
-    def __init__(self, in_dim: nn.Dim, *,
-                 embed_dim: nn.Dim = nn.FeatureDim("embed", 256),
-                 lstm_dim: nn.Dim = nn.FeatureDim("lstm", 1024),
-                 dropout: float = 0.2,
-                 l2: float = 0.0001,
-                 ):
-      super(DecoderLabelSync, self).__init__()
-      self.embed = nn.Linear(in_dim, embed_dim)
-      self.dropout = dropout
-      self.lstm = nn.LSTM(self.embed.out_dim, lstm_dim)
-      self.out_dim = self.lstm.out_dim
-      for p in self.parameters():
-        p.weight_decay = l2
-
-    def default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> Optional[nn.LayerState]:
-      """init"""
-      return self.lstm.default_initial_state(batch_dims=batch_dims)
-
-    def __call__(self, source: nn.Tensor, *, spatial_dim: nn.Dim, state: nn.LayerState
-                 ) -> Tuple[nn.Tensor, nn.LayerState]:
-      embed = self.embed(source)
-      embed = nn.dropout(embed, self.dropout, axis=embed.feature_dim)
-      lstm, state = self.lstm(embed, spatial_dim=spatial_dim, state=state)
-      return lstm, state
 
   def model_recog(*,
                   model: Model,
@@ -266,7 +237,6 @@ def test_cond_chunking_conformer():
     nb_target_dim=label_dim,
     wb_target_dim=label_dim + 1,
     blank_idx=label_dim.dimension,
-    bos_idx=0,
   )
   model_recog(model=model, data=data, data_spatial_dim=time_dim, targets_dim=label_dim).mark_as_default_output()
 
