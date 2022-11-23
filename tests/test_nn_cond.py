@@ -163,16 +163,10 @@ def test_cond_chunking_conformer():
       self.blank_idx = blank_idx
       self.bos_idx = bos_idx  # for non-blank labels; for with-blank labels, we use bos_idx=blank_idx
 
-      self.lm = DecoderLabelSync(nb_target_dim)
-      self.readout_in_am = nn.Linear(self.encoder.out_dim, nn.FeatureDim("readout", 10), with_bias=False)
-      self.readout_in_lm = nn.Linear(self.lm.out_dim, self.readout_in_am.out_dim, with_bias=False)
-      self.readout_in_bias = nn.Parameter([self.readout_in_am.out_dim])
-      self.readout_reduce_num_pieces = 2
-      self.readout_dim = self.readout_in_am.out_dim // self.readout_reduce_num_pieces
-      self.out_label_logits = nn.Linear(self.readout_dim, wb_target_dim)
+      self.out_label_logits = nn.Linear(self.encoder.out_dim, wb_target_dim)
 
     def encode(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim,
-               ) -> Tuple[Dict[str, nn.Tensor], nn.Dim]:
+               ) -> Tuple[nn.Tensor, nn.Dim]:
       """encode, and extend the encoder output for things we need in the decoder"""
       enc, enc_spatial_dim = source, in_spatial_dim
       with nn.Cond(nn.train_flag()) as cond:
@@ -189,32 +183,13 @@ def test_cond_chunking_conformer():
         enc_, _ = self.encoder(enc, in_spatial_dim=enc_spatial_dim)
         cond.false = enc_
       enc = cond.result
-      return dict(enc=enc), enc_spatial_dim
+      return enc, enc_spatial_dim
 
-    @staticmethod
-    def encoder_unstack(ext: Dict[str, nn.Tensor]) -> Dict[str, nn.Tensor]:
-      """
-      prepare the encoder output for the loop (full-sum or time-sync)
-      """
-      # We might improve or generalize the interface later...
-      # https://github.com/rwth-i6/returnn_common/issues/202
-      loop = nn.NameCtx.inner_loop()
-      return {k: loop.unstack(v) for k, v in ext.items()}
-
-    def decode(self, *,
+    def decode(self,
                enc: nn.Tensor,  # single frame if axis is single step, or sequence otherwise ("am" before)
                ) -> nn.Tensor:
       """decoder step, or operating on full seq"""
-      state_ = nn.LayerState()
-
-      readout_in_am_in = enc
-      readout_in_am = self.readout_in_am(readout_in_am_in)
-      readout_in = readout_in_am
-      readout_in += self.readout_in_bias
-      readout = nn.reduce_out(
-        readout_in, mode="max", num_pieces=self.readout_reduce_num_pieces, out_dim=self.readout_dim)
-      logits = self.out_label_logits(readout)
-
+      logits = self.out_label_logits(enc)
       return logits
 
   class DecoderLabelSync(nn.Module):
@@ -263,15 +238,15 @@ def test_cond_chunking_conformer():
     :return: recog results including beam
     """
     batch_dims = data.batch_dims_ordered((data_spatial_dim, data.feature_dim))
-    enc_args, enc_spatial_dim = model.encode(data, in_spatial_dim=data_spatial_dim)
+    enc, enc_spatial_dim = model.encode(data, in_spatial_dim=data_spatial_dim)
     beam_size = 3
 
     loop = nn.Loop(axis=enc_spatial_dim)  # time-sync transducer
     loop.max_seq_len = nn.dim_value(enc_spatial_dim) * 2  # WHAT? this triggers it?
     loop.state.target = nn.constant(model.blank_idx, shape=batch_dims, sparse_dim=model.wb_target_dim)
     with loop:
-      enc = model.encoder_unstack(enc_args)
-      logits = model.decode(**enc)
+      enc = loop.unstack(enc)
+      logits = model.decode(enc)
       log_prob = nn.log_softmax(logits, axis=model.wb_target_dim)
       loop.state.target = nn.choice(
         log_prob, input_type="log_prob",
