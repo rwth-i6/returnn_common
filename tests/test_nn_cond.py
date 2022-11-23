@@ -164,15 +164,8 @@ def test_cond_chunking_conformer():
                  ):
       super(Model, self).__init__()
       self.in_dim = in_dim
-      self.frontend = BlstmCnnEncoder(
-        in_dim,
-        nn.FeatureDim("pre-lstm", 5),
-        num_layers=2, time_reduction=6,
-        dropout=enc_dropout,
-        allow_pool_last=enc_input_allow_pool_last,
-      )
       self.encoder = nn.ConformerEncoder(
-        self.frontend.out_dim,
+        in_dim,
         enc_model_dim,
         ff_dim=enc_ff_dim,
         input_layer=None,
@@ -182,16 +175,6 @@ def test_cond_chunking_conformer():
         dropout=enc_dropout,
         att_dropout=enc_att_dropout,
       )
-
-      count = 0
-      for mod in self.encoder.modules():
-        if isinstance(mod, nn.RelPosSelfAttention):
-          count += 1
-          mod.qkv.weight.initial = nn.init.VarianceScaling(scale=0.5, mode="fan_avg", distribution="uniform")
-      assert count == num_enc_layers
-
-      for i in enc_aux_logits:
-        setattr(self, f"enc_aux_logits_{i}", nn.Linear(enc_model_dim, wb_target_dim))
 
       self.nb_target_dim = nb_target_dim
       self.wb_target_dim = wb_target_dim
@@ -219,21 +202,11 @@ def test_cond_chunking_conformer():
       self.label_log_prob_dropout = 0.3
       self.out_emit_logit = nn.Linear(self.readout_dim, nn.FeatureDim("emit", 1))
 
-      for p in self.frontend.parameters():
-        p.weight_decay = l2
-      for p in self.encoder.parameters():
-        p.weight_decay = l2
-      for p in self.enc_ctx.parameters():
-        p.weight_decay = l2
-      for p in list(self.readout_in_am.parameters()) + list(self.readout_in_lm.parameters()) + [self.readout_in_bias]:
-        p.weight_decay = l2
-
     def encode(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim,
-               collected_outputs: Optional[Dict[str, nn.Tensor]] = None,
                ) -> Tuple[Dict[str, nn.Tensor], nn.Dim]:
       """encode, and extend the encoder output for things we need in the decoder"""
       source = specaugment_wei(source, spatial_dim=in_spatial_dim, feature_dim=self.in_dim)
-      enc, enc_spatial_dim = self.frontend(source, in_spatial_dim=in_spatial_dim)
+      enc, enc_spatial_dim = source, in_spatial_dim
       with nn.Cond(nn.train_flag()) as cond:
         win_dim = nn.SpatialDim("win", 50)
         stride = 50
