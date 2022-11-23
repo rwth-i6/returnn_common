@@ -122,19 +122,10 @@ def test_cond_new_axis():
 
 
 def test_cond_chunking_conformer():
-  # This test needs a huge stack size currently, due to the way RETURNN layer construction works currently.
-  # On RETURNN side, there is the option flat_net_construction to solve this,
-  # however, it's experimental and also does not work for this case.
-  # https://github.com/rwth-i6/returnn/issues/957
-  # https://stackoverflow.com/a/16248113/133374
-  import resource
-  import sys
-  try:
-    resource.setrlimit(resource.RLIMIT_STACK, (2 ** 29, -1))
-  except Exception as exc:
-    print(f"resource.setrlimit {type(exc).__name__}: {exc}")
-  sys.setrecursionlimit(10 ** 6)
-
+  # The test says "chunking conformer" but we reduced it as much as possible
+  # while still reproducing the issue, and there is no chunking and also no conformer anymore.
+  # However, the nn.Cond still seems to be very relevant for the issue.
+  # But also, the nn.Loop later seems relevant.
   from typing import Tuple
 
   class Encoder(nn.Module):
@@ -172,15 +163,7 @@ def test_cond_chunking_conformer():
       """encode, and extend the encoder output for things we need in the decoder"""
       enc, enc_spatial_dim = source, in_spatial_dim
       with nn.Cond(nn.train_flag()) as cond:
-        win_dim = nn.SpatialDim("win", 50)
-        stride = 50
-        enc_chunked, chunk_spatial_dim = nn.window(
-          enc, spatial_dim=enc_spatial_dim,
-          window_dim=win_dim, stride=stride)
-        enc_, _ = self.encoder(enc_chunked, in_spatial_dim=win_dim)
-        enc_ = nn.inverse_window(
-          enc_, in_spatial_dim=chunk_spatial_dim, out_spatial_dim=enc_spatial_dim,
-          window_dim=win_dim, stride=stride)
+        enc_, _ = self.encoder(enc, in_spatial_dim=enc_spatial_dim)
         cond.true = enc_
         enc_, _ = self.encoder(enc, in_spatial_dim=enc_spatial_dim)
         cond.false = enc_
