@@ -189,7 +189,6 @@ def test_cond_chunking_conformer():
     def encode(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim,
                ) -> Tuple[Dict[str, nn.Tensor], nn.Dim]:
       """encode, and extend the encoder output for things we need in the decoder"""
-      source = specaugment_wei(source, spatial_dim=in_spatial_dim, feature_dim=self.in_dim)
       enc, enc_spatial_dim = source, in_spatial_dim
       with nn.Cond(nn.train_flag()) as cond:
         win_dim = nn.SpatialDim("win", 50)
@@ -354,16 +353,6 @@ def test_cond_chunking_conformer():
       output_log_prob = nn.concat_features(label_emit_log_prob, blank_log_prob)
       return output_log_prob
 
-  def from_scratch_model_def(*, in_dim: nn.Dim, target_dim: nn.Dim) -> Model:
-    """Function is run within RETURNN."""
-    return Model(
-      in_dim,
-      nb_target_dim=target_dim,
-      wb_target_dim=target_dim + 1,
-      blank_idx=target_dim.dimension,
-      bos_idx=0,
-    )
-
   def model_recog(*,
                   model: Model,
                   data: nn.Tensor, data_spatial_dim: nn.Dim,
@@ -402,57 +391,19 @@ def test_cond_chunking_conformer():
       res = loop.stack(loop.state.target)
     return res
 
-  def specaugment_wei(
-    x: nn.Tensor, *,
-    spatial_dim: nn.Dim,
-    feature_dim: nn.Dim = nn.NotSpecified,
-    only_on_train: bool = True,
-  ) -> nn.Tensor:
-    """
-    SpecAugment reimplementation of :func:`specaugment_v1`
-    """
-    if feature_dim is nn.NotSpecified:
-      assert x.feature_dim
-      feature_dim = x.feature_dim
-
-    # to be adjusted (20-50%)
-    max_time_num = 1
-    max_time = 15
-
-    max_feature_num = 5
-    max_feature = 4
-
-    # halved before this step
-    conservative_step = 2000
-    increase_flag = nn.where(nn.global_train_step() >= conservative_step, 0, 1)
-
-    with nn.Cond(nn.train_flag() | (not only_on_train)) as cond:
-      x_masked = x
-      spatial_len = nn.dim_value(spatial_dim)
-      # time mask
-      x_masked = random_mask_v2(
-        x_masked, mask_axis=spatial_dim, broadcast_axis=feature_dim,
-        min_num=0,
-        max_num=nn.minimum(
-          nn.maximum(spatial_len // int(1 / 0.70 * max_time), max_time_num) // (1 + increase_flag),
-          spatial_len),
-        max_dims=max_time)
-      # feature mask
-      x_masked = random_mask_v2(
-        x_masked, mask_axis=feature_dim, broadcast_axis=spatial_dim,
-        min_num=0, max_num=max_feature_num // (1 + increase_flag),
-        max_dims=max_feature)
-      cond.true = x_masked
-      cond.false = x
-    return cond.result
-
   nn.reset_default_root_name_ctx()
   time_dim = nn.SpatialDim("time")
   input_dim = nn.FeatureDim("input", 10)
   label_dim = nn.FeatureDim("labels", 5)
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
 
-  model = from_scratch_model_def(in_dim=input_dim, target_dim=label_dim)
+  model = Model(
+    input_dim,
+    nb_target_dim=label_dim,
+    wb_target_dim=label_dim + 1,
+    blank_idx=label_dim.dimension,
+    bos_idx=0,
+  )
   model_recog(model=model, data=data, data_spatial_dim=time_dim, targets_dim=label_dim).mark_as_default_output()
 
   # config = nn.get_returnn_config().get_config_raw_dict(root_module=model)
