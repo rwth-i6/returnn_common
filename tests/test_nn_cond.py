@@ -177,6 +177,7 @@ def test_cond_chunking_conformer():
       logits = self.out_label_logits(enc)
       return logits
 
+  # noinspection PyShadowingNames
   def model_recog(*,
                   model: Model,
                   data: nn.Tensor, data_spatial_dim: nn.Dim,
