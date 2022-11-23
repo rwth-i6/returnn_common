@@ -135,45 +135,30 @@ def test_cond_chunking_conformer():
     print(f"resource.setrlimit {type(exc).__name__}: {exc}")
   sys.setrecursionlimit(10 ** 6)
 
-  from returnn_common.nn.encoder.blstm_cnn import BlstmCnnEncoder
   from returnn_common.asr.specaugment import random_mask_v2
-  from typing import Optional, Sequence, Dict, Any, Tuple
+  from typing import Optional, Sequence, Dict, Tuple
   import contextlib
 
   class Model(nn.Module):
     """Model definition"""
 
     def __init__(self, in_dim: nn.Dim, *,
-                 num_enc_layers: int = 12,
                  nb_target_dim: nn.Dim,
                  wb_target_dim: nn.Dim,
                  blank_idx: int,
                  bos_idx: int,
-                 enc_aux_logits: Sequence[int] = (),  # layers
-                 enc_input_allow_pool_last: bool = False,
-                 enc_model_dim: nn.Dim = nn.FeatureDim("enc", 4),
-                 enc_ff_dim: nn.Dim = nn.FeatureDim("enc-ff", 8),
-                 enc_att_num_heads: int = 4,
                  enc_key_total_dim: nn.Dim = nn.FeatureDim("enc_key_total_dim", 2),
-                 enc_conformer_layer_opts: Optional[Dict[str, Any]] = None,
                  att_num_heads: nn.Dim = nn.SpatialDim("att_num_heads", 1),
-                 att_dropout: float = 0.1,
-                 enc_dropout: float = 0.1,
-                 enc_att_dropout: float = 0.1,
-                 l2: float = 0.0001,
                  ):
       super(Model, self).__init__()
       self.in_dim = in_dim
       self.encoder = nn.ConformerEncoder(
         in_dim,
-        enc_model_dim,
-        ff_dim=enc_ff_dim,
+        nn.FeatureDim("enc", 4),
+        ff_dim=nn.FeatureDim("enc-ff", 8),
         input_layer=None,
-        encoder_layer_opts=enc_conformer_layer_opts,
-        num_layers=num_enc_layers,
-        num_heads=enc_att_num_heads,
-        dropout=enc_dropout,
-        att_dropout=enc_att_dropout,
+        num_layers=1,
+        num_heads=2,
       )
 
       self.nb_target_dim = nb_target_dim
@@ -184,13 +169,12 @@ def test_cond_chunking_conformer():
       self.enc_key_total_dim = enc_key_total_dim
       self.enc_key_per_head_dim = enc_key_total_dim.div_left(att_num_heads)
       self.att_num_heads = att_num_heads
-      self.att_dropout = att_dropout
 
       self.enc_ctx = nn.Linear(self.encoder.out_dim, enc_key_total_dim)
       self.enc_ctx_dropout = 0.2
       self.enc_win_dim = nn.SpatialDim("enc_win_dim", 5)
       self.att_query = nn.Linear(self.encoder.out_dim, enc_key_total_dim, with_bias=False)
-      self.lm = DecoderLabelSync(nb_target_dim, l2=l2)
+      self.lm = DecoderLabelSync(nb_target_dim)
       self.readout_in_am = nn.Linear(2 * self.encoder.out_dim, nn.FeatureDim("readout", 1000), with_bias=False)
       self.readout_in_am_dropout = 0.1
       self.readout_in_lm = nn.Linear(self.lm.out_dim, self.readout_in_am.out_dim, with_bias=False)
@@ -266,7 +250,6 @@ def test_cond_chunking_conformer():
       att_energy = nn.dot(enc_ctx_win, att_query, reduce=att_query.feature_dim)
       att_energy = att_energy * (att_energy.feature_dim.dimension ** -0.5)
       att_weights = nn.softmax(att_energy, axis=self.enc_win_dim)
-      att_weights = nn.dropout(att_weights, dropout=self.att_dropout, axis=att_weights.shape_ordered)
       att = nn.dot(att_weights, enc_val_win, reduce=self.enc_win_dim)
 
       if all_combinations_out:
@@ -371,30 +354,14 @@ def test_cond_chunking_conformer():
       output_log_prob = nn.concat_features(label_emit_log_prob, blank_log_prob)
       return output_log_prob
 
-  def from_scratch_model_def(*, epoch: int, in_dim: nn.Dim, target_dim: nn.Dim) -> Model:
+  def from_scratch_model_def(*, in_dim: nn.Dim, target_dim: nn.Dim) -> Model:
     """Function is run within RETURNN."""
-    # Pretraining:
-    num_enc_layers = 2
-    enc_att_num_heads = 2
     return Model(
       in_dim,
-      num_enc_layers=num_enc_layers,
-      enc_input_allow_pool_last=True,
-      enc_model_dim=nn.FeatureDim("enc", 4),
-      enc_ff_dim=nn.FeatureDim("enc-ff", 8),
-      enc_att_num_heads=enc_att_num_heads,
-      enc_conformer_layer_opts=dict(
-        conv_norm=nn.LayerNorm,
-        self_att_opts=dict(
-          pos_emb_dropout=0.1,
-        )
-      ),
       nb_target_dim=target_dim,
       wb_target_dim=target_dim + 1,
       blank_idx=target_dim.dimension,
       bos_idx=0,
-      enc_dropout=0.1,
-      enc_att_dropout=0.1,
     )
 
   def model_recog(*,
@@ -485,7 +452,7 @@ def test_cond_chunking_conformer():
   label_dim = nn.FeatureDim("labels", 5)
   data = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, input_dim]))
 
-  model = from_scratch_model_def(epoch=10, in_dim=input_dim, target_dim=label_dim)
+  model = from_scratch_model_def(in_dim=input_dim, target_dim=label_dim)
   model_recog(model=model, data=data, data_spatial_dim=time_dim, targets_dim=label_dim).mark_as_default_output()
 
   # config = nn.get_returnn_config().get_config_raw_dict(root_module=model)
