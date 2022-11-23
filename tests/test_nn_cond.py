@@ -146,8 +146,6 @@ def test_cond_chunking_conformer():
                  wb_target_dim: nn.Dim,
                  blank_idx: int,
                  bos_idx: int,
-                 enc_key_total_dim: nn.Dim = nn.FeatureDim("enc_key_total_dim", 2),
-                 att_num_heads: nn.Dim = nn.SpatialDim("att_num_heads", 1),
                  ):
       super(Model, self).__init__()
       self.in_dim = in_dim
@@ -165,19 +163,9 @@ def test_cond_chunking_conformer():
       self.blank_idx = blank_idx
       self.bos_idx = bos_idx  # for non-blank labels; for with-blank labels, we use bos_idx=blank_idx
 
-      self.enc_key_total_dim = enc_key_total_dim
-      self.enc_key_per_head_dim = enc_key_total_dim.div_left(att_num_heads)
-      self.att_num_heads = att_num_heads
-
-      self.enc_ctx = nn.Linear(self.encoder.out_dim, enc_key_total_dim)
-      self.enc_ctx_dropout = 0.2
-      self.enc_win_dim = nn.SpatialDim("enc_win_dim", 5)
-      self.att_query = nn.Linear(self.encoder.out_dim, enc_key_total_dim, with_bias=False)
       self.lm = DecoderLabelSync(nb_target_dim)
-      self.readout_in_am = nn.Linear(self.encoder.out_dim, nn.FeatureDim("readout", 1000), with_bias=False)
-      self.readout_in_am_dropout = 0.1
+      self.readout_in_am = nn.Linear(self.encoder.out_dim, nn.FeatureDim("readout", 10), with_bias=False)
       self.readout_in_lm = nn.Linear(self.lm.out_dim, self.readout_in_am.out_dim, with_bias=False)
-      self.readout_in_lm_dropout = 0.1
       self.readout_in_bias = nn.Parameter([self.readout_in_am.out_dim])
       self.readout_reduce_num_pieces = 2
       self.readout_dim = self.readout_in_am.out_dim // self.readout_reduce_num_pieces
@@ -201,10 +189,7 @@ def test_cond_chunking_conformer():
         enc_, _ = self.encoder(enc, in_spatial_dim=enc_spatial_dim)
         cond.false = enc_
       enc = cond.result
-      enc_ctx = self.enc_ctx(nn.dropout(enc, self.enc_ctx_dropout, axis=enc.feature_dim))
-      enc_ctx_win, _ = nn.window(enc_ctx, spatial_dim=enc_spatial_dim, window_dim=self.enc_win_dim)
-      enc_val_win, _ = nn.window(enc, spatial_dim=enc_spatial_dim, window_dim=self.enc_win_dim)
-      return dict(enc=enc, enc_ctx_win=enc_ctx_win, enc_val_win=enc_val_win), enc_spatial_dim
+      return dict(enc=enc), enc_spatial_dim
 
     @staticmethod
     def encoder_unstack(ext: Dict[str, nn.Tensor]) -> Dict[str, nn.Tensor]:
@@ -223,8 +208,6 @@ def test_cond_chunking_conformer():
     def decode(self, *,
                enc: nn.Tensor,  # single frame if axis is single step, or sequence otherwise ("am" before)
                enc_spatial_dim: nn.Dim,  # single step or time axis,
-               enc_ctx_win: nn.Tensor,  # like enc
-               enc_val_win: nn.Tensor,  # like enc
                all_combinations_out: bool = False,  # [...,prev_nb_target_spatial_dim,axis] out
                prev_nb_target: Optional[nn.Tensor] = None,  # non-blank
                prev_nb_target_spatial_dim: Optional[nn.Dim] = None,  # one longer than target_spatial_dim, due to BOS
@@ -241,12 +224,6 @@ def test_cond_chunking_conformer():
           else (enc.feature_dim,))
         state = self.decoder_default_initial_state(batch_dims=batch_dims)
       state_ = nn.LayerState()
-
-      att_query = self.att_query(enc)
-      att_energy = nn.dot(enc_ctx_win, att_query, reduce=att_query.feature_dim)
-      att_energy = att_energy * (att_energy.feature_dim.dimension ** -0.5)
-      att_weights = nn.softmax(att_energy, axis=self.enc_win_dim)
-      att = nn.dot(att_weights, enc_val_win, reduce=self.enc_win_dim)
 
       if all_combinations_out:
         assert prev_nb_target is not None and prev_nb_target_spatial_dim is not None
@@ -268,8 +245,7 @@ def test_cond_chunking_conformer():
 
         # We could have simpler code by directly concatenating the readout inputs.
         # However, for better efficiency, keep am/lm path separate initially.
-        readout_in_lm_in = nn.dropout(lm, self.readout_in_lm_dropout, axis=lm.feature_dim)
-        readout_in_lm = self.readout_in_lm(readout_in_lm_in)
+        readout_in_lm = self.readout_in_lm(lm)
 
       readout_in_am_in = enc
       readout_in_am = self.readout_in_am(readout_in_am_in)
