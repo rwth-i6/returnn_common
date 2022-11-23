@@ -201,61 +201,21 @@ def test_cond_chunking_conformer():
       loop = nn.NameCtx.inner_loop()
       return {k: loop.unstack(v) for k, v in ext.items()}
 
-    def decoder_default_initial_state(self, *, batch_dims: Sequence[nn.Dim]) -> Optional[nn.LayerState]:
-      """Default initial state"""
-      return nn.LayerState(lm=self.lm.default_initial_state(batch_dims=batch_dims))
-
     def decode(self, *,
                enc: nn.Tensor,  # single frame if axis is single step, or sequence otherwise ("am" before)
-               enc_spatial_dim: nn.Dim,  # single step or time axis,
-               all_combinations_out: bool = False,  # [...,prev_nb_target_spatial_dim,axis] out
-               prev_nb_target: Optional[nn.Tensor] = None,  # non-blank
-               prev_nb_target_spatial_dim: Optional[nn.Dim] = None,  # one longer than target_spatial_dim, due to BOS
-               prev_wb_target: Optional[nn.Tensor] = None,  # with blank
-               wb_target_spatial_dim: Optional[nn.Dim] = None,  # single step or align-label spatial axis
-               state: Optional[nn.LayerState] = None,
-               ) -> Tuple[nn.Tensor, nn.LayerState]:
+               ) -> nn.Tensor:
       """decoder step, or operating on full seq"""
-      if state is None:
-        assert enc_spatial_dim != nn.single_step_dim, "state should be explicit, to avoid mistakes"
-        batch_dims = enc.batch_dims_ordered(
-          remove=(enc.feature_dim, enc_spatial_dim)
-          if enc_spatial_dim != nn.single_step_dim
-          else (enc.feature_dim,))
-        state = self.decoder_default_initial_state(batch_dims=batch_dims)
       state_ = nn.LayerState()
-
-      if all_combinations_out:
-        assert prev_nb_target is not None and prev_nb_target_spatial_dim is not None
-        assert prev_nb_target_spatial_dim in prev_nb_target.shape
-        assert enc_spatial_dim != nn.single_step_dim
-        lm_scope = contextlib.nullcontext()
-        lm_input = prev_nb_target
-        lm_axis = prev_nb_target_spatial_dim
-      else:
-        assert prev_wb_target is not None and wb_target_spatial_dim is not None
-        assert wb_target_spatial_dim in {enc_spatial_dim, nn.single_step_dim}
-        prev_out_emit = prev_wb_target != self.blank_idx
-        lm_scope = nn.MaskedComputation(mask=prev_out_emit)
-        lm_input = nn.reinterpret_set_sparse_dim(prev_wb_target, out_dim=self.nb_target_dim)
-        lm_axis = wb_target_spatial_dim
-
-      with lm_scope:
-        lm, state_.lm = self.lm(lm_input, spatial_dim=lm_axis, state=state.lm)
-
-        # We could have simpler code by directly concatenating the readout inputs.
-        # However, for better efficiency, keep am/lm path separate initially.
-        readout_in_lm = self.readout_in_lm(lm)
 
       readout_in_am_in = enc
       readout_in_am = self.readout_in_am(readout_in_am_in)
-      readout_in = nn.combine_bc(readout_in_am, "+", readout_in_lm)
+      readout_in = readout_in_am
       readout_in += self.readout_in_bias
       readout = nn.reduce_out(
         readout_in, mode="max", num_pieces=self.readout_reduce_num_pieces, out_dim=self.readout_dim)
       logits = self.out_label_logits(readout)
 
-      return logits, state_
+      return logits
 
   class DecoderLabelSync(nn.Module):
     """
@@ -304,20 +264,14 @@ def test_cond_chunking_conformer():
     """
     batch_dims = data.batch_dims_ordered((data_spatial_dim, data.feature_dim))
     enc_args, enc_spatial_dim = model.encode(data, in_spatial_dim=data_spatial_dim)
-    beam_size = 12
+    beam_size = 3
 
     loop = nn.Loop(axis=enc_spatial_dim)  # time-sync transducer
-    loop.max_seq_len = nn.dim_value(enc_spatial_dim) * 2
-    loop.state.decoder = model.decoder_default_initial_state(batch_dims=batch_dims)
+    loop.max_seq_len = nn.dim_value(enc_spatial_dim) * 2  # WHAT? this triggers it?
     loop.state.target = nn.constant(model.blank_idx, shape=batch_dims, sparse_dim=model.wb_target_dim)
     with loop:
       enc = model.encoder_unstack(enc_args)
-      logits, loop.state.decoder = model.decode(
-        **enc,
-        enc_spatial_dim=nn.single_step_dim,
-        wb_target_spatial_dim=nn.single_step_dim,
-        prev_wb_target=loop.state.target,
-        state=loop.state.decoder)
+      logits = model.decode(**enc)
       log_prob = nn.log_softmax(logits, axis=model.wb_target_dim)
       loop.state.target = nn.choice(
         log_prob, input_type="log_prob",
