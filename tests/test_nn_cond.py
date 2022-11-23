@@ -135,7 +135,6 @@ def test_cond_chunking_conformer():
     print(f"resource.setrlimit {type(exc).__name__}: {exc}")
   sys.setrecursionlimit(10 ** 6)
 
-  from returnn_common.asr.specaugment import random_mask_v2
   from typing import Optional, Sequence, Dict, Tuple
   import contextlib
 
@@ -175,16 +174,14 @@ def test_cond_chunking_conformer():
       self.enc_win_dim = nn.SpatialDim("enc_win_dim", 5)
       self.att_query = nn.Linear(self.encoder.out_dim, enc_key_total_dim, with_bias=False)
       self.lm = DecoderLabelSync(nb_target_dim)
-      self.readout_in_am = nn.Linear(2 * self.encoder.out_dim, nn.FeatureDim("readout", 1000), with_bias=False)
+      self.readout_in_am = nn.Linear(self.encoder.out_dim, nn.FeatureDim("readout", 1000), with_bias=False)
       self.readout_in_am_dropout = 0.1
       self.readout_in_lm = nn.Linear(self.lm.out_dim, self.readout_in_am.out_dim, with_bias=False)
       self.readout_in_lm_dropout = 0.1
       self.readout_in_bias = nn.Parameter([self.readout_in_am.out_dim])
       self.readout_reduce_num_pieces = 2
       self.readout_dim = self.readout_in_am.out_dim // self.readout_reduce_num_pieces
-      self.out_nb_label_logits = nn.Linear(self.readout_dim, nb_target_dim)
-      self.label_log_prob_dropout = 0.3
-      self.out_emit_logit = nn.Linear(self.readout_dim, nn.FeatureDim("emit", 1))
+      self.out_label_logits = nn.Linear(self.readout_dim, wb_target_dim)
 
     def encode(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim,
                ) -> Tuple[Dict[str, nn.Tensor], nn.Dim]:
@@ -234,7 +231,7 @@ def test_cond_chunking_conformer():
                prev_wb_target: Optional[nn.Tensor] = None,  # with blank
                wb_target_spatial_dim: Optional[nn.Dim] = None,  # single step or align-label spatial axis
                state: Optional[nn.LayerState] = None,
-               ) -> (ProbsFromReadout, nn.LayerState):
+               ) -> Tuple[nn.Tensor, nn.LayerState]:
       """decoder step, or operating on full seq"""
       if state is None:
         assert enc_spatial_dim != nn.single_step_dim, "state should be explicit, to avoid mistakes"
@@ -274,15 +271,15 @@ def test_cond_chunking_conformer():
         readout_in_lm_in = nn.dropout(lm, self.readout_in_lm_dropout, axis=lm.feature_dim)
         readout_in_lm = self.readout_in_lm(readout_in_lm_in)
 
-      readout_in_am_in = nn.concat_features(enc, att)
-      readout_in_am_in = nn.dropout(readout_in_am_in, self.readout_in_am_dropout, axis=readout_in_am_in.feature_dim)
+      readout_in_am_in = enc
       readout_in_am = self.readout_in_am(readout_in_am_in)
       readout_in = nn.combine_bc(readout_in_am, "+", readout_in_lm)
       readout_in += self.readout_in_bias
       readout = nn.reduce_out(
         readout_in, mode="max", num_pieces=self.readout_reduce_num_pieces, out_dim=self.readout_dim)
+      logits = self.out_label_logits(readout)
 
-      return ProbsFromReadout(model=self, readout=readout), state_
+      return logits, state_
 
   class DecoderLabelSync(nn.Module):
     """
@@ -315,44 +312,6 @@ def test_cond_chunking_conformer():
       lstm, state = self.lstm(embed, spatial_dim=spatial_dim, state=state)
       return lstm, state
 
-  class ProbsFromReadout:
-    """
-    functions to calculate the probabilities from the readout
-    """
-
-    def __init__(self, *, model: Model, readout: nn.Tensor):
-      self.model = model
-      self.readout = readout
-
-    def get_label_logits(self) -> nn.Tensor:
-      """label log probs"""
-      label_logits_in = nn.dropout(self.readout, self.model.label_log_prob_dropout, axis=self.readout.feature_dim)
-      label_logits = self.model.out_nb_label_logits(label_logits_in)
-      return label_logits
-
-    def get_label_log_probs(self) -> nn.Tensor:
-      """label log probs"""
-      label_logits = self.get_label_logits()
-      label_log_prob = nn.log_softmax(label_logits, axis=label_logits.feature_dim)
-      return label_log_prob
-
-    def get_emit_logit(self) -> nn.Tensor:
-      """emit logit"""
-      emit_logit = self.model.out_emit_logit(self.readout)
-      return emit_logit
-
-    def get_wb_label_log_probs(self) -> nn.Tensor:
-      """align label log probs"""
-      label_log_prob = self.get_label_log_probs()
-      label_log_prob = nn.label_smoothed_log_prob_gradient(label_log_prob, 0.1)
-      emit_logit = self.get_emit_logit()
-      emit_log_prob = nn.log_sigmoid(emit_logit)
-      blank_log_prob = nn.log_sigmoid(-emit_logit)
-      label_emit_log_prob = label_log_prob + nn.squeeze(emit_log_prob, axis=emit_log_prob.feature_dim)
-      assert self.model.blank_idx == label_log_prob.feature_dim.dimension  # not implemented otherwise
-      output_log_prob = nn.concat_features(label_emit_log_prob, blank_log_prob)
-      return output_log_prob
-
   def model_recog(*,
                   model: Model,
                   data: nn.Tensor, data_spatial_dim: nn.Dim,
@@ -377,13 +336,13 @@ def test_cond_chunking_conformer():
     loop.state.target = nn.constant(model.blank_idx, shape=batch_dims, sparse_dim=model.wb_target_dim)
     with loop:
       enc = model.encoder_unstack(enc_args)
-      probs, loop.state.decoder = model.decode(
+      logits, loop.state.decoder = model.decode(
         **enc,
         enc_spatial_dim=nn.single_step_dim,
         wb_target_spatial_dim=nn.single_step_dim,
         prev_wb_target=loop.state.target,
         state=loop.state.decoder)
-      log_prob = probs.get_wb_label_log_probs()
+      log_prob = nn.log_softmax(logits, axis=model.wb_target_dim)
       loop.state.target = nn.choice(
         log_prob, input_type="log_prob",
         target=None, search=True, beam_size=beam_size,
