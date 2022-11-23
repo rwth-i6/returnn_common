@@ -121,6 +121,21 @@ def test_cond_new_axis():
   dummy_run_net_single_custom(config_str)
 
 
+def test_cond_multiple_outputs():
+  class _Net(nn.Module):
+    def __call__(self, x: nn.Tensor) -> nn.Tensor:
+      y1 = x * 0.5
+      y2 = x * 0.7 - 0.2
+      with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
+        cond.true = (y1, y2)
+        cond.false = (y2, y1)
+        x1, x2 = cond.result
+      return x1 - x2
+
+  config, net_dict, net = dummy_config_net_dict(_Net)
+  dummy_run_net(config, net=net)
+
+
 def test_cond_chunking_conformer():
   # The test says "chunking conformer" but we reduced it as much as possible
   # while still reproducing the issue, and there is no chunking and also no conformer anymore.

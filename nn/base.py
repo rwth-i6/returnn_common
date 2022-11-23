@@ -357,24 +357,28 @@ class Tensor:
     root_scope.marked_losses.append(res)
     return res
 
-  def mark_as_output(self) -> Tensor:
+  def mark_as_output(self, *, _scope: Optional[nn.NameCtx] = None) -> Tensor:
     """
     Mark this as an output.
     This has the effect that RETURNN will in any case construct the corresponding layer.
     Also see :func:`mark_as_default_output`.
     """
     assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
-    root_scope = self.name_ctx.root  # mark_as_output always refers to the root
+    if not _scope:
+      scope = self.name_ctx.root  # mark_as_output always refers to the root
+    else:
+      scope = _scope  # only for internal use
     res = self
-    if self.name_ctx is root_scope.children.get("output"):
+    if self.name_ctx is scope.children.get("output"):
       pass  # not needed
-    elif self.name_ctx.parent is not root_scope:
-      res = nn.copy(self, name=root_scope.get_new_child(suggested_name=self.name_ctx.get_abs_name(join_str="_")))
+    elif self.name_ctx.parent is not scope:
+      res = nn.copy(self, name=scope.get_new_child(suggested_name=self.name_ctx.get_abs_name(join_str="_")))
       res.layer_dict["is_output_layer"] = True
     else:
-      assert self.name_ctx.parent is root_scope
+      assert self.name_ctx.parent is scope
+      assert not self.is_ref
       self.layer_dict["is_output_layer"] = True
-    root_scope.marked_outputs.append(res)
+    scope.marked_outputs.append(res)
     return res
 
   def mark_as_default_output(self) -> Tensor:
