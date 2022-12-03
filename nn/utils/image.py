@@ -6,24 +6,53 @@ from typing import Tuple
 from ... import nn
 
 
+def dense_image_warp(
+  image: nn.Tensor, *,
+  spatial_dims: Tuple[nn.Dim, nn.Dim],
+  flow: Tuple[nn.Tensor, nn.Tensor],
+) -> nn.Tensor:
+  """
+  Image warping using per-pixel flow vectors.
+
+  Adapted from RETURNN tf_util.dense_image_warpm, which is
+  adapted from tensorflow.contrib.image.dense_image_warp,
+  from newer TF version which supports variable-sized images.
+
+  :param image: float `Tensor` with shape `[batch..., spatial_dims[0], spatial_dims[1], channels...]`.
+  :param spatial_dims: spatial dims of image, e.g. height, width
+  :param flow: Each a float `Tensor` with shape `[batch..., spatial_dims[0], spatial_dims[1]]`.
+    E.g. via :func:`create_random_warp_flow_2d`.
+    How much to warp the x/y coordinates. 0.0 means no warp.
+  :returns: A float `Tensor` with shape`[batch..., spatial_dims[0], spatial_dims[1], channels...]`
+    and same type as input image.
+  """
+  assert len(spatial_dims) == len(flow) == 2
+  # The flow is defined on the image grid. Turn the flow into a list of query points in the grid space.
+  query_points = tuple([nn.range_over_dim(spatial_dims[i], dtype=flow[i].dtype) - flow[i] for i in [0, 1]])
+  # Compute values at the query points, then reshape the result back to the image grid.
+  interpolated = interpolate_bilinear(image, spatial_dims=spatial_dims, query_points=query_points)
+  return interpolated
+
+
 def interpolate_bilinear(
-  image: nn.Tensor,
+  image: nn.Tensor, *,
   spatial_dims: Tuple[nn.Dim, nn.Dim],
   query_points: Tuple[nn.Tensor, nn.Tensor],
 ) -> nn.Tensor:
   """
+  Find values for query points on a grid using bilinear interpolation.
+  Uses the 4 pixels around the query_points.
+
   Similar to Matlab's interp2 function.
-  Finds values for query points on a grid using bilinear interpolation.
   Adapted from RETURNN tf_util.interpolate_bilinear, which is
   adapted from tensorflow.contrib.image.dense_image_warp,
   from newer TF version which supports variable-sized images.
 
-  :param image: a 4-D float `Tensor` of shape `[batch..., spatial_dims[0], spatial_dims[1], channels...]`.
+  :param image: a float `Tensor` of shape `[batch..., spatial_dims[0], spatial_dims[1], channels...]`.
   :param spatial_dims: spatial dims of image, e.g. height, width
   :param query_points: each is float `Tensor` of N points with shape `[batch..., output_dims...]`.
     Indices into the image.
-  :returns: a 3-D `Tensor` with shape `[batch..., output_dims..., channels...]`
-  :rtype: tf.Tensor
+  :returns: a `Tensor` with shape `[batch..., output_dims..., channels...]`
   """
   assert len(query_points) == len(spatial_dims) == 2
   query_dtype = query_points[0].dtype
