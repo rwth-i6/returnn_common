@@ -202,6 +202,24 @@ def minimum(a: Union[nn.Tensor, int, float], b: Union[nn.Tensor, int, float],
   return combine(a, b, kind="minimum", name=name or "minimum")
 
 
+def clip_by_value(x: nn.Tensor,
+                  clip_value_min: Union[nn.Tensor, int, float],
+                  clip_value_max: Union[nn.Tensor, int, float],
+                  ) -> nn.Tensor:
+  """
+  Wraps tf.clip_by_value.
+  """
+  return nn.make_layer({
+    "class": "eval",
+    "from": [
+      nn.convert_to_tensor(x),
+      nn.convert_to_tensor(clip_value_min),
+      nn.convert_to_tensor(clip_value_max)],
+    "eval": "tf.clip_by_value(source(0), source(1), source(2))"},
+    name="clip_by_value",
+    name_ctx_ignore_top_stack_frames=1)
+
+
 def gating(x: nn.Tensor, *, axis: Optional[nn.Dim] = None,
            gate_func=sigmoid, act_func=identity) -> nn.Tensor:
   """
