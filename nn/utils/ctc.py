@@ -31,7 +31,7 @@ def ctc_greedy_decode(logits: nn.Tensor, *,
   unique_mask = argmax != shift_right
   non_blank_mask = argmax != blank_index
   mask = unique_mask & non_blank_mask
-  decoded, out_spatial_dim = nn.gather_by_mask(argmax, mask=mask, in_spatial_dim=in_spatial_dim)
+  decoded, out_spatial_dim = nn.boolean_mask(argmax, mask=mask, in_spatial_dim=in_spatial_dim)
   decoded_sparse_dim = feature_dim.sub_left(1) if blank_index == 0 else feature_dim - 1
   decoded = nn.reinterpret_set_sparse_dim(decoded, decoded_sparse_dim)
   return decoded, out_spatial_dim

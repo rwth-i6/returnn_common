@@ -396,27 +396,6 @@ def boolean_mask(source: nn.Tensor, *,
     }, name="boolean_mask"), out_spatial_dim
 
 
-def gather_by_mask(x: nn.Tensor, *,
-                   mask: nn.Tensor,
-                   in_spatial_dim: nn.Dim,
-                   name: str = "masked"
-                   ) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Like tf.boolean_mask.
-
-  :param x: apply mask to this tensor. for example [B,T,D]
-  :param mask: boolean tensor. has a subset of the same dims as x. for example [B,T]
-  :param in_spatial_dim: dim to mask/compress
-  :param name:
-  :return: (masked_tensor, out_spatial_dim), for example [B,T',D], where T' is potentially shorter than T.
-  """
-  out_spatial_dim = nn.Dim(description=(in_spatial_dim.description or "unknown") + ":masked", kind=in_spatial_dim.kind)
-  return nn.make_layer({
-    "class": "masked_computation", "from": x, "mask": mask,
-    "in_spatial_dim": in_spatial_dim, "out_spatial_dim": out_spatial_dim,
-    "unit": {"class": "copy", "from": "data"}}, name=name), out_spatial_dim
-
-
 def where(cond: nn.Tensor,
           true_: Union[nn.Tensor, float, int],
           false_: Union[nn.Tensor, float, int],
