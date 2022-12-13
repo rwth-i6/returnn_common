@@ -98,3 +98,16 @@ def test_weight_dropout():
   y.mark_as_default_output()
   config_str = nn.get_returnn_config().get_complete_py_code_str(net)
   dummy_run_net_single_custom(config_str, train_flag=True)
+
+
+def test_random_frame_drop():
+  nn.reset_default_root_name_ctx()
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  x = nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim], available_for_inference=True)
+  x = nn.get_extern_data(x)
+  from returnn_common.nn.utils.augmentation import random_frame_drop
+  out, dim = random_frame_drop(x, in_spatial_dim=time_dim, drop_prob=0.1)
+  out.mark_as_default_output()
+  config_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
+  dummy_run_net_single_custom(config_str, eval_flag=True)
