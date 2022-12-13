@@ -1091,6 +1091,7 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
     return unique_tensor_list(itertools.chain(*(get_dim_deps(dim_) for dim_ in dim)))
   if not isinstance(dim, nn.Dim):
     raise TypeError(f"expected nn.Dim, got {type(dim)}")
+  dim = dim.get_same_base()
   if dim.dimension is not None:  # static dim -> no deps
     return []
   if dim.generic or dim.special:
@@ -1113,6 +1114,7 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
 def _register_dim_deps_when_novel(dim: nn.Dim, deps: List[nn.Tensor]):
   if dim.derived_from_op:
     return  # not needed
+  dim = dim.get_same_base()
   if dim in _dim_deps:
     # We could just always keep the first dep list.
     # But there are cases where the new dep list might be better:
