@@ -145,3 +145,41 @@ def test_repeat_as_loss():
   out.mark_as_loss("y")
   config_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
   dummy_run_net_single_custom(config_str, eval_flag=True)
+
+
+def test_resize_dim_length():
+  from returnn.config import Config
+  from returnn.tf.engine import Engine
+  from returnn.datasets import init_dataset
+
+  time_dim = nn.SpatialDim("time")
+  in_dim = nn.FeatureDim("in", 3)
+  data = nn.Data('data', dim_tags=[nn.batch_dim, time_dim, in_dim])
+
+  # get_network here is relevant for the test,
+  # the exception was not raised otherwise.
+  def _config_get_network(epoch: int, **_kwargs) -> dict:
+    # noinspection PyStatementEffect
+    epoch  # unused
+    nn.reset_default_root_name_ctx()
+    x = nn.get_extern_data(data)
+    rnd_scale = nn.constant(1.1)
+    out, dim = nn.resize(x, axis=time_dim, factor=rnd_scale, kind="linear")
+    size = nn.length(dim)
+    size.mark_as_default_output()
+    net = nn.Linear(in_dim, in_dim)  # just to have some trainable params, for the test
+    out = net(out)
+    out.mark_as_loss("dummy")
+    net_dict = nn.get_returnn_config().get_net_dict_raw_dict(net)
+    return net_dict
+
+  config = Config({
+    "task": "train", "num_epochs": 1, "start_epoch": 1,
+    "get_network": _config_get_network,
+    "extern_data": {data.name: {"dim_tags": [nn.batch_dim, time_dim, in_dim], "available_for_inference": True}},
+  })
+  train_dataset = init_dataset(
+    {"class": "DummyDataset", "input_dim": in_dim.dimension, "output_dim": 5, "num_seqs": 3})
+  engine = Engine(config)
+  engine.init_train_from_config(config, train_data=train_dataset)
+  engine.train()
