@@ -864,18 +864,7 @@ def get_extern_data(data: Data) -> Tensor:
     scope.extern_data[data.name] = data
   else:
     assert scope.extern_data[data.name] is data
-  if not scope.global_batch:
-    if nn.is_debug_eager_mode_enabled():
-      scope.global_batch = nn.BatchInfo.make_global_batch_info(
-        tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
-    else:
-      # We need some global batch info, and this needs a tensor (e.g. placeholder),
-      # but we don't have any tensor yet, nor do we want to create any tensors at this point.
-      # So we pass the dummy value -1.
-      # Such dummy global batch info with -1 will be handled specially in RETURNN init_batch_info,
-      # and it will be replaced with the real global batch.
-      scope.global_batch = nn.BatchInfo.make_global_batch_info(-1)
-  data.batch = scope.global_batch
+  data.batch = _init_global_batch()
   root_layer_name = f"data:{data.name}"
   out = _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
   for tag in data.dim_tags:
@@ -958,6 +947,23 @@ class ReturnnConstructTemplateException(Exception):
   """
 
 
+def _init_global_batch() -> nn.BatchInfo:
+  root_name_ctx = nn.NameCtx.top().root
+  if root_name_ctx.global_batch:
+    return root_name_ctx.global_batch
+  if nn.is_debug_eager_mode_enabled():
+    root_name_ctx.global_batch = nn.BatchInfo.make_global_batch_info(
+      tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
+  else:
+    # We need some global batch info, and this needs a tensor (e.g. placeholder),
+    # but we don't have any tensor yet, nor do we want to create any tensors at this point.
+    # So we pass the dummy value -1.
+    # Such dummy global batch info with -1 will be handled specially in RETURNN init_batch_info,
+    # and it will be replaced with the real global batch.
+    root_name_ctx.global_batch = nn.BatchInfo.make_global_batch_info(-1)
+  return root_name_ctx.global_batch
+
+
 def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
   """
   Use RETURNN layer_class.get_out_data_from_opts to get the :class:`Data`.
@@ -976,6 +982,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     train_flag=True,  # should not have an effect usually for templates, except maybe in debug-eager-mode
     inside_rec_time_dim=loop.axis if loop else None,
     control_flow_ctx=nn.NameCtx.inner_control_flow())
+  net.extern_data.set_batch_info(_init_global_batch())
 
   ref_to_layer_name = {}  # type: Dict[nn.NameCtx, str]
 
