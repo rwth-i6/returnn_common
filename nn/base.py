@@ -168,9 +168,14 @@ class Tensor:
   @property
   def shape(self) -> Set[Dim]:
     """
-    :return: shape (set of dims)
+    :return: shape, as a set of dims.
+      The order must not play a role
+      (RETURNN principles: https://github.com/rwth-i6/returnn/wiki/RETURNN-principles),
+      thus return a set.
+      Note that we do not include any implicit dims here.
+      Also see :func:`verify_out_shape` and https://github.com/rwth-i6/returnn/issues/1153.
     """
-    return self.data.dim_tags_set_implicit
+    return set(self.data.dim_tags)
 
   @property
   def shape_ordered(self) -> Tuple[Dim]:
