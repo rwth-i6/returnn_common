@@ -864,27 +864,18 @@ def get_extern_data(data: Data) -> Tensor:
     scope.extern_data[data.name] = data
   else:
     assert scope.extern_data[data.name] is data
-  for tag in data.dim_tags:
-    # noinspection PyProtectedMember
-    tag._validate_in_current_graph()
-    if tag.is_batch_dim():
-      data.batch = tag.batch
-  if data.have_batch_axis():
-    if not scope.global_batch:
-      if data.batch:
-        scope.global_batch = data.batch
-      elif nn.is_debug_eager_mode_enabled():
-        scope.global_batch = nn.BatchInfo.make_global_batch_info(
-          tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
-      else:
-        # We need some global batch info, and this needs a tensor (e.g. placeholder),
-        # but we don't have any tensor yet, nor do we want to create any tensors at this point.
-        # So we pass the dummy value -1.
-        # Such dummy global batch info with -1 will be handled specially in RETURNN init_batch_info,
-        # and it will be replaced with the real global batch.
-        scope.global_batch = nn.BatchInfo.make_global_batch_info(-1)
-    if not data.batch:
-      data.batch = scope.global_batch
+  if not scope.global_batch:
+    if nn.is_debug_eager_mode_enabled():
+      scope.global_batch = nn.BatchInfo.make_global_batch_info(
+        tf.constant(3, name="global_batch"))  # https://xkcd.com/221/, but prime
+    else:
+      # We need some global batch info, and this needs a tensor (e.g. placeholder),
+      # but we don't have any tensor yet, nor do we want to create any tensors at this point.
+      # So we pass the dummy value -1.
+      # Such dummy global batch info with -1 will be handled specially in RETURNN init_batch_info,
+      # and it will be replaced with the real global batch.
+      scope.global_batch = nn.BatchInfo.make_global_batch_info(-1)
+  data.batch = scope.global_batch
   root_layer_name = f"data:{data.name}"
   out = _get_raw_layer_by_name(root_layer_name, scope=scope, data=data)
   for tag in data.dim_tags:
