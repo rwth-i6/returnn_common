@@ -376,7 +376,8 @@ def setup():
 
             if layer_class.layer_class:
                 print("", file=f)
-                # Note: For the __call__, we do not need the nn.scoped decorator because it does not make sense to wrap it
+                # Note: For the __call__, we do not need the nn.scoped decorator
+                # because it does not make sense to wrap it
                 # into an own subnetwork.
                 res_type_str = "Tuple[nn.Tensor, nn.LayerState]" if sig.has_recurrent_state() else "nn.Tensor"
                 if any(
@@ -409,14 +410,16 @@ def setup():
                 if sig.has_source_param():
                     if sig.need_multiple_sources():
                         print(
-                            "    assert isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)",
+                            "    assert isinstance(source, (tuple, list))"
+                            " and all(isinstance(s, nn.Tensor) for s in source)",
                             file=f,
                         )
                     elif sig.support_multiple_sources():
                         print(
                             "    assert (\n"
                             "      isinstance(source, nn.Tensor) or\n"
-                            "      (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source)))",
+                            "      (isinstance(source, (tuple, list))"
+                            " and all(isinstance(s, nn.Tensor) for s in source)))",
                             file=f,
                         )
                     else:
@@ -449,7 +452,8 @@ def setup():
                     print("      'from': source,", file=f)
                 elif sig.explicit_source_list():
                     print(
-                        f"      'from': [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],",
+                        f"      'from':"
+                        f" [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],",
                         file=f,
                     )
                 if sig.has_module_call_args() or sig.has_recurrent_state():
@@ -539,8 +543,10 @@ def setup():
             if sig.has_source_param():
                 if sig.need_multiple_sources():
                     print(
-                        "  if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):\n"
-                        f"    raise TypeError(f'{name}: unexpected type for source {{source!r}}, need sequence of tensors')",
+                        "  if not isinstance(source, (tuple, list))"
+                        " and all(isinstance(s, nn.Tensor) for s in source):\n"
+                        f"    raise TypeError(f'{name}:"
+                        f" unexpected type for source {{source!r}}, need sequence of tensors')",
                         file=f,
                     )
                 elif sig.support_multiple_sources():
@@ -548,7 +554,8 @@ def setup():
                         "  if not (\n"
                         "    isinstance(source, nn.Tensor) or\n"
                         "    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):\n",
-                        f"     raise TypeError(f'{name}: unexpected type for source {{source!r}}, need one or multiple tensors')",
+                        f"     raise TypeError(f'{name}:"
+                        f" unexpected type for source {{source!r}}, need one or multiple tensors')",
                         file=f,
                     )
                 else:
@@ -561,7 +568,8 @@ def setup():
                 for i in range(sig.explicit_source_list()):
                     print(
                         f"  if not isinstance(source{i + 1}, nn.Tensor):\n"
-                        f"    raise TypeError(f'{name}: unexpected type for source{i + 1} {{source{i + 1}!r}}, need tensor')",
+                        f"    raise TypeError(f'{name}:"
+                        f" unexpected type for source{i + 1} {{source{i + 1}!r}}, need tensor')",
                         file=f,
                     )
 
@@ -710,7 +718,7 @@ class LayerSignature:
     def explicit_source_list(self) -> Optional[int]:
         """
         If returned value is given, it means that instead of source: list[Layers],
-        we have source1, source2 etc, the number returned here.
+        we have source1, source2 etc., the number returned here.
         """
         return LayersExplicitFixedMultipleSources.get(self.layer_class.layer_class, None)
 
@@ -1201,7 +1209,7 @@ class LayerSignature:
 
     def has_variables(self):
         """
-        :return: whether this layers has variables. this is somewhat heuristically
+        :return: whether this layer has variables. this is somewhat heuristically
         :rtype: bool
         """
         # somewhat heuristically
