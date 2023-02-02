@@ -13,11 +13,11 @@ from .blstm_cnn import BlstmCnnEncoder
 
 
 class BlstmCnnSpecAugEncoder(BlstmCnnEncoder):
-  """
-  SpecAugment . PreCNN . BLSTM
-  """
+    """
+    SpecAugment . PreCNN . BLSTM
+    """
 
-  def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
-    source = specaugment_v2(source, spatial_dim=in_spatial_dim)
-    source, in_spatial_dim = super(BlstmCnnSpecAugEncoder, self).__call__(source, in_spatial_dim=in_spatial_dim)
-    return source, in_spatial_dim
+    def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+        source = specaugment_v2(source, spatial_dim=in_spatial_dim)
+        source, in_spatial_dim = super(BlstmCnnSpecAugEncoder, self).__call__(source, in_spatial_dim=in_spatial_dim)
+        return source, in_spatial_dim

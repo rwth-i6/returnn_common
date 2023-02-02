@@ -8,5 +8,5 @@ from ... import nn
 
 
 def stop_gradient(source: nn.Tensor, name: Optional[str] = None) -> nn.Tensor:
-  """wraps tf.stop_gradient"""
-  return nn.scaled_gradient(source, scale=0, name=name)
+    """wraps tf.stop_gradient"""
+    return nn.scaled_gradient(source, scale=0, name=name)

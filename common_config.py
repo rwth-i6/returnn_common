@@ -1,4 +1,3 @@
-
 """
 Provides some common settings for RETURNN configs (training + search).
 
@@ -17,26 +16,26 @@ task = config.value("task", "train")
 
 debug_mode = False
 if int(os.environ.get("RETURNN_DEBUG", "0")):
-  print("** DEBUG MODE", file=sys.stderr)
-  # By itself, this doesn't do anything.
-  # In your main config, you might select a smaller batch size, or other things,
-  # depending on this flag.
-  debug_mode = True
-  dry_run = True
+    print("** DEBUG MODE", file=sys.stderr)
+    # By itself, this doesn't do anything.
+    # In your main config, you might select a smaller batch size, or other things,
+    # depending on this flag.
+    debug_mode = True
+    dry_run = True
 
 # Enforce usage of GPU. (Disable this for testing when you only have a CPU.)
 device = os.environ.get("RETURNN_DEVICE", None if debug_mode else "gpu")
 # allow_growth should be used when the GPU is shared (e.g. with Xorg).
 # However, don't set by default (for performance reasons).
 if os.environ.get("RETURNN_TF_SESSION_OPTS"):
-  tf_session_opts = eval(os.environ["RETURNN_TF_SESSION_OPTS"])
+    tf_session_opts = eval(os.environ["RETURNN_TF_SESSION_OPTS"])
 # tf_session_opts = {"gpu_options": {"allow_growth": True}}
 
 if config.has("beam_size"):
-  beam_size = config.int("beam_size", 0)
-  print("** beam_size %i" % beam_size, file=sys.stderr)
+    beam_size = config.int("beam_size", 0)
+    print("** beam_size %i" % beam_size, file=sys.stderr)
 else:
-  beam_size = 12
+    beam_size = 12
 
 search_output_layer = "decision"
 debug_print_layer_output_template = True  # doesn't cost anything. always recommended

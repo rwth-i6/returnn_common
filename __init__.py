@@ -19,10 +19,10 @@ assert sys.version_info[:2] >= (3, 7)
 # Now all the imports.
 # Use lazy imports, but only when not type checking.
 if typing.TYPE_CHECKING:
-  from . import nn  # noqa
+    from . import nn  # noqa
 
 else:
-  LazyLoader("nn", globals())
+    LazyLoader("nn", globals())
 
 
 del typing

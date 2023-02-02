@@ -7,11 +7,9 @@ from typing import Tuple
 from ... import nn
 
 
-def random_frame_drop(source: nn.Tensor,
-                      in_spatial_dim: nn.Dim,
-                      drop_prob: float,
-                      min_keep_num: int = 1
-                      ) -> Tuple[nn.Tensor, nn.Dim]:
+def random_frame_drop(
+    source: nn.Tensor, in_spatial_dim: nn.Dim, drop_prob: float, min_keep_num: int = 1
+) -> Tuple[nn.Tensor, nn.Dim]:
     """
     Randomly drop some frames.
     However, also make sure that we do not drop all frames.
