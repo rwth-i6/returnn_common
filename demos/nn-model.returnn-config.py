@@ -25,7 +25,7 @@ _parent_rc_dir = os.path.dirname(os.path.dirname(_my_dir))
 # This is somewhat specific to this particular demo
 # and will probably look different for you.
 if _parent_rc_dir not in sys.path:
-  sys.path.insert(0, _parent_rc_dir)
+    sys.path.insert(0, _parent_rc_dir)
 
 demo_name, _ = os.path.splitext(__file__)
 print("Hello, experiment: %s" % demo_name)
@@ -42,8 +42,8 @@ classes_dim = FeatureDim("classes", 2)
 default_input = "data"
 target = "classes"
 extern_data = {
-  "data": {"dim_tags": [batch_dim, time_dim, feature_dim]},
-  "classes": {"dim_tags": [batch_dim, time_dim], "sparse_dim": classes_dim},
+    "data": {"dim_tags": [batch_dim, time_dim, feature_dim]},
+    "classes": {"dim_tags": [batch_dim, time_dim], "sparse_dim": classes_dim},
 }
 
 
@@ -52,6 +52,7 @@ def get_network(*, epoch: int, **_kwargs_unused) -> Dict[str, Any]:
     """called from the RETURNN config"""
     epoch  # noqa  # unused
     from returnn_common import nn
+
     nn.reset_default_root_name_ctx()
     data = nn.Data(name=default_input, **extern_data[default_input])
     targets = nn.Data(name=target, **extern_data[target])
@@ -61,18 +62,19 @@ def get_network(*, epoch: int, **_kwargs_unused) -> Dict[str, Any]:
     # We define a simple LSTM network.
     # This is similar as the pure-RETURNN demo-tf-native-lstm.12ax.config.
     class Model(nn.Module):
-      """LSTM"""
-      def __init__(self):
-        super().__init__()
-        hidden_dim = nn.FeatureDim("hidden", 10)
-        self.lstm = nn.LSTM(feature_dim, hidden_dim)
-        self.projection = nn.Linear(hidden_dim, classes_dim)
+        """LSTM"""
 
-      def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
-        x = nn.dropout(x, dropout=0.1, axis=feature_dim)
-        x, _ = self.lstm(x, spatial_dim=spatial_dim)
-        x = self.projection(x)
-        return x  # logits
+        def __init__(self):
+            super().__init__()
+            hidden_dim = nn.FeatureDim("hidden", 10)
+            self.lstm = nn.LSTM(feature_dim, hidden_dim)
+            self.projection = nn.Linear(hidden_dim, classes_dim)
+
+        def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
+            x = nn.dropout(x, dropout=0.1, axis=feature_dim)
+            x, _ = self.lstm(x, spatial_dim=spatial_dim)
+            x = self.projection(x)
+            return x  # logits
 
     net = Model()
     logits = net(data, spatial_dim=time_dim)
@@ -81,6 +83,7 @@ def get_network(*, epoch: int, **_kwargs_unused) -> Dict[str, Any]:
 
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(root_module=net)
     from returnn_common.utils.pprint import pprint
+
     pprint(net_dict)  # just for logging purpose
     return net_dict
 

@@ -10,2731 +10,2596 @@ Please file an issue if you miss something.
 from __future__ import annotations
 from typing import Union, Optional, Tuple, Sequence, Dict, Any, TYPE_CHECKING
 import numpy
+
 if TYPE_CHECKING:
-  import tensorflow as tf
+    import tensorflow as tf
 from returnn.util.basic import NotSpecified
 from .. import nn
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def copy(
-         source: nn.Tensor,
-         *,
-         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This layer does nothing, it copies its input.
-  If multiple sources are provided, they are concatenated in the feature-dim.
+def copy(source: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    This layer does nothing, it copies its input.
+    If multiple sources are provided, they are concatenated in the feature-dim.
 
-  :param nn.Tensor source:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'copy: unexpected type for source {source!r}, need tensor')
-  return nn.make_layer({
-    'class': 'copy',
-    'from': source,
-    }, name=name or 'copy')
+    :param nn.Tensor source:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"copy: unexpected type for source {source!r}, need tensor")
+    return nn.make_layer(
+        {
+            "class": "copy",
+            "from": source,
+        },
+        name=name or "copy",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def scaled_gradient(
-                    source: nn.Tensor,
-                    *,
-                    scale: Union[float, nn.Tensor],
-                    shift: Optional[Union[float, nn.Tensor]] = NotSpecified,
-                    scale_shift_by_sum_over_axis: Optional[nn.Dim] = NotSpecified,
-                    clip_max_axis: Optional[nn.Dim] = NotSpecified,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Just :func:`tf.identity` in the forward pass.
-  Scales the gradient by some factor in backprop.
-  Can be used as gradient reversal layer (with negative factor).
-  Uses :func:`returnn.tf.util.basic.scaled_gradient`, or :func:`tf.stop_gradient`
+    source: nn.Tensor,
+    *,
+    scale: Union[float, nn.Tensor],
+    shift: Optional[Union[float, nn.Tensor]] = NotSpecified,
+    scale_shift_by_sum_over_axis: Optional[nn.Dim] = NotSpecified,
+    clip_max_axis: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Just :func:`tf.identity` in the forward pass.
+    Scales the gradient by some factor in backprop.
+    Can be used as gradient reversal layer (with negative factor).
+    Uses :func:`returnn.tf.util.basic.scaled_gradient`, or :func:`tf.stop_gradient`
 
-  :param nn.Tensor source:
-  :param float|nn.Tensor scale: if 0. and no shift, will use tf.stop_gradient
-  :param float|nn.Tensor|None shift:
-  :param nn.Dim|None scale_shift_by_sum_over_axis: if given, calculates the sum over this axis (absolute values)
-    and multiplies the shift value by this sum.
-  :param nn.Dim|None clip_max_axis: if given, clips the gradient to the max value in this axis
-    before the transformation, for all values in the axis
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'scaled_gradient: unexpected type for source {source!r}, need tensor')
-  args = {
-    'scale': scale,
-    'shift': shift,
-    'scale_shift_by_sum_over_axis': scale_shift_by_sum_over_axis,
-    'clip_max_axis': clip_max_axis,
+    :param nn.Tensor source:
+    :param float|nn.Tensor scale: if 0. and no shift, will use tf.stop_gradient
+    :param float|nn.Tensor|None shift:
+    :param nn.Dim|None scale_shift_by_sum_over_axis: if given, calculates the sum over this axis (absolute values)
+      and multiplies the shift value by this sum.
+    :param nn.Dim|None clip_max_axis: if given, clips the gradient to the max value in this axis
+      before the transformation, for all values in the axis
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"scaled_gradient: unexpected type for source {source!r}, need tensor")
+    args = {
+        "scale": scale,
+        "shift": shift,
+        "scale_shift_by_sum_over_axis": scale_shift_by_sum_over_axis,
+        "clip_max_axis": clip_max_axis,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'scaled_grad',
-    'from': source,
-    **args}, name=name or 'scaled_gradient')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "scaled_grad", "from": source, **args}, name=name or "scaled_gradient")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def math_norm(
-              source: nn.Tensor,
-              *,
-              p: Union[int, float],
-              axis: Union[nn.Dim, Sequence[nn.Dim]],
-              name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Calculates sum(abs(x) ** p) ** (1./p).
+    source: nn.Tensor,
+    *,
+    p: Union[int, float],
+    axis: Union[nn.Dim, Sequence[nn.Dim]],
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Calculates sum(abs(x) ** p) ** (1./p).
 
-  :param nn.Tensor source:
-  :param int|float p:
-  :param nn.Dim|Sequence[nn.Dim] axis:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'math_norm: unexpected type for source {source!r}, need tensor')
-  args = {
-    'p': p,
-    'axis': axis,
+    :param nn.Tensor source:
+    :param int|float p:
+    :param nn.Dim|Sequence[nn.Dim] axis:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"math_norm: unexpected type for source {source!r}, need tensor")
+    args = {
+        "p": p,
+        "axis": axis,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'math_norm',
-    'from': source,
-    **args}, name=name or 'math_norm')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "math_norm", "from": source, **args}, name=name or "math_norm")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def slice(
-          source: nn.Tensor,
-          *,
-          axis: nn.Dim,
-          slice_start: Optional[int] = NotSpecified,
-          slice_end: Optional[int] = NotSpecified,
-          slice_step: Optional[int] = NotSpecified,
-          out_dim: Optional[nn.Dim] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Slicing on the input, i.e. x[start:end:step] in some axis.
-  See also :class:`SliceNdLayer`, for variable start.
-  See also :class:`GatherLayer`, for one single position.
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    slice_start: Optional[int] = NotSpecified,
+    slice_end: Optional[int] = NotSpecified,
+    slice_step: Optional[int] = NotSpecified,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Slicing on the input, i.e. x[start:end:step] in some axis.
+    See also :class:`SliceNdLayer`, for variable start.
+    See also :class:`GatherLayer`, for one single position.
 
-  Note that __getitem__ on a TF tensor (or also Numpy ND array) is more generic,
-  and supports slices in multiple axes, as well as adding new dimensions, etc.
-  It even allows to get boolean values, and then applies a boolean mask.
-  See TF _slice_helper (== tf.Tensor.__getitem__) for a generic implementation,
-  which calls tf.strided_slice.
-  If we ever need such more generic support, we might consider adding a new layer,
-  like ``GenericSliceLayer``, which gets a ``splice_spec``,
-  just like ``_slice_helper`` (argument to ``__getitem__``).
-  But any such a slice can already be constructed with multiple individual layers,
-  which perform individual slices (per axis).
+    Note that __getitem__ on a TF tensor (or also Numpy ND array) is more generic,
+    and supports slices in multiple axes, as well as adding new dimensions, etc.
+    It even allows to get boolean values, and then applies a boolean mask.
+    See TF _slice_helper (== tf.Tensor.__getitem__) for a generic implementation,
+    which calls tf.strided_slice.
+    If we ever need such more generic support, we might consider adding a new layer,
+    like ``GenericSliceLayer``, which gets a ``splice_spec``,
+    just like ``_slice_helper`` (argument to ``__getitem__``).
+    But any such a slice can already be constructed with multiple individual layers,
+    which perform individual slices (per axis).
 
-  We just support slicing in a single axis here, with optional striding (slice_step).
+    We just support slicing in a single axis here, with optional striding (slice_step).
 
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param int|None slice_start:
-  :param int|None slice_end:
-  :param int|None slice_step:
-  :param nn.Dim|None out_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'slice: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'slice')}:out_dim")
-  args = {
-    'axis': axis,
-    'slice_start': slice_start,
-    'slice_end': slice_end,
-    'slice_step': slice_step,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param nn.Dim axis:
+    :param int|None slice_start:
+    :param int|None slice_end:
+    :param int|None slice_step:
+    :param nn.Dim|None out_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"slice: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'slice')}:out_dim")
+    args = {
+        "axis": axis,
+        "slice_start": slice_start,
+        "slice_end": slice_end,
+        "slice_step": slice_step,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'slice',
-    'from': source,
-    **args}, name=name or 'slice')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "slice", "from": source, **args}, name=name or "slice")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def slice_nd(
-             source: nn.Tensor,
-             *,
-             size: Union[nn.Dim, nn.Tensor],
-             start: Optional[Union[int, nn.Tensor]] = NotSpecified,
-             min_size: Optional[int] = NotSpecified,
-             axis: nn.Dim,
-             out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  This takes out a slice-range from the time axis,
-  e.g. ``x[start:start + size]``.
-  If the input is of shape (B,T,F) and start is of shape (B,),
-  then the output will be of shape (B,size,F).
-  If the input is of shape (B,T,F) and start is of shape (B,T),
-  then the output will be of shape (B,T,size,F).
-  This layer allows a different start slice point for each batch,
-  in contrast to :class:`SliceLayer`, and the start is variable.
-  See also :class:`GatherNdLayer`.
-  :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
+    source: nn.Tensor,
+    *,
+    size: Union[nn.Dim, nn.Tensor],
+    start: Optional[Union[int, nn.Tensor]] = NotSpecified,
+    min_size: Optional[int] = NotSpecified,
+    axis: nn.Dim,
+    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    This takes out a slice-range from the time axis,
+    e.g. ``x[start:start + size]``.
+    If the input is of shape (B,T,F) and start is of shape (B,),
+    then the output will be of shape (B,size,F).
+    If the input is of shape (B,T,F) and start is of shape (B,T),
+    then the output will be of shape (B,T,size,F).
+    This layer allows a different start slice point for each batch,
+    in contrast to :class:`SliceLayer`, and the start is variable.
+    See also :class:`GatherNdLayer`.
+    :class:`PrefixInTimeLayer` can recover the original shape (by zero-padding).
 
-  :param nn.Tensor source:
-  :param nn.Dim|nn.Tensor size:
-    We assume that this is >=0. If this might not be the case, use ``min_size=0``.
-    If None, it uses the max possible size, and it becomes a dynamic axis.
-  :param int|nn.Tensor|None start: (B,...)
-  :param int|None min_size: if size is None, but we want to have a min-size
-  :param nn.Dim axis:
-  :param nn.Dim|None out_spatial_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_spatial_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'slice_nd: unexpected type for source {source!r}, need tensor')
-  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'slice_nd')}:out_spatial_dim")
-  args = {
-    'size': size,
-    'start': start,
-    'min_size': min_size,
-    'axis': axis,
-    'out_spatial_dim': out_spatial_dim,
+    :param nn.Tensor source:
+    :param nn.Dim|nn.Tensor size:
+      We assume that this is >=0. If this might not be the case, use ``min_size=0``.
+      If None, it uses the max possible size, and it becomes a dynamic axis.
+    :param int|nn.Tensor|None start: (B,...)
+    :param int|None min_size: if size is None, but we want to have a min-size
+    :param nn.Dim axis:
+    :param nn.Dim|None out_spatial_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_spatial_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"slice_nd: unexpected type for source {source!r}, need tensor")
+    if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+        out_spatial_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'slice_nd')}:out_spatial_dim")
+    args = {
+        "size": size,
+        "start": start,
+        "min_size": min_size,
+        "axis": axis,
+        "out_spatial_dim": out_spatial_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'slice_nd',
-    'from': source,
-    **args}, name=name or 'slice_nd')
-  return layer, out_spatial_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "slice_nd", "from": source, **args}, name=name or "slice_nd")
+    return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def gather(
-           source: nn.Tensor,
-           *,
-           position: Union[nn.Tensor, int],
-           axis: nn.Dim,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
-  If the input is a layer of the shape ``[B,D,F1]``, and position of shape ``[B,F2]``, this will yield output of the
-  shape ``[B,F2,F1]`` where
+    source: nn.Tensor, *, position: Union[nn.Tensor, int], axis: nn.Dim, name: Optional[Union[str, nn.NameCtx]] = None
+) -> nn.Tensor:
+    """
+    Gathers slices on a specified axis from the input layer using indices from a ``position`` layer.
+    If the input is a layer of the shape ``[B,D,F1]``, and position of shape ``[B,F2]``, this will yield output of the
+    shape ``[B,F2,F1]`` where
 
-  ``output[b,f2,f1] = input[b,position[b,f2],f1]``
+    ``output[b,f2,f1] = input[b,position[b,f2],f1]``
 
-  (if ``D`` is the axis to gather from).
-  In general, all shared axes of the input and the positions will be considered as batch-axes.
+    (if ``D`` is the axis to gather from).
+    In general, all shared axes of the input and the positions will be considered as batch-axes.
 
-  The ``position`` argument can also be an ``int``.
-  In this case, this simply gives ``input[position]`` one the specified ``axis``.
+    The ``position`` argument can also be an ``int``.
+    In this case, this simply gives ``input[position]`` one the specified ``axis``.
 
-  It's basically a wrapper around ``tf.gather``.
-  It provides the same functionality as the deprecated ``GatherNdLayer``, but is more generic.
-  See also :class:`GatherNdLayer`.
+    It's basically a wrapper around ``tf.gather``.
+    It provides the same functionality as the deprecated ``GatherNdLayer``, but is more generic.
+    See also :class:`GatherNdLayer`.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|int position: Layer containing the indices used to select the slices of the input from.
-    If another layer, must be of type ``int32`` or ``int64``.
-    Can also specify a constant ``int``.
-  :param nn.Dim axis: The axis into which we gather the indices into
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'gather: unexpected type for source {source!r}, need tensor')
-  args = {
-    'position': position,
-    'axis': axis,
+    :param nn.Tensor source:
+    :param nn.Tensor|int position: Layer containing the indices used to select the slices of the input from.
+      If another layer, must be of type ``int32`` or ``int64``.
+      Can also specify a constant ``int``.
+    :param nn.Dim axis: The axis into which we gather the indices into
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"gather: unexpected type for source {source!r}, need tensor")
+    args = {
+        "position": position,
+        "axis": axis,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'gather',
-    'from': source,
-    **args}, name=name or 'gather')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "gather", "from": source, **args}, name=name or "gather")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def scatter_nd(
-               source: nn.Tensor,
-               *,
-               position: nn.Tensor,
-               position_axis: nn.Dim,
-               out_spatial_dim: nn.Dim,
-               filter_invalid_indices: bool = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  The inverse of :class:`GatherNdLayer`.
-  Mostly a wrapper for ``tf.scatter_nd``.
+    source: nn.Tensor,
+    *,
+    position: nn.Tensor,
+    position_axis: nn.Dim,
+    out_spatial_dim: nn.Dim,
+    filter_invalid_indices: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    The inverse of :class:`GatherNdLayer`.
+    Mostly a wrapper for ``tf.scatter_nd``.
 
-  Note that "nd" is maybe a bit misleading.
-  While we operate on N-D tensors, the indices (``position``)
-  are into a single new dimension.
+    Note that "nd" is maybe a bit misleading.
+    While we operate on N-D tensors, the indices (``position``)
+    are into a single new dimension.
 
-  The input to the layer are the ``updates``, the ``indices`` are via the ``position`` argument.
-  The indices are into the newly constructed output dimension.
-  The output shape is constructed via the common shape of the input, the position,
-  and the unique common axis (if not unique, we would need to introduce an option to specify it)
-  is replaced by the given output dimension (currently via ``output_dim_via_time_from``).
+    The input to the layer are the ``updates``, the ``indices`` are via the ``position`` argument.
+    The indices are into the newly constructed output dimension.
+    The output shape is constructed via the common shape of the input, the position,
+    and the unique common axis (if not unique, we would need to introduce an option to specify it)
+    is replaced by the given output dimension (currently via ``output_dim_via_time_from``).
 
-  Examples::
+    Examples::
 
-    position (indices): (B,eTs)
-    input (updates): (eTs,D) or (B,eTs,D) -> expanded to (B,eTs,D)
-    output shape: (B,eT,D)
+      position (indices): (B,eTs)
+      input (updates): (eTs,D) or (B,eTs,D) -> expanded to (B,eTs,D)
+      output shape: (B,eT,D)
 
-    position (indices): (B,dT,eTs)
-    input (updates): (eTs,D) -> expanded to (B,dT,eTs,D)
-    output shape: (B,dT,eT,D)
+      position (indices): (B,dT,eTs)
+      input (updates): (eTs,D) -> expanded to (B,dT,eTs,D)
+      output shape: (B,dT,eT,D)
 
-    position (indices): (dT,eTs)
-    input (updates): (eTs,D) -> expanded to (dT,eTs,D)
-    output shape: (dT,eTs,D)
+      position (indices): (dT,eTs)
+      input (updates): (eTs,D) -> expanded to (dT,eTs,D)
+      output shape: (dT,eTs,D)
 
-    position (indices): (dT,eTs)
-    input (updates): (B,eTs,D) -> expanded to (dT,eTs,B,D)
-    output shape: (dT,eT,B,D)
+      position (indices): (dT,eTs)
+      input (updates): (B,eTs,D) -> expanded to (dT,eTs,B,D)
+      output shape: (dT,eT,B,D)
 
-  In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
+    In all these examples, output_dim_via_time_from is (B,eT,F), and eTs gets replaced by eT.
 
-  :param nn.Tensor source:
-  :param nn.Tensor position: indices into first axis (excluding batch) of the output
-  :param nn.Dim position_axis: axis in `position` to replace by the output-dim
-  :param nn.Dim out_spatial_dim:
-  :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'scatter_nd: unexpected type for source {source!r}, need tensor')
-  args = {
-    'position': position,
-    'position_axis': position_axis,
-    'out_spatial_dim': out_spatial_dim,
-    'filter_invalid_indices': filter_invalid_indices,
+    :param nn.Tensor source:
+    :param nn.Tensor position: indices into first axis (excluding batch) of the output
+    :param nn.Dim position_axis: axis in `position` to replace by the output-dim
+    :param nn.Dim out_spatial_dim:
+    :param bool filter_invalid_indices: allow for indices <0 or >= output_dim, which will be discarded in the output
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"scatter_nd: unexpected type for source {source!r}, need tensor")
+    args = {
+        "position": position,
+        "position_axis": position_axis,
+        "out_spatial_dim": out_spatial_dim,
+        "filter_invalid_indices": filter_invalid_indices,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'scatter_nd',
-    'from': source,
-    **args}, name=name or 'scatter_nd')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "scatter_nd", "from": source, **args}, name=name or "scatter_nd")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def softmax(
-            source: nn.Tensor,
-            *,
-            axis: nn.Dim,
-            energy_factor: Optional[float] = NotSpecified,
-            start: Optional[nn.Tensor] = NotSpecified,
-            window_start: Optional[Union[nn.Tensor, int]] = NotSpecified,
-            window_size: Optional[Union[nn.Tensor, int]] = NotSpecified,
-            use_time_mask: bool = NotSpecified,
-            log_space: bool = NotSpecified,
-            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This applies a softmax over spatial axis/axes (currently only time axis supported).
-  E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
-  It automatically masks the frames outside the seq defined by the seq-len.
-  In contrast to :class:`SoftmaxLayer`, this will not do a linear transformation.
-  See :class:`SeqLenMaskLayer` if you just want to apply a masking.
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    energy_factor: Optional[float] = NotSpecified,
+    start: Optional[nn.Tensor] = NotSpecified,
+    window_start: Optional[Union[nn.Tensor, int]] = NotSpecified,
+    window_size: Optional[Union[nn.Tensor, int]] = NotSpecified,
+    use_time_mask: bool = NotSpecified,
+    log_space: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This applies a softmax over spatial axis/axes (currently only time axis supported).
+    E.g. when the input is of shape (B,T,dim), the output will be (B,T,dim).
+    It automatically masks the frames outside the seq defined by the seq-len.
+    In contrast to :class:`SoftmaxLayer`, this will not do a linear transformation.
+    See :class:`SeqLenMaskLayer` if you just want to apply a masking.
 
-  :param nn.Tensor source:
-  :param nn.Dim axis: which axis to do the softmax over. "T" by default
-  :param float|None energy_factor: the energy will be scaled by this factor.
-    This is like a temperature for the softmax.
-    In Attention-is-all-you-need, this is set to 1/sqrt(base_ctx.dim).
-  :param nn.Tensor|None start: Tensor of shape (B,) indicating the start frame
-  :param nn.Tensor|int|None window_start: Layer with output of shape (B,) or (constant) int value indicating
-    the window start.
-  :param nn.Tensor|int|None window_size: Layer with output of shape (B,) or (constant) int value indicating
-    the window size.
-  :param bool use_time_mask: if True, assumes dyn seq len, and use it for masking.
-    By default, if dyn seq len exists, it uses it.
-  :param bool log_space: if True, returns in log space (i.e. uses log_softmax)
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'softmax: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'energy_factor': energy_factor,
-    'start': start,
-    'window_start': window_start,
-    'window_size': window_size,
-    'use_time_mask': use_time_mask,
-    'log_space': log_space,
+    :param nn.Tensor source:
+    :param nn.Dim axis: which axis to do the softmax over. "T" by default
+    :param float|None energy_factor: the energy will be scaled by this factor.
+      This is like a temperature for the softmax.
+      In Attention-is-all-you-need, this is set to 1/sqrt(base_ctx.dim).
+    :param nn.Tensor|None start: Tensor of shape (B,) indicating the start frame
+    :param nn.Tensor|int|None window_start: Layer with output of shape (B,) or (constant) int value indicating
+      the window start.
+    :param nn.Tensor|int|None window_size: Layer with output of shape (B,) or (constant) int value indicating
+      the window size.
+    :param bool use_time_mask: if True, assumes dyn seq len, and use it for masking.
+      By default, if dyn seq len exists, it uses it.
+    :param bool log_space: if True, returns in log space (i.e. uses log_softmax)
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"softmax: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "energy_factor": energy_factor,
+        "start": start,
+        "window_start": window_start,
+        "window_size": window_size,
+        "use_time_mask": use_time_mask,
+        "log_space": log_space,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'softmax_over_spatial',
-    'from': source,
-    **args}, name=name or 'softmax')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "softmax_over_spatial", "from": source, **args}, name=name or "softmax")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def seq_len_mask(
-                 source: nn.Tensor,
-                 *,
-                 mask_value: float,
-                 axis: nn.Dim,
-                 seq_len_source: Optional[nn.Tensor] = NotSpecified,
-                 start: Optional[nn.Tensor] = NotSpecified,
-                 window_start: Optional[nn.Tensor] = NotSpecified,
-                 window_size: Optional[Union[nn.Tensor, int]] = NotSpecified,
-                 name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Masks some values away given the seq_len_source with mask_value.
-  Also see :class:`SoftmaxOverSpatialLayer`.
-  Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
+    source: nn.Tensor,
+    *,
+    mask_value: float,
+    axis: nn.Dim,
+    seq_len_source: Optional[nn.Tensor] = NotSpecified,
+    start: Optional[nn.Tensor] = NotSpecified,
+    window_start: Optional[nn.Tensor] = NotSpecified,
+    window_size: Optional[Union[nn.Tensor, int]] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Masks some values away given the seq_len_source with mask_value.
+    Also see :class:`SoftmaxOverSpatialLayer`.
+    Also see :class:`SwitchLayer`, which can be used to apply a generic mask.
 
-  :param nn.Tensor source:
-  :param float mask_value:
-  :param nn.Dim axis:
-  :param nn.Tensor|None seq_len_source: if not given, uses source
-  :param nn.Tensor|None start: Tensor of shape (B,) indicating the start frame
-  :param nn.Tensor|None window_start: Tensor of shape (B,) indicating the window start
-  :param nn.Tensor|int|None window_size:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'seq_len_mask: unexpected type for source {source!r}, need tensor')
-  args = {
-    'mask_value': mask_value,
-    'axis': axis,
-    'seq_len_source': seq_len_source,
-    'start': start,
-    'window_start': window_start,
-    'window_size': window_size,
+    :param nn.Tensor source:
+    :param float mask_value:
+    :param nn.Dim axis:
+    :param nn.Tensor|None seq_len_source: if not given, uses source
+    :param nn.Tensor|None start: Tensor of shape (B,) indicating the start frame
+    :param nn.Tensor|None window_start: Tensor of shape (B,) indicating the window start
+    :param nn.Tensor|int|None window_size:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"seq_len_mask: unexpected type for source {source!r}, need tensor")
+    args = {
+        "mask_value": mask_value,
+        "axis": axis,
+        "seq_len_source": seq_len_source,
+        "start": start,
+        "window_start": window_start,
+        "window_size": window_size,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'seq_len_mask',
-    'from': source,
-    **args}, name=name or 'seq_len_mask')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "seq_len_mask", "from": source, **args}, name=name or "seq_len_mask")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def random_state_init(
-                      *,
-                      algorithm: Optional[Union[str, tf.random.Algorithm]] = NotSpecified,
-                      seed: Optional[Union[int, Sequence[int], numpy.ndarray]] = NotSpecified,
-                      out_dim: Optional[nn.Dim] = NotSpecified,
-                      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  This calculates the initial state value for the state var
-  of :class:`RandomLayer`.
-  This depends on the algorithm and seed.
+    *,
+    algorithm: Optional[Union[str, tf.random.Algorithm]] = NotSpecified,
+    seed: Optional[Union[int, Sequence[int], numpy.ndarray]] = NotSpecified,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    This calculates the initial state value for the state var
+    of :class:`RandomLayer`.
+    This depends on the algorithm and seed.
 
-  :param str|tf.random.Algorithm|None algorithm: "philox", "three-fry", "auto-select". by default "philox".
-    See :func:`tf.random.stateless_uniform` for some documentation.
-    "auto-select" will automatically select the optimal algorithm based on the device,
-    so it might select a different algorithm depending on the device.
-    Note that the state shape is dependent on the device, so if you want that checkpoints are compatible
-    across devices, do not use "auto-select".
-    We take the default from :class:`tf.random.Generator`.
-  :param int|Sequence[int]|numpy.ndarray|None seed: if given, the state will deterministically depend on this
-    (and the algorithm) and nothing else. If you have multiple random generators (state vars),
-    make sure that you have different seeds for each!
-    If None (default), the seed will be deterministically taken from the network random generator
-    at construction time, which is usually a good idea. You still can change the global network seed.
-  :param nn.Dim|None out_dim: new dim tag for random state dim
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.SpatialDim(f"{_name_str(name, 'random_state_init')}:out_dim")
-  args = {
-    'algorithm': algorithm,
-    'seed': seed,
-    'out_dim': out_dim,
+    :param str|tf.random.Algorithm|None algorithm: "philox", "three-fry", "auto-select". by default "philox".
+      See :func:`tf.random.stateless_uniform` for some documentation.
+      "auto-select" will automatically select the optimal algorithm based on the device,
+      so it might select a different algorithm depending on the device.
+      Note that the state shape is dependent on the device, so if you want that checkpoints are compatible
+      across devices, do not use "auto-select".
+      We take the default from :class:`tf.random.Generator`.
+    :param int|Sequence[int]|numpy.ndarray|None seed: if given, the state will deterministically depend on this
+      (and the algorithm) and nothing else. If you have multiple random generators (state vars),
+      make sure that you have different seeds for each!
+      If None (default), the seed will be deterministically taken from the network random generator
+      at construction time, which is usually a good idea. You still can change the global network seed.
+    :param nn.Dim|None out_dim: new dim tag for random state dim
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.SpatialDim(f"{_name_str(name, 'random_state_init')}:out_dim")
+    args = {
+        "algorithm": algorithm,
+        "seed": seed,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'random_state_init',
-    **args}, name=name or 'random_state_init')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "random_state_init", **args}, name=name or "random_state_init")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def range(
-          *,
-          limit: Union[int, float],
-          start: Union[int, float] = NotSpecified,
-          delta: Union[int, float] = NotSpecified,
-          dtype: Optional[str] = NotSpecified,
-          sparse: bool = NotSpecified,
-          out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Generic wrapper around ``tf.range``.
-  See also :class:`RangeInAxisLayer`.
+    *,
+    limit: Union[int, float],
+    start: Union[int, float] = NotSpecified,
+    delta: Union[int, float] = NotSpecified,
+    dtype: Optional[str] = NotSpecified,
+    sparse: bool = NotSpecified,
+    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Generic wrapper around ``tf.range``.
+    See also :class:`RangeInAxisLayer`.
 
-  :param int|float limit:
-  :param int|float start:
-  :param int|float delta:
-  :param str|None dtype:
-  :param bool sparse:
-  :param nn.Dim|None out_spatial_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_spatial_dim
-  """
-  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range')}:out_spatial_dim")
-  args = {
-    'limit': limit,
-    'start': start,
-    'delta': delta,
-    'dtype': dtype,
-    'sparse': sparse,
-    'out_spatial_dim': out_spatial_dim,
+    :param int|float limit:
+    :param int|float start:
+    :param int|float delta:
+    :param str|None dtype:
+    :param bool sparse:
+    :param nn.Dim|None out_spatial_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_spatial_dim
+    """
+    if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+        out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range')}:out_spatial_dim")
+    args = {
+        "limit": limit,
+        "start": start,
+        "delta": delta,
+        "dtype": dtype,
+        "sparse": sparse,
+        "out_spatial_dim": out_spatial_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'range',
-    **args}, name=name or 'range')
-  return layer, out_spatial_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "range", **args}, name=name or "range")
+    return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def range_from_length(
-                      source: nn.Tensor,
-                      *,
-                      dtype: str = NotSpecified,
-                      sparse: bool = NotSpecified,
-                      out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-                      name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Given some dynamic sequence lengths as input, this creates a tf.range over the implied dimension.
-  As a side effect, this can create a new dyn dim tag for the given sequence lengths.
-  This side effect can be the main functionality in certain use cases.
-  See also :class:`RangeInAxisLayer`.
+    source: nn.Tensor,
+    *,
+    dtype: str = NotSpecified,
+    sparse: bool = NotSpecified,
+    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Given some dynamic sequence lengths as input, this creates a tf.range over the implied dimension.
+    As a side effect, this can create a new dyn dim tag for the given sequence lengths.
+    This side effect can be the main functionality in certain use cases.
+    See also :class:`RangeInAxisLayer`.
 
-  Consider the example::
+    Consider the example::
 
-    y: {class: range_in_axis, from: x, axis: T}
+      y: {class: range_in_axis, from: x, axis: T}
 
-  This is basically equivalent to::
+    This is basically equivalent to::
 
-    x_len: {class: length, from: x}
-    y: {class: range_from_length, from: x_len}
+      x_len: {class: length, from: x}
+      y: {class: range_from_length, from: x_len}
 
 
-  :param nn.Tensor source:
-  :param str dtype:
-  :param bool sparse:
-  :param nn.Dim|None out_spatial_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_spatial_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'range_from_length: unexpected type for source {source!r}, need tensor')
-  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range_from_length')}:out_spatial_dim")
-  args = {
-    'dtype': dtype,
-    'sparse': sparse,
-    'out_spatial_dim': out_spatial_dim,
+    :param nn.Tensor source:
+    :param str dtype:
+    :param bool sparse:
+    :param nn.Dim|None out_spatial_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_spatial_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"range_from_length: unexpected type for source {source!r}, need tensor")
+    if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+        out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'range_from_length')}:out_spatial_dim")
+    args = {
+        "dtype": dtype,
+        "sparse": sparse,
+        "out_spatial_dim": out_spatial_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'range_from_length',
-    'from': source,
-    **args}, name=name or 'range_from_length')
-  return layer, out_spatial_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "range_from_length", "from": source, **args}, name=name or "range_from_length")
+    return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def batch_softmax(
-                  source: nn.Tensor,
-                  *,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Softmax over spacial and feature axis
+def batch_softmax(source: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Softmax over spacial and feature axis
 
-  :param nn.Tensor source:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'batch_softmax: unexpected type for source {source!r}, need tensor')
-  return nn.make_layer({
-    'class': 'batch_softmax',
-    'from': source,
-    }, name=name or 'batch_softmax')
+    :param nn.Tensor source:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"batch_softmax: unexpected type for source {source!r}, need tensor")
+    return nn.make_layer(
+        {
+            "class": "batch_softmax",
+            "from": source,
+        },
+        name=name or "batch_softmax",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_window(
-               source: nn.Tensor,
-               *,
-               state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
-               window_dim: Optional[nn.Dim] = NotSpecified,
-               window_left: Optional[int] = NotSpecified,
-               window_right: Optional[int] = NotSpecified,
-               axis: nn.Dim,
-               out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-               padding: str = NotSpecified,
-               stride: int = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, Tuple[nn.Dim, nn.Dim], nn.LayerState]:
-  """
-  Adds a window dimension.
-  By default, uses the time axis and goes over it with a sliding window.
-  The new axis for the window is created right after the time axis.
-  Will always return as batch major mode.
-  E.g. if the input is (batch, time, dim), the output is (batch, time, window_size, dim).
-  If you want to merge the (window_size, dim) together to (window_size * dim,),
-  you can use the MergeDimsLayer, e.g. {"class": "merge_dims", "axes": "except_time"}.
-  Use stride==window_size and window_right=window_size - 1 in combination with a
-  MergeDimsLayer to achieve feature stacking with right-hand zero padding.
+    source: nn.Tensor,
+    *,
+    state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
+    window_dim: Optional[nn.Dim] = NotSpecified,
+    window_left: Optional[int] = NotSpecified,
+    window_right: Optional[int] = NotSpecified,
+    axis: nn.Dim,
+    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    padding: str = NotSpecified,
+    stride: int = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, Tuple[nn.Dim, nn.Dim], nn.LayerState]:
+    """
+    Adds a window dimension.
+    By default, uses the time axis and goes over it with a sliding window.
+    The new axis for the window is created right after the time axis.
+    Will always return as batch major mode.
+    E.g. if the input is (batch, time, dim), the output is (batch, time, window_size, dim).
+    If you want to merge the (window_size, dim) together to (window_size * dim,),
+    you can use the MergeDimsLayer, e.g. {"class": "merge_dims", "axes": "except_time"}.
+    Use stride==window_size and window_right=window_size - 1 in combination with a
+    MergeDimsLayer to achieve feature stacking with right-hand zero padding.
 
-  This is not to take out a window from the time-dimension.
-  See :class:`SliceLayer` or :class:`SliceNdLayer`.
+    This is not to take out a window from the time-dimension.
+    See :class:`SliceLayer` or :class:`SliceNdLayer`.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
-  :param nn.Dim|None window_dim:
-  :param int|None window_left:
-  :param int|None window_right:
-  :param nn.Dim axis: see :func:`Data.get_axis_from_description`
-  :param nn.Dim|None out_spatial_dim:
-  :param str padding: "same" or "valid"
-  :param int stride: return only each Nth window
-  :param str|nn.NameCtx|None name:
-  :return: layer, (window_dim, out_spatial_dim), out_state
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'rec_window: unexpected type for source {source!r}, need tensor')
-  if window_dim is None or window_dim is NotSpecified:
-    window_dim = nn.SpatialDim(f"{_name_str(name, 'rec_window')}:window_dim")
-  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'rec_window')}:out_spatial_dim")
-  args = {
-    'window_dim': window_dim,
-    'window_left': window_left,
-    'window_right': window_right,
-    'axis': axis,
-    'out_spatial_dim': out_spatial_dim,
-    'padding': padding,
-    'stride': stride,
+    :param nn.Tensor source:
+    :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
+    :param nn.Dim|None window_dim:
+    :param int|None window_left:
+    :param int|None window_right:
+    :param nn.Dim axis: see :func:`Data.get_axis_from_description`
+    :param nn.Dim|None out_spatial_dim:
+    :param str padding: "same" or "valid"
+    :param int stride: return only each Nth window
+    :param str|nn.NameCtx|None name:
+    :return: layer, (window_dim, out_spatial_dim), out_state
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"rec_window: unexpected type for source {source!r}, need tensor")
+    if window_dim is None or window_dim is NotSpecified:
+        window_dim = nn.SpatialDim(f"{_name_str(name, 'rec_window')}:window_dim")
+    if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+        out_spatial_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'rec_window')}:out_spatial_dim")
+    args = {
+        "window_dim": window_dim,
+        "window_left": window_left,
+        "window_right": window_right,
+        "axis": axis,
+        "out_spatial_dim": out_spatial_dim,
+        "padding": padding,
+        "stride": stride,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
-  layer = nn.make_layer({
-    'class': 'window',
-    'from': source,
-    **args}, name=name or 'rec_window')
-  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, (window_dim, out_spatial_dim), out_state
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
+    layer = nn.make_layer({"class": "window", "from": source, **args}, name=name or "rec_window")
+    out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+    return layer, (window_dim, out_spatial_dim), out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_cum_sum(
-                source: nn.Tensor,
-                *,
-                state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
-                axis: nn.Dim,
-                additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
-                reverse: bool = NotSpecified,
-                name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.LayerState]:
-  """
-  Basically wraps tf.cumsum. Also supports that in the RecLayer.
+    source: nn.Tensor,
+    *,
+    state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
+    axis: nn.Dim,
+    additional_left_summand_per_element: Optional[Union[str, int, float]] = NotSpecified,
+    reverse: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.LayerState]:
+    """
+    Basically wraps tf.cumsum. Also supports that in the RecLayer.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
-  :param nn.Dim axis: see :func:`Data.get_axis_from_description`
-  :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
-  :param bool reverse:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_state
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'rec_cum_sum: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'additional_left_summand_per_element': additional_left_summand_per_element,
-    'reverse': reverse,
+    :param nn.Tensor source:
+    :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
+    :param nn.Dim axis: see :func:`Data.get_axis_from_description`
+    :param str|int|float|None additional_left_summand_per_element: the order matters for tf.string
+    :param bool reverse:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_state
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"rec_cum_sum: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "additional_left_summand_per_element": additional_left_summand_per_element,
+        "reverse": reverse,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
-  layer = nn.make_layer({
-    'class': 'cumsum',
-    'from': source,
-    **args}, name=name or 'rec_cum_sum')
-  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_state
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
+    layer = nn.make_layer({"class": "cumsum", "from": source, **args}, name=name or "rec_cum_sum")
+    out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+    return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def pad(
-        source: nn.Tensor,
-        *,
-        axes: Union[nn.Dim, Sequence[nn.Dim]],
-        padding: Union[Sequence[Tuple[int, int]], Tuple[int, int], int],
-        out_dims: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = NotSpecified,
-        value: Union[int, float] = NotSpecified,
-        mode: str = NotSpecified,
-        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Adds (e.g. zero) padding in some axis or axes.
-  Also see :class:`PrefixInTimeLayer` for dynamic dims.
+    source: nn.Tensor,
+    *,
+    axes: Union[nn.Dim, Sequence[nn.Dim]],
+    padding: Union[Sequence[Tuple[int, int]], Tuple[int, int], int],
+    out_dims: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = NotSpecified,
+    value: Union[int, float] = NotSpecified,
+    mode: str = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Adds (e.g. zero) padding in some axis or axes.
+    Also see :class:`PrefixInTimeLayer` for dynamic dims.
 
-  :param nn.Tensor source:
-  :param nn.Dim|Sequence[nn.Dim] axes: e.g. "F" etc. see :func:`Data.get_axes_from_description`.
-  :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
-  :param nn.Dim|Sequence[nn.Dim]|None out_dims:
-  :param int|float value: what constant value to pad, with mode=="constant"
-  :param str mode: "constant", "reflect", "symmetric" and "replication"
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'pad: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axes': axes,
-    'padding': padding,
-    'out_dims': out_dims,
-    'value': value,
-    'mode': mode,
+    :param nn.Tensor source:
+    :param nn.Dim|Sequence[nn.Dim] axes: e.g. "F" etc. see :func:`Data.get_axes_from_description`.
+    :param list[(int,int)]|(int,int)|int padding: how much to pad left/right in each axis
+    :param nn.Dim|Sequence[nn.Dim]|None out_dims:
+    :param int|float value: what constant value to pad, with mode=="constant"
+    :param str mode: "constant", "reflect", "symmetric" and "replication"
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"pad: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axes": axes,
+        "padding": padding,
+        "out_dims": out_dims,
+        "value": value,
+        "mode": mode,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'pad',
-    'from': source,
-    **args}, name=name or 'pad')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "pad", "from": source, **args}, name=name or "pad")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def merge_dims(
-               source: nn.Tensor,
-               *,
-               axes: Sequence[nn.Dim],
-               out_dim: Optional[nn.Dim] = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Merges a list of axes into a single one. (Flatten the dims.)
-  E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
-  Or input is (batch, time, height, dim) and axes="except_time", then we get (batch, time, height*dim).
-  See also :class:`CombineDimsLayer`.
-  When batch and time got merged, :class:`SplitBatchTimeLayer` can undo this.
-  When you want to merge batch and time, but remove the padding efficiently, i.e. flatten it,
-  see :class:`FlattenBatchLayer`.
+    source: nn.Tensor,
+    *,
+    axes: Sequence[nn.Dim],
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Merges a list of axes into a single one. (Flatten the dims.)
+    E.g. input is (batch, width, height, dim) and axes=(1,2), then we get (batch, width*height, dim).
+    Or input is (batch, time, height, dim) and axes="except_time", then we get (batch, time, height*dim).
+    See also :class:`CombineDimsLayer`.
+    When batch and time got merged, :class:`SplitBatchTimeLayer` can undo this.
+    When you want to merge batch and time, but remove the padding efficiently, i.e. flatten it,
+    see :class:`FlattenBatchLayer`.
 
-  :param nn.Tensor source:
-  :param Sequence[nn.Dim] axes: see :func:`Data.get_axis_from_description`
-  :param nn.Dim|None out_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'merge_dims: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    if any(d.is_batch_dim() for d in axes):
-      kind = nn.Dim.Types.Batch
-    elif any(d.is_feature_dim() for d in axes):
-      kind = nn.Dim.Types.Feature
-    else:
-      kind = nn.Dim.Types.Spatial
-    out_dim = nn.Dim(kind=kind, description=f"{_name_str(name, 'merge_dims')}:out_dim")
-  args = {
-    'axes': axes,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param Sequence[nn.Dim] axes: see :func:`Data.get_axis_from_description`
+    :param nn.Dim|None out_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"merge_dims: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        if any(d.is_batch_dim() for d in axes):
+            kind = nn.Dim.Types.Batch
+        elif any(d.is_feature_dim() for d in axes):
+            kind = nn.Dim.Types.Feature
+        else:
+            kind = nn.Dim.Types.Spatial
+        out_dim = nn.Dim(kind=kind, description=f"{_name_str(name, 'merge_dims')}:out_dim")
+    args = {
+        "axes": axes,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'merge_dims',
-    'from': source,
-    **args}, name=name or 'merge_dims')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "merge_dims", "from": source, **args}, name=name or "merge_dims")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _split(
-           source: nn.Tensor,
-           *,
-           axis: nn.Dim,
-           out_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Splits one axis into multiple parts, via tf.split.
-  self.output is simply the input copied.
-  Each part can be accessed via the sublayers "/%i".
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    out_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Splits one axis into multiple parts, via tf.split.
+    self.output is simply the input copied.
+    Each part can be accessed via the sublayers "/%i".
 
-  :param nn.Tensor source:
-  :param nn.Dim axis: feature axis by default
-  :param Sequence[nn.Dim]|None out_dims:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'_split: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'out_dims': out_dims,
+    :param nn.Tensor source:
+    :param nn.Dim axis: feature axis by default
+    :param Sequence[nn.Dim]|None out_dims:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"_split: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "out_dims": out_dims,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'split',
-    'from': source,
-    **args}, name=name or 'split')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "split", "from": source, **args}, name=name or "split")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def split_dims(
-               source: nn.Tensor,
-               *,
-               axis: nn.Dim,
-               dims: Sequence[nn.Dim],
-               pad_to_multiples: Optional[bool] = NotSpecified,
-               pad_value: Union[int, float] = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Splits one axis into multiple axes.
-  E.g. if you know that your feature-dim is composed by a window,
-  i.e. the input is (batch, time, window * feature),
-  you can set axis="F", dims=(window, -1),
-  and you will get the output (batch, time, window, feature).
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    dims: Sequence[nn.Dim],
+    pad_to_multiples: Optional[bool] = NotSpecified,
+    pad_value: Union[int, float] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Splits one axis into multiple axes.
+    E.g. if you know that your feature-dim is composed by a window,
+    i.e. the input is (batch, time, window * feature),
+    you can set axis="F", dims=(window, -1),
+    and you will get the output (batch, time, window, feature).
 
-  If the split axis has a dynamic length,
-  exactly one of the axes that we split into need to also have a dynamic length.
-  You can e.g. use this to split the input dimension into smaller "chunks" of a fixed window size.
-  E.g. you could have input (batch, time, feature) and set axis="T", dims=(-1, window),
-  to get output (batch, split_time, window, feature).
-  In this case, the exact sequence lengths are lost and everything is padded to multiples of the window size using
-  the given padding value.
-  Use :class:`ReinterpretDataLayer` to receive back the original sequence lengths after merging.
+    If the split axis has a dynamic length,
+    exactly one of the axes that we split into need to also have a dynamic length.
+    You can e.g. use this to split the input dimension into smaller "chunks" of a fixed window size.
+    E.g. you could have input (batch, time, feature) and set axis="T", dims=(-1, window),
+    to get output (batch, split_time, window, feature).
+    In this case, the exact sequence lengths are lost and everything is padded to multiples of the window size using
+    the given padding value.
+    Use :class:`ReinterpretDataLayer` to receive back the original sequence lengths after merging.
 
-  Also see :class:`SplitBatchTimeLayer`.
-  Also see :class:`MergeDimsLayer` which can undo this operation.
+    Also see :class:`SplitBatchTimeLayer`.
+    Also see :class:`MergeDimsLayer` which can undo this operation.
 
-  :param nn.Tensor source:
-  :param nn.Dim axis: e.g. "F"
-  :param Sequence[nn.Dim] dims: what the axis should be split into. e.g. (window, -1)
-  :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
-    static dims, such that splitting is actually possible.
-    By default this is done iff the axis has a dynamic size
-  :param int|float pad_value: What pad value to use for pad_to_multiples
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'split_dims: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'dims': dims,
-    'pad_to_multiples': pad_to_multiples,
-    'pad_value': pad_value,
+    :param nn.Tensor source:
+    :param nn.Dim axis: e.g. "F"
+    :param Sequence[nn.Dim] dims: what the axis should be split into. e.g. (window, -1)
+    :param bool|None pad_to_multiples: If true, input will be padded to the next multiple of the product of the
+      static dims, such that splitting is actually possible.
+      By default this is done iff the axis has a dynamic size
+    :param int|float pad_value: What pad value to use for pad_to_multiples
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"split_dims: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "dims": dims,
+        "pad_to_multiples": pad_to_multiples,
+        "pad_value": pad_value,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'split_dims',
-    'from': source,
-    **args}, name=name or 'split_dims')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "split_dims", "from": source, **args}, name=name or "split_dims")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def flatten_batch(
-                  source: nn.Tensor,
-                  *,
-                  axis: nn.Dim,
-                  batch_major: bool = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Merges one axis into the batch axis.
-  If the axis has dynamic lengths, this would use flattening,
-  i.e. recalculate the padding, i.e. the size changes.
-  This basically wraps :func:`flatten_with_seq_len_mask` or :func:`flatten_with_seq_len_mask_time_major`.
-  See also :class:`MergeDimsLayer`, which does not do flattening,
-  i.e. the size stays the same.
+    source: nn.Tensor, *, axis: nn.Dim, batch_major: bool = NotSpecified, name: Optional[Union[str, nn.NameCtx]] = None
+) -> nn.Tensor:
+    """
+    Merges one axis into the batch axis.
+    If the axis has dynamic lengths, this would use flattening,
+    i.e. recalculate the padding, i.e. the size changes.
+    This basically wraps :func:`flatten_with_seq_len_mask` or :func:`flatten_with_seq_len_mask_time_major`.
+    See also :class:`MergeDimsLayer`, which does not do flattening,
+    i.e. the size stays the same.
 
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param bool batch_major: if False, will flatten in time-major manner
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'flatten_batch: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'batch_major': batch_major,
+    :param nn.Tensor source:
+    :param nn.Dim axis:
+    :param bool batch_major: if False, will flatten in time-major manner
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"flatten_batch: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "batch_major": batch_major,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'flatten_batch',
-    'from': source,
-    **args}, name=name or 'flatten_batch')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "flatten_batch", "from": source, **args}, name=name or "flatten_batch")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def unflatten_batch(
-                    source: nn.Tensor,
-                    *,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Inverse of :class:`FlattenBatchLayer`, so recovers an axis previously merged into the batch axis
+def unflatten_batch(source: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Inverse of :class:`FlattenBatchLayer`, so recovers an axis previously merged into the batch axis
 
-  This basically wraps :func:`unflatten_with_seq_len_mask`.
+    This basically wraps :func:`unflatten_with_seq_len_mask`.
 
-  :param nn.Tensor source:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'unflatten_batch: unexpected type for source {source!r}, need tensor')
-  return nn.make_layer({
-    'class': 'unflatten_batch',
-    'from': source,
-    }, name=name or 'unflatten_batch')
+    :param nn.Tensor source:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"unflatten_batch: unexpected type for source {source!r}, need tensor")
+    return nn.make_layer(
+        {
+            "class": "unflatten_batch",
+            "from": source,
+        },
+        name=name or "unflatten_batch",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def unflatten_nd(
-                 source: nn.Tensor,
-                 *,
-                 sizes: nn.Tensor,
-                 num_axes: int,
-                 in_dim: Optional[nn.Dim] = NotSpecified,
-                 out_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
-                 declare_same_sizes_as: Optional[Dict[int, nn.Tensor]] = NotSpecified,
-                 name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This keeps the batch axis as-is, i.e. the flattening/unflattening did not happen on the batch axis.
+    source: nn.Tensor,
+    *,
+    sizes: nn.Tensor,
+    num_axes: int,
+    in_dim: Optional[nn.Dim] = NotSpecified,
+    out_dims: Optional[Sequence[nn.Dim]] = NotSpecified,
+    declare_same_sizes_as: Optional[Dict[int, nn.Tensor]] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This keeps the batch axis as-is, i.e. the flattening/unflattening did not happen on the batch axis.
 
-  Example:
+    Example:
 
-    Assumes that the input is of shape (B,T,<Ds>) which represents flattened images,
-    where each image is of size width * height.
-    We additionally provide these image sizes (shape (B,2)), i.e. (width,height) tuples.
-    We return the unflattened images of shape (B,W,H,<Ds>), where W/H are the max width/height.
+      Assumes that the input is of shape (B,T,<Ds>) which represents flattened images,
+      where each image is of size width * height.
+      We additionally provide these image sizes (shape (B,2)), i.e. (width,height) tuples.
+      We return the unflattened images of shape (B,W,H,<Ds>), where W/H are the max width/height.
 
-  This basically wraps :func:`returnn.tf.util.basic.unflatten_nd`.
+    This basically wraps :func:`returnn.tf.util.basic.unflatten_nd`.
 
-  :param nn.Tensor source:
-  :param nn.Tensor sizes:
-  :param int num_axes:
-  :param nn.Dim|None in_dim:
-  :param Sequence[nn.Dim]|None out_dims:
-  :param dict[int,nn.Tensor]|None declare_same_sizes_as:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'unflatten_nd: unexpected type for source {source!r}, need tensor')
-  args = {
-    'sizes': sizes,
-    'num_axes': num_axes,
-    'in_dim': in_dim,
-    'out_dims': out_dims,
-    'declare_same_sizes_as': declare_same_sizes_as,
+    :param nn.Tensor source:
+    :param nn.Tensor sizes:
+    :param int num_axes:
+    :param nn.Dim|None in_dim:
+    :param Sequence[nn.Dim]|None out_dims:
+    :param dict[int,nn.Tensor]|None declare_same_sizes_as:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"unflatten_nd: unexpected type for source {source!r}, need tensor")
+    args = {
+        "sizes": sizes,
+        "num_axes": num_axes,
+        "in_dim": in_dim,
+        "out_dims": out_dims,
+        "declare_same_sizes_as": declare_same_sizes_as,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'unflatten_nd',
-    'from': source,
-    **args}, name=name or 'unflatten_nd')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "unflatten_nd", "from": source, **args}, name=name or "unflatten_nd")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def repeat(
-           source: nn.Tensor,
-           *,
-           repetitions: Union[nn.Tensor, int],
-           axis: nn.Dim,
-           out_dim: Optional[nn.Dim] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  A wrapper around tf.repeat, but supports an additional batch axis for the durations
-  The sum of the repetitions has to be non-zero for each sequence in the batch.
+    source: nn.Tensor,
+    *,
+    repetitions: Union[nn.Tensor, int],
+    axis: nn.Dim,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    A wrapper around tf.repeat, but supports an additional batch axis for the durations
+    The sum of the repetitions has to be non-zero for each sequence in the batch.
 
-  This layer can only be used with Tensorflow 1.15.0 or newer.
+    This layer can only be used with Tensorflow 1.15.0 or newer.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|int repetitions:
-    number of repetitions for each sequence and position in target axis.
-    Can be [B,T] or [T,B] or some subset of that shape
-  :param nn.Dim axis: (dynamic) axis for repetition (currently only time axis is supported)
-  :param nn.Dim|None out_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'repeat: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'repeat')}:out_dim")
-  args = {
-    'repetitions': repetitions,
-    'axis': axis,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param nn.Tensor|int repetitions:
+      number of repetitions for each sequence and position in target axis.
+      Can be [B,T] or [T,B] or some subset of that shape
+    :param nn.Dim axis: (dynamic) axis for repetition (currently only time axis is supported)
+    :param nn.Dim|None out_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"repeat: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'repeat')}:out_dim")
+    args = {
+        "repetitions": repetitions,
+        "axis": axis,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'repeat',
-    'from': source,
-    **args}, name=name or 'repeat')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "repeat", "from": source, **args}, name=name or "repeat")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def tile(
-         source: nn.Tensor,
-         *,
-         multiples: Dict[nn.Dim,  int],
-         out_dims: Optional[Dict[nn.Dim,  nn.Dim]] = NotSpecified,
-         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  A wrapper around tf.tile
+    source: nn.Tensor,
+    *,
+    multiples: Dict[nn.Dim, int],
+    out_dims: Optional[Dict[nn.Dim, nn.Dim]] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    A wrapper around tf.tile
 
-  :param nn.Tensor source:
-  :param dict[nn.Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
-  :param dict[nn.Dim, nn.Dim]|None out_dims:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'tile: unexpected type for source {source!r}, need tensor')
-  args = {
-    'multiples': multiples,
-    'out_dims': out_dims,
+    :param nn.Tensor source:
+    :param dict[nn.Dim, int] multiples: number of multiples per axis (axis provided as dim tag or str desc)
+    :param dict[nn.Dim, nn.Dim]|None out_dims:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"tile: unexpected type for source {source!r}, need tensor")
+    args = {
+        "multiples": multiples,
+        "out_dims": out_dims,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'tile',
-    'from': source,
-    **args}, name=name or 'tile')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "tile", "from": source, **args}, name=name or "tile")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def cast(
-         source: nn.Tensor,
-         *,
-         dtype: str,
-         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Cast to some other dtype.
+def cast(source: nn.Tensor, *, dtype: str, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Cast to some other dtype.
 
-  :param nn.Tensor source:
-  :param str dtype:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'cast: unexpected type for source {source!r}, need tensor')
-  args = {
-    'dtype': dtype,
+    :param nn.Tensor source:
+    :param str dtype:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"cast: unexpected type for source {source!r}, need tensor")
+    args = {
+        "dtype": dtype,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'cast',
-    'from': source,
-    **args}, name=name or 'cast')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "cast", "from": source, **args}, name=name or "cast")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dct(
-        source: nn.Tensor,
-        *,
-        type: int = NotSpecified,
-        n: Optional[int] = NotSpecified,
-        norm: Optional[str] = NotSpecified,
-        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Layer to perform DCT
-  Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
-  https://www.tensorflow.org/api_docs/python/tf/signal/dct
+    source: nn.Tensor,
+    *,
+    type: int = NotSpecified,
+    n: Optional[int] = NotSpecified,
+    norm: Optional[str] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Layer to perform DCT
+    Wraps :func:`tf.signal.dct`. For further documentation on the input arguments, refer to
+    https://www.tensorflow.org/api_docs/python/tf/signal/dct
 
-  :param nn.Tensor source:
-  :param int type: DCT type to perform. Must be 1, 2, 3, or 4
-  :param int|None n: length of the transform
-  :param str|None norm: normalization to apply. Must be None or "ortho"
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'dct: unexpected type for source {source!r}, need tensor')
-  args = {
-    'type': type,
-    'n': n,
-    'norm': norm,
+    :param nn.Tensor source:
+    :param int type: DCT type to perform. Must be 1, 2, 3, or 4
+    :param int|None n: length of the transform
+    :param str|None norm: normalization to apply. Must be None or "ortho"
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"dct: unexpected type for source {source!r}, need tensor")
+    args = {
+        "type": type,
+        "n": n,
+        "norm": norm,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'dct',
-    'from': source,
-    **args}, name=name or 'dct')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "dct", "from": source, **args}, name=name or "dct")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reduce(
-           source: nn.Tensor,
-           *,
-           mode: str,
-           axis: Union[nn.Dim, Sequence[nn.Dim]],
-           use_time_mask: bool = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This reduces some axis by using e.g. "sum" or "max".
-  It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
+    source: nn.Tensor,
+    *,
+    mode: str,
+    axis: Union[nn.Dim, Sequence[nn.Dim]],
+    use_time_mask: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This reduces some axis by using e.g. "sum" or "max".
+    It's basically a wrapper around tf.reduce_sum or tf.reduce_max.
 
-  :param nn.Tensor source:
-  :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
-  :param nn.Dim|Sequence[nn.Dim] axis: for compatibility, can be used instead of ``axes``
-    One axis or multiple axis to reduce.
-    It accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature",
-    and it is strongly recommended to use some of these symbolic names.
-    See :func:`Data.get_axes_from_description`.
-  :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
-    By default, in that case, it will be True.
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'reduce: unexpected type for source {source!r}, need tensor')
-  args = {
-    'mode': mode,
-    'axis': axis,
-    'use_time_mask': use_time_mask,
+    :param nn.Tensor source:
+    :param str mode: "sum" or "max", "argmin", "min", "argmax", "mean", "logsumexp"
+    :param nn.Dim|Sequence[nn.Dim] axis: for compatibility, can be used instead of ``axes``
+      One axis or multiple axis to reduce.
+      It accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature",
+      and it is strongly recommended to use some of these symbolic names.
+      See :func:`Data.get_axes_from_description`.
+    :param bool use_time_mask: if we reduce over the time-dim axis, use the seq len info.
+      By default, in that case, it will be True.
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"reduce: unexpected type for source {source!r}, need tensor")
+    args = {
+        "mode": mode,
+        "axis": axis,
+        "use_time_mask": use_time_mask,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'reduce',
-    'from': source,
-    **args}, name=name or 'reduce')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "reduce", "from": source, **args}, name=name or "reduce")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def reduce_out(
-               source: nn.Tensor,
-               *,
-               mode: str,
-               num_pieces: int,
-               out_dim: Optional[nn.Dim] = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Combination of :class:`SplitDimsLayer` applied to the feature dim
-  and :class:`ReduceLayer` applied to the resulting feature dim.
-  This can e.g. be used to do maxout.
+    source: nn.Tensor,
+    *,
+    mode: str,
+    num_pieces: int,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Combination of :class:`SplitDimsLayer` applied to the feature dim
+    and :class:`ReduceLayer` applied to the resulting feature dim.
+    This can e.g. be used to do maxout.
 
-  :param nn.Tensor source:
-  :param str mode: "sum" or "max" or "mean"
-  :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
-  :param nn.Dim|None out_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'reduce_out: unexpected type for source {source!r}, need tensor')
-  args = {
-    'mode': mode,
-    'num_pieces': num_pieces,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param str mode: "sum" or "max" or "mean"
+    :param int num_pieces: how many elements to reduce. The output dimension will be input.dim // num_pieces.
+    :param nn.Dim|None out_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"reduce_out: unexpected type for source {source!r}, need tensor")
+    args = {
+        "mode": mode,
+        "num_pieces": num_pieces,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'reduce_out',
-    'from': source,
-    **args}, name=name or 'reduce_out')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "reduce_out", "from": source, **args}, name=name or "reduce_out")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def squeeze(
-            source: nn.Tensor,
-            *,
-            axis: Union[nn.Dim, Sequence[nn.Dim]],
-            allow_no_op: bool = NotSpecified,
-            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Removes an axis with dimension 1.
-  This is basically a wrapper around tf.squeeze.
+    source: nn.Tensor,
+    *,
+    axis: Union[nn.Dim, Sequence[nn.Dim]],
+    allow_no_op: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Removes an axis with dimension 1.
+    This is basically a wrapper around tf.squeeze.
 
-  :param nn.Tensor source:
-  :param nn.Dim|Sequence[nn.Dim] axis: one axis or multiple axis to squeeze.
-    this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
-    it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
-  :param bool allow_no_op:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'squeeze: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'allow_no_op': allow_no_op,
+    :param nn.Tensor source:
+    :param nn.Dim|Sequence[nn.Dim] axis: one axis or multiple axis to squeeze.
+      this is counted with batch-dim, which by default is axis 0 (see enforce_batch_dim_axis).
+      it also accepts the special tokens "B"|"batch", "spatial", "spatial_except_time", or "F"|"feature"
+    :param bool allow_no_op:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"squeeze: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "allow_no_op": allow_no_op,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'squeeze',
-    'from': source,
-    **args}, name=name or 'squeeze')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "squeeze", "from": source, **args}, name=name or "squeeze")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def stack(
-          source: Sequence[nn.Tensor],
-          *,
-          out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Stacks multiple inputs together using :func:`tf.stack`.
-  This creates a new dimension for the stack.
+    source: Sequence[nn.Tensor],
+    *,
+    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Stacks multiple inputs together using :func:`tf.stack`.
+    This creates a new dimension for the stack.
 
-  For concatenation (in feature dimension), see :class:`CopyLayer`.
+    For concatenation (in feature dimension), see :class:`CopyLayer`.
 
-  :param Sequence[nn.Tensor] source:
-  :param nn.Dim|None out_spatial_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_spatial_dim
-  """
-  if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):
-    raise TypeError(f'stack: unexpected type for source {source!r}, need sequence of tensors')
-  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'stack')}:out_spatial_dim")
-  args = {
-    'out_spatial_dim': out_spatial_dim,
+    :param Sequence[nn.Tensor] source:
+    :param nn.Dim|None out_spatial_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_spatial_dim
+    """
+    if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):
+        raise TypeError(f"stack: unexpected type for source {source!r}, need sequence of tensors")
+    if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+        out_spatial_dim = nn.SpatialDim(f"{_name_str(name, 'stack')}:out_spatial_dim")
+    args = {
+        "out_spatial_dim": out_spatial_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'stack',
-    'from': source,
-    **args}, name=name or 'stack')
-  return layer, out_spatial_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "stack", "from": source, **args}, name=name or "stack")
+    return layer, out_spatial_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def prefix_in_time(
-                   source: nn.Tensor,
-                   *,
-                   axis: nn.Dim,
-                   out_dim: Optional[nn.Dim] = NotSpecified,
-                   prefix: Union[float, str] = NotSpecified,
-                   repeat: Union[int, nn.Tensor] = NotSpecified,
-                   size_base: Optional[nn.Tensor] = NotSpecified,
-                   name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Adds some prefix in time dimension.
-  This is kind of the reverse of :class:`SliceNdLayer` does.
-  Also see :class:`PadLayer` for static dimensions.
-  Also see :class:`PostfixInTimeLayer`.
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    prefix: Union[float, str] = NotSpecified,
+    repeat: Union[int, nn.Tensor] = NotSpecified,
+    size_base: Optional[nn.Tensor] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Adds some prefix in time dimension.
+    This is kind of the reverse of :class:`SliceNdLayer` does.
+    Also see :class:`PadLayer` for static dimensions.
+    Also see :class:`PostfixInTimeLayer`.
 
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param nn.Dim|None out_dim:
-  :param float|str prefix: either some constant or another layer
-  :param int|nn.Tensor repeat: how often to repeat the prefix
-  :param nn.Tensor|None size_base: copy seq-lens from here
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'prefix_in_time: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'prefix_in_time')}:out_dim")
-  args = {
-    'axis': axis,
-    'out_dim': out_dim,
-    'prefix': prefix,
-    'repeat': repeat,
-    'size_base': size_base,
+    :param nn.Tensor source:
+    :param nn.Dim axis:
+    :param nn.Dim|None out_dim:
+    :param float|str prefix: either some constant or another layer
+    :param int|nn.Tensor repeat: how often to repeat the prefix
+    :param nn.Tensor|None size_base: copy seq-lens from here
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"prefix_in_time: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'prefix_in_time')}:out_dim")
+    args = {
+        "axis": axis,
+        "out_dim": out_dim,
+        "prefix": prefix,
+        "repeat": repeat,
+        "size_base": size_base,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'prefix_in_time',
-    'from': source,
-    **args}, name=name or 'prefix_in_time')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "prefix_in_time", "from": source, **args}, name=name or "prefix_in_time")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def postfix_in_time(
-                    source: nn.Tensor,
-                    *,
-                    axis: nn.Dim,
-                    out_dim: Optional[nn.Dim] = NotSpecified,
-                    postfix: Union[float, int, nn.Tensor] = NotSpecified,
-                    repeat: int = NotSpecified,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Adds some postfix in time dimension.
-  Also see :class:`PrefixInTimeLayer`.
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    postfix: Union[float, int, nn.Tensor] = NotSpecified,
+    repeat: int = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Adds some postfix in time dimension.
+    Also see :class:`PrefixInTimeLayer`.
 
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param nn.Dim|None out_dim:
-  :param float|int|nn.Tensor postfix: constant or other layer without time axis to use as postfix
-  :param int repeat: how often to repeat the postfix
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'postfix_in_time: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'postfix_in_time')}:out_dim")
-  args = {
-    'axis': axis,
-    'out_dim': out_dim,
-    'postfix': postfix,
-    'repeat': repeat,
+    :param nn.Tensor source:
+    :param nn.Dim axis:
+    :param nn.Dim|None out_dim:
+    :param float|int|nn.Tensor postfix: constant or other layer without time axis to use as postfix
+    :param int repeat: how often to repeat the postfix
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"postfix_in_time: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'postfix_in_time')}:out_dim")
+    args = {
+        "axis": axis,
+        "out_dim": out_dim,
+        "postfix": postfix,
+        "repeat": repeat,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'postfix_in_time',
-    'from': source,
-    **args}, name=name or 'postfix_in_time')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "postfix_in_time", "from": source, **args}, name=name or "postfix_in_time")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def time_chunking(
-                  source: nn.Tensor,
-                  *,
-                  chunk_size: int,
-                  chunk_step: int,
-                  axis: nn.Dim,
-                  out_dim: Optional[nn.Dim] = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Performs chunking in time. See :func:`returnn.tf.native_op.chunk`.
+    source: nn.Tensor,
+    *,
+    chunk_size: int,
+    chunk_step: int,
+    axis: nn.Dim,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Performs chunking in time. See :func:`returnn.tf.native_op.chunk`.
 
-  :param nn.Tensor source:
-  :param int chunk_size:
-  :param int chunk_step:
-  :param nn.Dim axis:
-  :param nn.Dim|None out_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'time_chunking: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'time_chunking')}:out_dim")
-  args = {
-    'chunk_size': chunk_size,
-    'chunk_step': chunk_step,
-    'axis': axis,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param int chunk_size:
+    :param int chunk_step:
+    :param nn.Dim axis:
+    :param nn.Dim|None out_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"time_chunking: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'time_chunking')}:out_dim")
+    args = {
+        "chunk_size": chunk_size,
+        "chunk_step": chunk_step,
+        "axis": axis,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'time_chunking',
-    'from': source,
-    **args}, name=name or 'time_chunking')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "time_chunking", "from": source, **args}, name=name or "time_chunking")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def time_un_chunking(
-                     source: nn.Tensor,
-                     *,
-                     chunking_layer: nn.Tensor,
-                     name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Performs chunking in time. See :func:`TFNativeOp.chunk`.
+    source: nn.Tensor, *, chunking_layer: nn.Tensor, name: Optional[Union[str, nn.NameCtx]] = None
+) -> nn.Tensor:
+    """
+    Performs chunking in time. See :func:`TFNativeOp.chunk`.
 
-  :param nn.Tensor source:
-  :param TimeChunkingLayer chunking_layer:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'time_un_chunking: unexpected type for source {source!r}, need tensor')
-  args = {
-    'chunking_layer': chunking_layer,
+    :param nn.Tensor source:
+    :param TimeChunkingLayer chunking_layer:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"time_un_chunking: unexpected type for source {source!r}, need tensor")
+    args = {
+        "chunking_layer": chunking_layer,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'time_unchunking',
-    'from': source,
-    **args}, name=name or 'time_un_chunking')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "time_unchunking", "from": source, **args}, name=name or "time_un_chunking")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def dot(
-        source1: nn.Tensor,
-        source2: nn.Tensor,
-        *,
-        reduce: Union[nn.Dim, Sequence[nn.Dim]] = NotSpecified,
-        debug: bool = NotSpecified,
-        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This performs a dot-product of two sources.
-  The underlying matmul expects shapes (shared..., I, J) * (shared..., J, K) -> (shared..., I, K).
-  We say that J is the axis to be reduced,
-  I is the var-dim of source 1, and K is the var-dim of source 2.
-  I, J, K can also be multiple axes from the sources.
-  The var-dims don't need to exist.
-  All other axes (shared...) are expected to match.
+    source1: nn.Tensor,
+    source2: nn.Tensor,
+    *,
+    reduce: Union[nn.Dim, Sequence[nn.Dim]] = NotSpecified,
+    debug: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This performs a dot-product of two sources.
+    The underlying matmul expects shapes (shared..., I, J) * (shared..., J, K) -> (shared..., I, K).
+    We say that J is the axis to be reduced,
+    I is the var-dim of source 1, and K is the var-dim of source 2.
+    I, J, K can also be multiple axes from the sources.
+    The var-dims don't need to exist.
+    All other axes (shared...) are expected to match.
 
-  You should try to avoid having the same dims in both sources when they are not reduced
-  such that you would end up having some dim twice in the output, e.g. (shared..., I, I).
-  You should avoid this because the dim order should never matter
-  (https://github.com/rwth-i6/returnn/wiki/RETURNN-principles).
-  If you need to perform such an operation, you can use :class:`ReinterpretDataLayer`
-  to introduce a new dim tag.
+    You should try to avoid having the same dims in both sources when they are not reduced
+    such that you would end up having some dim twice in the output, e.g. (shared..., I, I).
+    You should avoid this because the dim order should never matter
+    (https://github.com/rwth-i6/returnn/wiki/RETURNN-principles).
+    If you need to perform such an operation, you can use :class:`ReinterpretDataLayer`
+    to introduce a new dim tag.
 
-  The reduce dim can also be the sparse dim of one of the sources.
-  In this case, it behaves like :class:`GatherLayer`.
+    The reduce dim can also be the sparse dim of one of the sources.
+    In this case, it behaves like :class:`GatherLayer`.
 
-  Earlier defaults:
-    red1=-1, red2=-2, var1=-2, var2=-1, add_var2_if_empty=True.
-  However, these are bad, for multiple reasons, like using integers, but also in general.
-    See https://github.com/rwth-i6/returnn/issues/627 for details.
+    Earlier defaults:
+      red1=-1, red2=-2, var1=-2, var2=-1, add_var2_if_empty=True.
+    However, these are bad, for multiple reasons, like using integers, but also in general.
+      See https://github.com/rwth-i6/returnn/issues/627 for details.
 
-  :param nn.Tensor source1:
-  :param nn.Tensor source2:
-  :param nn.Dim|Sequence[nn.Dim] reduce: reduce axes of both sources
-  :param bool debug: will print debug shapes, etc.
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source1, nn.Tensor):
-    raise TypeError(f'dot: unexpected type for source1 {source1!r}, need tensor')
-  if not isinstance(source2, nn.Tensor):
-    raise TypeError(f'dot: unexpected type for source2 {source2!r}, need tensor')
-  args = {
-    'reduce': reduce,
-    'debug': debug,
+    :param nn.Tensor source1:
+    :param nn.Tensor source2:
+    :param nn.Dim|Sequence[nn.Dim] reduce: reduce axes of both sources
+    :param bool debug: will print debug shapes, etc.
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source1, nn.Tensor):
+        raise TypeError(f"dot: unexpected type for source1 {source1!r}, need tensor")
+    if not isinstance(source2, nn.Tensor):
+        raise TypeError(f"dot: unexpected type for source2 {source2!r}, need tensor")
+    args = {
+        "reduce": reduce,
+        "debug": debug,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'dot',
-    'from': [source1, source2],
-    **args}, name=name or 'dot')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "dot", "from": [source1, source2], **args}, name=name or "dot")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def shift_axis(
-               source: nn.Tensor,
-               *,
-               axis: nn.Dim,
-               amount: int,
-               pad: bool = NotSpecified,
-               pad_value: Union[int, float, bool] = NotSpecified,
-               adjust_size_info: bool = NotSpecified,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Shifts the dimensions in an axis around by slicing and optional padding.
-  This layer may change the axis-dimension.
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    amount: int,
+    pad: bool = NotSpecified,
+    pad_value: Union[int, float, bool] = NotSpecified,
+    adjust_size_info: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Shifts the dimensions in an axis around by slicing and optional padding.
+    This layer may change the axis-dimension.
 
-  This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
+    This name might be confusing. No axis will be shifted here. See :class:`SwapAxesLayer` for that.
 
-  Also see :class:`SliceLayer`.
+    Also see :class:`SliceLayer`.
 
-  :param nn.Tensor source:
-  :param nn.Dim axis: single axis to shift
-  :param int amount: number of elements to shift
-                 (<0 for left-shift, >0 for right-shift)
-  :param bool pad: preserve shape by padding
-  :param int|float|bool pad_value: padding value
-  :param bool adjust_size_info: whether to adjust the size_placeholder
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'shift_axis: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'amount': amount,
-    'pad': pad,
-    'pad_value': pad_value,
-    'adjust_size_info': adjust_size_info,
+    :param nn.Tensor source:
+    :param nn.Dim axis: single axis to shift
+    :param int amount: number of elements to shift
+                   (<0 for left-shift, >0 for right-shift)
+    :param bool pad: preserve shape by padding
+    :param int|float|bool pad_value: padding value
+    :param bool adjust_size_info: whether to adjust the size_placeholder
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"shift_axis: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "amount": amount,
+        "pad": pad,
+        "pad_value": pad_value,
+        "adjust_size_info": adjust_size_info,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'shift_axis',
-    'from': source,
-    **args}, name=name or 'shift_axis')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "shift_axis", "from": source, **args}, name=name or "shift_axis")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def resize(
-           source: nn.Tensor,
-           *,
-           factor: Union[int, float, nn.Tensor],
-           axis: nn.Dim,
-           out_dim: Optional[nn.Dim] = NotSpecified,
-           kind: str = NotSpecified,
-           fill_value: Optional[Union[int, float]] = NotSpecified,
-           fill_dropout: Optional[float] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Resizes the input, i.e. upsampling or downsampling.
-  Supports different kinds, such as linear interpolation or nearest-neighbor.
+    source: nn.Tensor,
+    *,
+    factor: Union[int, float, nn.Tensor],
+    axis: nn.Dim,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    kind: str = NotSpecified,
+    fill_value: Optional[Union[int, float]] = NotSpecified,
+    fill_dropout: Optional[float] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Resizes the input, i.e. upsampling or downsampling.
+    Supports different kinds, such as linear interpolation or nearest-neighbor.
 
-  :param nn.Tensor source:
-  :param int|float|nn.Tensor factor: out_len = in_len * factor
-  :param nn.Dim axis: the axis to resize
-  :param nn.Dim|None out_dim:
-  :param str kind: "linear", "nn"/"nearest_neighbor", "cubic", "fill"
-  :param None|int|float fill_value: if kind=="fill"
-  :param float|None fill_dropout: if set, will dropout in the same axis
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'resize: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'resize')}:out_dim")
-  args = {
-    'factor': factor,
-    'axis': axis,
-    'out_dim': out_dim,
-    'kind': kind,
-    'fill_value': fill_value,
-    'fill_dropout': fill_dropout,
+    :param nn.Tensor source:
+    :param int|float|nn.Tensor factor: out_len = in_len * factor
+    :param nn.Dim axis: the axis to resize
+    :param nn.Dim|None out_dim:
+    :param str kind: "linear", "nn"/"nearest_neighbor", "cubic", "fill"
+    :param None|int|float fill_value: if kind=="fill"
+    :param float|None fill_dropout: if set, will dropout in the same axis
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"resize: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'resize')}:out_dim")
+    args = {
+        "factor": factor,
+        "axis": axis,
+        "out_dim": out_dim,
+        "kind": kind,
+        "fill_value": fill_value,
+        "fill_dropout": fill_dropout,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'resize',
-    'from': source,
-    **args}, name=name or 'resize')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "resize", "from": source, **args}, name=name or "resize")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def remove(
-           source: nn.Tensor,
-           *,
-           symbol: int,
-           axis: nn.Dim,
-           out_dim: Optional[nn.Dim] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Currently, assumes sparse data, and removes a specific symbol from the data.
+    source: nn.Tensor,
+    *,
+    symbol: int,
+    axis: nn.Dim,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Currently, assumes sparse data, and removes a specific symbol from the data.
 
-  It is recommended to use :class:`MaskedComputationLayer` in combination with e.g.
-  a :class:CompareLayer` instead, as this provides more flexibility.
+    It is recommended to use :class:`MaskedComputationLayer` in combination with e.g.
+    a :class:CompareLayer` instead, as this provides more flexibility.
 
-  :param nn.Tensor source:
-  :param int symbol:
-  :param nn.Dim axis: the axis to operate over, to potentially remove frames
-  :param nn.Dim|None out_dim: derived from the dim of axis, the reduced new dim
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'remove: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'remove')}:out_dim")
-  args = {
-    'symbol': symbol,
-    'axis': axis,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param int symbol:
+    :param nn.Dim axis: the axis to operate over, to potentially remove frames
+    :param nn.Dim|None out_dim: derived from the dim of axis, the reduced new dim
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"remove: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'remove')}:out_dim")
+    args = {
+        "symbol": symbol,
+        "axis": axis,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'remove',
-    'from': source,
-    **args}, name=name or 'remove')
-  return layer, out_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "remove", "from": source, **args}, name=name or "remove")
+    return layer, out_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _combine(
-             source: Sequence[nn.Tensor],
-             *,
-             kind: str,
-             allow_broadcast_all_sources: Union[bool, NotSpecified] = NotSpecified,
-             with_bias: bool = NotSpecified,
-             eval: Union[str, callable] = NotSpecified,
-             eval_locals: Optional[Dict[str]] = NotSpecified,
-             eval_for_output_loss: bool = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Applies a binary operation, such as addition, to all sources while accumulating the partial results.
-  In the first step, the binary operation is performed on the first two sources.
-  After the first step, the previous results is always the left-hand operator.
+    source: Sequence[nn.Tensor],
+    *,
+    kind: str,
+    allow_broadcast_all_sources: Union[bool, NotSpecified] = NotSpecified,
+    with_bias: bool = NotSpecified,
+    eval: Union[str, callable] = NotSpecified,
+    eval_locals: Optional[Dict[str]] = NotSpecified,
+    eval_for_output_loss: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Applies a binary operation, such as addition, to all sources while accumulating the partial results.
+    In the first step, the binary operation is performed on the first two sources.
+    After the first step, the previous results is always the left-hand operator.
 
-  Its basic working is similar to the `reduce` function used in functional programming.
-  Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
+    Its basic working is similar to the `reduce` function used in functional programming.
+    Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
 
-  :param Sequence[nn.Tensor] source:
-  :param str kind:
-    currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `floordiv`, `mod`, `pow`,
-    `maximum`, `minimum`,
-    `logical_and`, `logical_or`,
-    `squared_difference`,
-    or `eval`,
-    or any function in the tf.math or tf namespace.
-  :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
-    e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
-  :param bool with_bias: if given, will add a trainable bias tensor
-  :param str|callable eval: for kind="eval", will eval this string. or function. see :func:`_op_kind_eval`
-  :param dict[str]|None eval_locals: locals for eval
-  :param bool eval_for_output_loss: will do the same eval on layer.output_loss
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):
-    raise TypeError(f'_combine: unexpected type for source {source!r}, need sequence of tensors')
-  args = {
-    'kind': kind,
-    'allow_broadcast_all_sources': allow_broadcast_all_sources,
-    'with_bias': with_bias,
-    'eval': eval,
-    'eval_locals': eval_locals,
-    'eval_for_output_loss': eval_for_output_loss,
+    :param Sequence[nn.Tensor] source:
+    :param str kind:
+      currently accepted values are `average`, `add`, `sub`, `mul`, `truediv`, `floordiv`, `mod`, `pow`,
+      `maximum`, `minimum`,
+      `logical_and`, `logical_or`,
+      `squared_difference`,
+      or `eval`,
+      or any function in the tf.math or tf namespace.
+    :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
+      e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
+    :param bool with_bias: if given, will add a trainable bias tensor
+    :param str|callable eval: for kind="eval", will eval this string. or function. see :func:`_op_kind_eval`
+    :param dict[str]|None eval_locals: locals for eval
+    :param bool eval_for_output_loss: will do the same eval on layer.output_loss
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source):
+        raise TypeError(f"_combine: unexpected type for source {source!r}, need sequence of tensors")
+    args = {
+        "kind": kind,
+        "allow_broadcast_all_sources": allow_broadcast_all_sources,
+        "with_bias": with_bias,
+        "eval": eval,
+        "eval_locals": eval_locals,
+        "eval_for_output_loss": eval_for_output_loss,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'combine',
-    'from': source,
-    **args}, name=name or 'combine')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "combine", "from": source, **args}, name=name or "combine")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _eval(
-          source: Union[nn.Tensor, Sequence[nn.Tensor]],
-          *,
-          eval: str,
-          allow_broadcast_all_sources: Union[bool, NotSpecified] = NotSpecified,
-          with_bias: bool = NotSpecified,
-          eval_locals: Optional[Dict[str]] = NotSpecified,
-          eval_for_output_loss: bool = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Evaluates some string.
-  The :class:`CombineLayer` provides this functionality, thus this is just a special case of it.
-  Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
+    source: Union[nn.Tensor, Sequence[nn.Tensor]],
+    *,
+    eval: str,
+    allow_broadcast_all_sources: Union[bool, NotSpecified] = NotSpecified,
+    with_bias: bool = NotSpecified,
+    eval_locals: Optional[Dict[str]] = NotSpecified,
+    eval_for_output_loss: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Evaluates some string.
+    The :class:`CombineLayer` provides this functionality, thus this is just a special case of it.
+    Also see :class:`ActivationLayer`, or :class:`CompareLayer`.
 
-  The output type is defined as a broadcasted extension of all sources.
-  You can overwrite it by (partially) specifying `out_type`.
-  `out_type` can also be a generic Python function, returning a `Data` instance.
+    The output type is defined as a broadcasted extension of all sources.
+    You can overwrite it by (partially) specifying `out_type`.
+    `out_type` can also be a generic Python function, returning a `Data` instance.
 
-  :param nn.Tensor|Sequence[nn.Tensor] source:
-  :param str eval: will eval this string. see :func:`_op_kind_eval`
-  :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
-    e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
-  :param bool with_bias: if given, will add a trainable bias tensor
-  :param dict[str]|None eval_locals: locals for eval
-  :param bool eval_for_output_loss: will do the same eval on layer.output_loss
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not (
-    isinstance(source, nn.Tensor) or
-    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):
-      raise TypeError(f'_eval: unexpected type for source {source!r}, need one or multiple tensors')
-  args = {
-    'eval': eval,
-    'allow_broadcast_all_sources': allow_broadcast_all_sources,
-    'with_bias': with_bias,
-    'eval_locals': eval_locals,
-    'eval_for_output_loss': eval_for_output_loss,
+    :param nn.Tensor|Sequence[nn.Tensor] source:
+    :param str eval: will eval this string. see :func:`_op_kind_eval`
+    :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
+      e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
+    :param bool with_bias: if given, will add a trainable bias tensor
+    :param dict[str]|None eval_locals: locals for eval
+    :param bool eval_for_output_loss: will do the same eval on layer.output_loss
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not (
+        isinstance(source, nn.Tensor)
+        or (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))
+    ):
+        raise TypeError(f"_eval: unexpected type for source {source!r}, need one or multiple tensors")
+    args = {
+        "eval": eval,
+        "allow_broadcast_all_sources": allow_broadcast_all_sources,
+        "with_bias": with_bias,
+        "eval_locals": eval_locals,
+        "eval_for_output_loss": eval_for_output_loss,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'eval',
-    'from': source,
-    **args}, name=name or 'eval')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "eval", "from": source, **args}, name=name or "eval")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _compare(
-             source: Union[nn.Tensor, Sequence[nn.Tensor]],
-             *,
-             kind: str = NotSpecified,
-             value: Optional[Union[float, int]] = NotSpecified,
-             allow_broadcast_all_sources: Union[bool, NotSpecified] = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Compares element-wise the tokens of all input sequences among themselves and/or with a specified given value.
-  The comparisons are performed in a chain according to the order in which they are listed.
+    source: Union[nn.Tensor, Sequence[nn.Tensor]],
+    *,
+    kind: str = NotSpecified,
+    value: Optional[Union[float, int]] = NotSpecified,
+    allow_broadcast_all_sources: Union[bool, NotSpecified] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Compares element-wise the tokens of all input sequences among themselves and/or with a specified given value.
+    The comparisons are performed in a chain according to the order in which they are listed.
 
-  Example::
+    Example::
 
-      {"class": "compare", "from": ["i1", "i2"], "value": val, "kind": "less"}
+        {"class": "compare", "from": ["i1", "i2"], "value": val, "kind": "less"}
 
-  computes i1 < i2 < val and it is true only if the whole chain of operations is true.
-  The final result is the logical "and" of all comparisons. Note that `value` is the last element to be compared to.
+    computes i1 < i2 < val and it is true only if the whole chain of operations is true.
+    The final result is the logical "and" of all comparisons. Note that `value` is the last element to be compared to.
 
-  A common example usage is the `end` layer in a rec subnetwork to specify the stopping criterion,
-  e.g. the last generated token is equal to the end-of-sentence token::
+    A common example usage is the `end` layer in a rec subnetwork to specify the stopping criterion,
+    e.g. the last generated token is equal to the end-of-sentence token::
 
-      "output": {"class": "rec", "from": [], "unit": {
-          .
-          .
-          .
-          "end": {"class": "compare", "from": "output", "value": end_of_sentence_id}
-      }, "target": "classes0"}
+        "output": {"class": "rec", "from": [], "unit": {
+            .
+            .
+            .
+            "end": {"class": "compare", "from": "output", "value": end_of_sentence_id}
+        }, "target": "classes0"}
 
 
-  :param nn.Tensor|Sequence[nn.Tensor] source:
-  :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
-    or other supported TF comparison ops
-  :param float|int|None value: if specified, will also compare to this
-  :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
-    e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not (
-    isinstance(source, nn.Tensor) or
-    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):
-      raise TypeError(f'_compare: unexpected type for source {source!r}, need one or multiple tensors')
-  args = {
-    'kind': kind,
-    'value': value,
-    'allow_broadcast_all_sources': allow_broadcast_all_sources,
+    :param nn.Tensor|Sequence[nn.Tensor] source:
+    :param str kind: which comparison operation to use, e.g. "equal", "greater", "less"
+      or other supported TF comparison ops
+    :param float|int|None value: if specified, will also compare to this
+    :param bool|NotSpecified allow_broadcast_all_sources: allow broadcasting for all sources.
+      e.g. shape [A] + [B] -> shape [A,B]. by default disabled, and there must be some source with all dims.
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not (
+        isinstance(source, nn.Tensor)
+        or (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))
+    ):
+        raise TypeError(f"_compare: unexpected type for source {source!r}, need one or multiple tensors")
+    args = {
+        "kind": kind,
+        "value": value,
+        "allow_broadcast_all_sources": allow_broadcast_all_sources,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'compare',
-    'from': source,
-    **args}, name=name or 'compare')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "compare", "from": source, **args}, name=name or "compare")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _top_k(
-           source: nn.Tensor,
-           *,
-           axis: Union[nn.Dim, Sequence[nn.Dim]],
-           k: Union[int, nn.Tensor],
-           k_dim: Optional[nn.Dim] = NotSpecified,
-           sorted: bool = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Basically wraps tf.nn.top_k.
+    source: nn.Tensor,
+    *,
+    axis: Union[nn.Dim, Sequence[nn.Dim]],
+    k: Union[int, nn.Tensor],
+    k_dim: Optional[nn.Dim] = NotSpecified,
+    sorted: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Basically wraps tf.nn.top_k.
 
-  Directly returns the top_k values.
-  The indices are accessible via the "indices" sub-layer.
+    Directly returns the top_k values.
+    The indices are accessible via the "indices" sub-layer.
 
-  For an input [B,D] with axis=D, the output and indices values are shape [B,K].
+    For an input [B,D] with axis=D, the output and indices values are shape [B,K].
 
-  It's somewhat similar to :class:`ReduceLayer` with max and argmax.
-  The axis dim is reduced and then a new dim for K is added.
+    It's somewhat similar to :class:`ReduceLayer` with max and argmax.
+    The axis dim is reduced and then a new dim for K is added.
 
-  Axis can also cover multiple axes, such as [beam,classes].
-  In that cases, there is not a single "indices" sub-layer,
-  but sub-layers "indices0" .. "indices{N-1}"
-  corresponding to each axis, in the same order.
+    Axis can also cover multiple axes, such as [beam,classes].
+    In that cases, there is not a single "indices" sub-layer,
+    but sub-layers "indices0" .. "indices{N-1}"
+    corresponding to each axis, in the same order.
 
-  All other axes are treated as batch dims.
+    All other axes are treated as batch dims.
 
-  :param nn.Tensor source:
-  :param nn.Dim|Sequence[nn.Dim] axis: the axis to do the top_k on, which is reduced
-  :param int|nn.Tensor k: the "K" in "TopK"
-  :param nn.Dim|None k_dim: the output dim tag corresponding to k
-  :param bool sorted:
-  :param str|nn.NameCtx|None name:
-  :return: layer, k_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'_top_k: unexpected type for source {source!r}, need tensor')
-  if k_dim is None or k_dim is NotSpecified:
-    k_dim = nn.SpatialDim(f"{_name_str(name, 'top_k')}:k_dim")
-  args = {
-    'axis': axis,
-    'k': k,
-    'k_dim': k_dim,
-    'sorted': sorted,
+    :param nn.Tensor source:
+    :param nn.Dim|Sequence[nn.Dim] axis: the axis to do the top_k on, which is reduced
+    :param int|nn.Tensor k: the "K" in "TopK"
+    :param nn.Dim|None k_dim: the output dim tag corresponding to k
+    :param bool sorted:
+    :param str|nn.NameCtx|None name:
+    :return: layer, k_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"_top_k: unexpected type for source {source!r}, need tensor")
+    if k_dim is None or k_dim is NotSpecified:
+        k_dim = nn.SpatialDim(f"{_name_str(name, 'top_k')}:k_dim")
+    args = {
+        "axis": axis,
+        "k": k,
+        "k_dim": k_dim,
+        "sorted": sorted,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'top_k',
-    'from': source,
-    **args}, name=name or 'top_k')
-  return layer, k_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "top_k", "from": source, **args}, name=name or "top_k")
+    return layer, k_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def search_sorted(
-                  source: nn.Tensor,
-                  *,
-                  sorted_sequence: nn.Tensor,
-                  values: nn.Tensor,
-                  axis: nn.Dim,
-                  side: str = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Basically wraps :func:`tf.searchsorted`.
+    source: nn.Tensor,
+    *,
+    sorted_sequence: nn.Tensor,
+    values: nn.Tensor,
+    axis: nn.Dim,
+    side: str = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Basically wraps :func:`tf.searchsorted`.
 
-  Takes a tensor `sorted_sequence` that is sorted along one axis, and a tensor `values`.
-  Will compute an output tensor with the same axes as `values`,
-  where each entry is the index of the value within the sorted sequence.
-  All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
+    Takes a tensor `sorted_sequence` that is sorted along one axis, and a tensor `values`.
+    Will compute an output tensor with the same axes as `values`,
+    where each entry is the index of the value within the sorted sequence.
+    All (batch) axes of `sorted_sequence` except for the axis it is sorted along must be present in `values`.
 
-  :param nn.Tensor source:
-  :param nn.Tensor sorted_sequence:
-  :param nn.Tensor values: search values
-  :param nn.Dim axis: the axis along which `sorted_sequence` is sorted
-  :param str side: "left" or "right".
-    When one of the `values` exactly matches an element of the `sorted_sequence`,
-    whether to choose the lower or higher index.
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'search_sorted: unexpected type for source {source!r}, need tensor')
-  args = {
-    'sorted_sequence': sorted_sequence,
-    'values': values,
-    'axis': axis,
-    'side': side,
+    :param nn.Tensor source:
+    :param nn.Tensor sorted_sequence:
+    :param nn.Tensor values: search values
+    :param nn.Dim axis: the axis along which `sorted_sequence` is sorted
+    :param str side: "left" or "right".
+      When one of the `values` exactly matches an element of the `sorted_sequence`,
+      whether to choose the lower or higher index.
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"search_sorted: unexpected type for source {source!r}, need tensor")
+    args = {
+        "sorted_sequence": sorted_sequence,
+        "values": values,
+        "axis": axis,
+        "side": side,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'search_sorted',
-    'from': source,
-    **args}, name=name or 'search_sorted')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "search_sorted", "from": source, **args}, name=name or "search_sorted")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def train_flag(
-               *,
-               name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Returns the train flag (bool scalar) of the current network.
+def train_flag(*, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Returns the train flag (bool scalar) of the current network.
 
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  return nn.make_layer({
-    'class': 'train_flag',
-    }, name=name or 'train_flag')
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    return nn.make_layer(
+        {
+            "class": "train_flag",
+        },
+        name=name or "train_flag",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def global_train_step(
-                      *,
-                      name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Returns the global train step (int64 scalar).
+def global_train_step(*, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Returns the global train step (int64 scalar).
 
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  return nn.make_layer({
-    'class': 'global_train_step',
-    }, name=name or 'global_train_step')
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    return nn.make_layer(
+        {
+            "class": "global_train_step",
+        },
+        name=name or "global_train_step",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def forced_alignment(
-                     source: nn.Tensor,
-                     *,
-                     align_target: nn.Tensor,
-                     topology: str,
-                     input_type: str,
-                     blank_idx: int = NotSpecified,
-                     blank_included: bool = NotSpecified,
-                     name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Calculates a forced alignment, via Viterbi algorithm.
+    source: nn.Tensor,
+    *,
+    align_target: nn.Tensor,
+    topology: str,
+    input_type: str,
+    blank_idx: int = NotSpecified,
+    blank_included: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Calculates a forced alignment, via Viterbi algorithm.
 
-  :param nn.Tensor source:
-  :param nn.Tensor align_target:
-  :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
-  :param str input_type: "log_prob" or "prob"
-  :param int blank_idx: vocab index of the blank symbol
-  :param bool blank_included: whether blank token of the align target is included in the vocabulary
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'forced_alignment: unexpected type for source {source!r}, need tensor')
-  args = {
-    'align_target': align_target,
-    'topology': topology,
-    'input_type': input_type,
-    'blank_idx': blank_idx,
-    'blank_included': blank_included,
+    :param nn.Tensor source:
+    :param nn.Tensor align_target:
+    :param str topology: e.g. "ctc" or "rna" (RNA is CTC without label loop)
+    :param str input_type: "log_prob" or "prob"
+    :param int blank_idx: vocab index of the blank symbol
+    :param bool blank_included: whether blank token of the align target is included in the vocabulary
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"forced_alignment: unexpected type for source {source!r}, need tensor")
+    args = {
+        "align_target": align_target,
+        "topology": topology,
+        "input_type": input_type,
+        "blank_idx": blank_idx,
+        "blank_included": blank_included,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'forced_align',
-    'from': source,
-    **args}, name=name or 'forced_alignment')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "forced_align", "from": source, **args}, name=name or "forced_alignment")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def sparse_softmax_cross_entropy_with_logits(
-                                             *,
-                                             logits: nn.Tensor,
-                                             targets: nn.Tensor,
-                                             axis: nn.Dim,
-                                             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This is a simple wrapper for tf.nn.sparse_softmax_cross_entropy_with_logits.
+    *, logits: nn.Tensor, targets: nn.Tensor, axis: nn.Dim, name: Optional[Union[str, nn.NameCtx]] = None
+) -> nn.Tensor:
+    """
+    This is a simple wrapper for tf.nn.sparse_softmax_cross_entropy_with_logits.
 
-  :param nn.Tensor logits:
-  :param nn.Tensor targets:
-  :param nn.Dim axis: feature dim by default
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'logits': logits,
-    'targets': targets,
-    'axis': axis,
+    :param nn.Tensor logits:
+    :param nn.Tensor targets:
+    :param nn.Dim axis: feature dim by default
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    args = {
+        "logits": logits,
+        "targets": targets,
+        "axis": axis,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'sparse_softmax_cross_entropy_with_logits',
-    **args}, name=name or 'sparse_softmax_cross_entropy_with_logits')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer(
+        {"class": "sparse_softmax_cross_entropy_with_logits", **args},
+        name=name or "sparse_softmax_cross_entropy_with_logits",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def ctc_loss(
-             *,
-             logits: nn.Tensor,
-             targets: nn.Tensor,
-             blank_index: int = NotSpecified,
-             max_approx: bool = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Calculates the CTC loss.
+    *,
+    logits: nn.Tensor,
+    targets: nn.Tensor,
+    blank_index: int = NotSpecified,
+    max_approx: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Calculates the CTC loss.
 
-  Internally, this uses :func:`returnn.tf.native_op.ctc_loss`
-  which is equivalent to tf.nn.ctc_loss but more efficient.
+    Internally, this uses :func:`returnn.tf.native_op.ctc_loss`
+    which is equivalent to tf.nn.ctc_loss but more efficient.
 
-  Output is of shape [B].
+    Output is of shape [B].
 
-  :param nn.Tensor logits: (before softmax). shape [B,T,D]
-  :param nn.Tensor targets: sparse. shape [B,T]
-  :param int blank_index: vocab index of the blank symbol
-  :param bool max_approx: if True, use max instead of sum over alignments (max approx, Viterbi)
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'logits': logits,
-    'targets': targets,
-    'blank_index': blank_index,
-    'max_approx': max_approx,
+    :param nn.Tensor logits: (before softmax). shape [B,T,D]
+    :param nn.Tensor targets: sparse. shape [B,T]
+    :param int blank_index: vocab index of the blank symbol
+    :param bool max_approx: if True, use max instead of sum over alignments (max approx, Viterbi)
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    args = {
+        "logits": logits,
+        "targets": targets,
+        "blank_index": blank_index,
+        "max_approx": max_approx,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'ctc_loss',
-    **args}, name=name or 'ctc_loss')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "ctc_loss", **args}, name=name or "ctc_loss")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def fast_baum_welch(
-                    source: nn.Tensor,
-                    *,
-                    align_target: str,
-                    align_target_key: Optional[str] = NotSpecified,
-                    ctc_opts: Dict[str] = NotSpecified,
-                    sprint_opts: Dict[str] = NotSpecified,
-                    input_type: str = NotSpecified,
-                    tdp_scale: float = NotSpecified,
-                    am_scale: float = NotSpecified,
-                    min_prob: float = NotSpecified,
-                    staircase_seq_len_source: Optional[nn.Tensor] = NotSpecified,
-                    name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
-  We expect that our input are +log scores, e.g. use log-softmax.
+    source: nn.Tensor,
+    *,
+    align_target: str,
+    align_target_key: Optional[str] = NotSpecified,
+    ctc_opts: Dict[str] = NotSpecified,
+    sprint_opts: Dict[str] = NotSpecified,
+    input_type: str = NotSpecified,
+    tdp_scale: float = NotSpecified,
+    am_scale: float = NotSpecified,
+    min_prob: float = NotSpecified,
+    staircase_seq_len_source: Optional[nn.Tensor] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Calls :func:`fast_baum_welch` or :func:`fast_baum_welch_by_sprint_automata`.
+    We expect that our input are +log scores, e.g. use log-softmax.
 
-  :param nn.Tensor source:
-  :param str align_target: e.g. "sprint", "ctc" or "staircase"
-  :param str|None align_target_key: e.g. "classes", used for e.g. align_target "ctc"
-  :param dict[str] ctc_opts: used for align_target "ctc"
-  :param dict[str] sprint_opts: used for Sprint (RASR) for align_target "sprint"
-  :param str input_type: "log_prob" or "prob"
-  :param float tdp_scale:
-  :param float am_scale:
-  :param float min_prob: clips the minimum prob (value in [0,1])
-  :param nn.Tensor|None staircase_seq_len_source:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'fast_baum_welch: unexpected type for source {source!r}, need tensor')
-  args = {
-    'align_target': align_target,
-    'align_target_key': align_target_key,
-    'ctc_opts': ctc_opts,
-    'sprint_opts': sprint_opts,
-    'input_type': input_type,
-    'tdp_scale': tdp_scale,
-    'am_scale': am_scale,
-    'min_prob': min_prob,
-    'staircase_seq_len_source': staircase_seq_len_source,
+    :param nn.Tensor source:
+    :param str align_target: e.g. "sprint", "ctc" or "staircase"
+    :param str|None align_target_key: e.g. "classes", used for e.g. align_target "ctc"
+    :param dict[str] ctc_opts: used for align_target "ctc"
+    :param dict[str] sprint_opts: used for Sprint (RASR) for align_target "sprint"
+    :param str input_type: "log_prob" or "prob"
+    :param float tdp_scale:
+    :param float am_scale:
+    :param float min_prob: clips the minimum prob (value in [0,1])
+    :param nn.Tensor|None staircase_seq_len_source:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"fast_baum_welch: unexpected type for source {source!r}, need tensor")
+    args = {
+        "align_target": align_target,
+        "align_target_key": align_target_key,
+        "ctc_opts": ctc_opts,
+        "sprint_opts": sprint_opts,
+        "input_type": input_type,
+        "tdp_scale": tdp_scale,
+        "am_scale": am_scale,
+        "min_prob": min_prob,
+        "staircase_seq_len_source": staircase_seq_len_source,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'fast_bw',
-    'from': source,
-    **args}, name=name or 'fast_baum_welch')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "fast_bw", "from": source, **args}, name=name or "fast_baum_welch")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def synthetic_gradient(
-                       source: nn.Tensor,
-                       *,
-                       gradient: nn.Tensor,
-                       meta_loss_scale: float = NotSpecified,
-                       name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This is a generalized way to be able to replace the true gradient with any kind of predicted gradient.
-  This enabled to implement the idea from here:
-    Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
+    source: nn.Tensor,
+    *,
+    gradient: nn.Tensor,
+    meta_loss_scale: float = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This is a generalized way to be able to replace the true gradient with any kind of predicted gradient.
+    This enabled to implement the idea from here:
+      Decoupled Neural Interfaces using Synthetic Gradients, https://arxiv.org/abs/1608.05343
 
-  :param nn.Tensor source:
-  :param nn.Tensor gradient:
-  :param float meta_loss_scale:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'synthetic_gradient: unexpected type for source {source!r}, need tensor')
-  args = {
-    'gradient': gradient,
-    'meta_loss_scale': meta_loss_scale,
+    :param nn.Tensor source:
+    :param nn.Tensor gradient:
+    :param float meta_loss_scale:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"synthetic_gradient: unexpected type for source {source!r}, need tensor")
+    args = {
+        "gradient": gradient,
+        "meta_loss_scale": meta_loss_scale,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'synthetic_gradient',
-    'from': source,
-    **args}, name=name or 'synthetic_gradient')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "synthetic_gradient", "from": source, **args}, name=name or "synthetic_gradient")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def tikhonov_regularization(
-                            source: nn.Tensor,
-                            *,
-                            meta_loss_scale: float = NotSpecified,
-                            name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Adds the Tikhonov regularization as a meta-loss (see :class:`returnn.tf.util.basic.MetaLosses`).
+    source: nn.Tensor, *, meta_loss_scale: float = NotSpecified, name: Optional[Union[str, nn.NameCtx]] = None
+) -> nn.Tensor:
+    """
+    Adds the Tikhonov regularization as a meta-loss (see :class:`returnn.tf.util.basic.MetaLosses`).
 
-  :param nn.Tensor source:
-  :param float meta_loss_scale:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'tikhonov_regularization: unexpected type for source {source!r}, need tensor')
-  args = {
-    'meta_loss_scale': meta_loss_scale,
+    :param nn.Tensor source:
+    :param float meta_loss_scale:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"tikhonov_regularization: unexpected type for source {source!r}, need tensor")
+    args = {
+        "meta_loss_scale": meta_loss_scale,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'tikhonov_regularization',
-    'from': source,
-    **args}, name=name or 'tikhonov_regularization')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer(
+        {"class": "tikhonov_regularization", "from": source, **args}, name=name or "tikhonov_regularization"
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def print(
-          source: nn.Tensor,
-          *,
-          summarize: Optional[int] = NotSpecified,
-          extra_print_args: Union[Sequence, Sequence] = NotSpecified,
-          name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Prints the sources to console/log, via :func:`returnn.tf.util.basic.py_print`.
+    source: nn.Tensor,
+    *,
+    summarize: Optional[int] = NotSpecified,
+    extra_print_args: Union[Sequence, Sequence] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Prints the sources to console/log, via :func:`returnn.tf.util.basic.py_print`.
 
-  :param nn.Tensor source:
-  :param int|None summarize: passed to :func:`py_print`
-  :param list|tuple extra_print_args:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'print: unexpected type for source {source!r}, need tensor')
-  args = {
-    'summarize': summarize,
-    'extra_print_args': extra_print_args,
+    :param nn.Tensor source:
+    :param int|None summarize: passed to :func:`py_print`
+    :param list|tuple extra_print_args:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"print: unexpected type for source {source!r}, need tensor")
+    args = {
+        "summarize": summarize,
+        "extra_print_args": extra_print_args,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'print',
-    'from': source,
-    **args}, name=name or 'print')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "print", "from": source, **args}, name=name or "print")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def hdf_dump(
-             source: nn.Tensor,
-             *,
-             filename: Union[str, callable],
-             extra: Optional[Dict[str, nn.Tensor]] = NotSpecified,
-             dump_whole_batches: bool = NotSpecified,
-             labels: Optional[Sequence[str]] = NotSpecified,
-             extend_existing_file: bool = NotSpecified,
-             dump_per_run: bool = NotSpecified,
-             name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Dumps into HDF file, compatible to :class:`HDFDataset`.
+    source: nn.Tensor,
+    *,
+    filename: Union[str, callable],
+    extra: Optional[Dict[str, nn.Tensor]] = NotSpecified,
+    dump_whole_batches: bool = NotSpecified,
+    labels: Optional[Sequence[str]] = NotSpecified,
+    extend_existing_file: bool = NotSpecified,
+    dump_per_run: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Dumps into HDF file, compatible to :class:`HDFDataset`.
 
-  The HDF will be written to disk under the specified filename, if there was no error,
-  by default at graph reset, via :func:`TFNetwork.register_graph_reset_callback`.
-  Or after the dataset iteration run loop, with dump_per_run,
-  via :func:`TFNetwork.register_run_finished_callback`.
+    The HDF will be written to disk under the specified filename, if there was no error,
+    by default at graph reset, via :func:`TFNetwork.register_graph_reset_callback`.
+    Or after the dataset iteration run loop, with dump_per_run,
+    via :func:`TFNetwork.register_run_finished_callback`.
 
-  Common usage would be to add this to your network with "is_output_layer": True,
-  such that you don't need to make other layers depend on it.
+    Common usage would be to add this to your network with "is_output_layer": True,
+    such that you don't need to make other layers depend on it.
 
-  It currently uses :class:`SimpleHDFWriter` internally.
+    It currently uses :class:`SimpleHDFWriter` internally.
 
-  :param nn.Tensor source:
-  :param str|(()->str) filename:
-  :param None|dict[str,nn.Tensor] extra:
-  :param bool dump_whole_batches: dumps the whole batch as a single sequence into the HDF
-  :param list[str]|None labels:
-  :param bool extend_existing_file: True also means we expect that it exists
-  :param bool dump_per_run: write via :func:`TFNetwork.register_run_finished_callback`
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'hdf_dump: unexpected type for source {source!r}, need tensor')
-  args = {
-    'filename': filename,
-    'extra': extra,
-    'dump_whole_batches': dump_whole_batches,
-    'labels': labels,
-    'extend_existing_file': extend_existing_file,
-    'dump_per_run': dump_per_run,
+    :param nn.Tensor source:
+    :param str|(()->str) filename:
+    :param None|dict[str,nn.Tensor] extra:
+    :param bool dump_whole_batches: dumps the whole batch as a single sequence into the HDF
+    :param list[str]|None labels:
+    :param bool extend_existing_file: True also means we expect that it exists
+    :param bool dump_per_run: write via :func:`TFNetwork.register_run_finished_callback`
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"hdf_dump: unexpected type for source {source!r}, need tensor")
+    args = {
+        "filename": filename,
+        "extra": extra,
+        "dump_whole_batches": dump_whole_batches,
+        "labels": labels,
+        "extend_existing_file": extend_existing_file,
+        "dump_per_run": dump_per_run,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'hdf_dump',
-    'from': source,
-    **args}, name=name or 'hdf_dump')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "hdf_dump", "from": source, **args}, name=name or "hdf_dump")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def _get_last_hidden_state(
-                           source: nn.Tensor,
-                           *,
-                           out_dim: Optional[nn.Dim] = NotSpecified,
-                           combine: str = NotSpecified,
-                           key: Optional[Union[str, int]] = NotSpecified,
-                           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Will combine (concat or add or so) all the last hidden states from all sources.
+    source: nn.Tensor,
+    *,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    combine: str = NotSpecified,
+    key: Optional[Union[str, int]] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Will combine (concat or add or so) all the last hidden states from all sources.
 
-  :param nn.Tensor source:
-  :param nn.Dim|None out_dim:
-  :param str combine: "concat" or "add"
-  :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'_get_last_hidden_state: unexpected type for source {source!r}, need tensor')
-  args = {
-    'out_dim': out_dim,
-    'combine': combine,
-    'key': key,
+    :param nn.Tensor source:
+    :param nn.Dim|None out_dim:
+    :param str combine: "concat" or "add"
+    :param str|int|None key: for the state, which could be a namedtuple. see :func:`RnnCellLayer.get_state_by_key`
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"_get_last_hidden_state: unexpected type for source {source!r}, need tensor")
+    args = {
+        "out_dim": out_dim,
+        "combine": combine,
+        "key": key,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'get_last_hidden_state',
-    'from': source,
-    **args}, name=name or 'get_last_hidden_state')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer(
+        {"class": "get_last_hidden_state", "from": source, **args}, name=name or "get_last_hidden_state"
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_unstack(
-                source: nn.Tensor,
-                *,
-                axis: nn.Dim,
-                declare_rec_time: bool = NotSpecified,
-                name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This is supposed to be used inside a :class:`RecLayer`.
-  The input is supposed to be outside the rec layer (i.e. via ``base:``).
-  Uses tf.TensorArray and then unstack on the inputs to make it available per-frame.
-  This is an alternative to making some input to the rec layer,
-  such that the rec layer can have multiple inputs (as long as they have the same time dim).
+    source: nn.Tensor,
+    *,
+    axis: nn.Dim,
+    declare_rec_time: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This is supposed to be used inside a :class:`RecLayer`.
+    The input is supposed to be outside the rec layer (i.e. via ``base:``).
+    Uses tf.TensorArray and then unstack on the inputs to make it available per-frame.
+    This is an alternative to making some input to the rec layer,
+    such that the rec layer can have multiple inputs (as long as they have the same time dim).
 
-  Note that due to automatic optimization, this layer will be optimized out of the rec loop anyway,
-  and then the tf.TensorArray logic happens internally in RecLayer,
-  thus we do not need to care about this here.
-  (See get_input_moved_out for some internal handling.)
+    Note that due to automatic optimization, this layer will be optimized out of the rec loop anyway,
+    and then the tf.TensorArray logic happens internally in RecLayer,
+    thus we do not need to care about this here.
+    (See get_input_moved_out for some internal handling.)
 
-  Effectively, this layer is very similar to :class:`CopyLayer`,
-  with the only special behavior that it checks (or even assigns) the loop dimension of RecLayer.
+    Effectively, this layer is very similar to :class:`CopyLayer`,
+    with the only special behavior that it checks (or even assigns) the loop dimension of RecLayer.
 
-  Due to automatic optimization, not much happens here.
-  The real logic happens in :func:`get_out_data_from_opts`.
+    Due to automatic optimization, not much happens here.
+    The real logic happens in :func:`get_out_data_from_opts`.
 
-  Note that it is allowed to leave both `axis` and `declare_rec_time` unset,
-  in case you assign `axis` to the rec layer, and the source here has the same axis (dim tag).
+    Note that it is allowed to leave both `axis` and `declare_rec_time` unset,
+    in case you assign `axis` to the rec layer, and the source here has the same axis (dim tag).
 
-  :param nn.Tensor source:
-  :param nn.Dim axis:
-  :param bool declare_rec_time:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'rec_unstack: unexpected type for source {source!r}, need tensor')
-  args = {
-    'axis': axis,
-    'declare_rec_time': declare_rec_time,
+    :param nn.Tensor source:
+    :param nn.Dim axis:
+    :param bool declare_rec_time:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"rec_unstack: unexpected type for source {source!r}, need tensor")
+    args = {
+        "axis": axis,
+        "declare_rec_time": declare_rec_time,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'rec_unstack',
-    'from': source,
-    **args}, name=name or 'rec_unstack')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "rec_unstack", "from": source, **args}, name=name or "rec_unstack")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def choice(
-           source: nn.Tensor,
-           *,
-           target: Optional[nn.Tensor] = NotSpecified,
-           beam_size: int,
-           keep_beams: bool = NotSpecified,
-           search: Union[NotSpecified, bool] = NotSpecified,
-           add_to_beam_scores: Union[NotSpecified, bool] = NotSpecified,
-           input_type: str = NotSpecified,
-           prob_scale: float = NotSpecified,
-           base_beam_score_scale: float = NotSpecified,
-           random_sample_scale: float = NotSpecified,
-           length_normalization: bool = NotSpecified,
-           length_normalization_exponent: Any = NotSpecified,
-           custom_score_combine: Optional[callable] = NotSpecified,
-           source_beam_sizes: Optional[Sequence[int]] = NotSpecified,
-           scheduled_sampling: Optional[Dict] = NotSpecified,
-           cheating: Union[bool, str] = NotSpecified,
-           explicit_search_sources: Optional[Sequence[nn.Tensor]] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This layer represents a choice to be made in search during inference,
-  such as choosing the top-k outputs from a log-softmax for beam search.
-  During training, this layer can return the true label.
-  This is supposed to be used inside the rec layer.
-  This can be extended in various ways.
+    source: nn.Tensor,
+    *,
+    target: Optional[nn.Tensor] = NotSpecified,
+    beam_size: int,
+    keep_beams: bool = NotSpecified,
+    search: Union[NotSpecified, bool] = NotSpecified,
+    add_to_beam_scores: Union[NotSpecified, bool] = NotSpecified,
+    input_type: str = NotSpecified,
+    prob_scale: float = NotSpecified,
+    base_beam_score_scale: float = NotSpecified,
+    random_sample_scale: float = NotSpecified,
+    length_normalization: bool = NotSpecified,
+    length_normalization_exponent: Any = NotSpecified,
+    custom_score_combine: Optional[callable] = NotSpecified,
+    source_beam_sizes: Optional[Sequence[int]] = NotSpecified,
+    scheduled_sampling: Optional[Dict] = NotSpecified,
+    cheating: Union[bool, str] = NotSpecified,
+    explicit_search_sources: Optional[Sequence[nn.Tensor]] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This layer represents a choice to be made in search during inference,
+    such as choosing the top-k outputs from a log-softmax for beam search.
+    During training, this layer can return the true label.
+    This is supposed to be used inside the rec layer.
+    This can be extended in various ways.
 
-  We present the scores in +log space, and we will add them up along the path.
-  Assume that we get input (batch,dim) from a (log-)softmax.
-  Assume that each batch is already a choice via search.
-  In search with a beam size of N, we would output
-  sparse (batch=N,) and scores for each.
+    We present the scores in +log space, and we will add them up along the path.
+    Assume that we get input (batch,dim) from a (log-)softmax.
+    Assume that each batch is already a choice via search.
+    In search with a beam size of N, we would output
+    sparse (batch=N,) and scores for each.
 
-  In case of multiple sources, this layer computes the top-k combinations of choices. The score of such a combination
-  is determined by adding up the (log-space) scores of the choices for the individual sources. In this case, the
-  'target' parameter of the layer has to be set to a list of targets corresponding to the sources respectively. Because
-  computing all possible combinations of source scores is costly, the sources are pruned beforehand using the beam
-  sizes set by the 'source_beam_sizes' parameter. The choices made for the different sources can be accessed via the
-  sublayers '<choice layer name>/out_0', '<choice layer name>/out_1' and so on.
-  Note, that the way scores are combined assumes the sources to be independent. If you want to model a dependency,
-  use separate ChoiceLayers and let the input of one depend on the output of the other.
+    In case of multiple sources, this layer computes the top-k combinations of choices. The score of such a combination
+    is determined by adding up the (log-space) scores of the choices for the individual sources. In this case, the
+    'target' parameter of the layer has to be set to a list of targets corresponding to the sources respectively. Because
+    computing all possible combinations of source scores is costly, the sources are pruned beforehand using the beam
+    sizes set by the 'source_beam_sizes' parameter. The choices made for the different sources can be accessed via the
+    sublayers '<choice layer name>/out_0', '<choice layer name>/out_1' and so on.
+    Note, that the way scores are combined assumes the sources to be independent. If you want to model a dependency,
+    use separate ChoiceLayers and let the input of one depend on the output of the other.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|None target: target
-  :param int beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
-  :param bool keep_beams: specifies that we keep the beam_in entries,
-    i.e. we just expand, i.e. we just search on the dim. beam_size must be a multiple of beam_in.
-  :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
-    If not specified, it will depend on `network.search_flag`.
-  :param NotSpecified|bool add_to_beam_scores: whether to add the scores to the beam scores.
-    This will be done with search obviously (not supported to not do it).
-    Without search, we can still add the scores of the ground-truth labels to the beam.
-    By default, this is derived from `search or network.search_flag`.
-    So with enabled net search flag, even when `search` is disabled here, it will add the scores.
-  :param str input_type: "prob", "log_prob" or "logits", whether the input is in probability space, log-space, etc.
-    or "regression", if it is a prediction of the data as-is. If there are several inputs, same format
-    for all is assumed.
-  :param float prob_scale: factor for prob (score in +log space from source)
-  :param float base_beam_score_scale: factor for beam base score (i.e. prev prob scores)
-  :param float random_sample_scale: if >0, will add Gumbel scores. you might want to set base_beam_score_scale=0
-  :param bool length_normalization: evaluates score_t/len in search
-  :param length_normalization_exponent:
-  :param callable|None custom_score_combine:
-  :param list[int]|None source_beam_sizes: If there are several sources, they are pruned with these beam sizes
-     before combination. If None, 'beam_size' is used for all sources. Has to have same length as number of sources.
-  :param dict|None scheduled_sampling:
-  :param bool|str cheating: if True, will always add the true target in the beam.
-    if "exclusive", enables cheating_exclusive. see :func:`returnn.tf.util.basic.beam_search`.
-  :param list[nn.Tensor]|None explicit_search_sources: will mark it as an additional dependency.
-    You might use these also in custom_score_combine.
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'choice: unexpected type for source {source!r}, need tensor')
-  args = {
-    'target': target,
-    'beam_size': beam_size,
-    'keep_beams': keep_beams,
-    'search': search,
-    'add_to_beam_scores': add_to_beam_scores,
-    'input_type': input_type,
-    'prob_scale': prob_scale,
-    'base_beam_score_scale': base_beam_score_scale,
-    'random_sample_scale': random_sample_scale,
-    'length_normalization': length_normalization,
-    'length_normalization_exponent': length_normalization_exponent,
-    'custom_score_combine': custom_score_combine,
-    'source_beam_sizes': source_beam_sizes,
-    'scheduled_sampling': scheduled_sampling,
-    'cheating': cheating,
-    'explicit_search_sources': explicit_search_sources,
+    :param nn.Tensor source:
+    :param nn.Tensor|None target: target
+    :param int beam_size: the outgoing beam size. i.e. our output will be (batch * beam_size, ...)
+    :param bool keep_beams: specifies that we keep the beam_in entries,
+      i.e. we just expand, i.e. we just search on the dim. beam_size must be a multiple of beam_in.
+    :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
+      If not specified, it will depend on `network.search_flag`.
+    :param NotSpecified|bool add_to_beam_scores: whether to add the scores to the beam scores.
+      This will be done with search obviously (not supported to not do it).
+      Without search, we can still add the scores of the ground-truth labels to the beam.
+      By default, this is derived from `search or network.search_flag`.
+      So with enabled net search flag, even when `search` is disabled here, it will add the scores.
+    :param str input_type: "prob", "log_prob" or "logits", whether the input is in probability space, log-space, etc.
+      or "regression", if it is a prediction of the data as-is. If there are several inputs, same format
+      for all is assumed.
+    :param float prob_scale: factor for prob (score in +log space from source)
+    :param float base_beam_score_scale: factor for beam base score (i.e. prev prob scores)
+    :param float random_sample_scale: if >0, will add Gumbel scores. you might want to set base_beam_score_scale=0
+    :param bool length_normalization: evaluates score_t/len in search
+    :param length_normalization_exponent:
+    :param callable|None custom_score_combine:
+    :param list[int]|None source_beam_sizes: If there are several sources, they are pruned with these beam sizes
+       before combination. If None, 'beam_size' is used for all sources. Has to have same length as number of sources.
+    :param dict|None scheduled_sampling:
+    :param bool|str cheating: if True, will always add the true target in the beam.
+      if "exclusive", enables cheating_exclusive. see :func:`returnn.tf.util.basic.beam_search`.
+    :param list[nn.Tensor]|None explicit_search_sources: will mark it as an additional dependency.
+      You might use these also in custom_score_combine.
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"choice: unexpected type for source {source!r}, need tensor")
+    args = {
+        "target": target,
+        "beam_size": beam_size,
+        "keep_beams": keep_beams,
+        "search": search,
+        "add_to_beam_scores": add_to_beam_scores,
+        "input_type": input_type,
+        "prob_scale": prob_scale,
+        "base_beam_score_scale": base_beam_score_scale,
+        "random_sample_scale": random_sample_scale,
+        "length_normalization": length_normalization,
+        "length_normalization_exponent": length_normalization_exponent,
+        "custom_score_combine": custom_score_combine,
+        "source_beam_sizes": source_beam_sizes,
+        "scheduled_sampling": scheduled_sampling,
+        "cheating": cheating,
+        "explicit_search_sources": explicit_search_sources,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'choice',
-    'from': source,
-    **args}, name=name or 'choice')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "choice", "from": source, **args}, name=name or "choice")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def decide(
-           source: nn.Tensor,
-           *,
-           length_normalization: bool = NotSpecified,
-           search: Union[NotSpecified, bool] = NotSpecified,
-           add_to_beam_scores: Union[NotSpecified, bool] = NotSpecified,
-           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  This is kind of the counter-part to the choice layer.
-  This only has an effect in search mode.
-  E.g. assume that the input is of shape (batch * beam, time, dim)
-  and has search_sources set.
-  Then this will output (batch, time, dim) where the beam with the highest score is selected.
-  Thus, this will do a decision based on the scores.
-  In will convert the data to batch-major mode.
+    source: nn.Tensor,
+    *,
+    length_normalization: bool = NotSpecified,
+    search: Union[NotSpecified, bool] = NotSpecified,
+    add_to_beam_scores: Union[NotSpecified, bool] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    This is kind of the counter-part to the choice layer.
+    This only has an effect in search mode.
+    E.g. assume that the input is of shape (batch * beam, time, dim)
+    and has search_sources set.
+    Then this will output (batch, time, dim) where the beam with the highest score is selected.
+    Thus, this will do a decision based on the scores.
+    In will convert the data to batch-major mode.
 
-  :param nn.Tensor source:
-  :param bool length_normalization: performed on the beam scores
-  :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
-    If not specified, it will depend on `network.search_flag`.
-  :param NotSpecified|bool add_to_beam_scores: whether to add the scores to the beam scores.
-    This will be done with search obviously (not supported to not do it).
-    Without search, we can still add the scores of the ground-truth labels to the beam.
-    By default, this is derived from `search or network.search_flag`.
-    So with enabled net search flag, even when `search` is disabled here, it will add the scores.
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'decide: unexpected type for source {source!r}, need tensor')
-  args = {
-    'length_normalization': length_normalization,
-    'search': search,
-    'add_to_beam_scores': add_to_beam_scores,
+    :param nn.Tensor source:
+    :param bool length_normalization: performed on the beam scores
+    :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
+      If not specified, it will depend on `network.search_flag`.
+    :param NotSpecified|bool add_to_beam_scores: whether to add the scores to the beam scores.
+      This will be done with search obviously (not supported to not do it).
+      Without search, we can still add the scores of the ground-truth labels to the beam.
+      By default, this is derived from `search or network.search_flag`.
+      So with enabled net search flag, even when `search` is disabled here, it will add the scores.
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"decide: unexpected type for source {source!r}, need tensor")
+    args = {
+        "length_normalization": length_normalization,
+        "search": search,
+        "add_to_beam_scores": add_to_beam_scores,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'decide',
-    'from': source,
-    **args}, name=name or 'decide')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "decide", "from": source, **args}, name=name or "decide")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def choice_get_beam_scores(
-                           source: nn.Tensor,
-                           *,
-                           name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Gets beam scores from :class:`SearchChoices`.
-  This requires that the source has search choices.
+def choice_get_beam_scores(source: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Gets beam scores from :class:`SearchChoices`.
+    This requires that the source has search choices.
 
-  .. note::
+    .. note::
 
-    This layer might be deprecated in the future.
+      This layer might be deprecated in the future.
 
 
-  :param nn.Tensor source:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'choice_get_beam_scores: unexpected type for source {source!r}, need tensor')
-  return nn.make_layer({
-    'class': 'choice_get_beam_scores',
-    'from': source,
-    }, name=name or 'choice_get_beam_scores')
+    :param nn.Tensor source:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"choice_get_beam_scores: unexpected type for source {source!r}, need tensor")
+    return nn.make_layer(
+        {
+            "class": "choice_get_beam_scores",
+            "from": source,
+        },
+        name=name or "choice_get_beam_scores",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
-def choice_get_src_beams(
-                         source: nn.Tensor,
-                         *,
-                         name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Gets source beam indices from :class:`SearchChoices`.
-  This requires that the source has search choices.
+def choice_get_src_beams(source: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
+    """
+    Gets source beam indices from :class:`SearchChoices`.
+    This requires that the source has search choices.
 
-  :param nn.Tensor source:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'choice_get_src_beams: unexpected type for source {source!r}, need tensor')
-  return nn.make_layer({
-    'class': 'choice_get_src_beams',
-    'from': source,
-    }, name=name or 'choice_get_src_beams')
+    :param nn.Tensor source:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"choice_get_src_beams: unexpected type for source {source!r}, need tensor")
+    return nn.make_layer(
+        {
+            "class": "choice_get_src_beams",
+            "from": source,
+        },
+        name=name or "choice_get_src_beams",
+    )
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def split_batch_beam(
-                     source: nn.Tensor,
-                     *,
-                     beam_dim: Optional[nn.Dim] = NotSpecified,
-                     search: Union[NotSpecified, bool] = NotSpecified,
-                     add_to_beam_scores: Union[NotSpecified, bool] = NotSpecified,
-                     name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim]:
-  """
-  Splits the batch dimension of the input, which includes a beam, into (batch,beam).
+    source: nn.Tensor,
+    *,
+    beam_dim: Optional[nn.Dim] = NotSpecified,
+    search: Union[NotSpecified, bool] = NotSpecified,
+    add_to_beam_scores: Union[NotSpecified, bool] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim]:
+    """
+    Splits the batch dimension of the input, which includes a beam, into (batch,beam).
 
-  Like :class:`DecideLayer`, this removes the beam.
+    Like :class:`DecideLayer`, this removes the beam.
 
-  :param nn.Tensor source:
-  :param nn.Dim|None beam_dim:
-  :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
-    If not specified, it will depend on `network.search_flag`.
-  :param NotSpecified|bool add_to_beam_scores: whether to add the scores to the beam scores.
-    This will be done with search obviously (not supported to not do it).
-    Without search, we can still add the scores of the ground-truth labels to the beam.
-    By default, this is derived from `search or network.search_flag`.
-    So with enabled net search flag, even when `search` is disabled here, it will add the scores.
-  :param str|nn.NameCtx|None name:
-  :return: layer, beam_dim
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'split_batch_beam: unexpected type for source {source!r}, need tensor')
-  if beam_dim is None or beam_dim is NotSpecified:
-    beam_dim = nn.SpatialDim(f"{_name_str(name, 'split_batch_beam')}:beam_dim")
-  args = {
-    'beam_dim': beam_dim,
-    'search': search,
-    'add_to_beam_scores': add_to_beam_scores,
+    :param nn.Tensor source:
+    :param nn.Dim|None beam_dim:
+    :param NotSpecified|bool search: whether to perform search, or use the ground truth (`target` option).
+      If not specified, it will depend on `network.search_flag`.
+    :param NotSpecified|bool add_to_beam_scores: whether to add the scores to the beam scores.
+      This will be done with search obviously (not supported to not do it).
+      Without search, we can still add the scores of the ground-truth labels to the beam.
+      By default, this is derived from `search or network.search_flag`.
+      So with enabled net search flag, even when `search` is disabled here, it will add the scores.
+    :param str|nn.NameCtx|None name:
+    :return: layer, beam_dim
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"split_batch_beam: unexpected type for source {source!r}, need tensor")
+    if beam_dim is None or beam_dim is NotSpecified:
+        beam_dim = nn.SpatialDim(f"{_name_str(name, 'split_batch_beam')}:beam_dim")
+    args = {
+        "beam_dim": beam_dim,
+        "search": search,
+        "add_to_beam_scores": add_to_beam_scores,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  layer = nn.make_layer({
-    'class': 'split_batch_beam',
-    'from': source,
-    **args}, name=name or 'split_batch_beam')
-  return layer, beam_dim
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    layer = nn.make_layer({"class": "split_batch_beam", "from": source, **args}, name=name or "split_batch_beam")
+    return layer, beam_dim
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def positional_encoding(
-                        source: nn.Tensor,
-                        *,
-                        out_dim: nn.Dim,
-                        axis: Union[nn.Dim, NotSpecified],
-                        add_to_input: bool = NotSpecified,
-                        constant: int = NotSpecified,
-                        offset: Optional[nn.Tensor] = NotSpecified,
-                        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Provides positional encoding in the form of (batch, time, n_out) or (time, batch, n_out)
-  where n_out is the number of channels, if it is run outside a :class:`RecLayer`,
-  and (batch, n_out) or (n_out, batch)
-  if run inside a :class:`RecLayer`, where it will depend on the current time frame.
+    source: nn.Tensor,
+    *,
+    out_dim: nn.Dim,
+    axis: Union[nn.Dim, NotSpecified],
+    add_to_input: bool = NotSpecified,
+    constant: int = NotSpecified,
+    offset: Optional[nn.Tensor] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Provides positional encoding in the form of (batch, time, n_out) or (time, batch, n_out)
+    where n_out is the number of channels, if it is run outside a :class:`RecLayer`,
+    and (batch, n_out) or (n_out, batch)
+    if run inside a :class:`RecLayer`, where it will depend on the current time frame.
 
-  Assumes one source input with a time dimension if outside a :class:`RecLayer`.
-  With `add_to_input`, it will calculate `x + input`, and the output shape is the same as the input
+    Assumes one source input with a time dimension if outside a :class:`RecLayer`.
+    With `add_to_input`, it will calculate `x + input`, and the output shape is the same as the input
 
-  The positional encoding is the same as in Tensor2Tensor.
-  See :func:`returnn.tf.util.basic.get_positional_encoding`.
+    The positional encoding is the same as in Tensor2Tensor.
+    See :func:`returnn.tf.util.basic.get_positional_encoding`.
 
-  :param nn.Tensor source:
-  :param nn.Dim out_dim: output feature dimension
-  :param nn.Dim|NotSpecified axis: if not specified, check for time_dim_axis, otherwise assume rec step
-  :param bool add_to_input: will add the signal to the input
-  :param int constant: if positive, always output the corresponding positional encoding.
-  :param None|nn.Tensor offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'positional_encoding: unexpected type for source {source!r}, need tensor')
-  args = {
-    'out_dim': out_dim,
-    'axis': axis,
-    'add_to_input': add_to_input,
-    'constant': constant,
-    'offset': offset,
+    :param nn.Tensor source:
+    :param nn.Dim out_dim: output feature dimension
+    :param nn.Dim|NotSpecified axis: if not specified, check for time_dim_axis, otherwise assume rec step
+    :param bool add_to_input: will add the signal to the input
+    :param int constant: if positive, always output the corresponding positional encoding.
+    :param None|nn.Tensor offset: Specify the offset to be added to positions. Expect shape (batch, time) or (batch,).
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"positional_encoding: unexpected type for source {source!r}, need tensor")
+    args = {
+        "out_dim": out_dim,
+        "axis": axis,
+        "add_to_input": add_to_input,
+        "constant": constant,
+        "offset": offset,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'positional_encoding',
-    'from': source,
-    **args}, name=name or 'positional_encoding')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "positional_encoding", "from": source, **args}, name=name or "positional_encoding")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def ken_lm_state(
-                 source: nn.Tensor,
-                 *,
-                 state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
-                 lm_file: callable,
-                 vocab_file: Optional[str] = NotSpecified,
-                 vocab_unknown_label: str = NotSpecified,
-                 bpe_merge_symbol: Optional[str] = NotSpecified,
-                 axis: Union[nn.Dim, NotSpecified],
-                 input_step_offset: int = NotSpecified,
-                 dense_output: bool = NotSpecified,
-                 debug: bool = NotSpecified,
-                 name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.LayerState]:
-  """
-  Get next word (or subword) each frame,
-  accumulates string,
-  keeps state of seen string so far,
-  returns score (+log space, natural base e) of sequence,
-  using KenLM (https://kheafield.com/code/kenlm/) (see :mod:`TFKenLM`).
-  EOS (</s>) token must be used explicitly.
+    source: nn.Tensor,
+    *,
+    state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
+    lm_file: callable,
+    vocab_file: Optional[str] = NotSpecified,
+    vocab_unknown_label: str = NotSpecified,
+    bpe_merge_symbol: Optional[str] = NotSpecified,
+    axis: Union[nn.Dim, NotSpecified],
+    input_step_offset: int = NotSpecified,
+    dense_output: bool = NotSpecified,
+    debug: bool = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.LayerState]:
+    """
+    Get next word (or subword) each frame,
+    accumulates string,
+    keeps state of seen string so far,
+    returns score (+log space, natural base e) of sequence,
+    using KenLM (https://kheafield.com/code/kenlm/) (see :mod:`TFKenLM`).
+    EOS (</s>) token must be used explicitly.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
-  :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
-  :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
-  :param str vocab_unknown_label: for the vocabulary
-  :param str|None bpe_merge_symbol: e.g. "@@" if you want to apply BPE merging
-  :param nn.Dim|NotSpecified axis:
-  :param int input_step_offset: if provided, will consider the input only from this step onwards
-  :param bool dense_output: whether we output the score for all possible succeeding tokens
-  :param bool debug: prints debug info
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_state
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'ken_lm_state: unexpected type for source {source!r}, need tensor')
-  args = {
-    'lm_file': lm_file,
-    'vocab_file': vocab_file,
-    'vocab_unknown_label': vocab_unknown_label,
-    'bpe_merge_symbol': bpe_merge_symbol,
-    'axis': axis,
-    'input_step_offset': input_step_offset,
-    'dense_output': dense_output,
-    'debug': debug,
+    :param nn.Tensor source:
+    :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
+    :param str|()->str lm_file: ARPA file or so. whatever KenLM supports
+    :param str|None vocab_file: if the inputs are symbols, this must be provided. see :class:`Vocabulary`
+    :param str vocab_unknown_label: for the vocabulary
+    :param str|None bpe_merge_symbol: e.g. "@@" if you want to apply BPE merging
+    :param nn.Dim|NotSpecified axis:
+    :param int input_step_offset: if provided, will consider the input only from this step onwards
+    :param bool dense_output: whether we output the score for all possible succeeding tokens
+    :param bool debug: prints debug info
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_state
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"ken_lm_state: unexpected type for source {source!r}, need tensor")
+    args = {
+        "lm_file": lm_file,
+        "vocab_file": vocab_file,
+        "vocab_unknown_label": vocab_unknown_label,
+        "bpe_merge_symbol": bpe_merge_symbol,
+        "axis": axis,
+        "input_step_offset": input_step_offset,
+        "dense_output": dense_output,
+        "debug": debug,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
-  layer = nn.make_layer({
-    'class': 'kenlm',
-    'from': source,
-    **args}, name=name or 'ken_lm_state')
-  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_state
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
+    layer = nn.make_layer({"class": "kenlm", "from": source, **args}, name=name or "ken_lm_state")
+    out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+    return layer, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def edit_distance(
-                  *,
-                  a: nn.Tensor,
-                  b: nn.Tensor,
-                  a_spatial_dim: Optional[nn.Dim] = NotSpecified,
-                  b_spatial_dim: Optional[nn.Dim] = NotSpecified,
-                  name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  Edit distance, also known as Levenshtein distance,
-  or in case of words, word error rate (WER),
-  or in case of characters, character error rate (CER).
+    *,
+    a: nn.Tensor,
+    b: nn.Tensor,
+    a_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    b_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    Edit distance, also known as Levenshtein distance,
+    or in case of words, word error rate (WER),
+    or in case of characters, character error rate (CER).
 
-  This will not normalize the result, i.e. return the absolut minimal number of edits
-  (add, delete, replace) to transform the first string into the second string.
-  For WER/CER, it is common to normalize by the length of the target string,
-  but accumulated per epoch.
+    This will not normalize the result, i.e. return the absolut minimal number of edits
+    (add, delete, replace) to transform the first string into the second string.
+    For WER/CER, it is common to normalize by the length of the target string,
+    but accumulated per epoch.
 
-  :param nn.Tensor a:
-  :param nn.Tensor b:
-  :param nn.Dim|None a_spatial_dim:
-  :param nn.Dim|None b_spatial_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  args = {
-    'a': a,
-    'b': b,
-    'a_spatial_dim': a_spatial_dim,
-    'b_spatial_dim': b_spatial_dim,
+    :param nn.Tensor a:
+    :param nn.Tensor b:
+    :param nn.Dim|None a_spatial_dim:
+    :param nn.Dim|None b_spatial_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    args = {
+        "a": a,
+        "b": b,
+        "a_spatial_dim": a_spatial_dim,
+        "b_spatial_dim": b_spatial_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'edit_distance',
-    **args}, name=name or 'edit_distance')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "edit_distance", **args}, name=name or "edit_distance")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def edit_distance_table(
-                        source: nn.Tensor,
-                        *,
-                        state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
-                        axis: Union[nn.Dim, NotSpecified],
-                        debug: bool = NotSpecified,
-                        blank_idx: Optional[int] = NotSpecified,
-                        out_dim: Optional[nn.Dim] = NotSpecified,
-                        name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
-  """
-  Given a source and a target, calculates the edit distance table between them.
-  Source can be inside a recurrent loop.
-  It uses :func:`TFNativeOp.next_edit_distance_row`.
+    source: nn.Tensor,
+    *,
+    state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
+    axis: Union[nn.Dim, NotSpecified],
+    debug: bool = NotSpecified,
+    blank_idx: Optional[int] = NotSpecified,
+    out_dim: Optional[nn.Dim] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
+    """
+    Given a source and a target, calculates the edit distance table between them.
+    Source can be inside a recurrent loop.
+    It uses :func:`TFNativeOp.next_edit_distance_row`.
 
-  Usually, if you are inside a rec layer, and "output" is the :class:`ChoiceLayer`,
-  you would use "from": "output"
-  and "target": "layer:base:data:target" (make sure it has the time dimension).
+    Usually, if you are inside a rec layer, and "output" is the :class:`ChoiceLayer`,
+    you would use "from": "output"
+    and "target": "layer:base:data:target" (make sure it has the time dimension).
 
-  See also :class:`OptimalCompletionsLayer`.
+    See also :class:`OptimalCompletionsLayer`.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
-  :param nn.Dim|NotSpecified axis:
-  :param bool debug:
-  :param int|None blank_idx: if given, will keep the same row for this source label
-  :param nn.Dim|None out_dim:
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_dim, out_state
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'edit_distance_table: unexpected type for source {source!r}, need tensor')
-  if out_dim is None or out_dim is NotSpecified:
-    out_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'edit_distance_table')}:out_dim")
-  args = {
-    'axis': axis,
-    'debug': debug,
-    'blank_idx': blank_idx,
-    'out_dim': out_dim,
+    :param nn.Tensor source:
+    :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
+    :param nn.Dim|NotSpecified axis:
+    :param bool debug:
+    :param int|None blank_idx: if given, will keep the same row for this source label
+    :param nn.Dim|None out_dim:
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_dim, out_state
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"edit_distance_table: unexpected type for source {source!r}, need tensor")
+    if out_dim is None or out_dim is NotSpecified:
+        out_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'edit_distance_table')}:out_dim")
+    args = {
+        "axis": axis,
+        "debug": debug,
+        "blank_idx": blank_idx,
+        "out_dim": out_dim,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
-  layer = nn.make_layer({
-    'class': 'edit_distance_table',
-    'from': source,
-    **args}, name=name or 'edit_distance_table')
-  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_dim, out_state
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
+    layer = nn.make_layer({"class": "edit_distance_table", "from": source, **args}, name=name or "edit_distance_table")
+    out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+    return layer, out_dim, out_state
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def optimal_completions(
-                        source: nn.Tensor,
-                        *,
-                        debug: bool = NotSpecified,
-                        blank_idx: Optional[int] = NotSpecified,
-                        name: Optional[Union[str, nn.NameCtx]] = None) -> nn.Tensor:
-  """
-  We expect to get the inputs from :class:`EditDistanceTableLayer`, esp from the prev frame, like this:
-  "opt_completions": {"class": "optimal_completions", "from": "prev:edit_dist_table"}.
+    source: nn.Tensor,
+    *,
+    debug: bool = NotSpecified,
+    blank_idx: Optional[int] = NotSpecified,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> nn.Tensor:
+    """
+    We expect to get the inputs from :class:`EditDistanceTableLayer`, esp from the prev frame, like this:
+    "opt_completions": {"class": "optimal_completions", "from": "prev:edit_dist_table"}.
 
-  You can also then define this further layer:
-  "opt_completion_soft_targets": {
-    "class": "eval", "eval": "tf.nn.softmax(tf.cast(source(0), tf.float32))",
-    "from": "opt_completions", "out_type": {"dtype": "float32"}},
-  and use that as the :class:`CrossEntropyLoss` soft targets
-  for the input of the "output" :class:`ChoiceLayer`, e.g. "output_prob".
-  This makes most sense when you enable beam search (even, or esp, during training).
-  Note that you probably want to have this all before the last choice, where you still have more beams open.
+    You can also then define this further layer:
+    "opt_completion_soft_targets": {
+      "class": "eval", "eval": "tf.nn.softmax(tf.cast(source(0), tf.float32))",
+      "from": "opt_completions", "out_type": {"dtype": "float32"}},
+    and use that as the :class:`CrossEntropyLoss` soft targets
+    for the input of the "output" :class:`ChoiceLayer`, e.g. "output_prob".
+    This makes most sense when you enable beam search (even, or esp, during training).
+    Note that you probably want to have this all before the last choice, where you still have more beams open.
 
-  :param nn.Tensor source:
-  :param bool debug:
-  :param int|None blank_idx:
-  :param str|nn.NameCtx|None name:
-  :return: layer
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'optimal_completions: unexpected type for source {source!r}, need tensor')
-  args = {
-    'debug': debug,
-    'blank_idx': blank_idx,
+    :param nn.Tensor source:
+    :param bool debug:
+    :param int|None blank_idx:
+    :param str|nn.NameCtx|None name:
+    :return: layer
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"optimal_completions: unexpected type for source {source!r}, need tensor")
+    args = {
+        "debug": debug,
+        "blank_idx": blank_idx,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  return nn.make_layer({
-    'class': 'optimal_completions',
-    'from': source,
-    **args}, name=name or 'optimal_completions')
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    return nn.make_layer({"class": "optimal_completions", "from": source, **args}, name=name or "optimal_completions")
 
 
 # noinspection PyShadowingBuiltins,PyShadowingNames
 def rec_cum_concat(
-                   source: nn.Tensor,
-                   *,
-                   state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
-                   out_spatial_dim: Optional[nn.Dim] = NotSpecified,
-                   axis: nn.Dim,
-                   name: Optional[Union[str, nn.NameCtx]] = None) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
-  """
-  Concatenates all previous frames of a time-axis.
-  Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
+    source: nn.Tensor,
+    *,
+    state: Optional[Union[nn.Tensor, Dict[str, nn.Tensor], NotSpecified]] = NotSpecified,
+    out_spatial_dim: Optional[nn.Dim] = NotSpecified,
+    axis: nn.Dim,
+    name: Optional[Union[str, nn.NameCtx]] = None,
+) -> Tuple[nn.Tensor, nn.Dim, nn.LayerState]:
+    """
+    Concatenates all previous frames of a time-axis.
+    Like :class:`CumsumLayer` uses `sum`, this layer uses `concat`.
 
-  This layer can be used as a base for auto-regressive self-attention.
+    This layer can be used as a base for auto-regressive self-attention.
 
-  This layer expects to be inside a :class:`RecLayer`.
+    This layer expects to be inside a :class:`RecLayer`.
 
-  Inside a rec loop (not optimized out),
-  this will concatenate the current input
-  to the previous accumulated inputs.
-  For an input of shape `input_shape`,
-  it will output a tensor of shape `[new_dim] + input_shape`.
-  `new_dim` (``out_spatial_dim``) is a special dimension, usually of length `i`,
-  where `i` is the current loop frame,
-  i.e. the length increases in every loop frame.
-  `new_dim` is specified by a separate own dim tag.
-  For example, in the first frame,
-  this will be of shape `[1] + input_shape`,
-  in the second frame shape `[2] + input_shape`,
-  and so on,
-  and in the last frame shape `[T] + input_shape`.
+    Inside a rec loop (not optimized out),
+    this will concatenate the current input
+    to the previous accumulated inputs.
+    For an input of shape `input_shape`,
+    it will output a tensor of shape `[new_dim] + input_shape`.
+    `new_dim` (``out_spatial_dim``) is a special dimension, usually of length `i`,
+    where `i` is the current loop frame,
+    i.e. the length increases in every loop frame.
+    `new_dim` is specified by a separate own dim tag.
+    For example, in the first frame,
+    this will be of shape `[1] + input_shape`,
+    in the second frame shape `[2] + input_shape`,
+    and so on,
+    and in the last frame shape `[T] + input_shape`.
 
-  Outside the rec loop (optimized out),
-  this layer expects an input with the time dim of the rec layer,
-  and returns the input as-is,
-  but replacing the time dim tag with the dim tag `new_dim`
-  converted as outside the loop.
+    Outside the rec loop (optimized out),
+    this layer expects an input with the time dim of the rec layer,
+    and returns the input as-is,
+    but replacing the time dim tag with the dim tag `new_dim`
+    converted as outside the loop.
 
-  Normally the optimization should not matter for the user,
-  i.e. for the user, the logical behavior is always as being inside the rec loop.
-  Outside the loop,
-  the output represents a tensor of shape `[T, new_dim] + input_shape`,
-  although we actually have another `new_dim` outside the loop,
-  and `T` is not actually there,
-  but we still have all the information,
-  because the last frame has all information.
-  This `new_dim` outside the loop stores all the dynamic seq lengths
-  per frame of the loop, i.e. the dyn seq len are extended of shape [B,T] or [T]
-  (unlike usually just [B]).
-  This way following layers use different seq lengths of `new_dim` for different loop frames,
-  just like if the `T` dim would actually exist.
+    Normally the optimization should not matter for the user,
+    i.e. for the user, the logical behavior is always as being inside the rec loop.
+    Outside the loop,
+    the output represents a tensor of shape `[T, new_dim] + input_shape`,
+    although we actually have another `new_dim` outside the loop,
+    and `T` is not actually there,
+    but we still have all the information,
+    because the last frame has all information.
+    This `new_dim` outside the loop stores all the dynamic seq lengths
+    per frame of the loop, i.e. the dyn seq len are extended of shape [B,T] or [T]
+    (unlike usually just [B]).
+    This way following layers use different seq lengths of `new_dim` for different loop frames,
+    just like if the `T` dim would actually exist.
 
-  :param nn.Tensor source:
-  :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
-  :param nn.Dim|None out_spatial_dim:
-  :param nn.Dim axis: to operate over. only single_step_dim supported currently, assumes to be inside rec layer
-  :param str|nn.NameCtx|None name:
-  :return: layer, out_spatial_dim, out_state
-  """
-  if not isinstance(source, nn.Tensor):
-    raise TypeError(f'rec_cum_concat: unexpected type for source {source!r}, need tensor')
-  if out_spatial_dim is None or out_spatial_dim is NotSpecified:
-    out_spatial_dim = nn.Dim(
-      kind=axis.kind, description=f"{_name_str(name, 'rec_cum_concat')}:out_spatial_dim")
-  args = {
-    'out_spatial_dim': out_spatial_dim,
-    'axis': axis,
+    :param nn.Tensor source:
+    :param nn.Tensor|Sequence[nn.Tensor]|NotSpecified|None state:
+    :param nn.Dim|None out_spatial_dim:
+    :param nn.Dim axis: to operate over. only single_step_dim supported currently, assumes to be inside rec layer
+    :param str|nn.NameCtx|None name:
+    :return: layer, out_spatial_dim, out_state
+    """
+    if not isinstance(source, nn.Tensor):
+        raise TypeError(f"rec_cum_concat: unexpected type for source {source!r}, need tensor")
+    if out_spatial_dim is None or out_spatial_dim is NotSpecified:
+        out_spatial_dim = nn.Dim(kind=axis.kind, description=f"{_name_str(name, 'rec_cum_concat')}:out_spatial_dim")
+    args = {
+        "out_spatial_dim": out_spatial_dim,
+        "axis": axis,
     }
-  args = {key: value for (key, value) in args.items() if value is not NotSpecified}
-  nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
-  layer = nn.make_layer({
-    'class': 'cum_concat',
-    'from': source,
-    **args}, name=name or 'rec_cum_concat')
-  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
-  return layer, out_spatial_dim, out_state
+    args = {key: value for (key, value) in args.items() if value is not NotSpecified}
+    nn.ReturnnWrappedLayerBase.handle_recurrent_state(args, axis=axis, state=state)
+    layer = nn.make_layer({"class": "cum_concat", "from": source, **args}, name=name or "rec_cum_concat")
+    out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)
+    return layer, out_spatial_dim, out_state
 
 
 def _name_str(name: Optional[Union[str, nn.NameCtx]], default: str) -> str:
-  if name is None or isinstance(name, str):
-    return f'{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}'
-  if isinstance(name, nn.NameCtx):
-    return name.get_abs_name()
-  raise TypeError(f'name type {type(name)} not supported')
+    if name is None or isinstance(name, str):
+        return f"{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}"
+    if isinstance(name, nn.NameCtx):
+        return name.get_abs_name()
+    raise TypeError(f"name type {type(name)} not supported")

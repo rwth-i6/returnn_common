@@ -1,4 +1,3 @@
-
 """
 Provides some common settings for Horovod multi-GPU training
 (but only used if ``use_horovod`` was set earlier in the config, or externally).
@@ -15,17 +14,19 @@ use_horovod = config.bool("use_horovod", False)
 horovod_dataset_distribution = "random_seed_offset"
 horovod_reduce_type = "param"
 # horovod_param_sync_step = 100
-horovod_param_sync_time_diff = 100.
+horovod_param_sync_time_diff = 100.0
 # horovod_scale_lr = True
 
 if use_horovod:
-  import socket
-  prefix = "%s-pid%i:" % (socket.gethostname(), os.getpid())
-  print(prefix, "use_horovod, CUDA_VISIBLE_DEVICES:", os.environ.get("CUDA_VISIBLE_DEVICES", None))
-  import returnn.tf.horovod
-  # Important: Horovod options must be defined before this call!
-  hvd = returnn.tf.horovod.get_ctx(config=config)
-  print(prefix, "Local rank/size:", hvd.local_rank(), hvd.local_size())
+    import socket
+
+    prefix = "%s-pid%i:" % (socket.gethostname(), os.getpid())
+    print(prefix, "use_horovod, CUDA_VISIBLE_DEVICES:", os.environ.get("CUDA_VISIBLE_DEVICES", None))
+    import returnn.tf.horovod
+
+    # Important: Horovod options must be defined before this call!
+    hvd = returnn.tf.horovod.get_ctx(config=config)
+    print(prefix, "Local rank/size:", hvd.local_rank(), hvd.local_size())
 
 # Workaround for openblas hanging:
 # * https://github.com/tensorflow/tensorflow/issues/13802

@@ -11,104 +11,105 @@ from .. import nn
 
 
 class MaskedComputation:
-  """
-  This is expected to be inside a :class:`Loop`.
-
-  Usage example::
-
-      loop = nn.Loop(...)
-      loop.state.y = ...  # some initial output
-      loop.state.h = ...  # some initial state
-      with loop:
-
-        mask = ...  # dtype bool, shape [batch] or whatever, for current (fast) frame
-        with nn.MaskedComputation(mask=mask):
-          loop.state.y, loop.state.h = slow_rnn(x, loop.state.h)
-        y = loop.state.y  # access from outside
-
-  This is equivalent to::
-
-      loop = nn.Loop(...)
-      loop.state.y = ...  # some initial output
-      loop.state.h = ...  # some initial state
-      with loop:
-
-        mask = ...  # dtype bool, shape [batch] or whatever, for current frame
-        y_, h_ = slow_rnn(x, loop.state.h)
-        loop.state.y = nest.map(lambda a, b: nn.where(cond=mask, x=a, y=b), y_, loop.state.y)
-        loop.state.h = nest.map(lambda a, b: nn.where(cond=mask, x=a, y=b), h_, loop.state.h)
-        y = loop.state.y
-
-  In pseudocode, non-batched (mask is just a scalar bool), it would look like::
-
-      y = ...  # some initial output
-      h = ...  # some initial state
-      while True:
-
-        mask = ...  # bool
-        if mask:
-          y, h = slow_rnn(x, h)
-
-  """
-
-  def __init__(self,
-               mask: nn.Tensor, *,
-               name: str = "masked_computation"):
     """
-    :param nn.Tensor mask: bool, shape [batch]
+    This is expected to be inside a :class:`Loop`.
+
+    Usage example::
+
+        loop = nn.Loop(...)
+        loop.state.y = ...  # some initial output
+        loop.state.h = ...  # some initial state
+        with loop:
+
+          mask = ...  # dtype bool, shape [batch] or whatever, for current (fast) frame
+          with nn.MaskedComputation(mask=mask):
+            loop.state.y, loop.state.h = slow_rnn(x, loop.state.h)
+          y = loop.state.y  # access from outside
+
+    This is equivalent to::
+
+        loop = nn.Loop(...)
+        loop.state.y = ...  # some initial output
+        loop.state.h = ...  # some initial state
+        with loop:
+
+          mask = ...  # dtype bool, shape [batch] or whatever, for current frame
+          y_, h_ = slow_rnn(x, loop.state.h)
+          loop.state.y = nest.map(lambda a, b: nn.where(cond=mask, x=a, y=b), y_, loop.state.y)
+          loop.state.h = nest.map(lambda a, b: nn.where(cond=mask, x=a, y=b), h_, loop.state.h)
+          y = loop.state.y
+
+    In pseudocode, non-batched (mask is just a scalar bool), it would look like::
+
+        y = ...  # some initial output
+        h = ...  # some initial state
+        while True:
+
+          mask = ...  # bool
+          if mask:
+            y, h = slow_rnn(x, h)
+
     """
-    self.mask = mask
-    self.name = name
-    self.layer_module = MaskedComputationModule(masked_computation=self)
-    self.name_ctx = nn.NameCtx(module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx())
-    self.name_ctx.custom_layer_name_scope = ""
-    self.name_ctx.is_subnet = True
 
-  def __enter__(self) -> MaskedComputation:
-    self.name_ctx.__enter__()
-    return self
+    def __init__(self, mask: nn.Tensor, *, name: str = "masked_computation"):
+        """
+        :param nn.Tensor mask: bool, shape [batch]
+        """
+        self.mask = mask
+        self.name = name
+        self.layer_module = MaskedComputationModule(masked_computation=self)
+        self.name_ctx = nn.NameCtx(module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx())
+        self.name_ctx.custom_layer_name_scope = ""
+        self.name_ctx.is_subnet = True
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    try:
-      if not exc_type:
-        # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
-        if "output" not in self.name_ctx.children:
-          last_child = self.name_ctx.get_recent_layer_ref(only_same_control_flow=True)
-          if last_child is not None:
-            from . import copy
-            copy(last_child, name=self.name_ctx.get_child("output"))
-          else:
-            from . import constant
-            constant(value=0, name=self.name_ctx.get_child("output"))  # unused
-    finally:
-      self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
-    if not exc_type:
-      self.layer_module()  # create the rec layer itself
+    def __enter__(self) -> MaskedComputation:
+        self.name_ctx.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if not exc_type:
+                # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
+                if "output" not in self.name_ctx.children:
+                    last_child = self.name_ctx.get_recent_layer_ref(only_same_control_flow=True)
+                    if last_child is not None:
+                        from . import copy
+
+                        copy(last_child, name=self.name_ctx.get_child("output"))
+                    else:
+                        from . import constant
+
+                        constant(value=0, name=self.name_ctx.get_child("output"))  # unused
+        finally:
+            self.name_ctx.__exit__(exc_type, exc_val, exc_tb)
+        if not exc_type:
+            self.layer_module()  # create the rec layer itself
 
 
 class MaskedComputationModule(nn.Module):
-  """
-  This is for internal use by :class:`MaskedComputation`.
-  """
-
-  def __init__(self, masked_computation: MaskedComputation):
-    super().__init__()
-    self.masked_computation = masked_computation
-
-  def __call__(self) -> nn.Tensor:
     """
-    Makes layer dict for this loop, i.e. a RecLayer.
+    This is for internal use by :class:`MaskedComputation`.
     """
-    name_ctx = self.masked_computation.name_ctx
-    out = name_ctx.children["output"].layer_ref
-    loop = nn.NameCtx.inner_loop()
-    assert loop, f"{self}: need to be inside loop"  # not implemented otherwise
-    return nn.make_layer(
-      {
-        "class": "masked_computation",
-        "mask": self.masked_computation.mask,
-        "in_spatial_dim": loop.axis,
-        "unit": {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()}
-      },
-      name=name_ctx,
-      predefined_out_data=out.data)
+
+    def __init__(self, masked_computation: MaskedComputation):
+        super().__init__()
+        self.masked_computation = masked_computation
+
+    def __call__(self) -> nn.Tensor:
+        """
+        Makes layer dict for this loop, i.e. a RecLayer.
+        """
+        name_ctx = self.masked_computation.name_ctx
+        out = name_ctx.children["output"].layer_ref
+        loop = nn.NameCtx.inner_loop()
+        assert loop, f"{self}: need to be inside loop"  # not implemented otherwise
+        return nn.make_layer(
+            {
+                "class": "masked_computation",
+                "mask": self.masked_computation.mask,
+                "in_spatial_dim": loop.axis,
+                "unit": {"class": "subnetwork", "from": [], "subnetwork": name_ctx.make_net()},
+            },
+            name=name_ctx,
+            predefined_out_data=out.data,
+        )

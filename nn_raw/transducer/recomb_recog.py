@@ -1,4 +1,3 @@
-
 """
 Beam search hyp recombination code,
 to be used for recognition.
@@ -6,10 +5,10 @@ to be used for recognition.
 
 
 def get_filtered_score_op(verbose=False):
-  """
-  :return: TF op
-  """
-  cpp_code = """
+    """
+    :return: TF op
+    """
+    cpp_code = """
     #include "tensorflow/core/framework/op.h"
     #include "tensorflow/core/framework/op_kernel.h"
     #include "tensorflow/core/framework/shape_inference.h"
@@ -93,47 +92,55 @@ def get_filtered_score_op(verbose=False):
     };
     REGISTER_KERNEL_BUILDER(Name("GetFilteredScore").Device(DEVICE_CPU), GetFilteredScoreOp);
     """
-  from returnn.tf.util.basic import OpCodeCompiler
-  compiler = OpCodeCompiler(
-    base_name="GetFilteredScore", code_version=1, code=cpp_code,
-    is_cpp=True, use_cuda_if_available=False, verbose=verbose)
-  tf_mod = compiler.load_tf_module()
-  return tf_mod.get_filtered_score
+    from returnn.tf.util.basic import OpCodeCompiler
+
+    compiler = OpCodeCompiler(
+        base_name="GetFilteredScore",
+        code_version=1,
+        code=cpp_code,
+        is_cpp=True,
+        use_cuda_if_available=False,
+        verbose=verbose,
+    )
+    tf_mod = compiler.load_tf_module()
+    return tf_mod.get_filtered_score
 
 
 def get_filtered_score_cpp(out_str, scores):
-  """
-  :param tf.Tensor out_str: (batch,beam)
-  :param tf.Tensor scores: (batch,beam)
-  :return: scores with logsumexp at best, others -inf, (batch,beam)
-  :rtype: tf.Tensor
-  """
-  from returnn.tf.compat import v1 as tf
-  with tf.device("/cpu:0"):
-    return get_filtered_score_op()(out_str, scores)
+    """
+    :param tf.Tensor out_str: (batch,beam)
+    :param tf.Tensor scores: (batch,beam)
+    :return: scores with logsumexp at best, others -inf, (batch,beam)
+    :rtype: tf.Tensor
+    """
+    from returnn.tf.compat import v1 as tf
+
+    with tf.device("/cpu:0"):
+        return get_filtered_score_op()(out_str, scores)
 
 
 def targetb_recomb_recog(layer, batch_dim, scores_in, scores_base, base_beam_in, end_flags, **_kwargs):
-  """
-  :param ChoiceLayer layer:
-  :param tf.Tensor batch_dim: scalar
-  :param tf.Tensor scores_base: (batch,base_beam_in,1). existing beam scores
-  :param tf.Tensor scores_in: (batch,base_beam_in,dim). log prob frame distribution
-  :param tf.Tensor end_flags: (batch,base_beam_in)
-  :param tf.Tensor base_beam_in: int32 scalar, 1 or prev beam size
-  :rtype: tf.Tensor
-  :return: (batch,base_beam_in,dim), combined scores
-  """
-  end_flags  # noqa
-  from returnn.tf.compat import v1 as tf
+    """
+    :param ChoiceLayer layer:
+    :param tf.Tensor batch_dim: scalar
+    :param tf.Tensor scores_base: (batch,base_beam_in,1). existing beam scores
+    :param tf.Tensor scores_in: (batch,base_beam_in,dim). log prob frame distribution
+    :param tf.Tensor end_flags: (batch,base_beam_in)
+    :param tf.Tensor base_beam_in: int32 scalar, 1 or prev beam size
+    :rtype: tf.Tensor
+    :return: (batch,base_beam_in,dim), combined scores
+    """
+    end_flags  # noqa
+    from returnn.tf.compat import v1 as tf
 
-  out_str = layer.explicit_search_sources[0].output  # [B*beam], str
-  out_str_t = tf.reshape(out_str.placeholder, (batch_dim, -1))[:, :base_beam_in]
+    out_str = layer.explicit_search_sources[0].output  # [B*beam], str
+    out_str_t = tf.reshape(out_str.placeholder, (batch_dim, -1))[:, :base_beam_in]
 
-  # Pre-filter approx (should be much faster), sum approx (better).
-  scores_base = tf.reshape(
-    get_filtered_score_cpp(out_str_t, tf.reshape(scores_base, (batch_dim, base_beam_in))),
-    (batch_dim, base_beam_in, 1))
+    # Pre-filter approx (should be much faster), sum approx (better).
+    scores_base = tf.reshape(
+        get_filtered_score_cpp(out_str_t, tf.reshape(scores_base, (batch_dim, base_beam_in))),
+        (batch_dim, base_beam_in, 1),
+    )
 
-  scores = scores_in + scores_base  # (batch,beam,dim)
-  return scores
+    scores = scores_in + scores_base  # (batch,beam,dim)
+    return scores

@@ -1,4 +1,3 @@
-
 """
 Common settings for linters, e.g. pycharm-inspect.py or pylint.py.
 
@@ -101,28 +100,27 @@ _prefix = "returnn_common/"
 
 # Proceed like this: Fix all warnings for some file, then remove it from this list.
 # I removed already all files which really should not have warnings (mostly the TF backend + shared files).
-ignore_count_for_files = {
-}
+ignore_count_for_files = {}
 
 
 def find_all_py_source_files():
-  """
-  :rtype: list[str]
-  """
-  # Earlier this was a `glob("%s/*.py" % _root_dir)`. But not anymore, since we have the new package structure.
-  src_files = []
-  for root, dirs, files in os.walk(_root_dir):
-    if root == _root_dir:
-      root = ""
-    else:
-      assert root.startswith(_root_dir + "/")
-      root = root[len(_root_dir) + 1:]  # relative to the root
-      root += "/"
-    dirs[:] = sorted(dirs)
-    for file in sorted(files):
-      if not file.endswith(".py"):
-        continue
-      if file == "_setup_info_generated.py":
-        continue
-      src_files.append(_prefix + root + file)
-  return src_files
+    """
+    :rtype: list[str]
+    """
+    # Earlier this was a `glob("%s/*.py" % _root_dir)`. But not anymore, since we have the new package structure.
+    src_files = []
+    for root, dirs, files in os.walk(_root_dir):
+        if root == _root_dir:
+            root = ""
+        else:
+            assert root.startswith(_root_dir + "/")
+            root = root[len(_root_dir) + 1 :]  # relative to the root
+            root += "/"
+        dirs[:] = sorted(dirs)
+        for file in sorted(files):
+            if not file.endswith(".py"):
+                continue
+            if file == "_setup_info_generated.py":
+                continue
+            src_files.append(_prefix + root + file)
+    return src_files

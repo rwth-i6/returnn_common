@@ -1,4 +1,3 @@
-
 """
 Automatic pretrain constructions,
 including other scheduling and learning rate warmup.
@@ -13,75 +12,76 @@ _Num = Union[int, float]
 
 
 class Pretrain:
-  """
-  Features:
-
-  * Can grow the network.
-  * Learning rate warmup.
-  * Disables regularization initially.
-
-  In your config, do sth like::
-
-    get_network = Pretrain(...).get_network
-  """
-
-  def __init__(self, make_net, make_net_args: Optional[Dict[str, Tuple[_Num, _Num]]] = None, num_epochs: int = 10):
     """
-    :param make_net: function which gets the make_net_args and is supposed to return a net dict
-    :param num_epochs: num epochs of pretraining construction
+    Features:
+
+    * Can grow the network.
+    * Learning rate warmup.
+    * Disables regularization initially.
+
+    In your config, do sth like::
+
+      get_network = Pretrain(...).get_network
     """
-    self._is_initialized = False  # we lazily init late, to make sure all config opts are set (e.g. learning_rate)
-    self._make_net = make_net
-    self._make_net_args = make_net_args or {}
-    self._lr_warmup_num_epochs = num_epochs // 2
-    self._pretrain_num_epochs = num_epochs
 
-  def get_network(self, epoch: int, **_kwargs) -> Dict[str, Any]:
-    """
-    Get network.
-    """
-    self._lazy_init()
-    epoch0 = epoch - 1  # RETURNN starts with epoch 1, but 0-indexed is easier here
+    def __init__(self, make_net, make_net_args: Optional[Dict[str, Tuple[_Num, _Num]]] = None, num_epochs: int = 10):
+        """
+        :param make_net: function which gets the make_net_args and is supposed to return a net dict
+        :param num_epochs: num epochs of pretraining construction
+        """
+        self._is_initialized = False  # we lazily init late, to make sure all config opts are set (e.g. learning_rate)
+        self._make_net = make_net
+        self._make_net_args = make_net_args or {}
+        self._lr_warmup_num_epochs = num_epochs // 2
+        self._pretrain_num_epochs = num_epochs
 
-    def resolve(arg, **kwargs):
-      """
-      Resolve args
-      """
-      return self._resolve_make_net_arg(epoch0, arg, **kwargs)
+    def get_network(self, epoch: int, **_kwargs) -> Dict[str, Any]:
+        """
+        Get network.
+        """
+        self._lazy_init()
+        epoch0 = epoch - 1  # RETURNN starts with epoch 1, but 0-indexed is easier here
 
-    make_net_args = {k: resolve(v) for (k, v) in self._make_net_args.items()}
-    net_dict = self._make_net(**make_net_args)
-    assert isinstance(net_dict, dict)
-    net_dict = net_dict.copy()
+        def resolve(arg, **kwargs):
+            """
+            Resolve args
+            """
+            return self._resolve_make_net_arg(epoch0, arg, **kwargs)
 
-    if epoch0 < self._pretrain_num_epochs:
-      config_ = net_dict.get("#config", {})
+        make_net_args = {k: resolve(v) for (k, v) in self._make_net_args.items()}
+        net_dict = self._make_net(**make_net_args)
+        assert isinstance(net_dict, dict)
+        net_dict = net_dict.copy()
 
-      config_["learning_rate"] = resolve(
-        (self._lr_warmup_initial, self._lr_std), num_epochs=self._lr_warmup_num_epochs)
+        if epoch0 < self._pretrain_num_epochs:
+            config_ = net_dict.get("#config", {})
 
-      if config_:
-        net_dict["#config"] = config_
+            config_["learning_rate"] = resolve(
+                (self._lr_warmup_initial, self._lr_std), num_epochs=self._lr_warmup_num_epochs
+            )
 
-      net_dict["#copy_param_mode"] = "subset"
+            if config_:
+                net_dict["#config"] = config_
 
-    return net_dict
+            net_dict["#copy_param_mode"] = "subset"
 
-  def _lazy_init(self):
-    if self._is_initialized:
-      return
-    self._is_initialized = True
+        return net_dict
 
-    config = get_global_config()
-    self._lr_std = config.typed_dict["learning_rate"]
-    self._lr_warmup_initial = self._lr_std / 10.
+    def _lazy_init(self):
+        if self._is_initialized:
+            return
+        self._is_initialized = True
 
-  def _resolve_make_net_arg(self, epoch0: int, arg: Tuple[_Num, _Num], num_epochs: Optional[int] = None):
-    start, end = arg
-    if num_epochs is None:
-      num_epochs = self._pretrain_num_epochs
-    if epoch0 >= num_epochs:
-      return end
-    f = epoch0 / (float(num_epochs) - 1)  # 0..1
-    res = end * f + start * (1. - f)
-    return type(end)(res)
+        config = get_global_config()
+        self._lr_std = config.typed_dict["learning_rate"]
+        self._lr_warmup_initial = self._lr_std / 10.0
+
+    def _resolve_make_net_arg(self, epoch0: int, arg: Tuple[_Num, _Num], num_epochs: Optional[int] = None):
+        start, end = arg
+        if num_epochs is None:
+            num_epochs = self._pretrain_num_epochs
+        if epoch0 >= num_epochs:
+            return end
+        f = epoch0 / (float(num_epochs) - 1)  # 0..1
+        res = end * f + start * (1.0 - f)
+        return type(end)(res)

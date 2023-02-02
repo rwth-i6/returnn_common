@@ -32,6 +32,7 @@ _cf_cache = {}
 
 def _get_debug_mode() -> bool:
     from returnn.config import get_global_config
+
     config = get_global_config()
     return config.typed_dict.get("debug_mode", False)
 

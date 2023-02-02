@@ -10,205 +10,231 @@ from .. import nn
 
 
 class Cond:
-  """
-  Conditional branching. Basically behaves like ``if ... else ...``.
-  Only one branch will be executed, and the condition needs to be a bool scalar.
-  This wraps to :class:`CondLayer` in RETURNN and to ``tf.cond`` in TensorFlow.
-
-  Example::
-
-      with Cond(cond) as cond_obj:
-        cond_obj.true = mod_true_case(x)
-        cond_obj.false = mod_false_case(x)
-        y = cond_obj.result
-
-  Corresponds to::
-
-      if cond:
-        y = mod_true_case(x)
-      else:
-        y = mod_false_case(x)
-
-  The context scope has two states corresponding to the True and False computation branch.
-  The initial state is the True branch.
-  Assigning ``cond_obj.true`` has the side effect of switching the computation to the False branch.
-  """
-
-  def __init__(self, condition: nn.Tensor, *, name: str = "cond"):
-    self.condition = condition
-    self._entered = False
-    self._entered_state = True
-    self._true_value = None
-    self._false_value = None
-    self._result_value = None
-    self.layer_module = CondModule(cond=self)
-    self.name_ctx = nn.NameCtx(
-      module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx(), can_access_children=False)
-    self.name_ctx.custom_layer_name_scope = ""
-    self.true_branch_control_flow_ctx = nn.ControlFlowContext(
-      kind=nn.ControlFlowContext.Types.Cond, outer_ctx=self.name_ctx.control_flow_ctx())
-    self.true_branch_name_ctx = nn.NameCtx(
-      module=self.layer_module, suggested_name="true", parent=self.name_ctx, virtual=True, can_access_children=False,
-      new_control_flow_ctx=self.true_branch_control_flow_ctx)
-    self.true_branch_name_ctx.is_subnet = True
-    self.true_branch_name_ctx.extend_reserved_names({"output"})
-    self.false_branch_control_flow_ctx = nn.ControlFlowContext(
-      kind=nn.ControlFlowContext.Types.Cond, outer_ctx=self.name_ctx.control_flow_ctx())
-    self.false_branch_name_ctx = nn.NameCtx(
-      module=self.layer_module, suggested_name="false", parent=self.name_ctx, virtual=True, can_access_children=False,
-      new_control_flow_ctx=self.false_branch_control_flow_ctx)
-    self.false_branch_name_ctx.is_subnet = True
-    self.false_branch_name_ctx.extend_reserved_names({"output"})
-
-  def __repr__(self):
-    return f"Cond{self.name_ctx}"
-
-  def __enter__(self):
-    assert not self._entered, f"{self} cannot enter twice"
-    self._entered = True
-    self._entered_state = True
-    self.true_branch_name_ctx.__enter__()
-    return self
-
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    # First exit any scopes and do cleanup without throwing any exceptions.
-    if self._entered:
-      if self._true_value is None:
-        self.true_branch_name_ctx.__exit__(exc_type, exc_val, exc_tb)
-      elif self._false_value is None:
-        self.false_branch_name_ctx.__exit__(exc_type, exc_val, exc_tb)
-    if not exc_type:  # only do error checking if there was no other exception
-      assert self._entered
-      assert self._true_value is not None, f"{self} you need to call else_()"
-      assert self._false_value is not None, f"{self} you need to call end()"
-    self._entered = False
-
-  @property
-  def true(self):
     """
-    The getter usually would not be used.
-    """
-    return self._true_value
+    Conditional branching. Basically behaves like ``if ... else ...``.
+    Only one branch will be executed, and the condition needs to be a bool scalar.
+    This wraps to :class:`CondLayer` in RETURNN and to ``tf.cond`` in TensorFlow.
 
-  @true.setter
-  def true(self, true_value):
-    """
-    Defines the True branch value.
-    Enter the False branch.
-    Assign self.false afterwards.
-    """
-    assert self._entered, f"{self} you need to be in the context scope"
-    assert self._entered_state is True, f"{self} you cannot enter the else branch twice"
-    assert true_value is not None
-    assert self._true_value is None
-    if isinstance(true_value, nn.Tensor):
-      true_value = nn.copy(true_value, name=self.true_branch_name_ctx.get_child("output"))
-    else:
-      values_flat = nest.flatten(true_value)  # type: List[nn.Tensor]
-      assert values_flat
-      for i, v in enumerate(values_flat):
-        assert isinstance(v, nn.Tensor), f"unexpected {true_value!r}, only expects tensors, got {type(v)}"
-        if i == 0:
-          values_flat[i] = nn.copy(v, name=self.true_branch_name_ctx.get_child("output"))
+    Example::
+
+        with Cond(cond) as cond_obj:
+          cond_obj.true = mod_true_case(x)
+          cond_obj.false = mod_false_case(x)
+          y = cond_obj.result
+
+    Corresponds to::
+
+        if cond:
+          y = mod_true_case(x)
         else:
-          values_flat[i] = v.mark_as_output(_scope=self.true_branch_name_ctx)
-      true_value = nest.pack_sequence_as(true_value, values_flat)
-    self.true_branch_name_ctx.__exit__(None, None, None)
-    self.false_branch_name_ctx.__enter__()
-    self._true_value = true_value
-    self._entered_state = False
+          y = mod_false_case(x)
 
-  @property
-  def false(self):
+    The context scope has two states corresponding to the True and False computation branch.
+    The initial state is the True branch.
+    Assigning ``cond_obj.true`` has the side effect of switching the computation to the False branch.
     """
-    The getter usually would not be used.
-    """
-    return self._false_value
 
-  @false.setter
-  def false(self, false_value):
-    """
-    Define the False branch value.
-    After this, self.result is available.
-    """
-    assert self._entered, f"{self} you need to be in the context scope"
-    assert self._entered_state is False, f"{self} you need to be in the False branch, have assigned :func:`true` before"
-    assert false_value is not None
-    assert self._false_value is None
-    nest.assert_same_structure(self._true_value, false_value)
-    # This needs to match the true() setter logic.
-    if isinstance(false_value, nn.Tensor):
-      false_value = nn.copy(false_value, name=self.false_branch_name_ctx.get_child("output"))
-    else:
-      true_values_flat = nest.flatten(self._true_value)  # type: List[nn.Tensor]
-      false_values_flat = nest.flatten(false_value)  # type: List[nn.Tensor]
-      assert false_values_flat and len(false_values_flat) == len(true_values_flat)
-      for i, (true_v, false_v) in enumerate(zip(true_values_flat, false_values_flat)):
-        assert isinstance(true_v, nn.Tensor)
-        assert isinstance(false_v, nn.Tensor), f"unexpected {false_value!r}, only expects tensors, got {type(false_v)}"
-        assert true_v.name_ctx.parent is self.true_branch_name_ctx
-        name = true_v.name_ctx.name
-        false_values_flat[i] = nn.copy(false_v, name=self.false_branch_name_ctx.get_child(name))
-        if name != "output":
-          false_values_flat[i].layer_dict["is_output_layer"] = True
-      false_value = nest.pack_sequence_as(false_value, false_values_flat)
-    self.false_branch_name_ctx.__exit__(None, None, None)
-    self._false_value = false_value
-    self._result_value = self.layer_module()
+    def __init__(self, condition: nn.Tensor, *, name: str = "cond"):
+        self.condition = condition
+        self._entered = False
+        self._entered_state = True
+        self._true_value = None
+        self._false_value = None
+        self._result_value = None
+        self.layer_module = CondModule(cond=self)
+        self.name_ctx = nn.NameCtx(
+            module=self.layer_module, suggested_name=name, parent=nn.NameCtx.current_ctx(), can_access_children=False
+        )
+        self.name_ctx.custom_layer_name_scope = ""
+        self.true_branch_control_flow_ctx = nn.ControlFlowContext(
+            kind=nn.ControlFlowContext.Types.Cond, outer_ctx=self.name_ctx.control_flow_ctx()
+        )
+        self.true_branch_name_ctx = nn.NameCtx(
+            module=self.layer_module,
+            suggested_name="true",
+            parent=self.name_ctx,
+            virtual=True,
+            can_access_children=False,
+            new_control_flow_ctx=self.true_branch_control_flow_ctx,
+        )
+        self.true_branch_name_ctx.is_subnet = True
+        self.true_branch_name_ctx.extend_reserved_names({"output"})
+        self.false_branch_control_flow_ctx = nn.ControlFlowContext(
+            kind=nn.ControlFlowContext.Types.Cond, outer_ctx=self.name_ctx.control_flow_ctx()
+        )
+        self.false_branch_name_ctx = nn.NameCtx(
+            module=self.layer_module,
+            suggested_name="false",
+            parent=self.name_ctx,
+            virtual=True,
+            can_access_children=False,
+            new_control_flow_ctx=self.false_branch_control_flow_ctx,
+        )
+        self.false_branch_name_ctx.is_subnet = True
+        self.false_branch_name_ctx.extend_reserved_names({"output"})
 
-  @property
-  def result(self):
-    """
-    :return: the result, after you assigned :func:`true` and :func:`false`.
-    """
-    assert self._true_value is not None, f"{self} you need to have defined the true value"
-    assert self._false_value is not None, f"{self} you need to have defined the false value"
-    assert self._result_value is not None
-    return self._result_value
+    def __repr__(self):
+        return f"Cond{self.name_ctx}"
+
+    def __enter__(self):
+        assert not self._entered, f"{self} cannot enter twice"
+        self._entered = True
+        self._entered_state = True
+        self.true_branch_name_ctx.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # First exit any scopes and do cleanup without throwing any exceptions.
+        if self._entered:
+            if self._true_value is None:
+                self.true_branch_name_ctx.__exit__(exc_type, exc_val, exc_tb)
+            elif self._false_value is None:
+                self.false_branch_name_ctx.__exit__(exc_type, exc_val, exc_tb)
+        if not exc_type:  # only do error checking if there was no other exception
+            assert self._entered
+            assert self._true_value is not None, f"{self} you need to call else_()"
+            assert self._false_value is not None, f"{self} you need to call end()"
+        self._entered = False
+
+    @property
+    def true(self):
+        """
+        The getter usually would not be used.
+        """
+        return self._true_value
+
+    @true.setter
+    def true(self, true_value):
+        """
+        Defines the True branch value.
+        Enter the False branch.
+        Assign self.false afterwards.
+        """
+        assert self._entered, f"{self} you need to be in the context scope"
+        assert self._entered_state is True, f"{self} you cannot enter the else branch twice"
+        assert true_value is not None
+        assert self._true_value is None
+        if isinstance(true_value, nn.Tensor):
+            true_value = nn.copy(true_value, name=self.true_branch_name_ctx.get_child("output"))
+        else:
+            values_flat = nest.flatten(true_value)  # type: List[nn.Tensor]
+            assert values_flat
+            for i, v in enumerate(values_flat):
+                assert isinstance(v, nn.Tensor), f"unexpected {true_value!r}, only expects tensors, got {type(v)}"
+                if i == 0:
+                    values_flat[i] = nn.copy(v, name=self.true_branch_name_ctx.get_child("output"))
+                else:
+                    values_flat[i] = v.mark_as_output(_scope=self.true_branch_name_ctx)
+            true_value = nest.pack_sequence_as(true_value, values_flat)
+        self.true_branch_name_ctx.__exit__(None, None, None)
+        self.false_branch_name_ctx.__enter__()
+        self._true_value = true_value
+        self._entered_state = False
+
+    @property
+    def false(self):
+        """
+        The getter usually would not be used.
+        """
+        return self._false_value
+
+    @false.setter
+    def false(self, false_value):
+        """
+        Define the False branch value.
+        After this, self.result is available.
+        """
+        assert self._entered, f"{self} you need to be in the context scope"
+        assert (
+            self._entered_state is False
+        ), f"{self} you need to be in the False branch, have assigned :func:`true` before"
+        assert false_value is not None
+        assert self._false_value is None
+        nest.assert_same_structure(self._true_value, false_value)
+        # This needs to match the true() setter logic.
+        if isinstance(false_value, nn.Tensor):
+            false_value = nn.copy(false_value, name=self.false_branch_name_ctx.get_child("output"))
+        else:
+            true_values_flat = nest.flatten(self._true_value)  # type: List[nn.Tensor]
+            false_values_flat = nest.flatten(false_value)  # type: List[nn.Tensor]
+            assert false_values_flat and len(false_values_flat) == len(true_values_flat)
+            for i, (true_v, false_v) in enumerate(zip(true_values_flat, false_values_flat)):
+                assert isinstance(true_v, nn.Tensor)
+                assert isinstance(
+                    false_v, nn.Tensor
+                ), f"unexpected {false_value!r}, only expects tensors, got {type(false_v)}"
+                assert true_v.name_ctx.parent is self.true_branch_name_ctx
+                name = true_v.name_ctx.name
+                false_values_flat[i] = nn.copy(false_v, name=self.false_branch_name_ctx.get_child(name))
+                if name != "output":
+                    false_values_flat[i].layer_dict["is_output_layer"] = True
+            false_value = nest.pack_sequence_as(false_value, false_values_flat)
+        self.false_branch_name_ctx.__exit__(None, None, None)
+        self._false_value = false_value
+        self._result_value = self.layer_module()
+
+    @property
+    def result(self):
+        """
+        :return: the result, after you assigned :func:`true` and :func:`false`.
+        """
+        assert self._true_value is not None, f"{self} you need to have defined the true value"
+        assert self._false_value is not None, f"{self} you need to have defined the false value"
+        assert self._result_value is not None
+        return self._result_value
 
 
 class CondModule(nn.Module):
-  """
-  This module is used internally by :class:`Cond` to create the RETURNN :class:`CondLayer` for the conditional code.
-  This module would not be directly used by the user.
-  """
-
-  def __init__(self, cond: Cond):
-    super(CondModule, self).__init__()
-    self.cond = cond
-
-  def __call__(self):
     """
-    Makes layer dict for this loop, i.e. a RecLayer.
-
-    :return: structure like true_value/false_value
+    This module is used internally by :class:`Cond` to create the RETURNN :class:`CondLayer` for the conditional code.
+    This module would not be directly used by the user.
     """
-    name_ctx = self.cond.name_ctx
-    # noinspection PyProtectedMember
-    true_value, false_value = self.cond._true_value, self.cond._false_value
-    true_values_flat = nest.flatten(true_value)  # type: List[nn.Tensor]
-    false_values_flat = nest.flatten(false_value)  # type: List[nn.Tensor]
-    assert len(true_values_flat) == len(false_values_flat)
-    res = nn.make_layer(
-      {
-        "class": "cond", "from": [],
-        "condition": self.cond.condition,
-        "true_layer": {
-          "class": "subnetwork", "from": [], "subnetwork": self.cond.true_branch_name_ctx.make_net()},
-        "false_layer": {
-          "class": "subnetwork", "from": [], "subnetwork": self.cond.false_branch_name_ctx.make_net()},
-      },
-      name=name_ctx,
-      predefined_out_data=true_values_flat[0].data.copy_template())
-    from .base import _get_sub_layer
-    results = []
-    for i, (true_v, false_v) in enumerate(zip(true_values_flat, false_values_flat)):
-      assert isinstance(true_v, nn.Tensor) and isinstance(false_v, nn.Tensor)
-      assert true_v.name_ctx.parent is self.cond.true_branch_name_ctx
-      name = true_v.name_ctx.name
-      if i == 0:
-        results.append(res)
-      else:
-        results.append(_get_sub_layer(res, name, data=true_v.data.copy_template()))
-      results[-1].extra_dependencies.extend((self.cond.condition, true_v, false_v))
-    return nest.pack_sequence_as(true_value, results)
+
+    def __init__(self, cond: Cond):
+        super(CondModule, self).__init__()
+        self.cond = cond
+
+    def __call__(self):
+        """
+        Makes layer dict for this loop, i.e. a RecLayer.
+
+        :return: structure like true_value/false_value
+        """
+        name_ctx = self.cond.name_ctx
+        # noinspection PyProtectedMember
+        true_value, false_value = self.cond._true_value, self.cond._false_value
+        true_values_flat = nest.flatten(true_value)  # type: List[nn.Tensor]
+        false_values_flat = nest.flatten(false_value)  # type: List[nn.Tensor]
+        assert len(true_values_flat) == len(false_values_flat)
+        res = nn.make_layer(
+            {
+                "class": "cond",
+                "from": [],
+                "condition": self.cond.condition,
+                "true_layer": {
+                    "class": "subnetwork",
+                    "from": [],
+                    "subnetwork": self.cond.true_branch_name_ctx.make_net(),
+                },
+                "false_layer": {
+                    "class": "subnetwork",
+                    "from": [],
+                    "subnetwork": self.cond.false_branch_name_ctx.make_net(),
+                },
+            },
+            name=name_ctx,
+            predefined_out_data=true_values_flat[0].data.copy_template(),
+        )
+        from .base import _get_sub_layer
+
+        results = []
+        for i, (true_v, false_v) in enumerate(zip(true_values_flat, false_values_flat)):
+            assert isinstance(true_v, nn.Tensor) and isinstance(false_v, nn.Tensor)
+            assert true_v.name_ctx.parent is self.cond.true_branch_name_ctx
+            name = true_v.name_ctx.name
+            if i == 0:
+                results.append(res)
+            else:
+                results.append(_get_sub_layer(res, name, data=true_v.data.copy_template()))
+            results[-1].extra_dependencies.extend((self.cond.condition, true_v, false_v))
+        return nest.pack_sequence_as(true_value, results)
