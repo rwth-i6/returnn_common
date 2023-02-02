@@ -848,8 +848,8 @@ class ReturnnConfigSerializer:
         """
         :param nn.Module root_module: there must be one root module such that all params have a well-defined name
         :param bool with_imports: whether to include imports
-        :param ref_extern_data_dims_via_global_config: Add references to the definitions for the dimension tags written in
-          `get_base_extern_data_py_code_str` via `returnn.config.get_global_config`.
+        :param ref_extern_data_dims_via_global_config: Add references to the definitions for the dimension tags
+            written in `get_base_extern_data_py_code_str` via `returnn.config.get_global_config`.
         :return: serialized config, i.e. Python code
         """
         from ..utils.pprint import pformat

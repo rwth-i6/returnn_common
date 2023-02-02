@@ -52,7 +52,8 @@ class VarianceScaling(ParamInit):
             )
         if self.distribution not in {"normal", "uniform", "truncated_normal", "untruncated_normal"}:
             raise ValueError(
-                "Argument `distribution` should be one of ('normal', 'uniform', 'truncated_normal', 'untruncated_normal'). "
+                "Argument `distribution` should be one of "
+                "('normal', 'uniform', 'truncated_normal', 'untruncated_normal'). "
                 f"Received: {self.distribution}"
             )
 
