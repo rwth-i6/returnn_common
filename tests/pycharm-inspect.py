@@ -491,7 +491,9 @@ def run_inspect(pycharm_dir, src_dir, skip_pycharm_inspect=False):
 
     for py_src_file in find_all_py_source_files():
         ignore_codes = "E121,E123,E126,E226,E24,E704,W503,W504"  # PyCharm defaults
-        ignore_codes += ",E111,E114"  # our defaults (4 space indents for code/comment)
+        ignore_codes += (
+            ",E203"  # https://black.readthedocs.io/en/stable/faq.html#why-are-flake8-s-e203-and-w503-violated
+        )
         cmd = [
             sys.executable,
             "%s/plugins/python-ce/helpers/pycodestyle.py" % pycharm_dir,
