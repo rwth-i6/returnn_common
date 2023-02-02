@@ -101,9 +101,10 @@ class Tensor:
     ):
         """
         :param name_ctx: this defines the name of the layer itself
-        :param data: Data template describing the shape and dtype and other meta information on the tensor (layer output)
+        :param data: Data template describing the shape and dtype
+            and other meta information on the tensor (layer output)
         :param is_ref: in RETURNN, there can be references to special layers, like "data:..." or "prev:...",
-          which are not layers themselves, i.e. we do not have a layer dict for them.
+            which are not layers themselves, i.e. we do not have a layer dict for them.
         """
         self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
         self.name_ctx = name_ctx
@@ -676,7 +677,8 @@ class Parameter(Tensor):
                 while not accessible_parent.can_access_children_from_root:
                     accessible_parent = accessible_parent.parent
                 value.name_ctx.assign_parent(accessible_parent)
-                # We could also maybe move out all the dependencies. However, it's not clear whether this is always safe.
+                # We could also maybe move out all the dependencies.
+                # However, it's not clear whether this is always safe.
                 for dep in value.get_dependencies():
                     assert (
                         dep.name_ctx.parent.can_access_children_from_root

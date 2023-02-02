@@ -470,7 +470,7 @@ def run_inspect(pycharm_dir, src_dir, skip_pycharm_inspect=False):
     if not skip_pycharm_inspect:
         # Note: Will not run if PyCharm is already running.
         # Maybe we can find some workaround for this?
-        # See here: https://stackoverflow.com/questions/55339010/run-pycharm-inspect-sh-even-if-pycharm-is-already-running
+        # See here: https://stackoverflow.com/questions/55339010/run-pycharm-inspect-sh-even-if-pycharm-is-already-run
         # And here: https://github.com/albertz/pycharm-inspect
         # Also: https://stackoverflow.com/questions/55323910/pycharm-code-style-check-via-command-line
         cmd = [

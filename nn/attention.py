@@ -149,7 +149,8 @@ class GenericSelfAttention(nn.Module):
                 raise NotImplementedError(
                     "Causal attention on sequence level not implemented. "
                     "We can easily extend CumConcatLayer on RETURNN side for this, to accept any axis argument. "
-                    "However, normally any causal attention should always be inside a loop and this should never be needed."
+                    "However, normally any causal attention should always be inside a loop "
+                    "and this should never be needed."
                 )
             hist_dim = nn.SpatialDim(f"{axis.description}:{'kv-history' if causal else 'kv'}")
             k, _ = nn.reinterpret_new_dim(k, in_dim=axis, out_dim=hist_dim, name="k_new_dim")

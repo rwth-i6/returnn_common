@@ -289,7 +289,8 @@ class Transformer(nn.Module):
     ) -> None:
         """
         Default parameters as in the original paper https://arxiv.org/pdf/1706.03762.pdf only modification to this is
-        norm_first which would be False in the paper, but empirically performs better with True, thus being True by default.
+        norm_first which would be False in the paper, but empirically performs better with True,
+        thus being True by default.
 
         :param model_dim: model dimension, out_dim of encoder and decoder. PyTorch name: d_model
         :param target_dim: includes the target vocab. dim for the final softmax in the decoder
