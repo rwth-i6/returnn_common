@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import inspect
 import re
+import subprocess
 import typing
 import collections.abc
 from typing import Type, Optional, Union, Dict, List, Tuple, Sequence, Set
@@ -666,6 +667,9 @@ def setup():
         file=f,
         end="",
     )
+
+    f.close()
+    subprocess.check_call(["black", _out_filename])
 
 
 class LayerSignature:
