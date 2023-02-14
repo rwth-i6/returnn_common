@@ -158,7 +158,7 @@ class ConformerConvSubsample(ISeqDownsamplingEncoder):
                 x, in_spatial_dims = nn.pool2d(
                     x, in_spatial_dims=in_spatial_dims, pool_size=self.pool_sizes[i], padding="same", mode="max"
                 )
-        self._final_second_spatial_dim.declare_same_as(in_spatial_dims[-1])
+        x, in_spatial_dims[-1] = nn.replace_dim(x, out_dim=self._final_second_spatial_dim, in_dim=in_spatial_dims[-1])
         out, _ = nn.merge_dims(x, axes=[self._final_second_spatial_dim, in_dim])
         return out, in_spatial_dims[0]
 

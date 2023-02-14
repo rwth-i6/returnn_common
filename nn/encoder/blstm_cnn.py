@@ -66,7 +66,7 @@ class PreConvNet(nn.Module):
         x, extra_spatial_dim = nn.pool1d(x, in_spatial_dim=extra_spatial_dim, pool_size=2, mode="max", padding="same")
         x, _ = self.conv1(x, in_spatial_dims=(spatial_dim, extra_spatial_dim))
         x, extra_spatial_dim = nn.pool1d(x, in_spatial_dim=extra_spatial_dim, pool_size=2, mode="max", padding="same")
-        self._final_extra_spatial_dim.declare_same_as(extra_spatial_dim)
+        x, extra_spatial_dim = nn.replace_dim(x, in_dim=extra_spatial_dim, out_dim=self._final_extra_spatial_dim)
         x, _ = nn.merge_dims(x, axes=(extra_spatial_dim, feat_dim), out_dim=nn.FeatureDim("conv-net-feature", None))
         x.verify_out_shape(set(batch_dims) | {self.out_dim, spatial_dim})
         return x

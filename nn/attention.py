@@ -387,10 +387,11 @@ class LearnedRelativePositionalEncoding(nn.Module):
             remaining_dim = spatial_dim - mat_spatial_size
             left = nn.expand_dim(left, dim=remaining_dim)
             right = nn.expand_dim(right, dim=remaining_dim)
-            cond.true, out_spatial_dim_ = nn.concat(
+            concat, out_spatial_dim_ = nn.concat(
                 (left, remaining_dim), (self.pos_emb, self.clipped_spatial_dim), (right, remaining_dim)
             )
-            out_spatial_dim_.declare_same_as(out_spatial_dim)
+            concat, out_spatial_dim_ = nn.replace_dim(concat, in_dim=out_spatial_dim_, out_dim=out_spatial_dim)
+            cond.true = concat
 
             # False branch, spatial_dim <= self.clipping
             cond.false, _ = nn.slice_nd(
@@ -441,7 +442,7 @@ def relative_positional_encoding(
         arg_sin = nn.combine_bc(position, "*", div_term)
         arg_cos = arg_sin + math.pi / 2.0
         arg, feat_dim_ = nn.concat((arg_sin, feat2_dim), (arg_cos, feat2_dim))
-        feat_dim_.declare_same_as(feat_dim)
+        arg, feat_dim_ = nn.replace_dim(arg, in_dim=feat_dim_, out_dim=feat_dim)
         emb = nn.sin(arg)
         emb.verify_out_shape({out_spatial_dim, feat_dim})
         cache[(spatial_dim, feat_dim)] = emb, out_spatial_dim
