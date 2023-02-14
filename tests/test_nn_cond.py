@@ -154,14 +154,7 @@ def test_cond_dim():
         )
         concat, out_spatial_dim_ = nn.replace_dim(concat, in_dim=out_spatial_dim_, out_dim=out_spatial_dim)
         cond.true = concat
-
-        # False branch, spatial_dim <= self.clipping
-        cond.false, _ = nn.slice_nd(
-            pos_emb,
-            axis=clipped_spatial_dim,
-            start=mat_spatial_size - nn.dim_value(spatial_dim),
-            size=out_spatial_dim,
-        )
+        cond.false = nn.random_uniform((out_spatial_dim, in_dim), maxval=1.0)
 
     y = cond.result
     y = y + nn.reduce(x, axis=(time_dim, nn.batch_dim), mode="mean")
