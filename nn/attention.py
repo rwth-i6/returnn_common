@@ -387,10 +387,11 @@ class LearnedRelativePositionalEncoding(nn.Module):
             remaining_dim = spatial_dim - mat_spatial_size
             left = nn.expand_dim(left, dim=remaining_dim)
             right = nn.expand_dim(right, dim=remaining_dim)
-            cond.true, out_spatial_dim_ = nn.concat(
+            concat, out_spatial_dim_ = nn.concat(
                 (left, remaining_dim), (self.pos_emb, self.clipped_spatial_dim), (right, remaining_dim)
             )
-            out_spatial_dim_.declare_same_as(out_spatial_dim)
+            concat, out_spatial_dim_ = nn.replace_dim(concat, in_dim=out_spatial_dim_, out_dim=out_spatial_dim)
+            cond.true = concat
 
             # False branch, spatial_dim <= self.clipping
             cond.false, _ = nn.slice_nd(
