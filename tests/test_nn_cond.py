@@ -130,6 +130,7 @@ def test_cond_new_axis():
 
 
 def test_cond_dim():
+    # Fixed via https://github.com/rwth-i6/returnn/pull/1262.
     nn.reset_default_root_name_ctx()
     in_dim = nn.FeatureDim("in", 12)
     time_dim = nn.SpatialDim("time")
