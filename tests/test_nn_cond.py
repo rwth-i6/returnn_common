@@ -133,35 +133,21 @@ def test_cond_dim():
     nn.reset_default_root_name_ctx()
     in_dim = nn.FeatureDim("in", 12)
     time_dim = nn.SpatialDim("time")
-    spatial_dim = time_dim
     x = nn.get_extern_data(nn.Data("data", dim_tags=[nn.batch_dim, time_dim, in_dim]))
-    out_spatial_dim = spatial_dim - 1 + spatial_dim
-    clipping = 2
-    clipped_spatial_dim = nn.SpatialDim(f"learned-rel-pos", dimension=2 * clipping + 1)
-    mat_spatial_size = clipping + 1
-    pos_emb = nn.random_uniform((clipped_spatial_dim, in_dim), maxval=1.0)
-
-    # Example via LearnedRelativePositionalEncoding.
-    with nn.Cond(nn.dim_value(spatial_dim) > mat_spatial_size) as cond:
-        # True branch
-        left = nn.gather(pos_emb, axis=clipped_spatial_dim, position=0)
-        right = nn.gather(pos_emb, axis=clipped_spatial_dim, position=clipped_spatial_dim.dimension - 1)
-        remaining_dim = spatial_dim - mat_spatial_size
-        left = nn.expand_dim(left, dim=remaining_dim)
-        right = nn.expand_dim(right, dim=remaining_dim)
-        concat, out_spatial_dim_ = nn.concat(
-            (left, remaining_dim), (pos_emb, clipped_spatial_dim), (right, remaining_dim)
-        )
-        concat, out_spatial_dim_ = nn.replace_dim(concat, in_dim=out_spatial_dim_, out_dim=out_spatial_dim)
+    new_dim = time_dim * 2
+    with nn.Cond(nn.dim_value(time_dim) % 2 == 0) as cond:
+        concat, new_dim_ = nn.concat((x, time_dim), (x, time_dim))
+        # new_dim_ == 2 * time_dim != time_dim * 2 == new_dim, which is important for the test.
+        # however, same values, so replace_dim is possible.
+        concat, new_dim_ = nn.replace_dim(concat, in_dim=new_dim_, out_dim=new_dim)
         cond.true = concat
-        cond.false = nn.random_uniform((out_spatial_dim, in_dim), maxval=1.0)
-
+        cond.false = nn.random_uniform((nn.batch_dim, new_dim, in_dim), maxval=1.0)
     y = cond.result
-    y = y + nn.reduce(x, axis=(time_dim, nn.batch_dim), mode="mean")
     y.mark_as_default_output()
 
     config_str = nn.get_returnn_config().get_complete_py_code_str(nn.Module())
     dummy_run_net_single_custom(config_str, make_feed_dict=functools.partial(make_feed_dict, n_time=1))
+    dummy_run_net_single_custom(config_str, make_feed_dict=functools.partial(make_feed_dict, n_time=2))
 
 
 def test_cond_multiple_outputs():
