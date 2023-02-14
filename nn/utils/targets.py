@@ -30,10 +30,6 @@ def prev_target_seq(
     pad_dim = nn.SpatialDim("bos-prefix", 1)
     pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.feature_dim)
     y, dim__ = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
-    # We want that out_spatial_dim == 1 + spatial_dim (if out_one_longer) when this function returns,
-    # i.e. the pad_dim is not really relevant.
-    # Note that this currently depends on somewhat special behavior of declare_same_as.
-    dim__.declare_same_as(1 + dim_)
     if out_one_longer:
         y.verify_out_shape(set(batch_dims) | {dim__, targets.feature_dim})
         return y, dim__
