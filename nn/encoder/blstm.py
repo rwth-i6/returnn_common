@@ -61,7 +61,6 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
             raise NotImplementedError  # TODO ...
 
     def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
-        out_spatial_dim = nn.SpatialDim(f"{nn.NameCtx.current_ctx().get_abs_name()}:spatial")
         for i, lstm in enumerate(self.layers):
             if i > 0:
                 if self.dropout:
@@ -73,7 +72,6 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
                 source, in_spatial_dim = nn.pool1d(
                     source, mode="max", padding="same", pool_size=red, in_spatial_dim=in_spatial_dim
                 )
-        in_spatial_dim.declare_same_as(out_spatial_dim)
         return source, in_spatial_dim
 
 
