@@ -125,7 +125,8 @@ def test_cond_new_axis():
     y.mark_as_default_output()
 
     config_str = nn.get_returnn_config().get_complete_py_code_str(net)
-    dummy_run_net_single_custom(config_str)
+    dummy_run_net_single_custom(config_str, make_feed_dict=functools.partial(make_feed_dict, n_batch=2))
+    dummy_run_net_single_custom(config_str, make_feed_dict=functools.partial(make_feed_dict, n_batch=3))
 
 
 def test_cond_dim():
