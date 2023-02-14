@@ -137,7 +137,7 @@ def random_label(shape: Sequence[nn.Dim], sparse_dim: nn.Dim, dtype: str = "int3
     Random label
     """
     res = random_uniform(shape=shape, dtype=dtype, minval=0, maxval=sparse_dim.dimension)
-    res = nn.reinterpret_set_sparse_dim(res, sparse_dim)
+    res = nn.set_sparse_dim(res, sparse_dim)
     return res
 
 

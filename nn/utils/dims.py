@@ -56,7 +56,7 @@ def length(
     return nn.make_layer({"class": "length", "from": nn.get_dim_deps(dim), "axis": dim, **args}, name="length")
 
 
-def reinterpret_new_dim(
+def replace_dim(
     source: nn.Tensor, *, in_dim: nn.Dim, out_dim: Optional[nn.Dim] = None, name: Optional[str] = None
 ) -> Tuple[nn.Tensor, nn.Dim]:
     """
@@ -71,7 +71,7 @@ def reinterpret_new_dim(
     return out, out_dim
 
 
-def reinterpret_set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str = "set_sparse_dim") -> nn.Tensor:
+def set_sparse_dim(source: nn.Tensor, out_dim: nn.Dim, *, name: str = "set_sparse_dim") -> nn.Tensor:
     """
     :return: source with sparse_dim set to out_dim
     """

@@ -115,7 +115,7 @@ def test_cond_new_axis():
         x_ = x
         x_ = net(x_)
         new_dim = nn.SpatialDim(f"{axis.description}:new-dim")
-        x_, _ = nn.reinterpret_new_dim(x_, in_dim=axis, out_dim=new_dim)
+        x_, _ = nn.replace_dim(x_, in_dim=axis, out_dim=new_dim)
         x_ = net(x_)
         cond.true = nn.reduce(x_, axis=new_dim, mode="max")
         cond.false = nn.reduce(x, axis=axis, mode="max")
