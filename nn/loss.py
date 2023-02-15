@@ -230,6 +230,7 @@ def transducer_time_sync_full_sum_neg_log_prob(
     labels: nn.Tensor,
     input_spatial_dim: nn.Dim,
     labels_spatial_dim: nn.Dim,
+    prev_labels_spatial_dim: nn.Dim,
     blank_index: int = -1,
 ) -> nn.Tensor:
     """
@@ -240,7 +241,7 @@ def transducer_time_sync_full_sum_neg_log_prob(
 
     Args:
         log_probs: A >=3-D Tensor of floats.  The dimensions
-                     should be (B..., T, U, V), where B is the minibatch index,
+                     should be (B..., T, U+1, V), where B is the minibatch index,
                      T is the time index, U is the prediction network sequence
                      length, and V indexes over activations for each
                      symbol in the alphabet.
@@ -248,6 +249,7 @@ def transducer_time_sync_full_sum_neg_log_prob(
                      labels for the minibatch are same length.
         input_spatial_dim:
         labels_spatial_dim:
+        prev_labels_spatial_dim: 1 + labels_spatial_dim; includes the begin-of-sequence label
         blank_index: int, the label value/index that the RNA
                      calculation should use as the blank label
     Returns:
@@ -268,6 +270,7 @@ def transducer_time_sync_full_sum_neg_log_prob(
                 "blank_index": blank_index,
                 "input_spatial_dim": input_spatial_dim,
                 "labels_spatial_dim": labels_spatial_dim,
+                "prev_labels_spatial_dim": prev_labels_spatial_dim,
             },
             "out_type": _transducer_full_sum_log_prob_eval_layer_out,
         },
@@ -281,6 +284,7 @@ def _transducer_full_sum_log_prob_eval_layer_func(
     source,
     input_spatial_dim: nn.Dim,
     labels_spatial_dim: nn.Dim,
+    prev_labels_spatial_dim: nn.Dim,
     blank_index: int,
 ) -> tf.Tensor:
     from returnn.tf.layers.basic import LayerBase
@@ -297,7 +301,7 @@ def _transducer_full_sum_log_prob_eval_layer_func(
     assert labels.sparse_dim.dimension <= feat_dim.dimension
     # Move axes into the right order (no-op if they already are).
     log_probs = log_probs.copy_compatible_to(
-        nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, 1 + labels_spatial_dim, feat_dim]),
+        nn.Data("log_probs", dim_tags=batch_dims + [input_spatial_dim, prev_labels_spatial_dim, feat_dim]),
         check_dtype=False,
     )
     labels = labels.copy_compatible_to(
@@ -321,7 +325,13 @@ def _transducer_full_sum_log_prob_eval_layer_func(
 
 
 def _transducer_full_sum_log_prob_eval_layer_out(
-    *, name: str, sources: List[LayerBase], input_spatial_dim: nn.Dim, labels_spatial_dim: nn.Dim, **_kwargs
+    *,
+    name: str,
+    sources: List[LayerBase],
+    input_spatial_dim: nn.Dim,
+    labels_spatial_dim: nn.Dim,
+    prev_labels_spatial_dim: nn.Dim,
+    **_kwargs,
 ) -> nn.Data:
     from returnn.tf.layers.basic import LayerBase
 
@@ -331,6 +341,6 @@ def _transducer_full_sum_log_prob_eval_layer_out(
     # Remove all dims used here -- batch dim(s) remain.
     dim_tags.remove(log_probs.output.feature_dim_or_sparse_dim)
     dim_tags.remove(input_spatial_dim)
-    dim_tags.remove(1 + labels_spatial_dim)
+    dim_tags.remove(prev_labels_spatial_dim)
     assert set(dim_tags + [labels_spatial_dim]) == set(labels.output.dim_tags)  # same batch dims
     return nn.Data("%s_output" % name, dim_tags=dim_tags)

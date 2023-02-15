@@ -116,7 +116,11 @@ def test_transducer_time_sync_full_sum_neg_log_prob():
     log_probs = nn.make_layer({"class": "eval", "eval": _log_fwdbwd, "from": log_probs}, name="log_probs")
     log_probs = nn.label_smoothed_log_prob_gradient(log_probs, 0.1)
     loss = nn.transducer_time_sync_full_sum_neg_log_prob(
-        log_probs=log_probs, labels=targets, input_spatial_dim=time_dim, labels_spatial_dim=out_spatial_dim
+        log_probs=log_probs,
+        labels=targets,
+        input_spatial_dim=time_dim,
+        labels_spatial_dim=out_spatial_dim,
+        prev_labels_spatial_dim=prev_targets_spatial_dim,
     )
     loss.mark_as_loss("full_sum")
 
