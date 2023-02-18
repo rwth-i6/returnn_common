@@ -802,7 +802,7 @@ class ReturnnConfigSerializer:
             root_module=root_module, with_imports=False, ref_extern_data_dims_via_global_config=False
         )
 
-    _ImportPyCodeStr = (
+    ImportPyCodeStr = (
         "from returnn.tf.util.data import (\n"
         "  Dim, batch_dim, single_step_dim,"
         " SpatialDim, FeatureDim, ImplicitDynSizeDim, ImplicitSparseDim)\n\n"
@@ -820,7 +820,7 @@ class ReturnnConfigSerializer:
         self._base_extern_data_dim_refs = list(self._dim_tags_proxy.dim_refs_by_tag.values())
 
         code_lines = [
-            self._ImportPyCodeStr,
+            self.ImportPyCodeStr,
             "use_tensorflow = True\n",
             f"behavior_version = {self._behavior_version}\n\n",
             f"{self._dim_tags_proxy.py_code_str()}\n",
@@ -839,7 +839,7 @@ class ReturnnConfigSerializer:
         extern_data = dim_tags_proxy.collect_dim_tags_and_transform_config(extern_data)
 
         code_lines = [
-            cls._ImportPyCodeStr,
+            cls.ImportPyCodeStr,
             f"{dim_tags_proxy.py_code_str()}\n",
             f"extern_data = {pformat(extern_data)}\n",
         ]
@@ -865,7 +865,7 @@ class ReturnnConfigSerializer:
         code_lines = []
 
         if with_imports:
-            code_lines.append(self._ImportPyCodeStr + "\n")
+            code_lines.append(self.ImportPyCodeStr + "\n")
         for import_str in imports:
             code_lines.append(import_str + "\n")
 
