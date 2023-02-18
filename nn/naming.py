@@ -58,7 +58,7 @@ Some automatic handling we do:
 """
 
 from __future__ import annotations
-from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Collection, Callable
+from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Collection, Callable, TypeVar
 import types
 import numpy
 import weakref
@@ -68,6 +68,9 @@ from returnn.util.basic import NotSpecified
 # noinspection PyProtectedMember
 from returnn.tf.util.data import _MarkedDim
 from .. import nn
+
+
+T = TypeVar("T")
 
 
 def get_returnn_config() -> ReturnnConfigSerializer:
@@ -1315,7 +1318,7 @@ class ReturnnDimTagsProxy:
         assert ref, f"no ref for {dim}"
         return ref.py_id_name()
 
-    def collect_dim_tags_and_transform_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def collect_dim_tags_and_transform_config(self, config: T) -> T:
         """
         Go through the config and collect all dim tags, replace them by proxies (DimRefProxy or SetProxy).
 
