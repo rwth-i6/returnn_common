@@ -1164,6 +1164,10 @@ class ReturnnDimTagsProxy:
         def __repr__(self):
             return self.ref_repr()
 
+        def _sis_hash(self):
+            assert self.name
+            return self.name.encode("utf8")
+
         @property
         def dim(self) -> nn.Dim:
             """nn.Dim"""
