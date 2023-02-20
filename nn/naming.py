@@ -1165,8 +1165,10 @@ class ReturnnDimTagsProxy:
             return self.ref_repr()
 
         def _sis_hash(self):
-            assert self.name
-            return self.name.encode("utf8")
+            # noinspection PyUnresolvedReferences
+            from sisyphus.hash import sis_hash_helper
+
+            return sis_hash_helper(self.path)
 
         @property
         def dim(self) -> nn.Dim:
