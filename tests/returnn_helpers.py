@@ -91,7 +91,7 @@ def dummy_run_net(config: Dict[str, Any], *, train: bool = False, net: Optional[
     from returnn.config import Config
 
     extern_data_opts = config["extern_data"]
-    n_data_dim = extern_data_opts["data"]["dim_tags"][-1].dimension
+    n_data_dim = extern_data_opts["data"]["dims"][-1].dimension
     n_classes_dim = extern_data_opts["classes"]["sparse_dim"].dimension if "classes" in extern_data_opts else 7
     config = Config(
         {
