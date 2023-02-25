@@ -293,7 +293,7 @@ def setup():
     print("from typing import Union, Optional, Tuple, Sequence, Dict, Any, TYPE_CHECKING", file=f)
     print("import numpy", file=f)
     print("if TYPE_CHECKING:", file=f)
-    print("  import tensorflow as tf", file=f)
+    print("    import tensorflow as tf", file=f)
     print("from returnn.util.basic import NotSpecified", file=f)
     print("from .. import nn", file=f)
     layer_classes = collect_layers()
@@ -314,21 +314,21 @@ def setup():
         if not sig.is_functional() or layer_class == LayerBase:
             print(f"\n\nclass {cls_str}({cls_base_str}):", file=f)
             if layer_class.__doc__:
-                print('  """', end="", file=f)
+                print('    """', end="", file=f)
                 for line in layer_class.__doc__.splitlines(keepends=True):
                     print(line if line.strip() else line.strip(" "), end="", file=f)
-                print('  """', file=f)
+                print('    """', file=f)
             else:
                 print(format_multi_line_str("(undocumented...)", indent="  "), file=f)
 
-            print(f"  returnn_layer_class = {sig.layer_class.layer_class!r}", file=f)
-            print(f"  has_recurrent_state = {sig.has_recurrent_state()}", file=f)
-            print(f"  has_variables = {sig.has_variables()}", file=f)
+            print(f"    returnn_layer_class = {sig.layer_class.layer_class!r}", file=f)
+            print(f"    has_recurrent_state = {sig.has_recurrent_state()}", file=f)
+            print(f"    has_variables = {sig.has_variables()}", file=f)
 
             if sig.need_module_init():
                 print("", file=f)
-                print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
-                print("  def __init__(self,", file=f)
+                print("    # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
+                print("    def __init__(self,", file=f)
                 printed_keyword_only_symbol = False
                 for _, param in sig.params.items():
                     if param.is_module_init_arg():
@@ -336,44 +336,46 @@ def setup():
                             not printed_keyword_only_symbol
                             and param.inspect_param.kind == param.inspect_param.KEYWORD_ONLY
                         ):
-                            print("               *,", file=f)
+                            print("                 *,", file=f)
                             printed_keyword_only_symbol = True
-                        print(f"               {param.get_module_param_code_str()},", file=f)
-                print(f"               {'**kwargs' if layer_class != LayerBase else ''}):", file=f)
-                print('    """', file=f)
+                        print(f"                 {param.get_module_param_code_str()},", file=f)
+                print(f"                 {'**kwargs' if layer_class != LayerBase else ''}):", file=f)
+                print('        """', file=f)
                 if sig.docstring:
                     for line in sig.docstring.splitlines():
-                        print(("    " + line) if line else "", file=f)
+                        print(("        " + line) if line else "", file=f)
                     print("", file=f)
                 for _, param in sig.params.items():
                     if param.is_module_init_arg():
-                        print(param.get_module_param_docstring(indent="    "), file=f)
-                print('    """', file=f)
-                print(f"    {sig.get_init_super_call_code_str()}", file=f)
+                        print(param.get_module_param_docstring(indent="        "), file=f)
+                print('        """', file=f)
+                print(f"        {sig.get_init_super_call_code_str()}", file=f)
                 for _, param in sig.params.items():
                     if param.is_module_init_arg():
-                        print(f"    self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
+                        print(f"        self.{param.get_module_param_name()} = {param.get_module_param_name()}", file=f)
 
             if sig.has_module_init_args() or sig.has_defined_base_params():
                 print("", file=f)
-                print("  def get_opts(self):", file=f)
+                print("    def get_opts(self):", file=f)
                 print(format_multi_line_str("Return all options", indent="    "), file=f)
-                print("    opts = {", file=f)
+                print("        opts = {", file=f)
                 for _, param in sig.params.items():
                     if param.is_module_init_arg():
-                        print(f"      '{param.returnn_name}': self.{param.get_module_param_name()},", file=f)
-                print("    }", file=f)
-                print("    opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}", file=f)
+                        print(f"            '{param.returnn_name}': self.{param.get_module_param_name()},", file=f)
+                print("        }", file=f)
+                print(
+                    "        opts = {key: value for (key, value) in opts.items() if value is not NotSpecified}", file=f
+                )
                 if layer_class != LayerBase:
                     if sig.has_defined_base_params():
-                        print("    opts.update(super().get_opts())", file=f)
+                        print("        opts.update(super().get_opts())", file=f)
                         for key in sig.get_defined_base_params():
-                            print(f"    opts.pop({key!r})", file=f)
-                        print("    return opts", file=f)
+                            print(f"        opts.pop({key!r})", file=f)
+                        print("        return opts", file=f)
                     else:
-                        print("    return {**opts, **super().get_opts()}", file=f)
+                        print("        return {**opts, **super().get_opts()}", file=f)
                 else:
-                    print("    return opts", file=f)
+                    print("        return opts", file=f)
 
             if layer_class.layer_class:
                 print("", file=f)
@@ -389,83 +391,83 @@ def setup():
                         sig.has_module_call_args(),
                     ]
                 ):
-                    print("  # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
-                    print("  def __call__(self,", file=f)
+                    print("    # noinspection PyShadowingBuiltins,PyShadowingNames", file=f)
+                    print("    def __call__(self,", file=f)
                     if sig.has_source_param():
-                        print(f"               {sig.get_module_call_source_param_code_str()},", file=f)
+                        print(f"                 {sig.get_module_call_source_param_code_str()},", file=f)
                     elif sig.explicit_source_list():
                         for i in range(sig.explicit_source_list()):
                             print(
-                                f"               {sig.get_module_call_source_param_code_str(explicit_idx=i)},", file=f
+                                f"                 {sig.get_module_call_source_param_code_str(explicit_idx=i)},", file=f
                             )
                     if sig.has_module_call_args() or sig.has_recurrent_state():
-                        print("               *,", file=f)
+                        print("                 *,", file=f)
                         if sig.has_recurrent_state():
-                            print(f"               {sig.get_module_call_state_param_code_str('state')},", file=f)
+                            print(f"                 {sig.get_module_call_state_param_code_str('state')},", file=f)
                         for param in sig.get_module_call_args():
-                            print(f"               {param.get_module_param_code_str()},", file=f)
-                    print(f"               ) -> {res_type_str}:", file=f)
+                            print(f"                 {param.get_module_param_code_str()},", file=f)
+                    print(f"                 ) -> {res_type_str}:", file=f)
                 else:
-                    print(f"  def __call__(self) -> {res_type_str}:", file=f)
+                    print(f"    def __call__(self) -> {res_type_str}:", file=f)
                 print(format_multi_line_str("Make layer dict", indent="    "), file=f)
                 if sig.has_source_param():
                     if sig.need_multiple_sources():
                         print(
-                            "    assert isinstance(source, (tuple, list))"
+                            "        assert isinstance(source, (tuple, list))"
                             " and all(isinstance(s, nn.Tensor) for s in source)",
                             file=f,
                         )
                     elif sig.support_multiple_sources():
                         print(
-                            "    assert (\n"
-                            "      isinstance(source, nn.Tensor) or\n"
+                            "        assert (\n"
+                            "            isinstance(source, nn.Tensor) or\n"
                             "      (isinstance(source, (tuple, list))"
                             " and all(isinstance(s, nn.Tensor) for s in source)))",
                             file=f,
                         )
                     else:
-                        print("    assert isinstance(source, nn.Tensor)", file=f)
+                        print("        assert isinstance(source, nn.Tensor)", file=f)
                 elif sig.explicit_source_list():
                     for i in range(sig.explicit_source_list()):
-                        print(f"    assert isinstance(source{i + 1}, nn.Tensor)", file=f)
+                        print(f"        assert isinstance(source{i + 1}, nn.Tensor)", file=f)
                 if sig.has_module_call_args() or sig.has_recurrent_state():
                     if sig.has_module_call_args():
-                        print("    args = {", file=f)
+                        print("        args = {", file=f)
                         for param in sig.get_module_call_args():
-                            print(f"      '{param.returnn_name}': {param.get_module_param_name()},", file=f)
-                        print("    }", file=f)
+                            print(f"            '{param.returnn_name}': {param.get_module_param_name()},", file=f)
+                        print("        }", file=f)
                         print(
-                            "    args = {key: value for (key, value) in args.items() if value is not NotSpecified}",
+                            "        args = {key: value for (key, value) in args.items() if value is not NotSpecified}",
                             file=f,
                         )
                     else:
-                        print("    args = {}", file=f)
+                        print("        args = {}", file=f)
                     if sig.has_recurrent_state():
                         # There must be an axis argument.
                         assert "axis" in sig.params
-                        print("    self.handle_recurrent_state(args, axis=axis, state=state)", file=f)
+                        print("        self.handle_recurrent_state(args, axis=axis, state=state)", file=f)
                 if sig.has_recurrent_state():
-                    print("    layer = nn.make_layer({", file=f)
+                    print("        layer = nn.make_layer({", file=f)
                 else:
-                    print("    return nn.make_layer({", file=f)
-                print(f"      'class': {layer_class.layer_class!r},", file=f)
+                    print("        return nn.make_layer({", file=f)
+                print(f"            'class': {layer_class.layer_class!r},", file=f)
                 if sig.has_source_param():
                     print("      'from': source,", file=f)
                 elif sig.explicit_source_list():
                     print(
-                        f"      'from':"
+                        f"            'from':"
                         f" [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],",
                         file=f,
                     )
                 if sig.has_module_call_args() or sig.has_recurrent_state():
-                    print("      **args,", file=f)
-                print("      **self.get_opts()}, module=self)", file=f)
+                    print("            **args,", file=f)
+                print("            **self.get_opts()}, module=self)", file=f)
                 if sig.has_recurrent_state():
-                    print("    out_state = self.returnn_layer_get_recurrent_state(layer)", file=f)
-                    print("    return layer, out_state", file=f)
+                    print("        out_state = self.returnn_layer_get_recurrent_state(layer)", file=f)
+                    print("        return layer, out_state", file=f)
             else:
                 print("", file=f)
-                print("  __call__ = nn.ReturnnWrappedLayerBase.__call__  # abstract", file=f)
+                print("    __call__ = nn.ReturnnWrappedLayerBase.__call__  # abstract", file=f)
 
         # Make function if this is functional
         name = get_module_class_name_for_layer_class(sig)
@@ -517,7 +519,7 @@ def setup():
                 print(f"{prefix}{param.get_module_param_code_str()},", file=f)
             res_type = "Tuple[%s]" % ", ".join(res_types) if len(res_types) > 1 else res_types[0]
             print(f"{prefix}name: Optional[Union[str, nn.NameCtx]] = None)" f" -> {res_type}:", file=f)
-            print('  """', file=f)
+            print('    """', file=f)
             if layer_class.__doc__:
                 for i, line in enumerate(layer_class.__doc__.splitlines(keepends=True)):
                     if i == 0 and not line.strip():
@@ -526,50 +528,51 @@ def setup():
                 print("", file=f)
             if sig.docstring:
                 for line in sig.docstring.splitlines():
-                    print(("  " + line) if line else "", file=f)
+                    print(("    " + line) if line else "", file=f)
                 print("", file=f)
             if sig.has_source_param():
-                print(f"  {sig.get_module_call_source_docstring()}", file=f)
+                print(f"    {sig.get_module_call_source_docstring()}", file=f)
             elif sig.explicit_source_list():
                 for i in range(sig.explicit_source_list()):
-                    print(f"  {sig.get_module_call_source_docstring(explicit_idx=i)}", file=f)
+                    print(f"    {sig.get_module_call_source_docstring(explicit_idx=i)}", file=f)
             if sig.has_recurrent_state():
-                print(f"  {sig.get_module_call_state_docstring('state')}", file=f)
+                print(f"    {sig.get_module_call_state_docstring('state')}", file=f)
             for param in mod_args:
-                print(param.get_module_param_docstring(indent="  "), file=f)
-            print("  :param str|nn.NameCtx|None name:", file=f)
-            print(f"  :return: {', '.join(res_args)}", file=f)
-            print('  """', file=f)
+                print(param.get_module_param_docstring(indent="    "), file=f)
+            print("    :param str|nn.NameCtx|None name:", file=f)
+            print(f"    :return: {', '.join(res_args)}", file=f)
+            print('    """', file=f)
 
             if sig.has_source_param():
                 if sig.need_multiple_sources():
                     print(
-                        "  if not isinstance(source, (tuple, list))"
+                        "    if not isinstance(source, (tuple, list))"
                         " and all(isinstance(s, nn.Tensor) for s in source):\n"
-                        f"    raise TypeError(f'{name}:"
+                        f"        raise TypeError(f'{name}:"
                         f" unexpected type for source {{source!r}}, need sequence of tensors')",
                         file=f,
                     )
                 elif sig.support_multiple_sources():
                     print(
-                        "  if not (\n"
-                        "    isinstance(source, nn.Tensor) or\n"
-                        "    (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor) for s in source))):\n",
-                        f"     raise TypeError(f'{name}:"
+                        "    if not (\n"
+                        "        isinstance(source, nn.Tensor) or\n"
+                        "        (isinstance(source, (tuple, list)) and all(isinstance(s, nn.Tensor)"
+                        " for s in source))):\n",
+                        f"            raise TypeError(f'{name}:"
                         f" unexpected type for source {{source!r}}, need one or multiple tensors')",
                         file=f,
                     )
                 else:
                     print(
-                        "  if not isinstance(source, nn.Tensor):\n"
-                        f"    raise TypeError(f'{name}: unexpected type for source {{source!r}}, need tensor')",
+                        "    if not isinstance(source, nn.Tensor):\n"
+                        f"        raise TypeError(f'{name}: unexpected type for source {{source!r}}, need tensor')",
                         file=f,
                     )
             elif sig.explicit_source_list():
                 for i in range(sig.explicit_source_list()):
                     print(
-                        f"  if not isinstance(source{i + 1}, nn.Tensor):\n"
-                        f"    raise TypeError(f'{name}:"
+                        f"    if not isinstance(source{i + 1}, nn.Tensor):\n"
+                        f"        raise TypeError(f'{name}:"
                         f" unexpected type for source{i + 1} {{source{i + 1}!r}}, need tensor')",
                         file=f,
                     )
@@ -577,7 +580,7 @@ def setup():
             if layer_class.layer_class in PerLayerOutDimArgs:
                 for out_dim_arg in PerLayerOutDimArgs[layer_class.layer_class]:
                     param = sig.params[out_dim_arg]
-                    print(f"  if {out_dim_arg} is None or {out_dim_arg} is NotSpecified:", file=f)
+                    print(f"    if {out_dim_arg} is None or {out_dim_arg} is NotSpecified:", file=f)
                     in_dim_arg = None
                     if (
                         out_dim_arg in ("out_dim", "out_spatial_dim")
@@ -597,73 +600,73 @@ def setup():
                         assert in_dim_arg is not None
                         description += "{i}"
                         print(
-                            f"    {out_dim_arg} = [\n"
-                            f"      nn.Dim(kind=d.kind,"
-                            f" description=f{description!r})\n"
-                            f"      for i, d in enumerate({in_dim_arg})]",
+                            f"        {out_dim_arg} = [\n"
+                            f"            nn.Dim(kind=d.kind,"
+                            f" description=f{description!r}, dimension=None)\n"
+                            f"            for i, d in enumerate({in_dim_arg})]",
                             file=f,
                         )
                     elif in_dim_arg == "axes":
                         print(
-                            f"    if any(d.is_batch_dim() for d in axes):\n"
-                            f"      kind = nn.Dim.Types.Batch\n"
-                            f"    elif any(d.is_feature_dim() for d in axes):\n"
-                            f"      kind = nn.Dim.Types.Feature\n"
-                            f"    else:\n"
-                            f"      kind = nn.Dim.Types.Spatial\n"
-                            f"    {out_dim_arg} = nn.Dim(kind=kind, description"
-                            f"=f{description!r})",
+                            f"        if any(d.is_batch_dim() for d in axes):\n"
+                            f"            kind = nn.Dim.Types.Batch\n"
+                            f"        elif any(d.is_feature_dim() for d in axes):\n"
+                            f"            kind = nn.Dim.Types.Feature\n"
+                            f"        else:\n"
+                            f"            kind = nn.Dim.Types.Spatial\n"
+                            f"        {out_dim_arg} = nn.Dim(kind=kind,"
+                            f" description=f{description!r}, dimension=None)",
                             file=f,
                         )
                         pass
                     elif in_dim_arg:
                         print(
-                            f"    {out_dim_arg} = nn.Dim(\n"
-                            f"      kind={in_dim_arg}.kind, description=f{description!r})",
+                            f"        {out_dim_arg} = nn.Dim(\n"
+                            f"            kind={in_dim_arg}.kind, description=f{description!r}, dimension=None)",
                             file=f,
                         )
                     else:
-                        print(f"    {out_dim_arg} = nn.SpatialDim(" f"f{description!r})", file=f)
+                        print(f"        {out_dim_arg} = nn.SpatialDim(" f"f{description!r})", file=f)
 
             if sig.has_recurrent_state() or mod_args:
-                print("  args = {", file=f)
+                print("    args = {", file=f)
                 for param in mod_args:
-                    print(f"    '{param.returnn_name}': {param.get_module_param_name()},", file=f)
-                print("    }", file=f)
-                print("  args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
+                    print(f"        '{param.returnn_name}': {param.get_module_param_name()},", file=f)
+                print("        }", file=f)
+                print("    args = {key: value for (key, value) in args.items() if value is not NotSpecified}", file=f)
             if sig.has_recurrent_state():
-                print("  nn.ReturnnWrappedLayerBase.handle_recurrent_state(" "args, axis=axis, state=state)", file=f)
+                print("    nn.ReturnnWrappedLayerBase.handle_recurrent_state(" "args, axis=axis, state=state)", file=f)
             if res_args == ["layer"]:
-                print("  return nn.make_layer({", file=f)
+                print("    return nn.make_layer({", file=f)
             else:
-                print("  layer = nn.make_layer({", file=f)
-            print(f"    'class': {layer_class.layer_class!r},", file=f)
+                print("    layer = nn.make_layer({", file=f)
+            print(f"        'class': {layer_class.layer_class!r},", file=f)
             if sig.has_source_param():
-                print("    'from': source,", file=f)
+                print("        'from': source,", file=f)
             elif sig.explicit_source_list():
                 print(
-                    f"    'from': [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],",
+                    f"        'from': [{', '.join('source' + str(i + 1) for i in range(sig.explicit_source_list()))}],",
                     file=f,
                 )
             if sig.has_recurrent_state() or mod_args:
-                print(f"    **args}}, name=name or {name.lstrip('_')!r})", file=f)
+                print(f"        **args}}, name=name or {name.lstrip('_')!r})", file=f)
             else:
-                print(f"    }}, name=name or {name.lstrip('_')!r})", file=f)
+                print(f"        }}, name=name or {name.lstrip('_')!r})", file=f)
             if sig.has_recurrent_state():
-                print("  out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
+                print("    out_state = nn.ReturnnWrappedLayerBase.returnn_layer_get_recurrent_state(layer)", file=f)
             if res_args != ["layer"]:
-                print(f"  return {', '.join(res_args)}", file=f)
+                print(f"    return {', '.join(res_args)}", file=f)
 
         print(name, sig)
 
     print(
         "\n\n"
         "def _name_str(name: Optional[Union[str, nn.NameCtx]], default: str) -> str:\n"
-        "  if name is None or isinstance(name, str):\n"
-        "    return f'{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}'\n"
-        "  if isinstance(name, nn.NameCtx):\n"
-        "    return name.get_abs_name()\n"
-        "  raise TypeError(f'name type {type(name)} not supported')\n",
+        "    if name is None or isinstance(name, str):\n"
+        "        return f'{nn.NameCtx.current_ctx().get_abs_name()}:{name or default}'\n"
+        "    if isinstance(name, nn.NameCtx):\n"
+        "        return name.get_abs_name()\n"
+        "    raise TypeError(f'name type {type(name)} not supported')\n",
         file=f,
         end="",
     )
@@ -880,7 +883,7 @@ class LayerSignature:
             self.params["out_dim"] = LayerSignature.Param(
                 self,
                 inspect.Parameter(name="out_dim", kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
-                param_type_s="Dim",
+                param_type_s="nn.Dim",
                 docstring="output feature dimension",
             )
         if self.layer_class.layer_class in LayerClassesWithExplicitTarget:
@@ -906,7 +909,7 @@ class LayerSignature:
     def _parse_init_docstring(self):
         if not self.layer_class.__init__.__doc__:
             return
-        base_prefix = "    "
+        base_prefix = " " * 4 * 2
         lines = []
         last_was_param = False
         param = None  # type: Optional[LayerSignature.Param]
@@ -926,7 +929,9 @@ class LayerSignature:
             last_was_param = False
             if line.strip().startswith(":param "):
                 last_was_param = True
-                assert line.startswith(":")
+                assert line.startswith(":"), (
+                    f"unexpected {self.layer_class} __init__ docstring:\n" f"{self.layer_class.__init__.__doc__}"
+                )
                 _, param_s, doc_s = line.split(":", 2)
                 assert isinstance(param_s, str) and isinstance(doc_s, str)
                 assert param_s.startswith("param ")
@@ -972,8 +977,8 @@ class LayerSignature:
     def _handle_axis_like_arg(cls, param: Param):
         if param.param_type_s:
             replace_types = {
-                "int": "Dim",
-                "str": "Dim",
+                "int": "nn.Dim",
+                "str": "nn.Dim",
             }  # they get merged by typing.Union, so duplicates are no problem
             res_t_s = LayerSignature.Param.translate_param_type_code_to_typing_code(
                 param.param_type_s,
@@ -1036,10 +1041,10 @@ class LayerSignature:
         # Simpler fallback
         types = []
         if param.returnn_name not in {"shape", "dims", "axes", "out_dims"}:
-            types.append("Dim")
+            types.append("nn.Dim")
         if param.param_type_s:
             if "list" in param.param_type_s or "tuple" in param.param_type_s:
-                types.append("list[Dim]")
+                types.append("list[nn.Dim]")
         if param.inspect_param.default != inspect.Parameter.empty:
             types.append("None")
         param.param_type_s = "|".join(types)
@@ -1052,7 +1057,7 @@ class LayerSignature:
                 param=inspect.Parameter(
                     name="axis", kind=inspect.Parameter.KEYWORD_ONLY, default=None, annotation=None
                 ),
-                param_type_s="Dim",
+                param_type_s="nn.Dim",
                 docstring="axis to operate over, or nn.single_step_dim",
             )
         if "axes" in self.params and "axis" in self.params:
@@ -1400,7 +1405,7 @@ class LayerSignature:
                 return "Any"
             return self.translate_param_type_code_to_typing_code(self.param_type_s)
 
-        def get_module_param_docstring(self, indent="  "):
+        def get_module_param_docstring(self, indent="    "):
             """
             Docstring
             """
@@ -1414,7 +1419,7 @@ class LayerSignature:
                 if lines[0]:
                     s += " " + lines[0]
                 for line in lines[1:]:
-                    s += "\n" + indent + "  " + line
+                    s += "\n" + indent + "    " + line
             return s
 
 
