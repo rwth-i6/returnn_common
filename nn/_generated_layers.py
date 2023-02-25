@@ -213,9 +213,9 @@ def slice_nd(
 def gather(
     source: nn.Tensor,
     *,
-    position: Any,
+    position: Union[nn.Tensor, int],
     axis: nn.Dim,
-    clip_to_valid: Any = NotSpecified,
+    clip_to_valid: bool = NotSpecified,
     name: Optional[Union[str, nn.NameCtx]] = None,
 ) -> nn.Tensor:
     """

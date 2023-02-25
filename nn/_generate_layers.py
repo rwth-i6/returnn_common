@@ -882,14 +882,14 @@ class LayerSignature:
         if self.layer_class.layer_class in LayerClassesWithExplicitDim:
             self.params["out_dim"] = LayerSignature.Param(
                 self,
-                inspect.Parameter(name="out_dim", kind=inspect.Parameter.POSITIONAL_OR_KEYWORD),
+                inspect.Parameter(name="out_dim", kind=inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation="nn.Dim"),
                 param_type_s="nn.Dim",
                 docstring="output feature dimension",
             )
         if self.layer_class.layer_class in LayerClassesWithExplicitTarget:
             self.params["target"] = LayerSignature.Param(
                 self,
-                inspect.Parameter(name="target", kind=inspect.Parameter.KEYWORD_ONLY),
+                inspect.Parameter(name="target", kind=inspect.Parameter.KEYWORD_ONLY, annotation="nn.Tensor"),
                 param_type_s="nn.Tensor",
                 docstring="target",
             )
@@ -903,7 +903,9 @@ class LayerSignature:
                 continue
             if name in PerLayerIgnoreArgs.get(self.layer_class.layer_class, ()):
                 continue
-            param = inspect.Parameter(name=param.name, kind=param.KEYWORD_ONLY, default=param.default)
+            param = inspect.Parameter(
+                name=param.name, kind=param.KEYWORD_ONLY, default=param.default, annotation=param.annotation
+            )
             self.params[name] = LayerSignature.Param(self, param)
 
     def _parse_init_docstring(self):
@@ -955,14 +957,7 @@ class LayerSignature:
                     doc_s = doc_s[1:]
                 param.docstring = doc_s
                 if param_type_s:
-                    param_type_s = re.sub(r"\breturnn\.tf\.util\.data\.", "", param_type_s)
-                    param_type_s = re.sub(r"\btyping\.Sequence\b", "Sequence", param_type_s)
-                    param_type_s = re.sub(r"\bDimensionTag\b", "Dim", param_type_s)
-                    param_type_s = re.sub(r"\bDim\|str\b", "nn.Dim", param_type_s)
-                    param_type_s = re.sub(r"\bstr\|Dim\b", "nn.Dim", param_type_s)
-                    param_type_s = re.sub(r"\b(?<!nn\.)Dim\b", "nn.Dim", param_type_s)
-                    param_type_s = re.sub(r"\bTensor\b", "nn.Tensor", param_type_s)
-                    param_type_s = re.sub(r"\bLayerBase\b", "nn.Tensor", param_type_s)
+                    param_type_s = _fixup_param_type_s(param_type_s)
                 if param.inspect_param.default != param.inspect_param.empty and param_name in {"axis", "axes"}:
                     if "None" not in param_type_s:
                         param.inspect_param = param.inspect_param.replace(default=inspect.Parameter.empty)
@@ -1055,7 +1050,7 @@ class LayerSignature:
             self.params["axis"] = LayerSignature.Param(
                 parent=self,
                 param=inspect.Parameter(
-                    name="axis", kind=inspect.Parameter.KEYWORD_ONLY, default=None, annotation=None
+                    name="axis", kind=inspect.Parameter.KEYWORD_ONLY, default=None, annotation="nn.Dim"
                 ),
                 param_type_s="nn.Dim",
                 docstring="axis to operate over, or nn.single_step_dim",
@@ -1402,6 +1397,8 @@ class LayerSignature:
             if self.returnn_name == "axis" and not self.param_type_s:
                 return "nn.Dim"
             if not self.param_type_s:
+                if self.inspect_param.annotation != self.inspect_param.empty:
+                    return _fixup_param_type_s(self.inspect_param.annotation)
                 return "Any"
             return self.translate_param_type_code_to_typing_code(self.param_type_s)
 
@@ -1481,6 +1478,18 @@ def collect_layers():
                 ls.append(value)
                 added.add(value)
     return ls
+
+
+def _fixup_param_type_s(param_type_s: str) -> str:
+    param_type_s = re.sub(r"\breturnn\.tf\.util\.data\.", "", param_type_s)
+    param_type_s = re.sub(r"\btyping\.Sequence\b", "Sequence", param_type_s)
+    param_type_s = re.sub(r"\bDimensionTag\b", "Dim", param_type_s)
+    param_type_s = re.sub(r"\bDim\|str\b", "nn.Dim", param_type_s)
+    param_type_s = re.sub(r"\bstr\|Dim\b", "nn.Dim", param_type_s)
+    param_type_s = re.sub(r"\b(?<!nn\.)Dim\b", "nn.Dim", param_type_s)
+    param_type_s = re.sub(r"\bTensor\b", "nn.Tensor", param_type_s)
+    param_type_s = re.sub(r"\bLayerBase\b", "nn.Tensor", param_type_s)
+    return param_type_s
 
 
 if __name__ == "__main__":
