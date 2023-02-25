@@ -75,8 +75,6 @@ def hash_helper(obj):
 
 def _hash_helper_dim(dim: nn.Dim) -> bytes:
     # also see Dim.__hash__
-    if dim.generic:
-        raise ValueError(f"Hash for generic dim tag {dim} is not defined.")
     if dim.special:
         if dim == nn.single_step_dim:
             return b"nn.single_step_dim"

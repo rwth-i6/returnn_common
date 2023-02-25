@@ -1126,8 +1126,8 @@ def get_dim_deps(dim: Union[nn.Dim, Sequence[nn.Dim]]) -> List[nn.Tensor]:
     dim = dim.get_same_base()
     if dim.dimension is not None:  # static dim -> no deps
         return []
-    if dim.generic or dim.special:
-        raise ValueError(f"{dim} deps not defined for generic/special tags")
+    if dim.special:
+        raise ValueError(f"{dim} deps not defined for special tags")
     if dim in _dim_deps:
         deps = _dim_deps[dim]
         if _deps_valid_in_cur_name_ctx(deps):
