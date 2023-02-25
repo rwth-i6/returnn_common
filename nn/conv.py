@@ -539,9 +539,9 @@ def make_conv_out_spatial_dims(
     for i in range(nd):
         if filter_size[i] == strides[i] == 1 or (strides[i] == 1 and padding.lower() == "same"):
             out_spatial_dims[i] = in_spatial_dims[i]
-        elif in_spatial_dims[i].dimension is not None:
-            out_spatial_dims[i].dimension = ConvLayer.calc_out_dim(
-                in_dim=in_spatial_dims[i].dimension,
+        elif in_spatial_dims[i].size is not None:
+            out_spatial_dims[i].capacity = out_spatial_dims[i].size = ConvLayer.calc_out_dim(
+                in_dim=in_spatial_dims[i].size,
                 filter_size=filter_size[i],
                 stride=strides[i],
                 dilation_rate=dilation_rate[i],
