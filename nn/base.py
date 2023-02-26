@@ -184,7 +184,7 @@ class Tensor:
         return set(self.data.dim_tags)
 
     @property
-    def shape_ordered(self) -> Tuple[Dim]:
+    def dims(self) -> Tuple[Dim, ...]:
         """
         :return: ordered dims.
           Note that usually the order should never matter.
@@ -199,13 +199,13 @@ class Tensor:
           except of passing it to functions like nn.constant.
           https://github.com/rwth-i6/returnn_common/issues/138
         """
-        return self.data.dim_tags
+        return self.data.dims
 
     def batch_dims_ordered(self, remove: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None) -> List[Dim]:
         """
         :return: ordered batch dims
         """
-        batch_dims = list(self.shape_ordered)
+        batch_dims = list(self.dims)
         if not remove:
             pass
         elif isinstance(remove, nn.Dim):
@@ -639,7 +639,7 @@ class Parameter(Tensor):
 
     def __copy__(self):
         # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
-        res = type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
+        res = type(self)(shape=self.dims, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
         res.initial = self.initial
         return res
 
@@ -647,7 +647,7 @@ class Parameter(Tensor):
         # Should return new copy. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
         from copy import deepcopy
 
-        res = type(self)(shape=self.shape_ordered, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
+        res = type(self)(shape=self.dims, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
         res.parent_modules.extend((memo[id(m)], k) for m, k in self.parent_modules if id(m) in memo)
         if isinstance(self.initial, nn.init.ParamInit):
             res.initial = deepcopy(self.initial, memo=memo)  # noqa
@@ -666,7 +666,7 @@ class Parameter(Tensor):
         # https://github.com/rwth-i6/returnn_common/issues/216
         self._initial = value
         if isinstance(value, nn.init.ParamInit):
-            value = value(shape=self.shape_ordered, dtype=self.dtype)
+            value = value(shape=self.dims, dtype=self.dtype)
         if value is None:
             self.layer_dict.pop("init", None)
             self.layer_dict.pop("init_by_layer", None)
@@ -688,16 +688,14 @@ class Parameter(Tensor):
             self.layer_dict.pop("init_by_layer", None)
             self.layer_dict["init"] = value
         if nn.is_debug_eager_mode_enabled():
-            shape = [d.get_dim_value() for d in self.shape_ordered]
+            shape = [d.get_dim_value() for d in self.dims]
             if isinstance(value, nn.Tensor):
                 assert value.data.placeholder is not None
                 value_tf = value.data.placeholder
             else:
                 value_tf = tf.broadcast_to(tf.convert_to_tensor(value), shape)
             if self.data.placeholder is None:
-                var = tf.Variable(
-                    value_tf, shape=[d.get_dim_value() for d in self.shape_ordered], dtype=self.data.dtype
-                )
+                var = tf.Variable(value_tf, shape=[d.get_dim_value() for d in self.dims], dtype=self.data.dtype)
                 self.data.placeholder = var
             else:
                 var = self.data.placeholder

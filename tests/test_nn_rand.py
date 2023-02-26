@@ -23,7 +23,7 @@ def test_random_normal():
             self.rnd = nn.Random()
 
         def __call__(self, x: nn.Tensor) -> nn.Tensor:
-            return x + self.rnd.normal(x.shape_ordered)
+            return x + self.rnd.normal(x.dims)
 
     config, net_dict, net = dummy_config_net_dict(_Net, reset_name_ctx=False)
     pprint(net_dict)
@@ -42,7 +42,7 @@ def test_random_multi_call():
             self.rnd = nn.Random()
 
         def __call__(self, x: nn.Tensor) -> nn.Tensor:
-            return x + self.rnd.normal(x.shape_ordered) - self.rnd.normal(x.shape_ordered)
+            return x + self.rnd.normal(x.dims) - self.rnd.normal(x.dims)
 
     config, net_dict, net = dummy_config_net_dict(_Net, reset_name_ctx=False)
     pprint(net_dict)
@@ -86,7 +86,7 @@ def test_random_normal_shape_get_network():
     # https://github.com/rwth-i6/returnn_common/issues/197
     class _Net(nn.Module):
         def __call__(self, x_: nn.Tensor) -> nn.Tensor:
-            return x_ + nn.random_normal(x_.shape_ordered)
+            return x_ + nn.random_normal(x_.dims)
 
     from returnn.config import Config
     from returnn.tf.engine import Engine
@@ -124,7 +124,7 @@ def test_random_normal_shape_get_network_with_time():
     # https://github.com/rwth-i6/returnn_common/issues/197
     class _Net(nn.Module):
         def __call__(self, x_: nn.Tensor) -> nn.Tensor:
-            return x_ + nn.random_normal(x_.shape_ordered)
+            return x_ + nn.random_normal(x_.dims)
 
     from returnn.config import Config
     from returnn.tf.engine import Engine
@@ -172,7 +172,7 @@ def test_random_normal_train_epoch():
             self.linear = nn.Linear(in_dim, in_dim)
 
         def __call__(self, x_: nn.Tensor) -> nn.Tensor:
-            return self.linear(x_ + nn.random_normal(x_.shape_ordered)) + x_
+            return self.linear(x_ + nn.random_normal(x_.dims)) + x_
 
     from returnn.config import Config
     from returnn.tf.engine import Engine

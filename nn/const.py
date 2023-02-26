@@ -54,7 +54,7 @@ def zeros_like(value: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = Non
     """
     zeros with shape and dtype from value. But there is no dependency on value in the computation graph.
     """
-    return zeros(shape=value.shape_ordered, dtype=value.dtype, name=name)
+    return zeros(shape=value.dims, dtype=value.dtype, name=name)
 
 
 def ones(
@@ -75,4 +75,4 @@ def ones_like(value: nn.Tensor, *, name: Optional[Union[str, nn.NameCtx]] = None
     """
     ones with shape and dtype from value. But there is no dependency on value in the computation graph.
     """
-    return ones(shape=value.shape_ordered, dtype=value.dtype, name=name)
+    return ones(shape=value.dims, dtype=value.dtype, name=name)

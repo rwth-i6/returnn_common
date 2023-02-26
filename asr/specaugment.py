@@ -82,7 +82,7 @@ def random_mask_v2(
     :param max_dims: inclusive
     :param mask_value:
     """
-    batch_dims = list(x.shape_ordered)
+    batch_dims = list(x.dims)
     batch_dims.remove(mask_axis)
     if isinstance(broadcast_axis, nn.Dim):
         batch_dims.remove(broadcast_axis)
@@ -96,7 +96,7 @@ def random_mask_v2(
     _, indices, k_dim = nn.top_k(
         nn.random_uniform(batch_dims + [mask_axis], minval=0.0, maxval=1.0),
         axis=mask_axis,
-        k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.shape_ordered),
+        k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.dims),
     )
     # indices should be sorted, and of shape (batch,num), entries (int32) in [0,dim)
     if isinstance(num, int):
@@ -142,7 +142,7 @@ def _mask_v2(
     :param mask_value:
     """
     dim = nn.length(mask_axis)
-    amount = nn.random_uniform(shape=pos.shape_ordered, minval=1, maxval=max_amount + 1, dtype="int32")
+    amount = nn.random_uniform(shape=pos.dims, minval=1, maxval=max_amount + 1, dtype="int32")
     pos2 = nn.minimum(pos + amount, dim)
     idxs = nn.range_over_dim(mask_axis)  # (dim,)
     cond = nn.compare_bc(idxs, ">=", pos) & nn.compare_bc(idxs, "<", pos2)  # (batch,dim)

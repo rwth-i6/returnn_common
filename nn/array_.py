@@ -78,10 +78,10 @@ def expand_dim(source: nn.Tensor, *, dim: nn.Dim, name: Optional[str] = None) ->
     # We use SplitDimsLayer for this.
     # ExpandDimsLayer in RETURNN currently would allow to use a dim tag.
     # Now search for a good axis to split via some heuristics.
-    source_dims = [d for d in source.shape_ordered if not d.is_batch_dim()]
+    source_dims = [d for d in source.dims if not d.is_batch_dim()]
     if not source_dims:
         # Unfortunately, for scalars (ignoring batch), split_dims does not work.
-        return source + nn.zeros(source.shape_ordered + (dim,), dtype=source.dtype)
+        return source + nn.zeros(source.dims + (dim,), dtype=source.dtype)
     if dim.is_spatial_dim():
         if any(d.is_spatial_dim() for d in source_dims):
             axis = [d for d in source_dims if d.is_spatial_dim()][-1]

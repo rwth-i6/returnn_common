@@ -31,9 +31,7 @@ class Random(nn.Module):
         # https://github.com/rwth-i6/returnn_common/issues/148
         # No explicit seed, so RETURNN uses its global seed.
         init_state, _ = nn.random_state_init(out_dim=self._state_dim)
-        state_var = nn.Parameter(
-            init_state.shape_ordered, init_state.dtype, auxiliary=True, non_critical_for_restore=True
-        )
+        state_var = nn.Parameter(init_state.dims, init_state.dtype, auxiliary=True, non_critical_for_restore=True)
         setattr(self, f"state_var{self._call_counter}", state_var)
         state_var.initial = init_state
         self._call_counter += 1

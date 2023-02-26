@@ -18,7 +18,7 @@ def switchout(
     if not source.data.sparse_dim:
         raise ValueError(f"switchout only works on sparse data, got {source}")
     with nn.Cond(nn.train_flag() | on_forward) as cond:
-        random_label = nn.random_label(source.shape_ordered, source.data.sparse_dim, dtype=source.dtype)
-        cond.true = nn.where(nn.random_uniform(source.shape_ordered, maxval=1.0) < switchout_prob, random_label, source)
+        random_label = nn.random_label(source.dims, source.data.sparse_dim, dtype=source.dtype)
+        cond.true = nn.where(nn.random_uniform(source.dims, maxval=1.0) < switchout_prob, random_label, source)
         cond.false = source
     return cond.result

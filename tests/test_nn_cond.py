@@ -95,7 +95,7 @@ def test_cond_random():
 
         def __call__(self, x: nn.Tensor) -> nn.Tensor:
             with nn.Cond(nn.length(nn.batch_dim) % 2 == 0) as cond:
-                cond.true = x + self.rnd.normal(x.shape_ordered)
+                cond.true = x + self.rnd.normal(x.dims)
                 cond.false = x
                 x = cond.result
             return x

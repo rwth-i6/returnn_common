@@ -77,7 +77,7 @@ def remove_weight_norm(module: T_module, name: str = "weight") -> T_module:
     delattr(module, name)
     delattr(module, f"{name}_normalized")
 
-    p = nn.Parameter(fn.v.shape_ordered, fn.v.dtype)
+    p = nn.Parameter(fn.v.dims, fn.v.dtype)
     p.initial = fn.weight_init()
     setattr(module, name, p)
     return module
@@ -95,7 +95,7 @@ class WeightNorm(nn.Module):
 
         # add g and v as new parameters and express w as g/||v|| * v
         g = nn.Parameter([dim] if dim else [], weight.dtype)
-        v = nn.Parameter(weight.shape_ordered, weight.dtype)
+        v = nn.Parameter(weight.dims, weight.dtype)
         self.g = g
         self.v = v
 

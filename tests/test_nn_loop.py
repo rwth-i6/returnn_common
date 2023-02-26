@@ -184,14 +184,14 @@ def test_loop_full_seq_last():
     mask_axis = x.feature_dim
     broadcast_axis = time_dim
 
-    batch_dims = list(x.shape_ordered)
+    batch_dims = list(x.dims)
     batch_dims.remove(mask_axis)
     batch_dims.remove(broadcast_axis)
     num = nn.random_uniform(batch_dims, minval=1, maxval=3, dtype="int32")
     _, indices, k_dim = nn.top_k(
         nn.random_uniform(batch_dims + [mask_axis], minval=0.0, maxval=1.0),
         axis=mask_axis,
-        k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.shape_ordered),
+        k=num if isinstance(num, int) else nn.reduce(num, mode="max", axis=num.dims),
     )
     # indices should be sorted, and of shape (batch,num), entries (int32) in [0,dim)
     loop = nn.Loop(axis=k_dim)

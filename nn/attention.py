@@ -282,7 +282,7 @@ class RelPosSelfAttention(GenericSelfAttention):
         else:
             pos_emb, pos_emb_spatial_dim = relative_positional_encoding(axis, self.pos_emb_feat_dim)
         if self.pos_emb_dropout:
-            pos_emb = nn.dropout(pos_emb, self.pos_emb_dropout, axis=pos_emb.shape_ordered)
+            pos_emb = nn.dropout(pos_emb, self.pos_emb_dropout, axis=pos_emb.dims)
         if self.linear_pos is not None:
             pos_emb = self.linear_pos(pos_emb)
         if self.separate_pos_emb_per_head:

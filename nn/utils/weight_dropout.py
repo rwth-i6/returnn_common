@@ -44,7 +44,7 @@ def weight_dropout(
     weight = getattr(module, name)
     assert isinstance(weight, nn.Parameter)
     if not axis:
-        axis = weight.shape_ordered
+        axis = weight.dims
 
     assert not hasattr(module, f"{name}_raw")
     setattr(module, f"{name}_raw", weight)

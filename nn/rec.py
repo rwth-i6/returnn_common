@@ -68,7 +68,7 @@ class _Rec(nn.Module):
             else:
                 continue
             assert isinstance(param, nn.Tensor)
-            reuse_params[self._param_map_prefix + param_name] = {"layer_output": param, "shape": param.shape_ordered}
+            reuse_params[self._param_map_prefix + param_name] = {"layer_output": param, "shape": param.dims}
         rec_layer_dict["reuse_params"] = {"map": reuse_params}
         assert direction in [1, -1]
         if direction == -1:
