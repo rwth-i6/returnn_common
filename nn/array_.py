@@ -111,9 +111,9 @@ def concat(
     if allow_broadcast:
         opts["allow_broadcast"] = True
     else:
-        dims = sources[0][0].shape - {sources[0][1]}
+        dims = sources[0][0].dims_set - {sources[0][1]}
         for src, dim in sources:
-            assert src.shape - {dim} == dims, f"concat {sources}, need allow_broadcast=True"
+            assert src.dims_set - {dim} == dims, f"concat {sources}, need allow_broadcast=True"
     out_dim = sum(d for _, d in sources)
     res = nn.make_layer(
         {"class": "concat", "from": sources, "out_dim": out_dim, **opts},

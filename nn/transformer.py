@@ -418,7 +418,7 @@ class Transformer(nn.Module):
         :return: memory (encoder output), out logits, out labels (only when doing search), final state
         """
         assert (
-            self.model_dim in source.shape
+            self.model_dim in source.dims_set
         ), f"{self}: Input {source} feature dimension is not matching Transformer model dimension {self.model_dim}"
         memory = self.encoder(source, axis=source_spatial_axis)
         search = None

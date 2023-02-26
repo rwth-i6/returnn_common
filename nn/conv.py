@@ -134,7 +134,7 @@ class _Conv(_ConvOrTransposedConv):
         out_spatial_dims: Optional[Sequence[nn.Dim]] = None,
     ) -> Tuple[nn.Tensor, Sequence[nn.Dim]]:
         for in_spatial_dim in in_spatial_dims:
-            if in_spatial_dim not in source.shape:
+            if in_spatial_dim not in source.dims_set:
                 raise ValueError(f"{self}: source {source} does not have spatial dim {in_spatial_dim}")
         out_spatial_dims = out_spatial_dims or self.make_out_spatial_dims(in_spatial_dims)
         layer_dict = {

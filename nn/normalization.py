@@ -127,8 +127,8 @@ class BatchNorm(nn.Module):
         # which is potentially the use of a fused op,
         # and maybe reordering of dims.
         # https://github.com/rwth-i6/returnn_common/issues/89
-        spatial_dims = source.shape - {nn.batch_dim, self.in_dim}
-        assert len(spatial_dims) == len(source.shape) - 2
+        spatial_dims = source.dims_set - {nn.batch_dim, self.in_dim}
+        assert len(spatial_dims) == len(source.dims_set) - 2
         if any(d.dimension is None for d in spatial_dims):  # any dynamic spatial dim
             if self.use_mask is None:
                 raise ValueError(

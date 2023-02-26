@@ -49,7 +49,7 @@ class _Rec(nn.Module):
         :param direction: 1 for forward direction, -1 for backward direction
         :return: out, out_state. out_state is the new or last state.
         """
-        assert self.in_dim in source.shape
+        assert self.in_dim in source.dims_set
         rec_layer_dict = {
             "class": "rec",
             "from": source,

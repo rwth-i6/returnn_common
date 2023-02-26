@@ -29,7 +29,7 @@ def dim_value(dim: nn.Dim) -> Union[nn.Tensor, int]:
     if dim.dimension is not None:
         return dim.dimension
     length_ = nn.length(dim)
-    if not length_.shape:
+    if not length_.dims_set:
         return length_
     return nn.reduce(length_, mode="max", axis=length_.shape_ordered)
 

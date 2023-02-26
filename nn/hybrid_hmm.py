@@ -69,7 +69,7 @@ class HybridHMM(IHybridHMM):
             raise TypeError(f"unsupported encoder type {type(self.encoder)}")
         out_embed = self.out_projection(encoder_output)
         if train:
-            assert out_spatial_dim in targets.shape
+            assert out_spatial_dim in targets.dims_set
             ce_loss = nn.sparse_softmax_cross_entropy_with_logits(logits=out_embed, targets=targets, axis=self.out_dim)
             ce_loss.mark_as_loss("ce")
         return nn.log_softmax(out_embed, axis=self.out_dim), None

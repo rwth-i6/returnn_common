@@ -61,7 +61,7 @@ def interpolate_bilinear(
     img_dtype = image.dtype
 
     assert all([q.dtype == query_dtype for q in query_points])
-    assert all([q.shape == query_points[0].shape for q in query_points])  # not really necessary but reasonable
+    assert all([q.dims_set == query_points[0].dims_set for q in query_points])  # not really necessary but reasonable
 
     alphas = []
     floors = []

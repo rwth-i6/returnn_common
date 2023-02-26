@@ -146,7 +146,7 @@ class ConformerConvSubsample(ISeqDownsamplingEncoder):
 
     def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
         """forward"""
-        assert self.in_dim in source.shape
+        assert self.in_dim in source.dims_set
         in_spatial_dims = [in_spatial_dim, self.in_dim]
         in_dim = self._dummy_in_dim
         x = nn.expand_dim(source, dim=in_dim)

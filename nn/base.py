@@ -172,7 +172,7 @@ class Tensor:
         return self
 
     @property
-    def shape(self) -> Set[Dim]:
+    def dims_set(self) -> Set[Dim]:
         """
         :return: shape, as a set of dims.
           The order must not play a role
