@@ -99,7 +99,7 @@ class WeightNorm(nn.Module):
         self.g = g
         self.v = v
 
-        self.norm_axes = v.batch_dims_ordered(dim)
+        self.norm_axes = v.remaining_dims(dim)
         if isinstance(weight, nn.Parameter) and weight.initial is not None:
             # Custom ParamInit such that any deepcopy will make individual random inits.
             v.initial = WeightNormDirectionParamInit(weight.initial)

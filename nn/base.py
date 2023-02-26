@@ -201,7 +201,7 @@ class Tensor:
         """
         return self.data.dims
 
-    def batch_dims_ordered(self, remove: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None) -> List[Dim]:
+    def remaining_dims(self, remove: Optional[Union[nn.Dim, Sequence[nn.Dim]]] = None) -> List[Dim]:
         """
         :return: ordered batch dims
         """

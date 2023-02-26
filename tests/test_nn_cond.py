@@ -249,7 +249,7 @@ def test_cond_chunking_conformer():
 
         :return: recog results including beam
         """
-        batch_dims = data.batch_dims_ordered((data_spatial_dim, data.feature_dim))
+        batch_dims = data.remaining_dims((data_spatial_dim, data.feature_dim))
         enc, enc_spatial_dim = model.encode(data, in_spatial_dim=data_spatial_dim)
         beam_size = 3
 

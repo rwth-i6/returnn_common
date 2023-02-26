@@ -22,7 +22,7 @@ def prev_target_seq(
       If True, the output will be one longer than the targets.
     :return: targets with BOS prepended, e.g. [B,S+1] or [B,S] depending on out_one_longer; and out_spatial_dim
     """
-    batch_dims = targets.batch_dims_ordered(spatial_dim)
+    batch_dims = targets.remaining_dims(spatial_dim)
     if out_one_longer:
         y, dim_ = targets, spatial_dim
     else:

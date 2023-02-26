@@ -432,7 +432,7 @@ class Transformer(nn.Module):
             state
             if state
             else self.default_initial_state(
-                batch_dims=memory.batch_dims_ordered(remove=(source_spatial_axis, memory.feature_dim))
+                batch_dims=memory.remaining_dims(remove=(source_spatial_axis, memory.feature_dim))
             )
         )
         with loop:

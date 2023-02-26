@@ -328,7 +328,7 @@ class RelPosSelfAttention(GenericSelfAttention):
         :param hist_dim: T' (equal to T but separate dim)
         :return: [B,H,T,T']
         """
-        batch_dims = x.batch_dims_ordered((axis, pos_emb_spatial_dim))
+        batch_dims = x.remaining_dims((axis, pos_emb_spatial_dim))
         x_padded = nn.pad(x, axes=pos_emb_spatial_dim, padding=(1, 0), value=0.0)  # [B,H,T,T*2]
         pos_emb_spatial_dim_ = 1 + pos_emb_spatial_dim
 

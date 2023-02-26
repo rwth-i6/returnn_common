@@ -58,7 +58,7 @@ class PreConvNet(nn.Module):
 
     def __call__(self, x: nn.Tensor, *, spatial_dim: nn.Dim) -> nn.Tensor:
         assert self.in_dim in x.dims_set
-        batch_dims = x.batch_dims_ordered((self.in_dim, spatial_dim))
+        batch_dims = x.remaining_dims((self.in_dim, spatial_dim))
         extra_spatial_dim = self.in_dim
         x = nn.expand_dim(x, dim=self._dummy_feat_dim)
         x, _ = self.conv0(x, in_spatial_dims=(spatial_dim, extra_spatial_dim))
