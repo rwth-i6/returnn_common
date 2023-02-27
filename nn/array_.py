@@ -411,7 +411,7 @@ def boolean_mask(
     it would return shape [B,T',D], where T' = sum(mask, axis=T).
     """
     if not out_spatial_dim:
-        out_spatial_dim = nn.SpatialDim(f"{mask.name_ctx.get_abs_name()}:spatial")
+        out_spatial_dim = nn.SpatialDim(f"{mask.raw_tensor.get_abs_name()}:spatial")
     return (
         nn.make_layer(
             {

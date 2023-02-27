@@ -148,7 +148,7 @@ class Module:
         elif isinstance(value, nn.Tensor):
             if (self, key) not in value.parent_modules:
                 value.parent_modules.append((self, key))
-            sub_calls = [value.name_ctx]
+            sub_calls = [value.raw_tensor]
         if sub_calls:
             if not self.calls:
                 nn.NameCtx.current_ctx()  # make sure self module gets some NameCtx
@@ -276,9 +276,9 @@ class Module:
         memo = set()  # over name contexts because we cannot hash layer refs
         for prefix, module in self.named_modules() if recurse else [("", self)]:
             for key, value in vars(module).items():
-                if isinstance(value, nn.Parameter) and value.name_ctx not in memo:
+                if isinstance(value, nn.Parameter) and value.raw_tensor not in memo:
                     sub_prefix = prefix + ("." if prefix else "") + key
-                    memo.add(value.name_ctx)
+                    memo.add(value.raw_tensor)
                     yield sub_prefix, value
 
     def parameters(self, *, recurse: bool = True) -> Iterator[nn.Parameter]:
@@ -364,7 +364,7 @@ class ReturnnWrappedLayerBase(Module):
 
         # Note that this is actually layer specific.
         # We try to use a number of heuristics to get it right for the common cases.
-        name = f"{layer.name_ctx.name}_state"
+        name = f"{layer.raw_tensor.name}_state"
         layer_class = layer.layer_dict["class"]
         if layer_class in {"cum_concat", "cumsum"}:
             return nn.LayerState(layer)  # the layer output itself is its state

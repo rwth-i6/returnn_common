@@ -180,7 +180,7 @@ class Loop:
             name = self.name_ctx.get_child("output")
         res = copy(source, name=name)
         assert isinstance(res, nn.Tensor)
-        if res.name_ctx.name != "output":
+        if res.raw_tensor.name != "output":
             res.layer_dict["is_output_layer"] = True
         # We access the returned layer-ref from outside, thus fix the data template.
         res.data = res.data.copy_add_dim_by_tag(dim_tag=self.axis, unbroadcast=True, axis=0)
@@ -197,19 +197,19 @@ class Loop:
         Gets the last value from source.
         """
         assert isinstance(source, nn.Tensor)
-        if source.name_ctx in self._last_frames:
-            return self._last_frames[source.name_ctx]
+        if source.raw_tensor in self._last_frames:
+            return self._last_frames[source.raw_tensor]
         assert (
             self.name_ctx.layer_ref is not None
         ), f"{self}.last(...): must call from outside"  # current restriction...
         # need_last option only works in root of subnet of RecLayer
-        if source.name_ctx.parent is not self.name_ctx:
-            assert self.name_ctx in source.name_ctx.get_abs_name_ctx_list(), f"invalid {self}.last({source})"
-            sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx).replace("/", ".")
+        if source.raw_tensor.parent is not self.name_ctx:
+            assert self.name_ctx in source.raw_tensor.get_abs_name_ctx_list(), f"invalid {self}.last({source})"
+            sub_layer_name = source.raw_tensor.get_name_in_ctx(self.name_ctx).replace("/", ".")
             source = nn.copy(source, name=self.name_ctx.get_new_child(sub_layer_name))
-            assert source.name_ctx.parent is self.name_ctx
+            assert source.raw_tensor.parent is self.name_ctx
         source.layer_dict["need_last"] = True
-        sub_layer_name = source.name_ctx.get_name_in_ctx(self.name_ctx)
+        sub_layer_name = source.raw_tensor.get_name_in_ctx(self.name_ctx)
         with self.name_ctx.parent:  # need to be outside the loop
             res = nn.make_layer(
                 {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
@@ -218,7 +218,7 @@ class Loop:
             )
             res.remove_unused_cleanup_hooks.append(lambda _: source.layer_dict.pop("need_last"))
             res.extra_dependencies.append(source)
-            self._last_frames[source.name_ctx] = res
+            self._last_frames[source.raw_tensor] = res
             return res
 
     def end(self, source: nn.Tensor, *, include_eos: bool) -> nn.Tensor:
@@ -340,7 +340,7 @@ class PrevTensorRef(nn.Tensor):
         assert prev_layer_name not in cur_layer_name_ctx.parent.children
         prev_layer_name_ctx = cur_layer_name_ctx.parent.get_child(prev_layer_name)
         prev_layer_name_ctx.move_layer_ref_here(self)
-        assert self.name_ctx is prev_layer_name_ctx
+        assert self.raw_tensor is prev_layer_name_ctx
         self.cur_layer_name_ctx = cur_layer_name_ctx
 
 
@@ -444,9 +444,9 @@ class _LoopState:
             assert isinstance(name_ctx, nn.NameCtx)
             assert name_ctx.layer_ref is None, f"Loop state {name_ctx} already assigned"
 
-            layer_ref.name_ctx.make_all_sub_networks_and_optimize()
+            layer_ref.raw_tensor.make_all_sub_networks_and_optimize()
 
-            layer_ctx_list = layer_ref.name_ctx.get_abs_name_ctx_list()
+            layer_ctx_list = layer_ref.raw_tensor.get_abs_name_ctx_list()
             assert (
                 self.loop.name_ctx in layer_ctx_list
             ), f"Loop state {name_ctx} should get a value inside the loop but got {layer_ref}"
@@ -531,7 +531,7 @@ class _LoopState:
             if prev_name_ctx:  # might not exist if we have never accessed the prev state
                 prev_ref = prev_name_ctx.layer_ref
                 assert isinstance(prev_ref, PrevTensorRef), f"{name_ctx, prev_name_ctx}"
-                if layer_ref.name_ctx.parent != self.loop.name_ctx:
+                if layer_ref.raw_tensor.parent != self.loop.name_ctx:
                     # Currently, RETURNN does not properly support a state in a subnet.
                     # So we copy the layer to the loop root under the reserved existing name.
                     nn.copy(layer_ref, name=name_ctx)
@@ -540,9 +540,9 @@ class _LoopState:
                         if "initial_output" in layer_ref.layer_dict:
                             name_ctx.layer.layer_dict["initial_output"] = layer_ref.layer_dict.pop("initial_output")
                 else:
-                    prev_ref.assign_new_cur_layer_name_ctx(layer_ref.name_ctx)
+                    prev_ref.assign_new_cur_layer_name_ctx(layer_ref.raw_tensor)
 
-            return layer_ref.name_ctx
+            return layer_ref.raw_tensor
 
         self.name_ctx = nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 

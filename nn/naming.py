@@ -268,13 +268,13 @@ class NameCtx:
         assert not self.layer and not self.layer_ref  # none yet assigned
 
         # Remove layer_ref.name_ctx from its parent name ctx.
-        if layer_ref.name_ctx.parent:
-            old_name_ctx = layer_ref.name_ctx.parent.children.pop(layer_ref.name_ctx.name)
-            assert old_name_ctx is layer_ref.name_ctx
-        old_name_ctx = layer_ref.name_ctx
+        if layer_ref.raw_tensor.parent:
+            old_name_ctx = layer_ref.raw_tensor.parent.children.pop(layer_ref.raw_tensor.name)
+            assert old_name_ctx is layer_ref.raw_tensor
+        old_name_ctx = layer_ref.raw_tensor
 
         # Now reassign.
-        layer_ref.name_ctx = self
+        layer_ref.raw_tensor = self
         self.layer_ref = layer_ref
         self.layer = layer_ref if layer_ref.layer_dict else None
         self.module = old_name_ctx.module
@@ -360,26 +360,26 @@ class NameCtx:
         ]  # type: List[Tuple[nn.Tensor,List[nn.Tensor]]]
         while queue:
             tensor, src = queue.pop(0)
-            if tensor.name_ctx is used_names:
+            if tensor.raw_tensor is used_names:
                 continue
             src_ = src + [tensor]
             for dep in tensor.get_dependencies():
-                if dep.name_ctx not in used_names:
+                if dep.raw_tensor not in used_names:
                     queue.append((dep, src_))
 
             # Parameters usually have no parent assigned at creation time.
-            if not tensor.name_ctx.parent and tensor.name_ctx != root:
+            if not tensor.raw_tensor.parent and tensor.raw_tensor != root:
                 # noinspection PyProtectedMember
                 tensor._assign_parent_name_ctx(ref_ctx=root)
 
             # Handle subnetworks: Flatten away if just a single entry. Create layer if not created yet.
-            ctx = tensor.name_ctx
+            ctx = tensor.raw_tensor
             ctx.make_all_sub_networks_and_optimize()
 
             # Add tensor name including all parents.
             # Do this here after the potential late assign-parent and potential subnet flattening
             # because we need to know the right parents.
-            for ctx in tensor.name_ctx.get_abs_name_ctx_list():
+            for ctx in tensor.raw_tensor.get_abs_name_ctx_list():
                 if ctx in used_names:
                     continue  # skip early, to skip the extra checks below
                 used_names.add(ctx)
@@ -476,7 +476,7 @@ class NameCtx:
         from . import copy
 
         assert self.is_subnet
-        if ref.name_ctx is self.children.get(
+        if ref.raw_tensor is self.children.get(
             "output", None
         ):  # if this is the output layer already, allow and just return
             return ref
@@ -1442,8 +1442,8 @@ class _NamePathCache:
         reverse_cache = {}  # module -> full name path
 
         if isinstance(child, nn.Tensor):
-            if child.name_ctx in self.tensor_to_name_path:
-                return self.tensor_to_name_path[child.name_ctx]
+            if child.raw_tensor in self.tensor_to_name_path:
+                return self.tensor_to_name_path[child.raw_tensor]
             queue = []
             for parent, attr in child.parent_modules:
                 assert isinstance(parent, nn.Module)
@@ -1489,7 +1489,7 @@ class _NamePathCache:
                 if isinstance(obj, nn.Module):
                     self.module_to_name_path[obj] = list(path)
                 elif isinstance(obj, nn.Tensor):
-                    self.tensor_to_name_path[obj.name_ctx] = list(path)
+                    self.tensor_to_name_path[obj.raw_tensor] = list(path)
                     assert obj is child
                 else:
                     assert False, f"Unexpected type: {type(obj)}"  # should not happen

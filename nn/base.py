@@ -107,7 +107,8 @@ class Tensor:
             which are not layers themselves, i.e. we do not have a layer dict for them.
         """
         self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
-        self.name_ctx = name_ctx
+        # It will be returnn.tensor.Tensor.raw_tensor, thus named raw_tensor here now.
+        self.raw_tensor = name_ctx
         # Do not assign name_ctx.layer{_ref} yet because we potentially could raise exceptions later.
         assert name_ctx.layer_ref is None
         assert name_ctx.layer is None
@@ -147,7 +148,7 @@ class Tensor:
         self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
     def __repr__(self):
-        parts = [self.__class__.__name__, self.name_ctx.get_abs_name_repr()]
+        parts = [self.__class__.__name__, self.raw_tensor.get_abs_name_repr()]
         if not hasattr(self, "data"):
             return f"<{' '.join(parts)} uninitialized>"
         if self.data:
@@ -158,7 +159,9 @@ class Tensor:
             else:
                 parts.append(repr(self.data.placeholder))
         if not self.is_ref:
-            parts.append(f"via {self.name_ctx.module if self.name_ctx.module else self.layer_dict.get('class', '?')!r}")
+            parts.append(
+                f"via {self.raw_tensor.module if self.raw_tensor.module else self.layer_dict.get('class', '?')!r}"
+            )
         if self.data and self.data.control_flow_ctx:
             parts.append(f"ctx={self.data.control_flow_ctx.repr_inner()}")
         return f"<{' '.join(parts)}>"
@@ -258,7 +261,7 @@ class Tensor:
         """
         :param ref_ctx: where this comes from
         """
-        assert not self.name_ctx.parent
+        assert not self.raw_tensor.parent
         assert self.parent_modules  # cannot assign parent without parent modules
         #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
         #    when the actual name ctx parent is not so relevant.)
@@ -278,24 +281,24 @@ class Tensor:
                     sub_name = parent_name_ctx.name + "_" + sub_name
                     while not parent_name_ctx.can_access_children_from_root:
                         parent_name_ctx = parent_name_ctx.parent
-                self.name_ctx.assign_parent(parent_name_ctx, sub_name)
+                self.raw_tensor.assign_parent(parent_name_ctx, sub_name)
                 break
-        if not self.name_ctx.parent:
+        if not self.raw_tensor.parent:
             # None found. Just assign to the root.
-            self.name_ctx.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
+            self.raw_tensor.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
 
     def _get_name_in_ctx(self, ctx: nn.NameCtx) -> str:
         """
         :return: RETURNN layer name in the given name context.
         """
-        assert self.name_ctx.parent or ctx == self.name_ctx
-        return self.name_ctx.get_name_in_ctx(ctx=ctx)
+        assert self.raw_tensor.parent or ctx == self.raw_tensor
+        return self.raw_tensor.get_name_in_ctx(ctx=ctx)
 
     def get_abs_name(self) -> str:
         """
         :return: absolute RETURNN layer name starting from root context.
         """
-        return self.name_ctx.get_abs_name()
+        return self.raw_tensor.get_abs_name()
 
     def mark_as_loss(
         self,
@@ -347,7 +350,7 @@ class Tensor:
           So you could simply pass target_seq_len directly here.
           Basically, for all reporting, it uses sum(loss) * sum(custom_inv_norm_factor).
         """
-        root_scope = self.name_ctx.root
+        root_scope = self.raw_tensor.root
         res = nn.copy(self, name=root_scope.get_new_child(suggested_name=name))
         res.layer_dict["loss"] = "as_is"
         loss_opts = {}
@@ -377,17 +380,17 @@ class Tensor:
         """
         assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
         if not _scope:
-            scope = self.name_ctx.root  # mark_as_output always refers to the root
+            scope = self.raw_tensor.root  # mark_as_output always refers to the root
         else:
             scope = _scope  # only for internal use
         res = self
-        if self.name_ctx is scope.children.get("output"):
+        if self.raw_tensor is scope.children.get("output"):
             pass  # not needed
-        elif self.name_ctx.parent is not scope:
-            res = nn.copy(self, name=scope.get_new_child(suggested_name=self.name_ctx.get_abs_name(join_str="_")))
+        elif self.raw_tensor.parent is not scope:
+            res = nn.copy(self, name=scope.get_new_child(suggested_name=self.raw_tensor.get_abs_name(join_str="_")))
             res.layer_dict["is_output_layer"] = True
         else:
-            assert self.name_ctx.parent is scope
+            assert self.raw_tensor.parent is scope
             assert not self.is_ref
             self.layer_dict["is_output_layer"] = True
         scope.marked_outputs.append(res)
@@ -401,7 +404,7 @@ class Tensor:
 
         :return: the "output" layer.
         """
-        res = self.name_ctx.root.make_default_output(self)
+        res = self.raw_tensor.root.make_default_output(self)
         res.mark_as_output()
         return res
 
@@ -414,10 +417,10 @@ class Tensor:
 
         def _maybe_add_dep(x):
             if isinstance(x, nn.Tensor):
-                if x.name_ctx in dep_name_set:
+                if x.raw_tensor in dep_name_set:
                     return
                 dep_list.append(x)
-                dep_name_set.add(x.name_ctx)
+                dep_name_set.add(x.raw_tensor)
                 return
             if isinstance(x, nn.Net):
                 _maybe_add_dep(x.name_ctx.children["output"].layer_ref)
@@ -426,10 +429,10 @@ class Tensor:
             nest.map_structure(_maybe_add_dep, _extra_layer_dict)
         if hasattr(self, "layer_dict") and self.layer_dict:  # hasattr to be able to run this function early
             nest.map_structure(_maybe_add_dep, self.layer_dict)
-        if self.name_ctx.children and "output" in self.name_ctx.children:
-            _maybe_add_dep(self.name_ctx.children["output"].layer_ref)
-        if self.name_ctx.parent and self.name_ctx.parent.layer_ref:
-            _maybe_add_dep(self.name_ctx.parent.layer_ref)
+        if self.raw_tensor.children and "output" in self.raw_tensor.children:
+            _maybe_add_dep(self.raw_tensor.children["output"].layer_ref)
+        if self.raw_tensor.parent and self.raw_tensor.parent.layer_ref:
+            _maybe_add_dep(self.raw_tensor.parent.layer_ref)
         if getattr(self, "extra_dependencies", None):
             dep_list.extend(self.extra_dependencies)
         return dep_list
@@ -441,7 +444,7 @@ class Tensor:
         """
         assert isinstance(tensor, nn.Tensor)
         self.parent_modules = tensor.parent_modules
-        self.name_ctx = tensor.name_ctx
+        self.raw_tensor = tensor.raw_tensor
         self.data = tensor.data
         self.layer_dict = tensor.layer_dict
         self.is_ref = tensor.is_ref
@@ -452,7 +455,7 @@ class Tensor:
         from sisyphus.hash import sis_hash_helper  # noqa
 
         if self.is_ref:
-            return sis_hash_helper(self.name_ctx.get_abs_name())
+            return sis_hash_helper(self.raw_tensor.get_abs_name())
         return sis_hash_helper(self.layer_dict)
 
     def __add__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
@@ -672,16 +675,16 @@ class Parameter(Tensor):
             self.layer_dict.pop("init_by_layer", None)
         elif isinstance(value, nn.Tensor):
             self.layer_dict.pop("init", None)
-            if not value.name_ctx.parent.can_access_children_from_root:
-                accessible_parent = value.name_ctx.parent
+            if not value.raw_tensor.parent.can_access_children_from_root:
+                accessible_parent = value.raw_tensor.parent
                 while not accessible_parent.can_access_children_from_root:
                     accessible_parent = accessible_parent.parent
-                value.name_ctx.assign_parent(accessible_parent)
+                value.raw_tensor.assign_parent(accessible_parent)
                 # We could also maybe move out all the dependencies.
                 # However, it's not clear whether this is always safe.
                 for dep in value.get_dependencies():
                     assert (
-                        dep.name_ctx.parent.can_access_children_from_root
+                        dep.raw_tensor.parent.can_access_children_from_root
                     ), f"dep {dep} of moved value {value} is not accessible"
             self.layer_dict["init_by_layer"] = value
         else:
@@ -792,8 +795,8 @@ class LayerState(dict):
         while queue:
             x = queue.pop()
             if isinstance(x, nn.Tensor):
-                if x.name_ctx not in cache_tensor_names:
-                    cache_tensor_names.add(x.name_ctx)
+                if x.raw_tensor not in cache_tensor_names:
+                    cache_tensor_names.add(x.raw_tensor)
                     tensors.append(x)
             elif isinstance(x, (dict, _LoopStateHolder)):
                 queue.extend(x.values())
@@ -954,7 +957,7 @@ def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
     Like the "{layer}/{name}" syntax in RETURNN.
     Normally this should only be needed for internal usage.
     """
-    out = layer.name_ctx.get_child_layer_ref(name, data=data)
+    out = layer.raw_tensor.get_child_layer_ref(name, data=data)
     if nn.is_debug_eager_mode_enabled():
         assert layer.debug_layer
         import returnn.tf.layers.base
@@ -1031,10 +1034,10 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
             i += 1
 
     def _get_layer_name(ref: Tensor) -> str:
-        if ref.name_ctx in ref_to_layer_name:
-            return ref_to_layer_name[ref.name_ctx]
-        name = _get_unique_name(ref.name_ctx.name)
-        ref_to_layer_name[ref.name_ctx] = name
+        if ref.raw_tensor in ref_to_layer_name:
+            return ref_to_layer_name[ref.raw_tensor]
+        name = _get_unique_name(ref.raw_tensor.name)
+        ref_to_layer_name[ref.raw_tensor] = name
         assert name not in net.layers
         data = ref.data.copy()
         net.layers[name] = InternalLayer(name=name, network=net, output=data)
@@ -1046,7 +1049,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
         return value
 
     layer_dict = nest.map_structure(_map_layer_dict_elem, layer_dict)
-    out_name = _get_unique_name(tensor.name_ctx.name)
+    out_name = _get_unique_name(tensor.raw_tensor.name)
     net_dict = {
         out_name: layer_dict,
         # Simple workaround in case the layer wants to access its previous layer.
@@ -1101,9 +1104,9 @@ def unique_tensor_list(tensors: Iterable[Tensor]) -> List[Tensor]:
     seen = set()  # over name_ctx, not tensor (which is not hashable)
     out = []
     for tensor in tensors:
-        if tensor.name_ctx not in seen:
+        if tensor.raw_tensor not in seen:
             out.append(tensor)
-            seen.add(tensor.name_ctx)
+            seen.add(tensor.raw_tensor)
     return out
 
 
@@ -1164,7 +1167,7 @@ def _register_dim_deps_when_novel(dim: nn.Dim, deps: List[nn.Tensor]):
 
 
 def _deps_valid_in_cur_name_ctx(deps: List[nn.Tensor]) -> bool:
-    return all(dep.name_ctx.root == nn.NameCtx.top().root for dep in deps)
+    return all(dep.raw_tensor.root == nn.NameCtx.top().root for dep in deps)
 
 
 @contextlib.contextmanager

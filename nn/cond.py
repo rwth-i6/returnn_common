@@ -163,8 +163,8 @@ class Cond:
                 assert isinstance(
                     false_v, nn.Tensor
                 ), f"unexpected {false_value!r}, only expects tensors, got {type(false_v)}"
-                assert true_v.name_ctx.parent is self.true_branch_name_ctx
-                name = true_v.name_ctx.name
+                assert true_v.raw_tensor.parent is self.true_branch_name_ctx
+                name = true_v.raw_tensor.name
                 false_values_flat[i] = nn.copy(false_v, name=self.false_branch_name_ctx.get_child(name))
                 if name != "output":
                     false_values_flat[i].layer_dict["is_output_layer"] = True
@@ -230,8 +230,8 @@ class CondModule(nn.Module):
         results = []
         for i, (true_v, false_v) in enumerate(zip(true_values_flat, false_values_flat)):
             assert isinstance(true_v, nn.Tensor) and isinstance(false_v, nn.Tensor)
-            assert true_v.name_ctx.parent is self.cond.true_branch_name_ctx
-            name = true_v.name_ctx.name
+            assert true_v.raw_tensor.parent is self.cond.true_branch_name_ctx
+            name = true_v.raw_tensor.name
             if i == 0:
                 results.append(res)
             else:
