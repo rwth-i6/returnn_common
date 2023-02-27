@@ -167,7 +167,7 @@ class Cond:
                 name = true_v.raw_tensor.name
                 false_values_flat[i] = nn.copy(false_v, name=self.false_branch_name_ctx.get_child(name))
                 if name != "output":
-                    false_values_flat[i].layer_dict["is_output_layer"] = True
+                    false_values_flat[i].raw_tensor.layer_dict["is_output_layer"] = True
             false_value = nest.pack_sequence_as(false_value, false_values_flat)
         self.false_branch_name_ctx.__exit__(None, None, None)
         self._false_value = false_value

@@ -365,15 +365,15 @@ class ReturnnWrappedLayerBase(Module):
         # Note that this is actually layer specific.
         # We try to use a number of heuristics to get it right for the common cases.
         name = f"{layer.raw_tensor.name}_state"
-        layer_class = layer.layer_dict["class"]
+        layer_class = layer.raw_tensor.layer_dict["class"]
         if layer_class in {"cum_concat", "cumsum"}:
             return nn.LayerState(layer)  # the layer output itself is its state
         if layer_class == "window":
             return nn.LayerState(_get_last_hidden_state(layer, out_dim=layer.feature_dim, name=name))
         # This is some very generic fallback code, which probably does not work correctly in some cases.
-        out_dim = layer.layer_dict["out_dim"]
-        if layer_class == "rec" and isinstance(layer.layer_dict["unit"], str):
-            if "lstm" in layer.layer_dict["unit"].lower():
+        out_dim = layer.raw_tensor.layer_dict["out_dim"]
+        if layer_class == "rec" and isinstance(layer.raw_tensor.layer_dict["unit"], str):
+            if "lstm" in layer.raw_tensor.layer_dict["unit"].lower():
                 h = _get_last_hidden_state(layer, out_dim=out_dim, key="h", name=f"{name}_h")
                 c = _get_last_hidden_state(layer, out_dim=out_dim, key="c", name=f"{name}_c")
                 return nn.LayerState(h=h, c=c)

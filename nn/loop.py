@@ -181,7 +181,7 @@ class Loop:
         res = copy(source, name=name)
         assert isinstance(res, nn.Tensor)
         if res.raw_tensor.name != "output":
-            res.layer_dict["is_output_layer"] = True
+            res.raw_tensor.layer_dict["is_output_layer"] = True
         # We access the returned layer-ref from outside, thus fix the data template.
         res.data = res.data.copy_add_dim_by_tag(dim_tag=self.axis, unbroadcast=True, axis=0)
         res.data.time_dim_axis = 0
@@ -208,7 +208,7 @@ class Loop:
             sub_layer_name = source.raw_tensor.get_name_in_ctx(self.name_ctx).replace("/", ".")
             source = nn.copy(source, name=self.name_ctx.get_new_child(sub_layer_name))
             assert source.raw_tensor.parent is self.name_ctx
-        source.layer_dict["need_last"] = True
+        source.raw_tensor.layer_dict["need_last"] = True
         sub_layer_name = source.raw_tensor.get_name_in_ctx(self.name_ctx)
         with self.name_ctx.parent:  # need to be outside the loop
             res = nn.make_layer(
@@ -216,7 +216,7 @@ class Loop:
                 predefined_out_data=source.data,
                 name=name or sub_layer_name.replace("/", "_"),
             )
-            res.remove_unused_cleanup_hooks.append(lambda _: source.layer_dict.pop("need_last"))
+            res.remove_unused_cleanup_hooks.append(lambda _: source.raw_tensor.layer_dict.pop("need_last"))
             res.extra_dependencies.append(source)
             self._last_frames[source.raw_tensor] = res
             return res
@@ -456,21 +456,21 @@ class _LoopState:
                 ctx, ctx_ = layer_ctx_list[i : i + 2]
                 assert isinstance(ctx, nn.NameCtx) and isinstance(ctx_, nn.NameCtx)
                 if isinstance(ctx.module, nn.MaskedComputationModule):
-                    ctx_.layer.layer_dict["is_output_layer"] = True
+                    ctx_.layer.raw_tensor.layer_dict["is_output_layer"] = True
                     break
 
             # Potential optimization for RETURNN layers.
             # See ReturnnWrappedLayerBase._get_recurrent_state.
-            if layer_ref.layer_dict:
+            if layer_ref.raw_tensor.layer_dict:
                 _do_const_initial_value_opt = False
                 _const_initial_value_opt_layer_white_list = {"cum_concat", "rec"}
-                if layer_ref.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
+                if layer_ref.raw_tensor.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
                     _do_const_initial_value_opt = True
-                elif layer_ref.layer_dict["class"] == "get_last_hidden_state":
-                    src = layer_ref.layer_dict["from"]
+                elif layer_ref.raw_tensor.layer_dict["class"] == "get_last_hidden_state":
+                    src = layer_ref.raw_tensor.layer_dict["from"]
                     assert isinstance(src, nn.Tensor)
-                    if src.layer_dict:
-                        if src.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
+                    if src.raw_tensor.layer_dict:
+                        if src.raw_tensor.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
                             _do_const_initial_value_opt = True
                 if _do_const_initial_value_opt:
                     # Note: Only do this optimization for some layers because otherwise
@@ -479,12 +479,12 @@ class _LoopState:
                     if initial_const is not None:
                         initial = initial_const
 
-                if layer_ref.layer_dict["class"] == "get_last_hidden_state":
+                if layer_ref.raw_tensor.layer_dict["class"] == "get_last_hidden_state":
                     used_state_eliminate_optimization = False
-                    key = layer_ref.layer_dict.get("key", "state")
-                    src = layer_ref.layer_dict["from"]
+                    key = layer_ref.raw_tensor.layer_dict.get("key", "state")
+                    src = layer_ref.raw_tensor.layer_dict["from"]
                     assert isinstance(src, nn.Tensor)
-                    src_state_opt = src.layer_dict.get("state") if src.layer_dict else None
+                    src_state_opt = src.raw_tensor.layer_dict.get("state") if src.raw_tensor.layer_dict else None
                     if isinstance(src_state_opt, nn.LayerState):
                         src_state_for_key = src_state_opt.get(key)
                         if isinstance(src_state_for_key, PrevTensorRef):
@@ -494,9 +494,11 @@ class _LoopState:
                                 used_state_eliminate_optimization = True
                                 src_state_opt[key] = None
                                 if all(opt is None for opt in nest.flatten(src_state_opt)):
-                                    del src.layer_dict["state"]
+                                    del src.raw_tensor.layer_dict["state"]
                                 # We need to pass the initial_state instead though.
-                                src_initial_state_opt = src.layer_dict.setdefault("initial_state", nn.LayerState())
+                                src_initial_state_opt = src.raw_tensor.layer_dict.setdefault(
+                                    "initial_state", nn.LayerState()
+                                )
                                 src_initial_state_opt[key] = initial
                                 # If there is any other code which refers to this state, it can access the passed layer.
                                 # So anyway pass through.
@@ -510,18 +512,18 @@ class _LoopState:
 
                 else:  # class != get_last_hidden_state
 
-                    if layer_ref.layer_dict["class"] == "cum_concat":
-                        layer_state_opt = layer_ref.layer_dict.get("state")
+                    if layer_ref.raw_tensor.layer_dict["class"] == "cum_concat":
+                        layer_state_opt = layer_ref.raw_tensor.layer_dict.get("state")
                         if isinstance(layer_state_opt, nn.LayerState) and set(layer_state_opt.keys()) == {"state"}:
                             layer_state = layer_state_opt.state
                             if isinstance(layer_state, PrevTensorRef) and layer_state.cur_layer_name_ctx is name_ctx:
                                 # The 'state' argument refers to "prev:..." of itself.
                                 # This is redundant, so we don't need to pass it.
-                                layer_ref.layer_dict.pop("state")
+                                layer_ref.raw_tensor.layer_dict.pop("state")
 
-                    assert "initial_state" not in layer_ref.layer_dict
-                    assert "initial_output" not in layer_ref.layer_dict
-                    layer_ref.layer_dict["initial_output"] = initial
+                    assert "initial_state" not in layer_ref.raw_tensor.layer_dict
+                    assert "initial_output" not in layer_ref.raw_tensor.layer_dict
+                    layer_ref.raw_tensor.layer_dict["initial_output"] = initial
 
             else:  # layer_ref not Layer
                 raise NotImplementedError(f"{self}.assign to {layer_ref} but layer expected")
@@ -535,10 +537,12 @@ class _LoopState:
                     # Currently, RETURNN does not properly support a state in a subnet.
                     # So we copy the layer to the loop root under the reserved existing name.
                     nn.copy(layer_ref, name=name_ctx)
-                    if layer_ref.layer_dict:
-                        assert "initial_state" not in layer_ref.layer_dict  # not supported/implemented
-                        if "initial_output" in layer_ref.layer_dict:
-                            name_ctx.layer.layer_dict["initial_output"] = layer_ref.layer_dict.pop("initial_output")
+                    if layer_ref.raw_tensor.layer_dict:
+                        assert "initial_state" not in layer_ref.raw_tensor.layer_dict  # not supported/implemented
+                        if "initial_output" in layer_ref.raw_tensor.layer_dict:
+                            name_ctx.layer.raw_tensor.layer_dict[
+                                "initial_output"
+                            ] = layer_ref.raw_tensor.layer_dict.pop("initial_output")
                 else:
                     prev_ref.assign_new_cur_layer_name_ctx(layer_ref.raw_tensor)
 

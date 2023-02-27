@@ -191,6 +191,7 @@ class NameCtx:
         self.module = module
         self.layer_ref = None  # type: Optional[nn.Tensor]
         self.layer = None  # type: Optional[nn.Tensor]
+        self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
         self._enter_stack_frames = None  # type: Optional[Set[types.FrameType]]
         self.is_subnet = False  # it says whether it can have children
         self._subnet_main_output = None  # type: Optional[nn.Tensor]  # when this is via SubnetworkLayer
@@ -276,7 +277,8 @@ class NameCtx:
         # Now reassign.
         layer_ref.raw_tensor = self
         self.layer_ref = layer_ref
-        self.layer = layer_ref if layer_ref.layer_dict else None
+        self.layer = layer_ref if old_name_ctx.layer_dict else None
+        self.layer_dict = old_name_ctx.layer_dict
         self.module = old_name_ctx.module
         self.is_subnet = old_name_ctx.is_subnet
         self._subnet_main_output = old_name_ctx._subnet_main_output
@@ -294,14 +296,14 @@ class NameCtx:
                 self.children[name] = child
         old_name_ctx.children = self.children  # just in case there is some other reference to the old name ctx
 
-        if layer_ref.layer_dict:
+        if old_name_ctx.layer_dict:
 
             def _check_layer_opt_value(v):
                 if isinstance(v, nn.Net):
                     assert v.name_ctx is old_name_ctx
                     v.name_ctx = self
 
-            nest.map_structure(_check_layer_opt_value, layer_ref.layer_dict)
+            nest.map_structure(_check_layer_opt_value, old_name_ctx.layer_dict)
 
     @property
     def root(self) -> NameCtx:
@@ -360,8 +362,9 @@ class NameCtx:
         ]  # type: List[Tuple[nn.Tensor,List[nn.Tensor]]]
         while queue:
             tensor, src = queue.pop(0)
-            if tensor.raw_tensor is used_names:
+            if tensor.raw_tensor in used_names:
                 continue
+            used_names.add(tensor.raw_tensor)
             src_ = src + [tensor]
             for dep in tensor.get_dependencies():
                 if dep.raw_tensor not in used_names:
@@ -373,7 +376,7 @@ class NameCtx:
                 tensor._assign_parent_name_ctx(ref_ctx=root)
 
             # Handle subnetworks: Flatten away if just a single entry. Create layer if not created yet.
-            ctx = tensor.raw_tensor
+            ctx = tensor.raw_tensor  # type: nn.NameCtx
             ctx.make_all_sub_networks_and_optimize()
 
             # Add tensor name including all parents.
@@ -382,7 +385,6 @@ class NameCtx:
             for ctx in tensor.raw_tensor.get_abs_name_ctx_list():
                 if ctx in used_names:
                     continue  # skip early, to skip the extra checks below
-                used_names.add(ctx)
                 if ctx.layer_ref is not None and ctx.layer_ref is not tensor:
                     queue.append((ctx.layer_ref, src_))
 
@@ -432,10 +434,10 @@ class NameCtx:
                 # root_mod_call.layer might be None if the subnet is not yet initialized.
                 if root_mod_call.layer_ref is not None:
                     assert not self.layer_ref  # not sure. maybe just reset?
-                    assert root_mod_call.layer.layer_dict["class"] == "subnetwork"
+                    assert root_mod_call.layer_dict["class"] == "subnetwork"
                     sub_out = root_mod_call.children.pop("output")
-                    assert sub_out.layer.layer_dict["class"] == "copy"
-                    sub_real_out = sub_out.layer.layer_dict["from"]
+                    assert sub_out.layer_dict["class"] == "copy"
+                    sub_real_out = sub_out.layer_dict["from"]
                     assert isinstance(sub_real_out, nn.Tensor)
                     # noinspection PyProtectedMember
                     sub_out.layer._replace_by(sub_real_out)
@@ -556,7 +558,7 @@ class NameCtx:
         while len(self_name_abs) >= 2:
             ctx_, ctx__ = self_name_abs[-2:]
             assert isinstance(ctx_, NameCtx) and isinstance(ctx__, NameCtx)
-            if ctx_.layer is not None and ctx_.layer.layer_dict["class"] == "subnetwork":
+            if ctx_.layer is not None and ctx_.layer.raw_tensor.layer_dict["class"] == "subnetwork":
                 if ctx_._subnet_main_output is ctx__.layer_ref or ctx_.children.get("output") is ctx__:
                     self_name_abs.pop(-1)
                     continue  # check again
@@ -1017,7 +1019,7 @@ class NetDictBuilderCtx:
             if not sub_name_ctx.layer:
                 continue
 
-            layer_dict = sub_name_ctx.layer.layer_dict.copy()
+            layer_dict = sub_name_ctx.layer.raw_tensor.layer_dict.copy()
             assert "class" in layer_dict
 
             data_template = sub_name_ctx.layer_ref.data.copy_template()

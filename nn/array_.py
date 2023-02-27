@@ -20,8 +20,8 @@ def constant_value(x: nn.Tensor) -> Optional[Union[int, float, complex, bool, st
     """
     If the tensor is a constant, return its value.
     """
-    if x.layer_dict and x.layer_dict["class"] == "constant":
-        return x.layer_dict["value"]
+    if x.raw_tensor.layer_dict and x.raw_tensor.layer_dict["class"] == "constant":
+        return x.raw_tensor.layer_dict["value"]
     return None
 
 

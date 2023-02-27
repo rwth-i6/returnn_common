@@ -113,6 +113,7 @@ class Tensor:
         assert name_ctx.layer_ref is None
         assert name_ctx.layer is None
         self.debug_layer = None
+        self.extra_dependencies = []  # type: List[Tensor]
 
         if is_ref:
             assert layer_dict is None
@@ -139,12 +140,11 @@ class Tensor:
                     data.batch = name_ctx.root.global_batch
 
         self.data = data
-        self.layer_dict = layer_dict
+        self.raw_tensor.layer_dict = layer_dict
         name_ctx.layer_ref = self
         if not is_ref:
             name_ctx.layer = self
         self.is_ref = is_ref
-        self.extra_dependencies = []  # type: List[Tensor]
         self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
     def __repr__(self):
@@ -160,7 +160,10 @@ class Tensor:
                 parts.append(repr(self.data.placeholder))
         if not self.is_ref:
             parts.append(
-                f"via {self.raw_tensor.module if self.raw_tensor.module else self.layer_dict.get('class', '?')!r}"
+                f"via "
+                + repr(
+                    self.raw_tensor.module if self.raw_tensor.module else self.raw_tensor.layer_dict.get("class", "?")
+                )
             )
         if self.data and self.data.control_flow_ctx:
             parts.append(f"ctx={self.data.control_flow_ctx.repr_inner()}")
@@ -352,10 +355,10 @@ class Tensor:
         """
         root_scope = self.raw_tensor.root
         res = nn.copy(self, name=root_scope.get_new_child(suggested_name=name))
-        res.layer_dict["loss"] = "as_is"
+        res.raw_tensor.layer_dict["loss"] = "as_is"
         loss_opts = {}
         if scale is not None and scale != 1:
-            assert "loss_scale" not in res.layer_dict
+            assert "loss_scale" not in res.raw_tensor.layer_dict
             loss_opts["scale"] = scale
         if as_error:
             loss_opts["as_error"] = True
@@ -366,7 +369,7 @@ class Tensor:
         if custom_inv_norm_factor is not None:
             loss_opts["custom_inv_norm_factor"] = custom_inv_norm_factor
         if loss_opts:
-            res.layer_dict["loss_opts"] = loss_opts
+            res.raw_tensor.layer_dict["loss_opts"] = loss_opts
         # Add it to the root name scope marked_losses list.
         # Note that this logic might change.
         root_scope.marked_losses.append(res)
@@ -388,11 +391,11 @@ class Tensor:
             pass  # not needed
         elif self.raw_tensor.parent is not scope:
             res = nn.copy(self, name=scope.get_new_child(suggested_name=self.raw_tensor.get_abs_name(join_str="_")))
-            res.layer_dict["is_output_layer"] = True
+            res.raw_tensor.layer_dict["is_output_layer"] = True
         else:
             assert self.raw_tensor.parent is scope
             assert not self.is_ref
-            self.layer_dict["is_output_layer"] = True
+            self.raw_tensor.layer_dict["is_output_layer"] = True
         scope.marked_outputs.append(res)
         return res
 
@@ -427,13 +430,13 @@ class Tensor:
 
         if _extra_layer_dict:
             nest.map_structure(_maybe_add_dep, _extra_layer_dict)
-        if hasattr(self, "layer_dict") and self.layer_dict:  # hasattr to be able to run this function early
-            nest.map_structure(_maybe_add_dep, self.layer_dict)
+        if self.raw_tensor.layer_dict:
+            nest.map_structure(_maybe_add_dep, self.raw_tensor.layer_dict)
         if self.raw_tensor.children and "output" in self.raw_tensor.children:
             _maybe_add_dep(self.raw_tensor.children["output"].layer_ref)
         if self.raw_tensor.parent and self.raw_tensor.parent.layer_ref:
             _maybe_add_dep(self.raw_tensor.parent.layer_ref)
-        if getattr(self, "extra_dependencies", None):
+        if self.extra_dependencies:
             dep_list.extend(self.extra_dependencies)
         return dep_list
 
@@ -444,9 +447,8 @@ class Tensor:
         """
         assert isinstance(tensor, nn.Tensor)
         self.parent_modules = tensor.parent_modules
-        self.raw_tensor = tensor.raw_tensor
+        self.raw_tensor = tensor.raw_tensor  # type: nn.NameCtx
         self.data = tensor.data
-        self.layer_dict = tensor.layer_dict
         self.is_ref = tensor.is_ref
         self.extra_dependencies = tensor.extra_dependencies
         self.remove_unused_cleanup_hooks.clear()
@@ -456,7 +458,7 @@ class Tensor:
 
         if self.is_ref:
             return sis_hash_helper(self.raw_tensor.get_abs_name())
-        return sis_hash_helper(self.layer_dict)
+        return sis_hash_helper(self.raw_tensor.layer_dict)
 
     def __add__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
         if isinstance(other, (int, float, numpy.number)) and other == 0:
@@ -671,10 +673,10 @@ class Parameter(Tensor):
         if isinstance(value, nn.init.ParamInit):
             value = value(shape=self.dims, dtype=self.dtype)
         if value is None:
-            self.layer_dict.pop("init", None)
-            self.layer_dict.pop("init_by_layer", None)
+            self.raw_tensor.layer_dict.pop("init", None)
+            self.raw_tensor.layer_dict.pop("init_by_layer", None)
         elif isinstance(value, nn.Tensor):
-            self.layer_dict.pop("init", None)
+            self.raw_tensor.layer_dict.pop("init", None)
             if not value.raw_tensor.parent.can_access_children_from_root:
                 accessible_parent = value.raw_tensor.parent
                 while not accessible_parent.can_access_children_from_root:
@@ -686,10 +688,10 @@ class Parameter(Tensor):
                     assert (
                         dep.raw_tensor.parent.can_access_children_from_root
                     ), f"dep {dep} of moved value {value} is not accessible"
-            self.layer_dict["init_by_layer"] = value
+            self.raw_tensor.layer_dict["init_by_layer"] = value
         else:
-            self.layer_dict.pop("init_by_layer", None)
-            self.layer_dict["init"] = value
+            self.raw_tensor.layer_dict.pop("init_by_layer", None)
+            self.raw_tensor.layer_dict["init"] = value
         if nn.is_debug_eager_mode_enabled():
             shape = [d.get_dim_value() for d in self.dims]
             if isinstance(value, nn.Tensor):
@@ -710,9 +712,9 @@ class Parameter(Tensor):
         """
         In case initial is a ParamInit, this will return the actual value.
         """
-        if self.layer_dict.get("init_by_layer", None) is not None:
-            return self.layer_dict["init_by_layer"]
-        return self.layer_dict.get("init", None)
+        if self.raw_tensor.layer_dict.get("init_by_layer", None) is not None:
+            return self.raw_tensor.layer_dict["init_by_layer"]
+        return self.raw_tensor.layer_dict.get("init", None)
 
     @property
     def weight_decay(self) -> float:
@@ -722,26 +724,26 @@ class Parameter(Tensor):
         can be controlled via the ``decouple_constraints`` config option.
         https://github.com/rwth-i6/returnn_common/issues/59#issuecomment-1073913421
         """
-        return self.layer_dict.get("L2", 0.0)
+        return self.raw_tensor.layer_dict.get("L2", 0.0)
 
     @weight_decay.setter
     def weight_decay(self, value: Optional[float]):
         if value:
-            self.layer_dict["L2"] = value
+            self.raw_tensor.layer_dict["L2"] = value
         else:
-            self.layer_dict.pop("L2", None)
+            self.raw_tensor.layer_dict.pop("L2", None)
 
     @property
     def trainable(self) -> Optional[bool]:
         """trainable"""
-        return self.layer_dict.get("trainable", None)
+        return self.raw_tensor.layer_dict.get("trainable", None)
 
     @trainable.setter
     def trainable(self, value: Optional[bool]):
         if value is not None:
-            self.layer_dict["trainable"] = value
+            self.raw_tensor.layer_dict["trainable"] = value
         else:
-            self.layer_dict.pop("trainable", None)
+            self.raw_tensor.layer_dict.pop("trainable", None)
 
 
 class LayerState(dict):
