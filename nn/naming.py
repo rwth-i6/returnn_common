@@ -271,7 +271,7 @@ class NameCtx:
         if layer_ref.raw_tensor.parent:
             old_name_ctx = layer_ref.raw_tensor.parent.children.pop(layer_ref.raw_tensor.name)
             assert old_name_ctx is layer_ref.raw_tensor
-        old_name_ctx = layer_ref.raw_tensor
+        old_name_ctx = layer_ref.raw_tensor  # type: NameCtx
 
         # Now reassign.
         layer_ref.raw_tensor = self
