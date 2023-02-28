@@ -281,9 +281,10 @@ class NameCtx:
         # Now reassign.
         tensor.raw_tensor = self
         self.tensor = tensor
+        self.tensor_parent_modules = old_name_ctx.tensor_parent_modules
+        self.tensor_remove_unused_cleanup_hooks = old_name_ctx.tensor_remove_unused_cleanup_hooks
         self.layer_dict = old_name_ctx.layer_dict
         self.layer_extra_dependencies = old_name_ctx.layer_extra_dependencies
-        self.tensor_parent_modules = old_name_ctx.tensor_parent_modules
         self.debug_layer = old_name_ctx.debug_layer
         self.module = old_name_ctx.module
         self.is_subnet = old_name_ctx.is_subnet
