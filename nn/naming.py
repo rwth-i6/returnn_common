@@ -192,6 +192,7 @@ class NameCtx:
         self.layer_ref = None  # type: Optional[nn.Tensor]
         self.layer = None  # type: Optional[nn.Tensor]
         self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
+        self.layer_extra_dependencies = []  # type: List[nn.Tensor]
         self.debug_layer = None  # type: Optional[nn.LayerBase]
         self._enter_stack_frames = None  # type: Optional[Set[types.FrameType]]
         self.is_subnet = False  # it says whether it can have children

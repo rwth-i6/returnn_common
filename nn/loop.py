@@ -127,7 +127,7 @@ class Loop:
         if not exc_type:
             res = self.layer_module()  # create the rec layer itself
             if self.end_ref is not None:
-                res.extra_dependencies.append(self.end_ref)
+                res.raw_tensor.layer_extra_dependencies.append(self.end_ref)
 
     @property
     def has_entered_scope(self) -> bool:
@@ -217,7 +217,7 @@ class Loop:
                 name=name or sub_layer_name.replace("/", "_"),
             )
             res.remove_unused_cleanup_hooks.append(lambda _: source.raw_tensor.layer_dict.pop("need_last"))
-            res.extra_dependencies.append(source)
+            res.raw_tensor.layer_extra_dependencies.append(source)
             self._last_frames[source.raw_tensor] = res
             return res
 

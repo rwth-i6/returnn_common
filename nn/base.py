@@ -125,7 +125,6 @@ class Tensor:
         # Do not assign name_ctx.layer{_ref} yet because we potentially could raise exceptions later.
         assert name_ctx.layer_ref is None
         assert name_ctx.layer is None
-        self.extra_dependencies = []  # type: List[Tensor]
 
         if is_ref:
             assert layer_dict is None
@@ -152,7 +151,7 @@ class Tensor:
                     data.batch = name_ctx.root.global_batch
 
         self.data = data
-        self.raw_tensor.layer_dict = layer_dict
+        name_ctx.layer_dict = layer_dict
         name_ctx.layer_ref = self
         if not is_ref:
             name_ctx.layer = self
@@ -447,8 +446,8 @@ class Tensor:
             _maybe_add_dep(self.raw_tensor.children["output"].layer_ref)
         if self.raw_tensor.parent and self.raw_tensor.parent.layer_ref:
             _maybe_add_dep(self.raw_tensor.parent.layer_ref)
-        if self.extra_dependencies:
-            dep_list.extend(self.extra_dependencies)
+        if self.raw_tensor.layer_extra_dependencies:
+            dep_list.extend(self.raw_tensor.layer_extra_dependencies)
         return dep_list
 
     def _replace_by(self, tensor: nn.Tensor):
@@ -460,7 +459,6 @@ class Tensor:
         self.parent_modules = tensor.parent_modules
         self.raw_tensor = tensor.raw_tensor  # type: nn.NameCtx
         self.data = tensor.data
-        self.extra_dependencies = tensor.extra_dependencies
         self.remove_unused_cleanup_hooks.clear()
 
     def _sis_hash(self):
