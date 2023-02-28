@@ -1270,9 +1270,24 @@ class ReturnnDimTagsProxy:
 
     # --------- ReturnnDimTagsProxy ---------------
 
-    def __init__(self):
+    def __init__(self, *, reserved_names: Optional[Set[str]] = None):
         self.dim_refs_by_name = {}  # type: Dict[str, ReturnnDimTagsProxy.DimRefProxy]
         self.dim_refs_by_tag = {}  # type: Dict[nn.Dim, ReturnnDimTagsProxy.DimRefProxy]
+        # You can externally set this to some other set, or add names to it.
+        # Note that we will also add names to this instance.
+        self.reserved_names = reserved_names or set()  # type: Set[str]
+        self.reserved_names.update(
+            {
+                "batch_dim",
+                "single_step_dim",
+                "Data",
+                "Dim",
+                "FeatureDim",
+                "SpatialDim",
+                "ImplicitSparseDim",
+                "ImplicitDynSizeDim",
+            }
+        )
 
     def __repr__(self):
         return "\n".join(
@@ -1290,6 +1305,7 @@ class ReturnnDimTagsProxy:
         new = ReturnnDimTagsProxy()
         new.dim_refs_by_name = self.dim_refs_by_name.copy()
         new.dim_refs_by_tag = self.dim_refs_by_tag.copy()
+        new.reserved_names = self.reserved_names.copy()
         return new
 
     def py_code_str(self, exclude_dims: Collection[ReturnnDimTagsProxy.DimRefProxy] = ()):
@@ -1385,12 +1401,12 @@ class ReturnnDimTagsProxy:
                 name_ = name_[: -len("_dim")]
             if not name_ or name_[:1].isdigit():
                 name_ = "_" + name_
-            if name_ not in self.dim_refs_by_name:
+            if name_ not in self.reserved_names:
                 return name_
             i = 0
             while True:
                 name__ = f"{name_}_{i}"
-                if name__ not in self.dim_refs_by_name:
+                if name__ not in self.reserved_names:
                     return name__
                 i += 1
 
@@ -1425,6 +1441,7 @@ class ReturnnDimTagsProxy:
                 ref = ReturnnDimTagsProxy.DimRefProxy(dim=value, name=name, path=path, parent=self)
                 self.dim_refs_by_name[name] = ref
                 self.dim_refs_by_tag[value] = ref
+                self.reserved_names.add(name)
                 return ref
             if isinstance(value, dict):
                 return {
