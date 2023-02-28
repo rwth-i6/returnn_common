@@ -49,7 +49,7 @@ Code conventions:
 
 from __future__ import annotations
 import numpy
-from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Iterable, Callable, Type
+from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Iterable, Type
 import itertools
 import contextlib
 from weakref import WeakKeyDictionary
