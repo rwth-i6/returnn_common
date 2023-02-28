@@ -71,7 +71,7 @@ class MaskedComputation:
             if not exc_type:
                 # Make sure there is an "output" layer. (Similar as for Module with subnetwork.)
                 if "output" not in self.name_ctx.children:
-                    last_child = self.name_ctx.get_recent_layer_ref(only_same_control_flow=True)
+                    last_child = self.name_ctx.get_recent_tensor(only_same_control_flow=True)
                     if last_child is not None:
                         from . import copy
 
@@ -100,7 +100,7 @@ class MaskedComputationModule(nn.Module):
         Makes layer dict for this loop, i.e. a RecLayer.
         """
         name_ctx = self.masked_computation.name_ctx
-        out = name_ctx.children["output"].layer_ref
+        out = name_ctx.children["output"].tensor
         loop = nn.NameCtx.inner_loop()
         assert loop, f"{self}: need to be inside loop"  # not implemented otherwise
         return nn.make_layer(

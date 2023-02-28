@@ -199,9 +199,7 @@ class Loop:
         assert isinstance(source, nn.Tensor)
         if source.raw_tensor in self._last_frames:
             return self._last_frames[source.raw_tensor]
-        assert (
-            self.name_ctx.layer_ref is not None
-        ), f"{self}.last(...): must call from outside"  # current restriction...
+        assert self.name_ctx.tensor is not None, f"{self}.last(...): must call from outside"  # current restriction...
         # need_last option only works in root of subnet of RecLayer
         if source.raw_tensor.parent is not self.name_ctx:
             assert self.name_ctx in source.raw_tensor.get_abs_name_ctx_list(), f"invalid {self}.last({source})"
@@ -212,7 +210,7 @@ class Loop:
         sub_layer_name = source.raw_tensor.get_name_in_ctx(self.name_ctx)
         with self.name_ctx.parent:  # need to be outside the loop
             res = nn.make_layer(
-                {"class": "rec_last_output", "rec_layer": self.name_ctx.layer_ref, "sub_layer_name": sub_layer_name},
+                {"class": "rec_last_output", "rec_layer": self.name_ctx.tensor, "sub_layer_name": sub_layer_name},
                 predefined_out_data=source.data,
                 name=name or sub_layer_name.replace("/", "_"),
             )
@@ -265,7 +263,7 @@ class Loop:
         assert self._entered_scope and not self._exited_scope
         if self._iter_idx_ref is not None:
             return self._iter_idx_ref
-        self._iter_idx_ref = self.name_ctx.get_child_layer_ref(
+        self._iter_idx_ref = self.name_ctx.get_child_tensor(
             ":i",
             data=nn.Data(
                 ":i", dtype="int32", dim_tags=(), sparse_dim=self.axis, control_flow_ctx=self.control_flow_ctx
@@ -289,7 +287,7 @@ class LoopModule(nn.Module):
         Makes layer dict for this loop, i.e. a RecLayer.
         """
         name_ctx = self.loop.name_ctx
-        out = name_ctx.children["output"].layer_ref
+        out = name_ctx.children["output"].tensor
         # self.stack already added the loop.axis dim tag to prepare the access from outside the loop.
         assert out.data.dim_tags[0] == self.loop.axis
         return nn.make_layer(
@@ -310,17 +308,17 @@ class PrevTensorRef(nn.Tensor):
         Create prev ref.
         """
         parent_name_ctx = cur_layer_name_ctx.parent
-        prev_layer_name_ctx = parent_name_ctx.get_child(f"prev:{cur_layer_name_ctx.name}")
-        if prev_layer_name_ctx.layer_ref:
-            prev_layer_ref = prev_layer_name_ctx.layer_ref
-            assert isinstance(prev_layer_ref, PrevTensorRef)
-            assert prev_layer_ref.cur_layer_name_ctx is cur_layer_name_ctx
+        prev_tensor_name_ctx = parent_name_ctx.get_child(f"prev:{cur_layer_name_ctx.name}")
+        if prev_tensor_name_ctx.tensor:
+            prev_tensor_ref = prev_tensor_name_ctx.tensor
+            assert isinstance(prev_tensor_ref, PrevTensorRef)
+            assert prev_tensor_ref.cur_layer_name_ctx is cur_layer_name_ctx
         else:
-            prev_layer_ref = PrevTensorRef(
-                name_ctx=prev_layer_name_ctx, cur_layer_name_ctx=cur_layer_name_ctx, data=initial.data
+            prev_tensor_ref = PrevTensorRef(
+                name_ctx=prev_tensor_name_ctx, cur_layer_name_ctx=cur_layer_name_ctx, data=initial.data
             )
-            assert prev_layer_name_ctx.layer_ref is prev_layer_ref
-        return prev_layer_ref
+            assert prev_tensor_name_ctx.tensor is prev_tensor_ref
+        return prev_tensor_ref
 
     def __init__(self, *, name_ctx: nn.NameCtx, cur_layer_name_ctx: nn.NameCtx, data: nn.Data):
         # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
@@ -329,19 +327,19 @@ class PrevTensorRef(nn.Tensor):
 
     def get_dependencies(self, **kwargs) -> List[nn.Tensor]:
         """dependencies"""
-        # Need to overwrite this because self.cur_layer_name_ctx.layer_ref is only available later.
-        return super(PrevTensorRef, self).get_dependencies(**kwargs) + [self.cur_layer_name_ctx.layer_ref]
+        # Need to overwrite this because self.cur_layer_name_ctx.tensor is only available later.
+        return super(PrevTensorRef, self).get_dependencies(**kwargs) + [self.cur_layer_name_ctx.tensor]
 
-    def assign_new_cur_layer_name_ctx(self, cur_layer_name_ctx: nn.NameCtx):
+    def assign_new_cur_tensor_name_ctx(self, cur_tensor_name_ctx: nn.NameCtx):
         """
         Changes self.name_ctx to new name_ctx.
         """
-        prev_layer_name = f"prev:{cur_layer_name_ctx.name}"
-        assert prev_layer_name not in cur_layer_name_ctx.parent.children
-        prev_layer_name_ctx = cur_layer_name_ctx.parent.get_child(prev_layer_name)
-        prev_layer_name_ctx.move_layer_ref_here(self)
+        prev_layer_name = f"prev:{cur_tensor_name_ctx.name}"
+        assert prev_layer_name not in cur_tensor_name_ctx.parent.children
+        prev_layer_name_ctx = cur_tensor_name_ctx.parent.get_child(prev_layer_name)
+        prev_layer_name_ctx.move_tensor_here(self)
         assert self.raw_tensor is prev_layer_name_ctx
-        self.cur_layer_name_ctx = cur_layer_name_ctx
+        self.cur_layer_name_ctx = cur_tensor_name_ctx
 
 
 class _LoopStateHolder:
@@ -439,17 +437,17 @@ class _LoopState:
         nest.assert_same_structure(self.name_ctx, value)
         self.assigned_value = value
 
-        def _map_ref_to_name_ctx(layer_ref: nn.Tensor, name_ctx: nn.NameCtx, initial: nn.Tensor):
-            assert isinstance(layer_ref, nn.Tensor)
+        def _map_ref_to_name_ctx(tensor: nn.Tensor, name_ctx: nn.NameCtx, initial: nn.Tensor):
+            assert isinstance(tensor, nn.Tensor)
             assert isinstance(name_ctx, nn.NameCtx)
-            assert name_ctx.layer_ref is None, f"Loop state {name_ctx} already assigned"
+            assert name_ctx.tensor is None, f"Loop state {name_ctx} already assigned"
 
-            layer_ref.raw_tensor.make_all_sub_networks_and_optimize()
+            tensor.raw_tensor.make_all_sub_networks_and_optimize()
 
-            layer_ctx_list = layer_ref.raw_tensor.get_abs_name_ctx_list()
+            layer_ctx_list = tensor.raw_tensor.get_abs_name_ctx_list()
             assert (
                 self.loop.name_ctx in layer_ctx_list
-            ), f"Loop state {name_ctx} should get a value inside the loop but got {layer_ref}"
+            ), f"Loop state {name_ctx} should get a value inside the loop but got {tensor}"
             # We need some special logic for MaskedComputation but maybe also for others later.
             # This is currently not nice but I'm not sure about better solutions.
             for i in range(layer_ctx_list.index(self.loop.name_ctx) + 1, len(layer_ctx_list) - 1):
@@ -461,13 +459,13 @@ class _LoopState:
 
             # Potential optimization for RETURNN layers.
             # See ReturnnWrappedLayerBase._get_recurrent_state.
-            if layer_ref.raw_tensor.layer_dict:
+            if tensor.raw_tensor.layer_dict:
                 _do_const_initial_value_opt = False
                 _const_initial_value_opt_layer_white_list = {"cum_concat", "rec"}
-                if layer_ref.raw_tensor.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
+                if tensor.raw_tensor.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
                     _do_const_initial_value_opt = True
-                elif layer_ref.raw_tensor.layer_dict["class"] == "get_last_hidden_state":
-                    src = layer_ref.raw_tensor.layer_dict["from"]
+                elif tensor.raw_tensor.layer_dict["class"] == "get_last_hidden_state":
+                    src = tensor.raw_tensor.layer_dict["from"]
                     assert isinstance(src, nn.Tensor)
                     if src.raw_tensor.layer_dict:
                         if src.raw_tensor.layer_dict["class"] in _const_initial_value_opt_layer_white_list:
@@ -479,10 +477,10 @@ class _LoopState:
                     if initial_const is not None:
                         initial = initial_const
 
-                if layer_ref.raw_tensor.layer_dict["class"] == "get_last_hidden_state":
+                if tensor.raw_tensor.layer_dict["class"] == "get_last_hidden_state":
                     used_state_eliminate_optimization = False
-                    key = layer_ref.raw_tensor.layer_dict.get("key", "state")
-                    src = layer_ref.raw_tensor.layer_dict["from"]
+                    key = tensor.raw_tensor.layer_dict.get("key", "state")
+                    src = tensor.raw_tensor.layer_dict["from"]
                     assert isinstance(src, nn.Tensor)
                     src_state_opt = src.raw_tensor.layer_dict.get("state") if src.raw_tensor.layer_dict else None
                     if isinstance(src_state_opt, nn.LayerState):
@@ -505,53 +503,53 @@ class _LoopState:
 
                     if not used_state_eliminate_optimization:
                         raise NotImplementedError(
-                            f"{self}.assign to {layer_ref} on {src}:"
+                            f"{self}.assign to {tensor} on {src}:"
                             f" We need https://github.com/rwth-i6/returnn_common/issues/31"
                             f" and https://github.com/rwth-i6/returnn/issues/732."
                         )
 
                 else:  # class != get_last_hidden_state
 
-                    if layer_ref.raw_tensor.layer_dict["class"] == "cum_concat":
-                        layer_state_opt = layer_ref.raw_tensor.layer_dict.get("state")
+                    if tensor.raw_tensor.layer_dict["class"] == "cum_concat":
+                        layer_state_opt = tensor.raw_tensor.layer_dict.get("state")
                         if isinstance(layer_state_opt, nn.LayerState) and set(layer_state_opt.keys()) == {"state"}:
                             layer_state = layer_state_opt.state
                             if isinstance(layer_state, PrevTensorRef) and layer_state.cur_layer_name_ctx is name_ctx:
                                 # The 'state' argument refers to "prev:..." of itself.
                                 # This is redundant, so we don't need to pass it.
-                                layer_ref.raw_tensor.layer_dict.pop("state")
+                                tensor.raw_tensor.layer_dict.pop("state")
 
-                    assert "initial_state" not in layer_ref.raw_tensor.layer_dict
-                    assert "initial_output" not in layer_ref.raw_tensor.layer_dict
-                    layer_ref.raw_tensor.layer_dict["initial_output"] = initial
+                    assert "initial_state" not in tensor.raw_tensor.layer_dict
+                    assert "initial_output" not in tensor.raw_tensor.layer_dict
+                    tensor.raw_tensor.layer_dict["initial_output"] = initial
 
-            else:  # layer_ref not Layer
-                raise NotImplementedError(f"{self}.assign to {layer_ref} but layer expected")
+            else:  # tensor not Tensor
+                raise NotImplementedError(f"{self}.assign to {tensor} (type {type(tensor)}) but Tensor expected")
 
             # Note: We assume this has been used before in get() -> PrevTensorRef.get_prev_ref().
             prev_name_ctx = name_ctx.parent.children.get(f"prev:{name_ctx.name}")
             if prev_name_ctx:  # might not exist if we have never accessed the prev state
-                prev_ref = prev_name_ctx.layer_ref
+                prev_ref = prev_name_ctx.tensor
                 assert isinstance(prev_ref, PrevTensorRef), f"{name_ctx, prev_name_ctx}"
-                if layer_ref.raw_tensor.parent != self.loop.name_ctx:
+                if tensor.raw_tensor.parent != self.loop.name_ctx:
                     # Currently, RETURNN does not properly support a state in a subnet.
                     # So we copy the layer to the loop root under the reserved existing name.
-                    nn.copy(layer_ref, name=name_ctx)
-                    if layer_ref.raw_tensor.layer_dict:
-                        assert "initial_state" not in layer_ref.raw_tensor.layer_dict  # not supported/implemented
-                        if "initial_output" in layer_ref.raw_tensor.layer_dict:
-                            name_ctx.layer.raw_tensor.layer_dict[
+                    nn.copy(tensor, name=name_ctx)
+                    if tensor.raw_tensor.layer_dict:
+                        assert "initial_state" not in tensor.raw_tensor.layer_dict  # not supported/implemented
+                        if "initial_output" in tensor.raw_tensor.layer_dict:
+                            name_ctx.layer.raw_tensor.layer_dict["initial_output"] = tensor.raw_tensor.layer_dict.pop(
                                 "initial_output"
-                            ] = layer_ref.raw_tensor.layer_dict.pop("initial_output")
+                            )
                 else:
-                    prev_ref.assign_new_cur_layer_name_ctx(layer_ref.raw_tensor)
+                    prev_ref.assign_new_cur_tensor_name_ctx(tensor.raw_tensor)
 
-            return layer_ref.raw_tensor
+            return tensor.raw_tensor
 
         self.name_ctx = nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
     @staticmethod
-    def _map_name_ctx_to_prev_layer_ref(name_ctx: nn.NameCtx, initial: nn.Tensor) -> PrevTensorRef:
+    def _map_name_ctx_to_prev_tensor(name_ctx: nn.NameCtx, initial: nn.Tensor) -> PrevTensorRef:
         assert isinstance(name_ctx, nn.NameCtx)
         return PrevTensorRef.get_prev_ref(cur_layer_name_ctx=name_ctx, initial=initial)
 
@@ -566,14 +564,14 @@ class _LoopState:
             return self.initial
         if self.assigned_value is None:  # not yet assigned
             # Return prev value
-            return nest.map_structure(self._map_name_ctx_to_prev_layer_ref, self.name_ctx, self.initial)
+            return nest.map_structure(self._map_name_ctx_to_prev_tensor, self.name_ctx, self.initial)
         return self.assigned_value
 
-    def _map_name_ctx_to_last_layer_ref(self, name_ctx: nn.NameCtx) -> nn.Tensor:
+    def _map_name_ctx_to_last_tensor(self, name_ctx: nn.NameCtx) -> nn.Tensor:
         assert isinstance(name_ctx, nn.NameCtx)
-        assert name_ctx.layer_ref, f"{self.loop} state {name_ctx} not assigned?"
-        assert self.loop.name_ctx.layer_ref, f"{self.loop} not yet exited?"
-        return self.loop.last(name_ctx.layer_ref)
+        assert name_ctx.tensor, f"{self.loop} state {name_ctx} not assigned?"
+        assert self.loop.name_ctx.tensor, f"{self.loop} not yet exited?"
+        return self.loop.last(name_ctx.tensor)
 
     def get_last(self):
         """
@@ -581,4 +579,4 @@ class _LoopState:
         """
         assert self.name_ctx is not None
         assert self.assigned_value is not None
-        return nest.map_structure(self._map_name_ctx_to_last_layer_ref, self.name_ctx)
+        return nest.map_structure(self._map_name_ctx_to_last_tensor, self.name_ctx)

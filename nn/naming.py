@@ -189,7 +189,7 @@ class NameCtx:
         Use :func:`NameCtx.new_root` or :func:`scoped`.
         """
         self.module = module
-        self.layer_ref = None  # type: Optional[nn.Tensor]
+        self.tensor = None  # type: Optional[nn.Tensor]
         self.layer = None  # type: Optional[nn.Tensor]
         self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
         self.layer_extra_dependencies = []  # type: List[nn.Tensor]
@@ -221,8 +221,8 @@ class NameCtx:
 
     def __repr__(self):
         parts = [self.get_abs_name_repr()]
-        if self.layer_ref:
-            parts.append("[%s]" % ",".join(self.layer_ref.data.get_batch_axes_short_description()))
+        if self.tensor:
+            parts.append("[%s]" % ",".join(self.tensor.data.get_batch_axes_short_description()))
         if self.module:
             parts.append(f"module:{self.module}")
         return f"<{self.__class__.__name__} {' '.join(parts)}>"
@@ -260,28 +260,28 @@ class NameCtx:
         self.name = self._get_unique_name(suggested_name or self.name)
         self.parent._add_child(self)
 
-    def move_layer_ref_here(self: NameCtx, layer_ref: nn.Tensor):
+    def move_tensor_here(self: NameCtx, tensor: nn.Tensor):
         """
         Moves an existing layer ref (with assigned name ctx)
         to another name ctx (without assigned layer or layer ref).
 
-        This assumes that there are no other references to layer_ref.name_ctx
+        This assumes that there are no other references to tensor.name_ctx
         because those would become invalid.
-        References to layer_ref itself should be fine.
+        References to tensor itself should be fine.
         """
-        assert not self.layer and not self.layer_ref  # none yet assigned
+        assert not self.layer and not self.tensor  # none yet assigned
         assert not self.tensor_parent_modules
 
-        # Remove layer_ref.name_ctx from its parent name ctx.
-        if layer_ref.raw_tensor.parent:
-            old_name_ctx = layer_ref.raw_tensor.parent.children.pop(layer_ref.raw_tensor.name)
-            assert old_name_ctx is layer_ref.raw_tensor
-        old_name_ctx = layer_ref.raw_tensor  # type: NameCtx
+        # Remove tensor.name_ctx from its parent name ctx.
+        if tensor.raw_tensor.parent:
+            old_name_ctx = tensor.raw_tensor.parent.children.pop(tensor.raw_tensor.name)
+            assert old_name_ctx is tensor.raw_tensor
+        old_name_ctx = tensor.raw_tensor  # type: NameCtx
 
         # Now reassign.
-        layer_ref.raw_tensor = self
-        self.layer_ref = layer_ref
-        self.layer = layer_ref if old_name_ctx.layer_dict else None
+        tensor.raw_tensor = self
+        self.tensor = tensor
+        self.layer = tensor if old_name_ctx.layer_dict else None
         self.layer_dict = old_name_ctx.layer_dict
         self.layer_extra_dependencies = old_name_ctx.layer_extra_dependencies
         self.tensor_parent_modules = old_name_ctx.tensor_parent_modules
@@ -392,8 +392,8 @@ class NameCtx:
             for ctx in tensor.raw_tensor.get_abs_name_ctx_list():
                 if ctx in used_names:
                     continue  # skip early, to skip the extra checks below
-                if ctx.layer_ref is not None and ctx.layer_ref is not tensor:
-                    queue.append((ctx.layer_ref, src_))
+                if ctx.tensor is not None and ctx.tensor is not tensor:
+                    queue.append((ctx.tensor, src_))
 
         # Go through all names in the hierarchy and remove unused.
         visited = set()  # type: Set[nn.NameCtx]
@@ -406,9 +406,9 @@ class NameCtx:
             if name_ctx not in used_names:
                 assert name_ctx.parent
                 name_ctx.parent.children.pop(name_ctx.name)
-                if name_ctx.layer_ref is not None:
-                    for hook in name_ctx.layer_ref.remove_unused_cleanup_hooks:
-                        hook(name_ctx.layer_ref)
+                if name_ctx.tensor is not None:
+                    for hook in name_ctx.tensor.remove_unused_cleanup_hooks:
+                        hook(name_ctx.tensor)
             else:
                 for name, child in name_ctx.children.items():
                     assert child.parent is name_ctx and child.name == name
@@ -431,7 +431,7 @@ class NameCtx:
         # - There might be references to the output of the root module call,
         #   e.g. for separately calculating the loss.
         #   So the root module call output must stay valid.
-        #   Using self.root.move_layer_ref_here(...) would not really allow that the output is used
+        #   Using self.root.move_tensor_here(...) would not really allow that the output is used
         #   because self.root does not have a valid layer name.
         root_module_calls = [call for call in root_module.calls if call.root is self.root]
         if root_module_calls:
@@ -439,8 +439,8 @@ class NameCtx:
             assert root_mod_call.module is root_module
             if root_mod_call is not self:
                 # root_mod_call.layer might be None if the subnet is not yet initialized.
-                if root_mod_call.layer_ref is not None:
-                    assert not self.layer_ref  # not sure. maybe just reset?
+                if root_mod_call.tensor is not None:
+                    assert not self.tensor  # not sure. maybe just reset?
                     assert root_mod_call.layer_dict["class"] == "subnetwork"
                     sub_out = root_mod_call.children.pop("output")
                     assert sub_out.layer_dict["class"] == "copy"
@@ -451,7 +451,7 @@ class NameCtx:
                     # noinspection PyProtectedMember
                     root_mod_call.layer._replace_by(sub_real_out)
 
-                # Do not use self.move_layer_ref_here(root_mod_call.layer_ref) because we don't want the extra logic.
+                # Do not use self.move_tensor_here(root_mod_call.tensor) because we don't want the extra logic.
                 self.module = root_module
                 root_module.calls[0] = self
                 for name, child in root_mod_call.children.items():
@@ -540,8 +540,8 @@ class NameCtx:
             return "base:" + self.get_name_in_ctx(
                 ctx=ctx.parent, middle_prefix=middle_prefix, shorten_subnet=shorten_subnet
             )
-        if isinstance(self.layer_ref, nn.PrevTensorRef):
-            return self.layer_ref.cur_layer_name_ctx.get_name_in_ctx(
+        if isinstance(self.tensor, nn.PrevTensorRef):
+            return self.tensor.cur_layer_name_ctx.get_name_in_ctx(
                 ctx, middle_prefix="prev:" + middle_prefix, shorten_subnet=False
             )
         ctx_scope_abs = ctx.get_abs_name_ctx_list()
@@ -558,7 +558,7 @@ class NameCtx:
         assert self_name_abs[-1] is self
         if len(self_name_abs) == 1:  # fast path
             return prefix + middle_prefix + self.name
-        if self.layer_ref is None or not shorten_subnet:  # without tensor, no further optimization
+        if self.tensor is None or not shorten_subnet:  # without tensor, no further optimization
             postfix = "/".join([ctx.name for ctx in self_name_abs if not ctx.virtual])
             return prefix + middle_prefix + postfix
         # Potentially shorten postfix when it matches subnet outputs.
@@ -566,7 +566,7 @@ class NameCtx:
             ctx_, ctx__ = self_name_abs[-2:]
             assert isinstance(ctx_, NameCtx) and isinstance(ctx__, NameCtx)
             if ctx_.layer is not None and ctx_.layer.raw_tensor.layer_dict["class"] == "subnetwork":
-                if ctx_._subnet_main_output is ctx__.layer_ref or ctx_.children.get("output") is ctx__:
+                if ctx_._subnet_main_output is ctx__.tensor or ctx_.children.get("output") is ctx__:
                     self_name_abs.pop(-1)
                     continue  # check again
             break
@@ -595,34 +595,34 @@ class NameCtx:
         """
         return NameCtx(suggested_name=suggested_name, parent=self)
 
-    def get_child_with_layer_ref(self, name: str, *, data: nn.Data) -> NameCtx:
+    def get_child_with_tensor(self, name: str, *, data: nn.Data) -> NameCtx:
         """
         Makes sure the child exists, including a corresponding layer ref.
         Creates the child together with a layer ref if it does not exist yet.
         """
         child = self.get_child(name)
-        if not child.layer_ref:
-            layer_ref = nn.Tensor(name_ctx=child, data=data, is_ref=True)
-            assert child.layer_ref is layer_ref
+        if not child.tensor:
+            tensor = nn.Tensor(name_ctx=child, data=data, is_ref=True)
+            assert child.tensor is tensor
         return child
 
-    def get_child_layer_ref(self, name: str, *, data: nn.Data) -> nn.Tensor:
+    def get_child_tensor(self, name: str, *, data: nn.Data) -> nn.Tensor:
         """
         Get child layer ref. Makes sure it exists.
         """
-        return self.get_child_with_layer_ref(name, data=data).layer_ref
+        return self.get_child_with_tensor(name, data=data).tensor
 
-    def get_recent_layer_ref(self, *, only_same_control_flow: bool = False) -> Optional[nn.Tensor]:
+    def get_recent_tensor(self, *, only_same_control_flow: bool = False) -> Optional[nn.Tensor]:
         """
-        Get recent layer ref if it exists. Can go deeply through children.
+        Get recent tensor if it exists. Can go deeply through children.
         """
         queue = [self]
         while queue:
             ctx = queue.pop(-1)  # depth-first
             if only_same_control_flow and ctx.control_flow_ctx() != self.control_flow_ctx():
                 continue
-            if ctx.layer_ref is not None:
-                return ctx.layer_ref
+            if ctx.tensor is not None:
+                return ctx.tensor
             # due to pop(-1), this will be accessed in reverse order, which is what we want
             queue.extend(ctx.children.values())
         return None
@@ -692,11 +692,7 @@ class NameCtx:
             # However, we allow to use the name if it is the attrib itself.
             if self.module and name not in reserved_names and getattr(self.parent.module, name, None) is self.module:
                 return name
-            if (
-                self.layer_ref
-                and name not in reserved_names
-                and getattr(self.parent.module, name, None) is self.layer_ref
-            ):
+            if self.tensor and name not in reserved_names and getattr(self.parent.module, name, None) is self.tensor:
                 return name
             # We might exclude all other attribs.
             # However, e.g. "dropout" is a common attrib storing the dropout rate (float),
@@ -721,27 +717,27 @@ class NameCtx:
         """
         ctx = self
         while True:
-            if ctx.layer_ref is not None:
+            if ctx.tensor is not None:
                 ctx.optimize_move_up()
             ctx_ = ctx
             ctx = ctx_.parent
             if not ctx or ctx.is_root:
                 break
-            if ctx.virtual or ctx.layer_ref is not None or ctx_.layer_ref is None:
+            if ctx.virtual or ctx.tensor is not None or ctx_.tensor is None:
                 continue
             if isinstance(ctx.module, (nn.MaskedComputationModule, nn.CondModule, nn.LoopModule)):
                 continue
             if ctx.new_control_flow_ctx:
                 continue
-            ctx._make_sub_network_layer(ctx_.layer_ref)
-            assert ctx.layer_ref is not None
+            ctx._make_sub_network_layer(ctx_.tensor)
+            assert ctx.tensor is not None
 
     def optimize_move_up(self):
         """
         If the parent is a (non-initialized) subnet where we are the only child,
         move us up.
         """
-        assert self.layer_ref is not None
+        assert self.tensor is not None
         ctx = self.parent
         while ctx:
             assert isinstance(ctx, NameCtx)
@@ -757,25 +753,25 @@ class NameCtx:
         # Assume that we are not initialized yet (just for simplicity, not needed otherwise).
         if self.is_root or self.virtual or len(self.children) > 1:
             return False
-        if self.layer_ref is not None:
+        if self.tensor is not None:
             return False
         if self.module is not None and not isinstance(self.module, nn.Functional):
             return False
         return True
 
     def _make_sub_network_layer(self, sub_output: nn.Tensor):
-        assert self.layer_ref is None and self.layer is None
+        assert self.tensor is None and self.layer is None
         assert not self._is_obsolete_subnet()  # assume optimize_move_up() was called already
         if "output" in self.children:
-            assert self.children["output"].layer_ref is sub_output
+            assert self.children["output"].tensor is sub_output
         else:
             if isinstance(sub_output, nn.PrevTensorRef):
                 # It would be quite confusing to have a prev-layer as default output,
                 # so replace it by the current iteration.
-                assert sub_output.cur_layer_name_ctx.layer_ref is not None
-                sub_output = sub_output.cur_layer_name_ctx.layer_ref
+                assert sub_output.cur_layer_name_ctx.tensor is not None
+                sub_output = sub_output.cur_layer_name_ctx.tensor
             nn.copy(sub_output, name=self.get_child("output"))
-        self.layer = self.layer_ref = nn.make_layer(
+        self.layer = self.tensor = nn.make_layer(
             {"class": "subnetwork", "from": [], "subnetwork": self.make_net()},
             name=self,
             predefined_out_data=sub_output.data,
@@ -1029,7 +1025,7 @@ class NetDictBuilderCtx:
             layer_dict = sub_name_ctx.layer.raw_tensor.layer_dict.copy()
             assert "class" in layer_dict
 
-            data_template = sub_name_ctx.layer_ref.data.copy_template()
+            data_template = sub_name_ctx.tensor.data.copy_template()
             for outer_dim in _stack.get_parent_loop_axes():
                 if outer_dim in data_template.dim_tags:
                     data_template = data_template.copy_template_excluding_axis(
@@ -1049,7 +1045,7 @@ class NetDictBuilderCtx:
             dim_tags.extend(data_template.dim_tags_set_implicit_only_wrapped)
             assert len(dim_tags) == len(
                 set((d, d.match_priority if isinstance(d, nn.Dim) else 0) for d in dim_tags)
-            ), f"duplicate dims in {sub_name_ctx} {sub_name_ctx.layer_ref.data}"
+            ), f"duplicate dims in {sub_name_ctx} {sub_name_ctx.tensor.data}"
             if len(dim_tags) == len(set(dim_tags)):  # might not be unique without match_priority
                 if layer_dict["class"] not in {"constant", "variable", "random", "subnetwork"}:  # redundant
                     layer_dict["out_shape"] = set(dim_tags)
@@ -1121,8 +1117,8 @@ class NetDictBuilderCtx:
                     return ""
             raise NotImplementedError(f"custom_layer_name_scope {name_ctx.custom_layer_name_scope!r} not supported yet")
 
-        if name_ctx.layer_ref is not None:
-            name_path_tensor = self.cache.get_name_path(name_ctx.layer_ref, raise_exc=False)
+        if name_ctx.tensor is not None:
+            name_path_tensor = self.cache.get_name_path(name_ctx.tensor, raise_exc=False)
             if name_path_tensor is not None:
                 return "/".join(name_path_tensor)
         if name_ctx.module:

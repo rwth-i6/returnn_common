@@ -121,8 +121,8 @@ class Tensor:
         """
         # It will be returnn.tensor.Tensor.raw_tensor, thus named raw_tensor here now.
         self.raw_tensor = name_ctx
-        # Do not assign name_ctx.layer{_ref} yet because we potentially could raise exceptions later.
-        assert name_ctx.layer_ref is None
+        # Do not assign name_ctx.tensor yet because we potentially could raise exceptions later.
+        assert name_ctx.tensor is None
         assert name_ctx.layer is None
 
         if is_ref:
@@ -151,7 +151,7 @@ class Tensor:
 
         self.data = data
         name_ctx.layer_dict = layer_dict
-        name_ctx.layer_ref = self
+        name_ctx.tensor = self
         if not is_ref:
             name_ctx.layer = self
         self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
@@ -435,16 +435,16 @@ class Tensor:
                 dep_name_set.add(x.raw_tensor)
                 return
             if isinstance(x, nn.Net):
-                _maybe_add_dep(x.name_ctx.children["output"].layer_ref)
+                _maybe_add_dep(x.name_ctx.children["output"].tensor)
 
         if _extra_layer_dict:
             nest.map_structure(_maybe_add_dep, _extra_layer_dict)
         if self.raw_tensor.layer_dict:
             nest.map_structure(_maybe_add_dep, self.raw_tensor.layer_dict)
         if self.raw_tensor.children and "output" in self.raw_tensor.children:
-            _maybe_add_dep(self.raw_tensor.children["output"].layer_ref)
-        if self.raw_tensor.parent and self.raw_tensor.parent.layer_ref:
-            _maybe_add_dep(self.raw_tensor.parent.layer_ref)
+            _maybe_add_dep(self.raw_tensor.children["output"].tensor)
+        if self.raw_tensor.parent and self.raw_tensor.parent.tensor:
+            _maybe_add_dep(self.raw_tensor.parent.tensor)
         if self.raw_tensor.layer_extra_dependencies:
             dep_list.extend(self.raw_tensor.layer_extra_dependencies)
         return dep_list
@@ -861,7 +861,7 @@ def make_layer(
         created_name_ctx = False
     else:
         raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
-    assert not name_ctx.layer_ref and not name_ctx.layer  # not yet assigned
+    assert not name_ctx.tensor and not name_ctx.layer  # not yet assigned
     layer_dict = layer_dict.copy()
 
     try:
@@ -960,7 +960,7 @@ def _get_raw_layer_by_name(name: str, *, scope: Optional[nn.NameCtx] = None, dat
     """
     if not scope:
         scope = nn.NameCtx.current_ctx()  # must exist
-    return scope.get_child_layer_ref(name, data=data)
+    return scope.get_child_tensor(name, data=data)
 
 
 def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
@@ -968,7 +968,7 @@ def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
     Like the "{layer}/{name}" syntax in RETURNN.
     Normally this should only be needed for internal usage.
     """
-    out = layer.raw_tensor.get_child_layer_ref(name, data=data)
+    out = layer.raw_tensor.get_child_tensor(name, data=data)
     if nn.is_debug_eager_mode_enabled():
         assert layer.raw_tensor.debug_layer
         import returnn.tf.layers.base
