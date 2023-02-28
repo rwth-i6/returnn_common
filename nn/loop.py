@@ -127,7 +127,7 @@ class Loop:
         if not exc_type:
             res = self.layer_module()  # create the rec layer itself
             if self.end_ref is not None:
-                res.raw_tensor.layer_extra_dependencies.append(self.end_ref)
+                res.raw_tensor.layer_extra_dependencies.append(self.end_ref.raw_tensor)
 
     @property
     def has_entered_scope(self) -> bool:
@@ -217,7 +217,7 @@ class Loop:
             res.raw_tensor.tensor_remove_unused_cleanup_hooks.append(
                 lambda _: source.raw_tensor.layer_dict.pop("need_last")
             )
-            res.raw_tensor.layer_extra_dependencies.append(source)
+            res.raw_tensor.layer_extra_dependencies.append(source.raw_tensor)
             self._last_frames[source.raw_tensor] = res
             return res
 
@@ -327,10 +327,10 @@ class PrevTensorRef(nn.Tensor):
         super().__init__(name_ctx=name_ctx, data=data, is_ref=True)
         self.cur_layer_name_ctx = cur_layer_name_ctx
 
-    def get_dependencies(self, **kwargs) -> List[nn.Tensor]:
+    def get_dependencies(self, **kwargs) -> List[nn.NameCtx]:
         """dependencies"""
         # Need to overwrite this because self.cur_layer_name_ctx.tensor is only available later.
-        return super(PrevTensorRef, self).get_dependencies(**kwargs) + [self.cur_layer_name_ctx.tensor]
+        return super(PrevTensorRef, self).get_dependencies(**kwargs) + [self.cur_layer_name_ctx]
 
     def assign_new_cur_tensor_name_ctx(self, cur_tensor_name_ctx: nn.NameCtx):
         """

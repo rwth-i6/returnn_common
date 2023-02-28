@@ -142,8 +142,8 @@ class Tensor:
                 # We can still try to look at dependencies and use those batch info.
                 batches = []
                 for dep in self.get_dependencies(_extra_layer_dict=layer_dict):
-                    if dep.data.batch and dep.data.batch not in batches:
-                        batches.append(dep.data.batch)
+                    if dep.tensor is not None and dep.tensor.data.batch and dep.tensor.data.batch not in batches:
+                        batches.append(dep.tensor.data.batch)
                 if batches:
                     data.batch = nn.BatchInfo.get_common_batch_info(batches)
                 elif name_ctx.root.global_batch:
@@ -417,7 +417,7 @@ class Tensor:
         res.mark_as_output()
         return res
 
-    def get_dependencies(self, *, _extra_layer_dict=None) -> List[nn.Tensor]:
+    def get_dependencies(self, *, _extra_layer_dict=None) -> List[nn.NameCtx]:
         """
         :return: list of tensors this tensor depends on
         """
@@ -425,14 +425,16 @@ class Tensor:
         dep_name_set = set()
 
         def _maybe_add_dep(x):
-            if isinstance(x, nn.Tensor):
-                if x.raw_tensor in dep_name_set:
+            if isinstance(x, nn.NameCtx):
+                if x in dep_name_set:
                     return
                 dep_list.append(x)
-                dep_name_set.add(x.raw_tensor)
+                dep_name_set.add(x)
                 return
+            if isinstance(x, nn.Tensor):
+                return _maybe_add_dep(x.raw_tensor)
             if isinstance(x, nn.Net):
-                _maybe_add_dep(x.name_ctx.children["output"].tensor)
+                return _maybe_add_dep(x.name_ctx.children["output"].tensor)
 
         if _extra_layer_dict:
             nest.map_structure(_maybe_add_dep, _extra_layer_dict)
@@ -691,7 +693,7 @@ class Parameter(Tensor):
                 # However, it's not clear whether this is always safe.
                 for dep in value.get_dependencies():
                     assert (
-                        dep.raw_tensor.parent.can_access_children_from_root
+                        dep.parent.can_access_children_from_root
                     ), f"dep {dep} of moved value {value} is not accessible"
             self.raw_tensor.layer_dict["init_by_layer"] = value
         else:

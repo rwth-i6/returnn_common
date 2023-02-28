@@ -193,7 +193,7 @@ class NameCtx:
         self.tensor_parent_modules = []  # type: List[Tuple[nn.Module, str]]  # via parent module attrib
         self.tensor_remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
         self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
-        self.layer_extra_dependencies = []  # type: List[nn.Tensor]
+        self.layer_extra_dependencies = []  # type: List[nn.NameCtx]
         self.debug_layer = None  # type: Optional[nn.LayerBase]
         self._enter_stack_frames = None  # type: Optional[Set[types.FrameType]]
         self.is_subnet = False  # it says whether it can have children
@@ -374,8 +374,8 @@ class NameCtx:
             used_names.add(tensor.raw_tensor)
             src_ = src + [tensor]
             for dep in tensor.get_dependencies():
-                if dep.raw_tensor not in used_names:
-                    queue.append((dep, src_))
+                if dep.tensor is not None and dep not in used_names:
+                    queue.append((dep.tensor, src_))
 
             # Parameters usually have no parent assigned at creation time.
             if not tensor.raw_tensor.parent and tensor.raw_tensor != root:
