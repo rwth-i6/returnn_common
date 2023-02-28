@@ -57,7 +57,16 @@ import tensorflow as tf
 
 # Some imports are not used here, but imported to make them available in the `nn` namespace.
 # noinspection PyUnresolvedReferences
-from returnn.tf.util.data import Dim, Data, BatchInfo, ControlFlowContext, batch_dim, SpatialDim, FeatureDim
+from returnn.tf.util.data import (
+    Dim,
+    Data,
+    BatchInfo,
+    ControlFlowContext,
+    batch_dim,
+    SpatialDim,
+    FeatureDim,
+    single_step_dim,
+)
 
 # noinspection PyUnresolvedReferences
 from returnn.datasets.util.vocabulary import Vocabulary
