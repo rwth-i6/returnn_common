@@ -123,7 +123,7 @@ class Tensor:
         self.raw_tensor = name_ctx
         # Do not assign name_ctx.tensor yet because we potentially could raise exceptions later.
         assert name_ctx.tensor is None
-        assert name_ctx.layer is None
+        assert name_ctx.layer_dict is None
 
         if is_ref:
             assert layer_dict is None
@@ -152,8 +152,6 @@ class Tensor:
         self.data = data
         name_ctx.layer_dict = layer_dict
         name_ctx.tensor = self
-        if not is_ref:
-            name_ctx.layer = self
         self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
     def __repr__(self):
@@ -861,7 +859,7 @@ def make_layer(
         created_name_ctx = False
     else:
         raise TypeError(f"name must be str or NameCtx, not {type(name)}; or you should pass a module")
-    assert not name_ctx.tensor and not name_ctx.layer  # not yet assigned
+    assert not name_ctx.tensor and not name_ctx.layer_dict  # not yet assigned
     layer_dict = layer_dict.copy()
 
     try:

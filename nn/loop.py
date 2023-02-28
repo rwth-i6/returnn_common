@@ -454,7 +454,7 @@ class _LoopState:
                 ctx, ctx_ = layer_ctx_list[i : i + 2]
                 assert isinstance(ctx, nn.NameCtx) and isinstance(ctx_, nn.NameCtx)
                 if isinstance(ctx.module, nn.MaskedComputationModule):
-                    ctx_.layer.raw_tensor.layer_dict["is_output_layer"] = True
+                    ctx_.layer_dict["is_output_layer"] = True
                     break
 
             # Potential optimization for RETURNN layers.
@@ -538,9 +538,7 @@ class _LoopState:
                     if tensor.raw_tensor.layer_dict:
                         assert "initial_state" not in tensor.raw_tensor.layer_dict  # not supported/implemented
                         if "initial_output" in tensor.raw_tensor.layer_dict:
-                            name_ctx.layer.raw_tensor.layer_dict["initial_output"] = tensor.raw_tensor.layer_dict.pop(
-                                "initial_output"
-                            )
+                            name_ctx.layer_dict["initial_output"] = tensor.raw_tensor.layer_dict.pop("initial_output")
                 else:
                     prev_ref.assign_new_cur_tensor_name_ctx(tensor.raw_tensor)
 

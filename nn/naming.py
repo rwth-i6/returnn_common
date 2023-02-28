@@ -190,7 +190,6 @@ class NameCtx:
         """
         self.module = module
         self.tensor = None  # type: Optional[nn.Tensor]
-        self.layer = None  # type: Optional[nn.Tensor]
         self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
         self.layer_extra_dependencies = []  # type: List[nn.Tensor]
         self.tensor_parent_modules = []  # type: List[Tuple[nn.Module, str]]  # via parent module attrib
@@ -269,7 +268,7 @@ class NameCtx:
         because those would become invalid.
         References to tensor itself should be fine.
         """
-        assert not self.layer and not self.tensor  # none yet assigned
+        assert not self.layer_dict and not self.tensor  # none yet assigned
         assert not self.tensor_parent_modules
 
         # Remove tensor.name_ctx from its parent name ctx.
@@ -281,7 +280,6 @@ class NameCtx:
         # Now reassign.
         tensor.raw_tensor = self
         self.tensor = tensor
-        self.layer = tensor if old_name_ctx.layer_dict else None
         self.layer_dict = old_name_ctx.layer_dict
         self.layer_extra_dependencies = old_name_ctx.layer_extra_dependencies
         self.tensor_parent_modules = old_name_ctx.tensor_parent_modules
@@ -447,9 +445,9 @@ class NameCtx:
                     sub_real_out = sub_out.layer_dict["from"]
                     assert isinstance(sub_real_out, nn.Tensor)
                     # noinspection PyProtectedMember
-                    sub_out.layer._replace_by(sub_real_out)
+                    sub_out.tensor._replace_by(sub_real_out)
                     # noinspection PyProtectedMember
-                    root_mod_call.layer._replace_by(sub_real_out)
+                    root_mod_call.tensor._replace_by(sub_real_out)
 
                 # Do not use self.move_tensor_here(root_mod_call.tensor) because we don't want the extra logic.
                 self.module = root_module
@@ -565,7 +563,7 @@ class NameCtx:
         while len(self_name_abs) >= 2:
             ctx_, ctx__ = self_name_abs[-2:]
             assert isinstance(ctx_, NameCtx) and isinstance(ctx__, NameCtx)
-            if ctx_.layer is not None and ctx_.layer.raw_tensor.layer_dict["class"] == "subnetwork":
+            if ctx_.layer_dict and ctx_.layer_dict["class"] == "subnetwork":
                 if ctx_._subnet_main_output is ctx__.tensor or ctx_.children.get("output") is ctx__:
                     self_name_abs.pop(-1)
                     continue  # check again
@@ -760,7 +758,7 @@ class NameCtx:
         return True
 
     def _make_sub_network_layer(self, sub_output: nn.Tensor):
-        assert self.tensor is None and self.layer is None
+        assert self.tensor is None and self.layer_dict is None
         assert not self._is_obsolete_subnet()  # assume optimize_move_up() was called already
         if "output" in self.children:
             assert self.children["output"].tensor is sub_output
@@ -771,7 +769,7 @@ class NameCtx:
                 assert sub_output.cur_layer_name_ctx.tensor is not None
                 sub_output = sub_output.cur_layer_name_ctx.tensor
             nn.copy(sub_output, name=self.get_child("output"))
-        self.layer = self.tensor = nn.make_layer(
+        self.tensor = nn.make_layer(
             {"class": "subnetwork", "from": [], "subnetwork": self.make_net()},
             name=self,
             predefined_out_data=sub_output.data,
@@ -1019,10 +1017,10 @@ class NetDictBuilderCtx:
             _stack = self._StackInfo(net=net, layer_abs_name_scope_effective="")
         net_dict = {}
         for sub_name_ctx in net.name_ctx.children.values():
-            if not sub_name_ctx.layer:
+            if not sub_name_ctx.layer_dict:
                 continue
 
-            layer_dict = sub_name_ctx.layer.raw_tensor.layer_dict.copy()
+            layer_dict = sub_name_ctx.layer_dict.copy()
             assert "class" in layer_dict
 
             data_template = sub_name_ctx.tensor.data.copy_template()
