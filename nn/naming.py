@@ -373,7 +373,7 @@ class NameCtx:
                 continue
             used_names.add(tensor.raw_tensor)
             src_ = src + [tensor]
-            for dep in tensor.get_dependencies():
+            for dep in tensor.raw_tensor.get_tensor_dependencies():
                 if dep.tensor is not None and dep not in used_names:
                     queue.append((dep.tensor, src_))
 
@@ -709,6 +709,37 @@ class NameCtx:
             if name_ not in reserved_names:
                 return name_
             i += 1
+
+    def get_tensor_dependencies(self, *, _extra_layer_dict=None) -> List[nn.NameCtx]:
+        """
+        :return: list of tensors this tensor depends on
+        """
+        dep_list = []
+        dep_name_set = set()
+
+        def _maybe_add_dep(x):
+            if isinstance(x, nn.NameCtx):
+                if x in dep_name_set:
+                    return
+                dep_list.append(x)
+                dep_name_set.add(x)
+                return
+            if isinstance(x, nn.Tensor):
+                return _maybe_add_dep(x.raw_tensor)
+            if isinstance(x, nn.Net):
+                return _maybe_add_dep(x.name_ctx.children["output"].tensor)
+
+        if _extra_layer_dict:
+            nest.map_structure(_maybe_add_dep, _extra_layer_dict)
+        if self.layer_dict:
+            nest.map_structure(_maybe_add_dep, self.layer_dict)
+        if self.children and "output" in self.children:
+            _maybe_add_dep(self.children["output"].tensor)
+        if self.parent and self.parent.tensor:
+            _maybe_add_dep(self.parent.tensor)
+        if self.layer_extra_dependencies:
+            dep_list.extend(self.layer_extra_dependencies)
+        return dep_list
 
     def make_all_sub_networks_and_optimize(self):
         """

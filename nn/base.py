@@ -141,7 +141,7 @@ class Tensor:
                 # but we don't do that here.
                 # We can still try to look at dependencies and use those batch info.
                 batches = []
-                for dep in self.get_dependencies(_extra_layer_dict=layer_dict):
+                for dep in self.raw_tensor.get_tensor_dependencies(_extra_layer_dict=layer_dict):
                     if dep.tensor is not None and dep.tensor.data.batch and dep.tensor.data.batch not in batches:
                         batches.append(dep.tensor.data.batch)
                 if batches:
@@ -417,37 +417,6 @@ class Tensor:
         res.mark_as_output()
         return res
 
-    def get_dependencies(self, *, _extra_layer_dict=None) -> List[nn.NameCtx]:
-        """
-        :return: list of tensors this tensor depends on
-        """
-        dep_list = []
-        dep_name_set = set()
-
-        def _maybe_add_dep(x):
-            if isinstance(x, nn.NameCtx):
-                if x in dep_name_set:
-                    return
-                dep_list.append(x)
-                dep_name_set.add(x)
-                return
-            if isinstance(x, nn.Tensor):
-                return _maybe_add_dep(x.raw_tensor)
-            if isinstance(x, nn.Net):
-                return _maybe_add_dep(x.name_ctx.children["output"].tensor)
-
-        if _extra_layer_dict:
-            nest.map_structure(_maybe_add_dep, _extra_layer_dict)
-        if self.raw_tensor.layer_dict:
-            nest.map_structure(_maybe_add_dep, self.raw_tensor.layer_dict)
-        if self.raw_tensor.children and "output" in self.raw_tensor.children:
-            _maybe_add_dep(self.raw_tensor.children["output"].tensor)
-        if self.raw_tensor.parent and self.raw_tensor.parent.tensor:
-            _maybe_add_dep(self.raw_tensor.parent.tensor)
-        if self.raw_tensor.layer_extra_dependencies:
-            dep_list.extend(self.raw_tensor.layer_extra_dependencies)
-        return dep_list
-
     def _replace_by(self, tensor: nn.Tensor):
         """
         Replace this tensor by the given tensor.
@@ -691,7 +660,7 @@ class Parameter(Tensor):
                 value.raw_tensor.assign_parent(accessible_parent)
                 # We could also maybe move out all the dependencies.
                 # However, it's not clear whether this is always safe.
-                for dep in value.get_dependencies():
+                for dep in value.raw_tensor.get_tensor_dependencies():
                     assert (
                         dep.parent.can_access_children_from_root
                     ), f"dep {dep} of moved value {value} is not accessible"
