@@ -146,8 +146,8 @@ class Module:
             value._parents[(self, key)] = None
             sub_calls = value.calls
         elif isinstance(value, nn.Tensor):
-            if (self, key) not in value.parent_modules:
-                value.parent_modules.append((self, key))
+            if (self, key) not in value.raw_tensor.tensor_parent_modules:
+                value.raw_tensor.tensor_parent_modules.append((self, key))
             sub_calls = [value.raw_tensor]
         if sub_calls:
             if not self.calls:

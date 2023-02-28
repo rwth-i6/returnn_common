@@ -119,7 +119,6 @@ class Tensor:
         :param is_ref: in RETURNN, there can be references to special layers, like "data:..." or "prev:...",
             which are not layers themselves, i.e. we do not have a layer dict for them.
         """
-        self.parent_modules = []  # type: List[Tuple[nn.Module, str]]  # with attr
         # It will be returnn.tensor.Tensor.raw_tensor, thus named raw_tensor here now.
         self.raw_tensor = name_ctx
         # Do not assign name_ctx.layer{_ref} yet because we potentially could raise exceptions later.
@@ -275,11 +274,11 @@ class Tensor:
         :param ref_ctx: where this comes from
         """
         assert not self.raw_tensor.parent
-        assert self.parent_modules  # cannot assign parent without parent modules
+        assert self.raw_tensor.tensor_parent_modules  # cannot assign parent without parent modules
         #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
         #    when the actual name ctx parent is not so relevant.)
         sub_name = None
-        for parent_module, attr in self.parent_modules:
+        for parent_module, attr in self.raw_tensor.tensor_parent_modules:
             if getattr(parent_module, attr, None) is not self:
                 continue  # might have been reset later...
             # This code could be extended by further heuristics.
@@ -456,7 +455,6 @@ class Tensor:
         This is a workaround in case other refs point to this tensor object.
         """
         assert isinstance(tensor, nn.Tensor)
-        self.parent_modules = tensor.parent_modules
         self.raw_tensor = tensor.raw_tensor  # type: nn.NameCtx
         self.data = tensor.data
         self.remove_unused_cleanup_hooks.clear()
@@ -661,7 +659,10 @@ class Parameter(Tensor):
         from copy import deepcopy
 
         res = type(self)(shape=self.dims, dtype=self.dtype, trainable=self.trainable, auxiliary=self.auxiliary)
-        res.parent_modules.extend((memo[id(m)], k) for m, k in self.parent_modules if id(m) in memo)
+        assert not res.raw_tensor.tensor_parent_modules
+        res.raw_tensor.tensor_parent_modules.extend(
+            (memo[id(m)], k) for m, k in self.raw_tensor.tensor_parent_modules if id(m) in memo
+        )
         if isinstance(self.initial, nn.init.ParamInit):
             res.initial = deepcopy(self.initial, memo=memo)  # noqa
         else:

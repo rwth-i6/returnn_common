@@ -193,6 +193,7 @@ class NameCtx:
         self.layer = None  # type: Optional[nn.Tensor]
         self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
         self.layer_extra_dependencies = []  # type: List[nn.Tensor]
+        self.tensor_parent_modules = []  # type: List[Tuple[nn.Module, str]]  # via parent module attrib
         self.debug_layer = None  # type: Optional[nn.LayerBase]
         self._enter_stack_frames = None  # type: Optional[Set[types.FrameType]]
         self.is_subnet = False  # it says whether it can have children
@@ -269,6 +270,7 @@ class NameCtx:
         References to layer_ref itself should be fine.
         """
         assert not self.layer and not self.layer_ref  # none yet assigned
+        assert not self.tensor_parent_modules
 
         # Remove layer_ref.name_ctx from its parent name ctx.
         if layer_ref.raw_tensor.parent:
@@ -281,8 +283,9 @@ class NameCtx:
         self.layer_ref = layer_ref
         self.layer = layer_ref if old_name_ctx.layer_dict else None
         self.layer_dict = old_name_ctx.layer_dict
-        self.debug_layer = old_name_ctx.debug_layer
         self.layer_extra_dependencies = old_name_ctx.layer_extra_dependencies
+        self.tensor_parent_modules = old_name_ctx.tensor_parent_modules
+        self.debug_layer = old_name_ctx.debug_layer
         self.module = old_name_ctx.module
         self.is_subnet = old_name_ctx.is_subnet
         self._subnet_main_output = old_name_ctx._subnet_main_output
@@ -1451,7 +1454,7 @@ class _NamePathCache:
             if child.raw_tensor in self.tensor_to_name_path:
                 return self.tensor_to_name_path[child.raw_tensor]
             queue = []
-            for parent, attr in child.parent_modules:
+            for parent, attr in child.raw_tensor.tensor_parent_modules:
                 assert isinstance(parent, nn.Module)
                 if getattr(parent, attr, None) is not child:
                     continue  # might have been reset later...
