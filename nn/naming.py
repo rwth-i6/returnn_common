@@ -190,9 +190,10 @@ class NameCtx:
         """
         self.module = module
         self.tensor = None  # type: Optional[nn.Tensor]
+        self.tensor_parent_modules = []  # type: List[Tuple[nn.Module, str]]  # via parent module attrib
+        self.tensor_remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
         self.layer_dict = None  # type: Optional[nn.LayerDictRaw]
         self.layer_extra_dependencies = []  # type: List[nn.Tensor]
-        self.tensor_parent_modules = []  # type: List[Tuple[nn.Module, str]]  # via parent module attrib
         self.debug_layer = None  # type: Optional[nn.LayerBase]
         self._enter_stack_frames = None  # type: Optional[Set[types.FrameType]]
         self.is_subnet = False  # it says whether it can have children
@@ -405,7 +406,7 @@ class NameCtx:
                 assert name_ctx.parent
                 name_ctx.parent.children.pop(name_ctx.name)
                 if name_ctx.tensor is not None:
-                    for hook in name_ctx.tensor.remove_unused_cleanup_hooks:
+                    for hook in name_ctx.tensor_remove_unused_cleanup_hooks:
                         hook(name_ctx.tensor)
             else:
                 for name, child in name_ctx.children.items():

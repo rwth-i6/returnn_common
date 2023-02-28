@@ -152,7 +152,6 @@ class Tensor:
         self.data = data
         name_ctx.layer_dict = layer_dict
         name_ctx.tensor = self
-        self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
     def __repr__(self):
         parts = [self.__class__.__name__, self.raw_tensor.get_abs_name_repr()]
@@ -455,7 +454,6 @@ class Tensor:
         assert isinstance(tensor, nn.Tensor)
         self.raw_tensor = tensor.raw_tensor  # type: nn.NameCtx
         self.data = tensor.data
-        self.remove_unused_cleanup_hooks.clear()
 
     def _sis_hash(self):
         from sisyphus.hash import sis_hash_helper  # noqa

@@ -214,7 +214,9 @@ class Loop:
                 predefined_out_data=source.data,
                 name=name or sub_layer_name.replace("/", "_"),
             )
-            res.remove_unused_cleanup_hooks.append(lambda _: source.raw_tensor.layer_dict.pop("need_last"))
+            res.raw_tensor.tensor_remove_unused_cleanup_hooks.append(
+                lambda _: source.raw_tensor.layer_dict.pop("need_last")
+            )
             res.raw_tensor.layer_extra_dependencies.append(source)
             self._last_frames[source.raw_tensor] = res
             return res
