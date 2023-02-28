@@ -771,11 +771,13 @@ class NameCtx:
                 assert sub_output.cur_layer_name_ctx.tensor is not None
                 sub_output = sub_output.cur_layer_name_ctx.tensor
             nn.copy(sub_output, name=self.get_child("output"))
-        self.tensor = nn.make_layer(
+        nn.make_layer(
             {"class": "subnetwork", "from": [], "subnetwork": self.make_net()},
             name=self,
             predefined_out_data=sub_output.data,
         )
+        assert self.tensor is not None
+        assert self.tensor.raw_tensor is self
         self._subnet_main_output = sub_output
 
 
