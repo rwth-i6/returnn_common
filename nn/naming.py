@@ -281,6 +281,8 @@ class NameCtx:
         self.layer_ref = layer_ref
         self.layer = layer_ref if old_name_ctx.layer_dict else None
         self.layer_dict = old_name_ctx.layer_dict
+        self.debug_layer = old_name_ctx.debug_layer
+        self.layer_extra_dependencies = old_name_ctx.layer_extra_dependencies
         self.module = old_name_ctx.module
         self.is_subnet = old_name_ctx.is_subnet
         self._subnet_main_output = old_name_ctx._subnet_main_output
