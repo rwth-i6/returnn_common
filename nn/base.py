@@ -144,7 +144,6 @@ class Tensor:
         name_ctx.layer_ref = self
         if not is_ref:
             name_ctx.layer = self
-        self.is_ref = is_ref
         self.remove_unused_cleanup_hooks = []  # type: List[Callable[[nn.Tensor], None]]
 
     def __repr__(self):
@@ -158,7 +157,7 @@ class Tensor:
                 parts.append("<tf.Tensor: None>")
             else:
                 parts.append(repr(self.data.placeholder))
-        if not self.is_ref:
+        if self.raw_tensor.layer_dict:
             parts.append(
                 f"via "
                 + repr(
@@ -381,7 +380,7 @@ class Tensor:
         This has the effect that RETURNN will in any case construct the corresponding layer.
         Also see :func:`mark_as_default_output`.
         """
-        assert not self.is_ref, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
+        assert self.raw_tensor.layer_dict, f"mark_as_output can only be called on a layer, not a layer-ref {self}."
         if not _scope:
             scope = self.raw_tensor.root  # mark_as_output always refers to the root
         else:
@@ -394,7 +393,7 @@ class Tensor:
             res.raw_tensor.layer_dict["is_output_layer"] = True
         else:
             assert self.raw_tensor.parent is scope
-            assert not self.is_ref
+            assert self.raw_tensor.layer_dict
             self.raw_tensor.layer_dict["is_output_layer"] = True
         scope.marked_outputs.append(res)
         return res
@@ -449,14 +448,13 @@ class Tensor:
         self.parent_modules = tensor.parent_modules
         self.raw_tensor = tensor.raw_tensor  # type: nn.NameCtx
         self.data = tensor.data
-        self.is_ref = tensor.is_ref
         self.extra_dependencies = tensor.extra_dependencies
         self.remove_unused_cleanup_hooks.clear()
 
     def _sis_hash(self):
         from sisyphus.hash import sis_hash_helper  # noqa
 
-        if self.is_ref:
+        if not self.raw_tensor.layer_dict:
             return sis_hash_helper(self.raw_tensor.get_abs_name())
         return sis_hash_helper(self.raw_tensor.layer_dict)
 
