@@ -332,12 +332,14 @@ class PrevTensorRef(nn.Tensor):
         """
         Changes self.name_ctx to new name_ctx.
         """
+        self.raw_tensor.layer_extra_dependencies.remove(self.cur_layer_name_ctx)
         prev_layer_name = f"prev:{cur_tensor_name_ctx.name}"
         assert prev_layer_name not in cur_tensor_name_ctx.parent.children
         prev_layer_name_ctx = cur_tensor_name_ctx.parent.get_child(prev_layer_name)
         prev_layer_name_ctx.move_tensor_here(self)
         assert self.raw_tensor is prev_layer_name_ctx
         self.cur_layer_name_ctx = cur_tensor_name_ctx
+        self.raw_tensor.layer_extra_dependencies.append(self.cur_layer_name_ctx)
 
 
 class _LoopStateHolder:
