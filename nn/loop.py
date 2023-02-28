@@ -323,7 +323,7 @@ class PrevTensorRef(nn.Tensor):
         return prev_tensor_ref
 
     def __init__(self, *, name_ctx: nn.NameCtx, cur_layer_name_ctx: nn.NameCtx, data: nn.Data):
-        # At the time we instantiate this, cur_layer_name_ctx.layer probably does not exist yet.
+        # At the time we instantiate this, cur_layer_name_ctx.tensor probably does not exist yet.
         super().__init__(name_ctx=name_ctx, data=data, is_ref=True)
         self.cur_layer_name_ctx = cur_layer_name_ctx
 
