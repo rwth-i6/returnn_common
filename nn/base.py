@@ -112,7 +112,6 @@ class Tensor:
         # Do not assign name_ctx.layer{_ref} yet because we potentially could raise exceptions later.
         assert name_ctx.layer_ref is None
         assert name_ctx.layer is None
-        self.debug_layer = None
         self.extra_dependencies = []  # type: List[Tensor]
 
         if is_ref:
@@ -959,13 +958,13 @@ def _get_sub_layer(layer: Tensor, name: str, *, data: Data) -> Tensor:
     """
     out = layer.raw_tensor.get_child_layer_ref(name, data=data)
     if nn.is_debug_eager_mode_enabled():
-        assert layer.debug_layer
+        assert layer.raw_tensor.debug_layer
         import returnn.tf.layers.base
 
-        assert isinstance(layer.debug_layer, returnn.tf.layers.base.LayerBase)
-        sub_layer = layer.debug_layer.get_sub_layer(name)
+        assert isinstance(layer.raw_tensor.debug_layer, returnn.tf.layers.base.LayerBase)
+        sub_layer = layer.raw_tensor.debug_layer.get_sub_layer(name)
         assert sub_layer and sub_layer.output.dim_tags == out.data.dim_tags
-        out.debug_layer = sub_layer
+        out.raw_tensor.debug_layer = sub_layer
         out.data = sub_layer.output
     return out
 
@@ -1090,7 +1089,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
     layer = net.construct_layer(net_dict=net_dict, name=out_name, add_layer=_add_layer)
 
     if nn.is_debug_eager_mode_enabled():
-        tensor.debug_layer = layer
+        tensor.raw_tensor.debug_layer = layer
 
     return layer.output
 
