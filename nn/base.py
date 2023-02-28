@@ -53,7 +53,11 @@ from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Itera
 import itertools
 import contextlib
 from weakref import WeakKeyDictionary
-from returnn.tf.util.data import *  # Dim, Data, and others
+import tensorflow as tf
+
+# Some imports are not used here, but imported to make them available in the `nn` namespace.
+# noinspection PyUnresolvedReferences
+from returnn.tf.util.data import Dim, Data, BatchInfo, ControlFlowContext, batch_dim, SpatialDim, FeatureDim
 
 # noinspection PyUnresolvedReferences
 from returnn.datasets.util.vocabulary import Vocabulary
