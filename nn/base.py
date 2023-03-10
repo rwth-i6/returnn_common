@@ -175,14 +175,6 @@ class Tensor:
             parts.append(f"ctx={self.data.control_flow_ctx.repr_inner()}")
         return f"<{' '.join(parts)}>"
 
-    def __copy__(self):
-        # Immutable, so return self. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
-        return self
-
-    def __deepcopy__(self, memo):
-        # Immutable, so return self. https://github.com/rwth-i6/returnn_common/pull/215#issuecomment-1269651064
-        return self
-
     @property
     def dims_set(self) -> Set[Dim]:
         """
