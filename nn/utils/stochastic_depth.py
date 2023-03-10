@@ -3,11 +3,11 @@ Stochastic depth
 """
 
 from __future__ import annotations
-from typing import Callable
+from typing import Callable, Sequence
 from ... import nn
 
 
-def stochastic_depth(func: Callable[[], nn.Tensor], p: float, mode: str = "batch") -> nn.Tensor:
+def stochastic_depth(func: Callable[[], nn.Tensor], p: float, noise_dims: Sequence[nn.Dim] = ()) -> nn.Tensor:
     """
     Implements Stochastic Depth (sometimes also called "layer drop")
     for randomly dropping residual branches of residual architectures.
@@ -27,33 +27,32 @@ def stochastic_depth(func: Callable[[], nn.Tensor], p: float, mode: str = "batch
     Args:
         func (() -> Tensor[...]): Module or function for input tensor or arbitrary dimensions
         p (float): probability of the input to be zeroed.
-        mode (str): ``"batch"`` or ``"row"``.
-                    ``"batch"`` randomly zeroes the entire input and performs the computation only when necessary,
-                    ``"row"`` zeroes randomly selected rows (batch indices) from the batch.
+        noise_dims (nn.Dim): use [] (default) to randomly zeroes the entire input
+            and performs the computation only when necessary.
+            otherwise, e.g. use [batch_dim] to zero randomly selected rows (batch indices) from the batch.
     Returns:
         Tensor[...]: The randomly zeroed tensor.
     """
     if p < 0.0 or p > 1.0:
         raise ValueError(f"drop probability has to be between 0 and 1, but got {p}")
-    if mode not in ["batch", "row"]:
-        raise ValueError(f"mode has to be either 'batch' or 'row', but got {mode}")
     if p == 0.0:
         return func()
 
     training = nn.train_flag()
 
     survival_rate = 1.0 - p
-    if mode == "row":
+    if noise_dims:  # not scalar -> not efficient
         true_value = func()
+        assert all(dim in true_value.dims for dim in noise_dims)
         with nn.Cond(training) as cond:
             # Not efficient.
-            noise = nn.random_bernoulli([true_value.batch_dim], p=survival_rate)
+            noise = nn.random_bernoulli(noise_dims, p=survival_rate)
             if survival_rate > 0.0:
                 noise /= survival_rate
             cond.true = true_value * noise
             cond.false = true_value
         return cond.result
-    elif mode == "batch":
+    else:  # scalar noise
         with nn.Cond(training) as cond_train:
             noise = nn.random_bernoulli((), p=survival_rate)
             with nn.Cond(noise) as cond_noise:
@@ -65,5 +64,3 @@ def stochastic_depth(func: Callable[[], nn.Tensor], p: float, mode: str = "batch
             cond_train.true = cond_noise.result
             cond_train.false = func()
         return cond_train.result
-    else:
-        raise ValueError(f"mode {mode!r} invalid")
