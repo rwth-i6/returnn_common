@@ -287,12 +287,6 @@ class Tensor:
             # None found. Just assign to the root.
             self.raw_tensor.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
 
-    def get_abs_name(self) -> str:
-        """
-        :return: absolute RETURNN layer name starting from root context.
-        """
-        return self.raw_tensor.get_abs_name()
-
     def mark_as_loss(
         self,
         name: str,

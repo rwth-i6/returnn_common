@@ -172,10 +172,10 @@ def test_loop_full_seq_last():
         # and then we need to update this here.
         # However, what we want to test is that the name is reasonable. Specifically:
         # - "test_loop_full_seq_last" should not be part of the name scope.
-        assert _x.get_abs_name() == "loop/prev:state.x"
+        assert _x.raw_tensor.get_abs_name() == "loop/prev:state.x"
         # 'where' twice due to current implementation of nn.where and nn.make_layer.
         # However, this is optimized (flattened) later, i.e. does not end up like that in the final net dict.
-        assert _y.get_abs_name() == "loop/where/where"
+        assert _y.raw_tensor.get_abs_name() == "loop/where/where"
         return _y
 
     # feature mask

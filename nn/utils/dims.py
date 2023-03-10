@@ -13,7 +13,7 @@ def make_dim_from_length(length: nn.Tensor, dim: Optional[nn.Dim] = None) -> nn.
     Given some length tensor, creates a dim tag for it.
     """
     if dim is None:
-        dim = nn.SpatialDim(length.get_abs_name())
+        dim = nn.SpatialDim(length.raw_tensor.get_abs_name())
     # The actual range tensor is never used, but this has the side effect to set up the dim tag.
     r, dim = nn.range_from_length(length, out_spatial_dim=dim)
     from ..base import _register_dim_deps_when_novel
