@@ -1116,8 +1116,8 @@ class NetDictBuilderCtx:
 
             def _map_elem_resolve(obj: Any) -> Any:
                 if isinstance(obj, nn.Tensor):
-                    # noinspection PyProtectedMember
-                    return obj._get_name_in_ctx(ctx=net.name_ctx)
+                    assert obj.raw_tensor.parent or net.name_ctx == obj.raw_tensor
+                    return obj.raw_tensor.get_name_in_ctx(ctx=net.name_ctx)
                 if isinstance(obj, Net):
                     return self.make_net_dict_raw(
                         net=obj, _stack=_stack.add(net=obj, layer_abs_name_scope_effective=sub_layer_abs_name_scope)
