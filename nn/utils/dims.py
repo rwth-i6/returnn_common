@@ -61,7 +61,7 @@ def replace_dim(
 ) -> Tuple[nn.Tensor, nn.Dim]:
     """
     :return: source with in_dim replaced by out_dim.
-      this does not work for the sparse_dim. see :func:`reinterpret_set_sparse_dim` for that case.
+      this does not work for the sparse_dim. see :func:`set_sparse_dim` for that case.
     """
     if not out_dim:
         out_dim = in_dim.copy(same_as_self=False, description="new-dim")
