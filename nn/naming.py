@@ -230,6 +230,13 @@ class NameCtx:
     def __hash__(self):
         return hash(id(self))
 
+    def _sis_hash(self):
+        from sisyphus.hash import sis_hash_helper  # noqa
+
+        if not self.layer_dict:
+            return sis_hash_helper(self.get_abs_name())
+        return sis_hash_helper(self.layer_dict)
+
     def __copy__(self):
         """
         Normally we would not want to get a new name ctx with ``ctx != copy(ctx)``.

@@ -405,11 +405,8 @@ class Tensor:
         self.data = tensor.data
 
     def _sis_hash(self):
-        from sisyphus.hash import sis_hash_helper  # noqa
-
-        if not self.raw_tensor.layer_dict:
-            return sis_hash_helper(self.raw_tensor.get_abs_name())
-        return sis_hash_helper(self.raw_tensor.layer_dict)
+        # noinspection PyProtectedMember
+        return self.raw_tensor._sis_hash()
 
     def __add__(self, other: Union[RawTensorTypes, Tensor]) -> Tensor:
         if isinstance(other, (int, float, numpy.number)) and other == 0:
