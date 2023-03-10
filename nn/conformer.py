@@ -30,6 +30,7 @@ class ConformerPositionwiseFeedForward(nn.Module):
         """
         super().__init__()
 
+        self.out_dim = out_dim
         self.dropout = dropout
         self.activation = activation
 
@@ -40,7 +41,7 @@ class ConformerPositionwiseFeedForward(nn.Module):
         """forward"""
         x_ff1 = self.linear_ff(inp)
         x_act = self.activation(x_ff1)
-        x_drop = nn.dropout(x_act, axis=inp.feature_dim, dropout=self.dropout)
+        x_drop = nn.dropout(x_act, axis=self.linear_ff.out_dim, dropout=self.dropout)
         x_ff2 = self.linear_out(x_drop)
         return x_ff2
 
@@ -58,6 +59,7 @@ class ConformerConvBlock(nn.Module):
         :param norm: Batch norm originally
         """
         super().__init__()
+        self.out_dim = out_dim
 
         self.positionwise_conv1 = nn.Linear(out_dim, 2 * out_dim)
         self.depthwise_conv = nn.Conv1d(
@@ -256,24 +258,24 @@ class ConformerEncoderLayer(nn.Module):
         # FFN
         x_ffn1_ln = self.ffn1_layer_norm(inp)
         x_ffn1 = self.ffn1(x_ffn1_ln)
-        x_ffn1_out = 0.5 * nn.dropout(x_ffn1, axis=inp.feature_dim, dropout=self.dropout) + inp
+        x_ffn1_out = 0.5 * nn.dropout(x_ffn1, axis=self.out_dim, dropout=self.dropout) + inp
 
         # MHSA
         x_mhsa_ln = self.self_att_layer_norm(x_ffn1_out)
         x_mhsa = self.self_att(x_mhsa_ln, axis=spatial_dim)
         if self.use_dropout_after_self_att:  # TODO if flag removed, just always use it
-            x_mhsa = nn.dropout(x_mhsa, axis=inp.feature_dim, dropout=self.dropout)
+            x_mhsa = nn.dropout(x_mhsa, axis=self.out_dim, dropout=self.dropout)
         x_mhsa_out = x_mhsa + x_ffn1_out
 
         # Conv
         x_conv_ln = self.conv_layer_norm(x_mhsa_out)
         x_conv = self.conv_block(x_conv_ln, spatial_dim=spatial_dim)
-        x_conv_out = nn.dropout(x_conv, axis=inp.feature_dim, dropout=self.dropout) + x_mhsa_out
+        x_conv_out = nn.dropout(x_conv, axis=self.out_dim, dropout=self.dropout) + x_mhsa_out
 
         # FFN
         x_ffn2_ln = self.ffn2_layer_norm(x_conv_out)
         x_ffn2 = self.ffn2(x_ffn2_ln)
-        x_ffn2_out = 0.5 * nn.dropout(x_ffn2, axis=inp.feature_dim, dropout=self.dropout) + x_conv_out
+        x_ffn2_out = 0.5 * nn.dropout(x_ffn2, axis=self.out_dim, dropout=self.dropout) + x_conv_out
 
         # last LN layer
         return self.final_layer_norm(x_ffn2_out)
