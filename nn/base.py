@@ -233,6 +233,13 @@ class Tensor:
         """
         return self.data.feature_dim_or_sparse_dim
 
+    @property
+    def sparse_dim(self) -> Optional[Dim]:
+        """
+        :return: sparse dim
+        """
+        return self.data.sparse_dim
+
     def verify_out_shape(self, out_shape: OutShapeType):
         """
         Verify out_shape via :func:`Data.verify_out_shape`.
