@@ -51,7 +51,7 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
 
         in_dims = [in_dim] + [2 * dim] * (num_layers - 1)
         self.layers = nn.ModuleList([BlstmSingleLayer(in_dims[i], dim) for i in range(num_layers)])
-        self.out_dim = 2 * dim
+        self.out_dim = self.layers[-1].out_dim
 
         if l2:
             for param in self.parameters():
@@ -61,12 +61,14 @@ class BlstmEncoder(ISeqDownsamplingEncoder):
             raise NotImplementedError  # TODO ...
 
     def __call__(self, source: nn.Tensor, *, in_spatial_dim: nn.Dim) -> Tuple[nn.Tensor, nn.Dim]:
+        feat_dim = self.in_dim
         for i, lstm in enumerate(self.layers):
             if i > 0:
                 if self.dropout:
-                    source = nn.dropout(source, dropout=self.dropout, axis=source.feature_dim)
+                    source = nn.dropout(source, dropout=self.dropout, axis=feat_dim)
             assert isinstance(lstm, BlstmSingleLayer)
             source = lstm(source, spatial_dim=in_spatial_dim)
+            feat_dim = lstm.out_dim
             red = self.time_reduction[i] if i < len(self.time_reduction) else 1
             if red > 1:
                 source, in_spatial_dim = nn.pool1d(
