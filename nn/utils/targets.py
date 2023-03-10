@@ -28,12 +28,12 @@ def prev_target_seq(
     else:
         y, dim_ = nn.slice(targets, axis=spatial_dim, slice_end=-1)
     pad_dim = nn.SpatialDim("bos-prefix", 1)
-    pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.feature_dim)
+    pad_value = nn.constant(value=bos_idx, shape=[pad_dim], dtype=targets.dtype, sparse_dim=targets.sparse_dim)
     y, dim__ = nn.concat((pad_value, pad_dim), (y, dim_), allow_broadcast=True)
     if out_one_longer:
-        y.verify_out_shape(set(batch_dims) | {dim__, targets.feature_dim})
+        y.verify_out_shape(set(batch_dims) | {dim__, targets.sparse_dim})
         return y, dim__
     else:
         y, _ = nn.replace_dim(y, in_dim=dim__, out_dim=spatial_dim)
-        y.verify_out_shape(set(batch_dims) | {spatial_dim, targets.feature_dim})
+        y.verify_out_shape(set(batch_dims) | {spatial_dim, targets.sparse_dim})
         return y, spatial_dim
