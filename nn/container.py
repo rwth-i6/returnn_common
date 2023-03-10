@@ -4,19 +4,20 @@ container functions
 
 from __future__ import annotations
 from .. import nn
-from typing import Optional, Iterable, Iterator, Union, Tuple, Dict, Callable
+from typing import Optional, TypeVar, Generic, Iterable, Iterator, Union, Tuple, Dict, Callable
 
 
 _UnaryFuncT = Callable[[nn.Tensor], nn.Tensor]
 _ModT = Union[nn.Module, _UnaryFuncT]
+__ModT = TypeVar("__ModT", bound=nn.Module)
 
 
-class ModuleList(nn.Module):
+class ModuleList(nn.Module, Generic[__ModT]):
     """
     Module list, getting passed an Iterable of Modules and creates a list of Modules in that order
     """
 
-    def __init__(self, *modules: Union[_ModT, Iterable[_ModT], Dict[str, _ModT], ModuleList]):
+    def __init__(self, *modules: Union[__ModT, Iterable[__ModT], Dict[str, __ModT], ModuleList]):
         super().__init__()
         if len(modules) == 1 and isinstance(modules[0], dict):
             for key, module in modules[0].items():
@@ -31,17 +32,17 @@ class ModuleList(nn.Module):
             for idx, module in enumerate(modules):
                 setattr(self, str(idx), _convert_to_module(module))
 
-    def _get_modules(self) -> Dict[str, nn.Module]:
+    def _get_modules(self) -> Dict[str, __ModT]:
         return {key: value for (key, value) in vars(self).items() if isinstance(value, nn.Module)}
 
-    def append(self, module: _ModT) -> ModuleList:
+    def append(self, module: __ModT) -> ModuleList[__ModT]:
         """
         appends one module to the list
         """
         setattr(self, str(len(self)), _convert_to_module(module))
         return self
 
-    def extend(self, modules: Iterable[_ModT]) -> ModuleList:
+    def extend(self, modules: Iterable[__ModT]) -> ModuleList[__ModT]:
         """
         appends multiple modules to the list
         """
@@ -55,11 +56,11 @@ class ModuleList(nn.Module):
     def __iter__(self) -> Iterator[_ModT]:
         return iter(self._get_modules().values())
 
-    def items(self) -> Iterable[Tuple[str, nn.Module]]:
+    def items(self) -> Iterable[Tuple[str, __ModT]]:
         """module items"""
         return self._get_modules().items()
 
-    def __getitem__(self, idx) -> Union[ModuleList, nn.Module]:
+    def __getitem__(self, idx) -> Union[ModuleList[__ModT], __ModT]:
         from builtins import slice
 
         if isinstance(idx, slice):
@@ -67,7 +68,7 @@ class ModuleList(nn.Module):
         else:
             return list(self._get_modules().values())[idx]
 
-    def __setitem__(self, idx: int, module: _ModT) -> None:
+    def __setitem__(self, idx: int, module: __ModT) -> None:
         key = list(self._get_modules().keys())[idx]
         return setattr(self, key, _convert_to_module(module))
 
