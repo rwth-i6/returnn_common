@@ -256,10 +256,11 @@ class Tensor:
         self.data.verify_out_shape(out_shape, allow_missing_implicit_dims=True)
         return self
 
-    def _assign_parent_name_ctx(self, *, ref_ctx: nn.NameCtx):
+    def _assign_parent_name_ctx(self, *, root: nn.NameCtx):
         """
-        :param ref_ctx: where this comes from
+        :param root: where this comes from
         """
+        assert not root.parent
         assert not self.raw_tensor.parent
         assert self.raw_tensor.tensor_parent_modules  # cannot assign parent without parent modules
         #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
@@ -272,7 +273,7 @@ class Tensor:
             # The actual logic is not so important
             # as the final name_scope is always fixed in any case.
             # https://github.com/rwth-i6/returnn_common/issues/125
-            parent_module_calls = [call for call in parent_module.calls if call.root is ref_ctx.root]
+            parent_module_calls = [call for call in parent_module.calls if call.root is root]
             if parent_module_calls:
                 parent_name_ctx = parent_module_calls[0]
                 sub_name = attr
@@ -284,7 +285,7 @@ class Tensor:
                 break
         if not self.raw_tensor.parent:
             # None found. Just assign to the root.
-            self.raw_tensor.assign_parent(ref_ctx.root, sub_name or "unnamed_param")
+            self.raw_tensor.assign_parent(root, sub_name or "unnamed_param")
 
     def mark_as_loss(
         self,

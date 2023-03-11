@@ -387,7 +387,7 @@ class NameCtx:
             # Parameters usually have no parent assigned at creation time.
             if not tensor.raw_tensor.parent and tensor.raw_tensor != root:
                 # noinspection PyProtectedMember
-                tensor._assign_parent_name_ctx(ref_ctx=root)
+                tensor._assign_parent_name_ctx(root=root)
 
             # Handle subnetworks: Flatten away if just a single entry. Create layer if not created yet.
             ctx = tensor.raw_tensor  # type: nn.NameCtx
