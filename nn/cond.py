@@ -4,12 +4,16 @@ Conditional logic
 https://github.com/rwth-i6/returnn_common/issues/24
 """
 
-from typing import List
+from __future__ import annotations
+from typing import List, TypeVar, Generic
 from tensorflow.python.util import nest
 from .. import nn
 
 
-class Cond:
+T = TypeVar("T")
+
+
+class Cond(Generic[T]):
     """
     Conditional branching. Basically behaves like ``if ... else ...``.
     Only one branch will be executed, and the condition needs to be a bool scalar.
@@ -97,14 +101,14 @@ class Cond:
         self._entered = False
 
     @property
-    def true(self):
+    def true(self) -> T:
         """
         The getter usually would not be used.
         """
         return self._true_value
 
     @true.setter
-    def true(self, true_value):
+    def true(self, true_value: T):
         """
         Defines the True branch value.
         Enter the False branch.
@@ -132,14 +136,14 @@ class Cond:
         self._entered_state = False
 
     @property
-    def false(self):
+    def false(self) -> T:
         """
         The getter usually would not be used.
         """
         return self._false_value
 
     @false.setter
-    def false(self, false_value):
+    def false(self, false_value: T):
         """
         Define the False branch value.
         After this, self.result is available.
@@ -174,7 +178,7 @@ class Cond:
         self._result_value = self.layer_module()
 
     @property
-    def result(self):
+    def result(self) -> T:
         """
         :return: the result, after you assigned :func:`true` and :func:`false`.
         """
