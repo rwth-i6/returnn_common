@@ -483,10 +483,12 @@ class NameCtx:
                     assert sub_out.layer_dict["class"] == "copy"
                     sub_real_out = sub_out.layer_dict["from"]
                     assert isinstance(sub_real_out, nn.Tensor)
-                    # noinspection PyProtectedMember
-                    sub_out.tensor._replace_by(sub_real_out)
-                    # noinspection PyProtectedMember
-                    root_mod_call.tensor._replace_by(sub_real_out)
+                    # Replace this tensor by the given tensor.
+                    # This is a workaround in case other refs point to this tensor object.
+                    sub_out.tensor.raw_tensor = sub_real_out.raw_tensor
+                    sub_out.tensor.data = sub_real_out.data
+                    root_mod_call.tensor.raw_tensor = sub_real_out.raw_tensor
+                    root_mod_call.tensor.data = sub_real_out.data
 
                 # Do not use self.move_tensor_here(root_mod_call.tensor) because we don't want the extra logic.
                 self.module = root_module
