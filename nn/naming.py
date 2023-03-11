@@ -386,8 +386,7 @@ class NameCtx:
 
             # Parameters usually have no parent assigned at creation time.
             if not tensor.raw_tensor.parent and tensor.raw_tensor != root:
-                # noinspection PyProtectedMember
-                tensor._auto_assign_parent_name_ctx(root=root)
+                tensor.raw_tensor._auto_assign_parent(root=root)
 
             # Handle subnetworks: Flatten away if just a single entry. Create layer if not created yet.
             ctx = tensor.raw_tensor  # type: nn.NameCtx
@@ -420,6 +419,37 @@ class NameCtx:
                 for name, child in name_ctx.children.items():
                     assert child.parent is name_ctx and child.name == name
                     queue.append(child)
+
+    def _auto_assign_parent(self, *, root: nn.NameCtx):
+        """
+        :param root: where this comes from
+        """
+        assert not root.parent
+        assert not self.parent
+        assert self.tensor_parent_modules  # cannot assign parent without parent modules
+        #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
+        #    when the actual name ctx parent is not so relevant.)
+        sub_name = None
+        for parent_module, attr in self.tensor_parent_modules:
+            if getattr(parent_module, attr, None) is not self.tensor:
+                continue  # might have been reset later...
+            # This code could be extended by further heuristics.
+            # The actual logic is not so important
+            # as the final name_scope is always fixed in any case.
+            # https://github.com/rwth-i6/returnn_common/issues/125
+            parent_module_calls = [call for call in parent_module.calls if call.root is root]
+            if parent_module_calls:
+                parent_name_ctx = parent_module_calls[0]
+                sub_name = attr
+                if self.tensor.require_global_access and not parent_name_ctx.can_access_children_from_root:
+                    sub_name = parent_name_ctx.name + "_" + sub_name
+                    while not parent_name_ctx.can_access_children_from_root:
+                        parent_name_ctx = parent_name_ctx.parent
+                self.assign_parent(parent_name_ctx, sub_name)
+                break
+        if not self.parent:
+            # None found. Just assign to the root.
+            self.assign_parent(root, sub_name or "unnamed_param")
 
     def prepare_for_config_serialization(self, root_module: nn.Module):
         """

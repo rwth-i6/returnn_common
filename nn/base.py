@@ -256,37 +256,6 @@ class Tensor:
         self.data.verify_out_shape(out_shape, allow_missing_implicit_dims=True)
         return self
 
-    def _auto_assign_parent_name_ctx(self, *, root: nn.NameCtx):
-        """
-        :param root: where this comes from
-        """
-        assert not root.parent
-        assert not self.raw_tensor.parent
-        assert self.raw_tensor.tensor_parent_modules  # cannot assign parent without parent modules
-        #   (Although we could loosen this by checking some module from the stack trace of the __init__ call,
-        #    when the actual name ctx parent is not so relevant.)
-        sub_name = None
-        for parent_module, attr in self.raw_tensor.tensor_parent_modules:
-            if getattr(parent_module, attr, None) is not self:
-                continue  # might have been reset later...
-            # This code could be extended by further heuristics.
-            # The actual logic is not so important
-            # as the final name_scope is always fixed in any case.
-            # https://github.com/rwth-i6/returnn_common/issues/125
-            parent_module_calls = [call for call in parent_module.calls if call.root is root]
-            if parent_module_calls:
-                parent_name_ctx = parent_module_calls[0]
-                sub_name = attr
-                if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
-                    sub_name = parent_name_ctx.name + "_" + sub_name
-                    while not parent_name_ctx.can_access_children_from_root:
-                        parent_name_ctx = parent_name_ctx.parent
-                self.raw_tensor.assign_parent(parent_name_ctx, sub_name)
-                break
-        if not self.raw_tensor.parent:
-            # None found. Just assign to the root.
-            self.raw_tensor.assign_parent(root, sub_name or "unnamed_param")
-
     def mark_as_loss(
         self,
         name: str,
