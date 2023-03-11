@@ -364,15 +364,6 @@ class Tensor:
         res.mark_as_output()
         return res
 
-    def _replace_by(self, tensor: nn.Tensor):
-        """
-        Replace this tensor by the given tensor.
-        This is a workaround in case other refs point to this tensor object.
-        """
-        assert isinstance(tensor, nn.Tensor)
-        self.raw_tensor = tensor.raw_tensor  # type: nn.NameCtx
-        self.data = tensor.data
-
     def _sis_hash(self):
         # noinspection PyProtectedMember
         return self.raw_tensor._sis_hash()
