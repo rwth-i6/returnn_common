@@ -256,7 +256,7 @@ class Tensor:
         self.data.verify_out_shape(out_shape, allow_missing_implicit_dims=True)
         return self
 
-    def _assign_parent_name_ctx(self, *, root: nn.NameCtx):
+    def _auto_assign_parent_name_ctx(self, *, root: nn.NameCtx):
         """
         :param root: where this comes from
         """
