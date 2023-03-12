@@ -231,7 +231,9 @@ class Tensor:
         """
         :return: feature dim
         """
-        return self.data.feature_dim_or_sparse_dim
+        if self.data.feature_dim_axis is None:
+            return None
+        return self.data.dims[self.data.feature_dim_axis]
 
     @property
     def sparse_dim(self) -> Optional[Dim]:
