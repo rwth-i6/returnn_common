@@ -359,7 +359,7 @@ class Transformer(nn.Module):
         self.target_dim = target_dim
         self.target_bos_symbol = target_bos_symbol
         self.target_eos_symbol = target_eos_symbol
-        self.target_embedding = nn.Linear(target_dim, model_dim)
+        self.target_embedding = nn.Embedding(target_dim, model_dim)
 
         if decoder is not None:
             self.decoder = decoder
