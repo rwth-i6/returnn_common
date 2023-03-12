@@ -79,8 +79,8 @@ def test_transducer_time_sync_full_sum_neg_log_prob():
     class _Net(nn.Module):
         def __init__(self):
             super().__init__()
-            self.am = nn.Linear(in_dim, hidden_dim)
-            self.lm = nn.Linear(classes_dim, hidden_dim)
+            self.am = nn.Embedding(in_dim, hidden_dim)
+            self.lm = nn.Embedding(classes_dim, hidden_dim)
             self.logits = nn.Linear(hidden_dim, classes_dim + 1)
 
     def _log_fwdbwd(source, **_kwargs):
