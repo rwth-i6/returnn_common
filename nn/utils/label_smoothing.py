@@ -17,8 +17,8 @@ def label_smoothing(prob: nn.Tensor, smoothing: Union[nn.Tensor, float], *, axis
     if not axis:
         assert prob.feature_dim
         axis = prob.feature_dim
-    if prob.data.sparse:
-        assert prob.data.sparse_dim == axis
+    if prob.sparse_dim:
+        assert prob.sparse_dim == axis
         return nn.smooth_one_hot(prob, label_prob=1.0 - smoothing)
     else:
         assert axis in prob.dims_set
@@ -41,11 +41,11 @@ def smooth_one_hot(source: nn.Tensor, *, label_prob: Union[nn.Tensor, float]) ->
     Uses ``label_prob`` for the labels and ``(1 - label_prob) / (dim - 1)`` for the remaining values.
     This is used for label smoothing.
     """
-    assert source.data.sparse
-    if source.data.sparse_dim.dimension is None:
+    assert source.sparse_dim
+    if source.sparse_dim.dimension is None:
         raise NotImplementedError(f"smooth_one_hot({source}) not implemented for dynamic dims")
     return nn.sparse_to_dense(
-        source, label_value=label_prob, other_value=(1.0 - label_prob) / (source.data.sparse_dim.dimension - 1)
+        source, label_value=label_prob, other_value=(1.0 - label_prob) / (source.sparse_dim.dimension - 1)
     )
 
 

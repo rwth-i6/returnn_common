@@ -57,9 +57,9 @@ def cross_entropy(
     :return: cross entropy
     """
     if not axis:
-        assert target.feature_dim
-        axis = target.feature_dim
-    if estimated_type == "logits" and target.data.sparse:
+        assert target.feature_dim or target.sparse_dim
+        axis = target.feature_dim or target.sparse_dim
+    if estimated_type == "logits" and target.sparse_dim:
         # This is a common case and TF provides an optimized function for it, so use that directly.
         return nn.sparse_softmax_cross_entropy_with_logits(logits=estimated, targets=target, axis=axis)
     if estimated_type == "probs":
@@ -169,12 +169,13 @@ def kl_div(
     :param axis: the axis to reduce over
     :return: KL-div
     """
+    if target.sparse_dim:
+        raise NotImplementedError(f"Sparse target {target} not supported for KL. Use cross entropy instead?")
+
     if not axis:
         assert target.feature_dim
         axis = target.feature_dim
 
-    if target.data.sparse:
-        raise NotImplementedError(f"Sparse target {target} not supported for KL. Use cross entropy instead?")
     if target_type == "probs":
         log_target = nn.safe_log(target)
     elif estimated_type == "log-probs":

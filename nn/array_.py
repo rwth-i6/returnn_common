@@ -455,8 +455,8 @@ def sparse_to_dense(
     Note that usually this is not needed as most other functions should handle sparse tensors just fine
     and much more efficiently than they would be with dense tensors.
     """
-    assert source.data.sparse
-    axis = source.data.sparse_dim
+    assert source.sparse_dim
+    axis = source.sparse_dim
     indices = nn.range_over_dim(axis, sparse=True)
     return nn.where(nn.compare_bc(source, "==", indices), label_value, other_value)
 
