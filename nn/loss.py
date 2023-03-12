@@ -70,6 +70,8 @@ def cross_entropy(
         log_prob = nn.log_softmax(estimated, axis=axis)
     else:
         raise ValueError("estimated_kind must be 'probs', 'log-probs' or 'logits'")
+    if target.sparse_dim:
+        return -nn.gather(log_prob, position=target, axis=axis)
     return -nn.dot(target, log_prob, reduce=axis)
 
 
