@@ -15,8 +15,8 @@ def label_smoothing(prob: nn.Tensor, smoothing: Union[nn.Tensor, float], *, axis
     and the target label will get probability (1 - smoothing).
     """
     if not axis:
-        assert prob.feature_dim
-        axis = prob.feature_dim
+        assert prob.feature_dim or prob.sparse_dim
+        axis = prob.feature_dim or prob.sparse_dim
     if prob.sparse_dim:
         assert prob.sparse_dim == axis
         return nn.smooth_one_hot(prob, label_prob=1.0 - smoothing)
