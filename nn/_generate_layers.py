@@ -94,6 +94,22 @@ BlacklistLayerClassNames = {
     "AttentionBaseLayer",
     "GlobalAttentionContextBaseLayer",
     "twod_lstm",
+    # from signal_processing.py:
+    "alternating_real_to_complex",
+    "batch_median_pooling",
+    "complex_linear_projection",
+    "complex_to_alternating_real",
+    "mask_based_gevbeamforming",
+    "mask_based_mvdrbeamforming",
+    "mel_filterbank",
+    "multichannel_multiresolution_stft_layer",
+    "multichannel_stft_layer",
+    "istft",
+    "first_t_frames_noise_estimator",
+    "parametric_wiener_filter",
+    "signal_masking",
+    "split_concatenated_multichannel",
+    "tile_features",
 }
 
 LayersHidden = {
@@ -271,6 +287,7 @@ PerLayerOutDimArgs = {
     "split_batch_beam": ["beam_dim"],
     "edit_distance_table": ["out_dim"],
     "cum_concat": ["out_spatial_dim"],
+    "stft": ["out_spatial_dims"],
 }
 
 
@@ -1460,11 +1477,11 @@ def collect_layers():
     """
     Collect list of layers.
     """
-    from returnn.tf.layers import base, basic, rec
+    from returnn.tf.layers import base, basic, rec, signal_processing
 
     ls = []
     added = set()
-    for mod in [base, basic, rec]:
+    for mod in [base, basic, rec, signal_processing]:
         for key, value in vars(mod).items():
             if isinstance(value, type) and issubclass(value, LayerBase):
                 if value in added:
