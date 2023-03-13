@@ -15,6 +15,7 @@ from typing import Optional, List, Set
 import sys
 import os
 import importlib
+import importlib.abc
 import importlib.machinery
 
 # noinspection PyUnboundLocalVariable
