@@ -50,6 +50,8 @@ class _Rec(nn.Module):
         :return: out, out_state. out_state is the new or last state.
         """
         assert self.in_dim in source.dims_set
+        if spatial_dim is nn.single_step_dim and state is nn.NotSpecified:
+            raise ValueError("previous 'state' needs to be specified for recurrent single step execution")
         rec_layer_dict = {
             "class": "rec",
             "from": source,
