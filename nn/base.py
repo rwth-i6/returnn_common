@@ -102,8 +102,6 @@ class Tensor:
     or via :func:`get_extern_data` for external data.
     """
 
-    require_global_access = False
-
     def __init__(
         self,
         *,
@@ -505,8 +503,6 @@ class Parameter(Tensor):
     wrapping to ``VariableLayer`` in RETURNN.
     """
 
-    require_global_access = True
-
     def __init__(
         self,
         shape: Sequence[Dim],
@@ -538,6 +534,7 @@ class Parameter(Tensor):
         # The name_ctx object will be completed by this information later.
         # See Tensor.get_name_in_ctx().
         name_ctx = nn.NameCtx(name="<unnamed-param>", parent=None)
+        name_ctx.require_global_access = True
         data = Data("parameter", dim_tags=list(shape), dtype=dtype)
         layer_dict = {"class": "variable", "shape": list(shape), "param_name": "param"}
         if dtype is not None:

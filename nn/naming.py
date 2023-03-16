@@ -200,6 +200,7 @@ class NameCtx:
         self._subnet_main_output = None  # type: Optional[nn.Tensor]  # when this is via SubnetworkLayer
         self.virtual = virtual  # does not consume a layer name in RETURNN. see get_name_in_ctx
         self.can_access_children = can_access_children  # from outside
+        self.require_global_access = False  # from outside
         self.new_control_flow_ctx = new_control_flow_ctx
         self.children = {}  # type: Dict[str, NameCtx]
         self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
@@ -441,7 +442,7 @@ class NameCtx:
             if parent_module_calls:
                 parent_name_ctx = parent_module_calls[0]
                 sub_name = attr
-                if self.tensor.require_global_access and not parent_name_ctx.can_access_children_from_root:
+                if self.require_global_access and not parent_name_ctx.can_access_children_from_root:
                     sub_name = parent_name_ctx.name + "_" + sub_name
                     while not parent_name_ctx.can_access_children_from_root:
                         parent_name_ctx = parent_name_ctx.parent
