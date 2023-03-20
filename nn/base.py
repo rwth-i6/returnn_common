@@ -193,7 +193,7 @@ class Tensor:
           For some functions like nn.constant or nn.random_...,
           we currently need a specific order,
           and often we want to copy the order from some other tensor.
-          This property shape_ordered is supposed to be used for such functions.
+          This property dims is supposed to be used for such functions.
           Note that the rtype here could potentially change at some point
           to a ref-type which just indicates to reuse the same order of this tensor.
           So you should not rely on the rtype here
