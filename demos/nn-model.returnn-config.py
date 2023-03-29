@@ -82,7 +82,7 @@ def get_network(*, epoch: int, **_kwargs_unused) -> Dict[str, Any]:
     loss.mark_as_loss("ce")
 
     net_dict = nn.get_returnn_config().get_net_dict_raw_dict(root_module=net)
-    from returnn_common.utils.pprint import pprint
+    from returnn.util.pprint import pprint
 
     pprint(net_dict)  # just for logging purpose
     return net_dict
