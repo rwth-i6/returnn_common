@@ -891,7 +891,7 @@ class ReturnnConfigSerializer:
         :return: serialized config, i.e. Python code
         """
         assert self._base_extern_data_dim_refs is None  # only call once
-        from ..utils.pprint import pformat
+        from returnn.util.pprint import pformat
 
         extern_data_raw = self.get_extern_data_raw_dict()
         extern_data_raw = self._dim_tags_proxy.collect_dim_tags_and_transform_config(extern_data_raw)
@@ -912,7 +912,7 @@ class ReturnnConfigSerializer:
         directly get serialized Python code via extern data
         """
         dim_tags_proxy = ReturnnDimTagsProxy()
-        from ..utils.pprint import pformat
+        from returnn.util.pprint import pformat
 
         extern_data = dim_tags_proxy.collect_dim_tags_and_transform_config(extern_data)
 
@@ -933,7 +933,7 @@ class ReturnnConfigSerializer:
             written in `get_base_extern_data_py_code_str` via `returnn.config.get_global_config`.
         :return: serialized config, i.e. Python code
         """
-        from ..utils.pprint import pformat
+        from returnn.util.pprint import pformat
 
         dim_tags_proxy = self._dim_tags_proxy.copy()
         net_dict = self.get_net_dict_raw_dict(root_module=root_module)
