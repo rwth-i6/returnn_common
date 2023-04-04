@@ -121,7 +121,7 @@ class ConformerConvSubsample(ISeqDownsamplingEncoder):
         self.pool_sizes = pool_sizes
         self.activation = activation
 
-        self.conv_layers = nn.ModuleList()
+        self.conv_layers: nn.ModuleList[nn.Conv2d] = nn.ModuleList()
         if strides is None:
             strides = [1] * len(out_dims)
         assert len(out_dims) == len(filter_sizes) == len(strides) > 0
