@@ -53,7 +53,7 @@ class ModuleList(nn.Module, Generic[__ModT]):
     def __len__(self) -> int:
         return len(self._get_modules())
 
-    def __iter__(self) -> Iterator[_ModT]:
+    def __iter__(self) -> Iterator[__ModT]:
         return iter(self._get_modules().values())
 
     def items(self) -> Iterable[Tuple[str, __ModT]]:
