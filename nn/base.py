@@ -83,6 +83,8 @@ NetDictRaw = Dict[str, LayerDictRaw]
 RawTensorTypes = Union[int, float, complex, numpy.number, numpy.ndarray, bool, str]
 OutShapeType = Union[Set[Union[Dim, _MarkedDim]], tuple, list]
 
+# https://returnn.readthedocs.io/en/latest/configuration_reference/behavior_version.html
+# Need Dim.is_equal to be more restrictive (v16).
 min_returnn_behavior_version = 16
 
 
