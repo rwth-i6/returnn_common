@@ -67,8 +67,7 @@ from returnn.tensor import (
 # noinspection PyUnresolvedReferences
 from returnn.datasets.util.vocabulary import Vocabulary
 
-# noinspection PyProtectedMember
-from returnn.tf.util.data import _MarkedDim
+from returnn.tensor.marked_dim import MarkedDim as _MarkedDim
 import tree
 from .. import nn
 

@@ -65,8 +65,7 @@ import weakref
 from tensorflow.python.util import nest
 from returnn.util.basic import NotSpecified
 
-# noinspection PyProtectedMember
-from returnn.tf.util.data import _MarkedDim
+from returnn.tensor.marked_dim import MarkedDim as _MarkedDim
 from .. import nn
 
 
