@@ -204,7 +204,7 @@ class NameCtx:
         self.new_control_flow_ctx = new_control_flow_ctx
         self.children = {}  # type: Dict[str, NameCtx]
         self.extern_data = {}  # type: Dict[str, nn.Data]  # only for the root name ctx
-        self.global_batch = None  # type: Optional[nn.BatchInfo]  # only for the root name ctx
+        self.global_batch = None  # type: Optional["BatchInfo"]  # only for the root name ctx
         self.extra_net_dict = {}  # type: Dict[str, Any]  # only for the root name ctx
         self.marked_outputs = []  # type: List[nn.Tensor]
         self.marked_losses = []  # type: List[nn.Tensor]

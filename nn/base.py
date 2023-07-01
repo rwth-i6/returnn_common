@@ -53,18 +53,14 @@ from typing import Dict, Any, Optional, List, Tuple, Union, Set, Sequence, Itera
 import itertools
 import contextlib
 from weakref import WeakKeyDictionary
-import tensorflow as tf
 
 # Some imports are not used here, but imported to make them available in the `nn` namespace.
 # noinspection PyUnresolvedReferences
-from returnn.tf.util.data import (
+from returnn.tensor import (
     Dim,
-    Data,
-    BatchInfo,
+    Tensor as Data,
     ControlFlowContext,
     batch_dim,
-    SpatialDim,
-    FeatureDim,
     single_step_dim,
 )
 
@@ -73,7 +69,7 @@ from returnn.datasets.util.vocabulary import Vocabulary
 
 # noinspection PyProtectedMember
 from returnn.tf.util.data import _MarkedDim
-from tensorflow.python.util import nest
+import tree
 from .. import nn
 
 
@@ -145,7 +141,9 @@ class Tensor:
                     if dep.tensor is not None and dep.tensor.data.batch and dep.tensor.data.batch not in batches:
                         batches.append(dep.tensor.data.batch)
                 if batches:
-                    data.batch = nn.BatchInfo.get_common_batch_info(batches)
+                    from returnn.tf.util.data import BatchInfo
+
+                    data.batch = BatchInfo.get_common_batch_info(batches)
                 elif name_ctx.root.global_batch:
                     data.batch = name_ctx.root.global_batch
 
@@ -579,6 +577,8 @@ class Parameter(Tensor):
 
     @initial.setter
     def initial(self, value: Optional[nn.init.ParamInitType]):
+        import tensorflow as tf
+
         # Keep the original ParamInit, so that copies of the Parameter would have a different initial random value.
         # https://github.com/rwth-i6/returnn_common/issues/216
         self._initial = value
@@ -817,7 +817,9 @@ def get_extern_data(data: Data) -> Tensor:
     return out
 
 
-def _make_random_tf_tensor_for_returnn_data(data: Data) -> tf.Tensor:
+def _make_random_tf_tensor_for_returnn_data(data: Data):
+    import tensorflow as tf
+
     shape = []
     for dim in data.dim_tags:
         if dim.is_batch_dim():
@@ -892,12 +894,16 @@ class ReturnnConstructTemplateException(Exception):
     """
 
 
-def _init_global_batch() -> nn.BatchInfo:
+def _init_global_batch():
+    from returnn.tf.util.data import BatchInfo
+
     root_name_ctx = nn.NameCtx.top().root
     if root_name_ctx.global_batch:
         return root_name_ctx.global_batch
     if nn.is_debug_eager_mode_enabled():
-        root_name_ctx.global_batch = nn.BatchInfo.make_global_batch_info(
+        import tensorflow as tf
+
+        root_name_ctx.global_batch = BatchInfo.make_global_batch_info(
             tf.constant(3, name="global_batch")
         )  # https://xkcd.com/221/, but prime
     else:
@@ -906,7 +912,7 @@ def _init_global_batch() -> nn.BatchInfo:
         # So we pass the dummy value -1.
         # Such dummy global batch info with -1 will be handled specially in RETURNN init_batch_info,
         # and it will be replaced with the real global batch.
-        root_name_ctx.global_batch = nn.BatchInfo.make_global_batch_info(-1)
+        root_name_ctx.global_batch = BatchInfo.make_global_batch_info(-1)
     return root_name_ctx.global_batch
 
 
@@ -962,7 +968,7 @@ def _data_from_layer_dict(layer_dict: LayerDictRaw, *, tensor: Tensor) -> Data:
             return _get_layer_name(value)
         return value
 
-    layer_dict = nest.map_structure(_map_layer_dict_elem, layer_dict)
+    layer_dict = tree.map_structure(_map_layer_dict_elem, layer_dict)
     out_name = _get_unique_name(tensor.raw_tensor.name)
     net_dict = {
         out_name: layer_dict,
@@ -1108,3 +1114,31 @@ def control_flow_ctx(ctx: Optional[ControlFlowContext]):
     assert name_ctx.control_flow_ctx() == ctx
     with name_ctx:
         yield
+
+
+# Provide some simple wrappers. https://github.com/rwth-i6/returnn/issues/782
+# Use CamelCase function names (invalidates PEP8) to make it look like a class instance.
+
+
+# noinspection PyPep8Naming
+def FeatureDim(description, dimension, **kwargs):
+    """
+    DEPRECATED. Use :class:`Dim` instead, and setting the `kind` is not needed anymore.
+
+    :param str description:
+    :param int|None dimension:
+    :rtype: Dim
+    """
+    return Dim(kind=Dim.Types.Feature, description=description, dimension=dimension, **kwargs)
+
+
+# noinspection PyPep8Naming
+def SpatialDim(description, dimension=None, **kwargs):
+    """
+    DEPRECATED. Use :class:`Dim` instead, and setting the `kind` is not needed anymore.
+
+    :param str description:
+    :param int|None dimension:
+    :rtype: Dim
+    """
+    return Dim(kind=Dim.Types.Spatial, description=description, dimension=dimension, **kwargs)
