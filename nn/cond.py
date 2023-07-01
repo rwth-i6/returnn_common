@@ -6,7 +6,7 @@ https://github.com/rwth-i6/returnn_common/issues/24
 
 from __future__ import annotations
 from typing import List, TypeVar, Generic
-from tensorflow.python.util import nest
+import tree
 from .. import nn
 
 
@@ -121,7 +121,7 @@ class Cond(Generic[T]):
         if isinstance(true_value, nn.Tensor):
             true_value = nn.copy(true_value, name=self.true_branch_name_ctx.get_child("output"))
         else:
-            values_flat = nest.flatten(true_value)  # type: List[nn.Tensor]
+            values_flat = tree.flatten(true_value)  # type: List[nn.Tensor]
             assert values_flat
             for i, v in enumerate(values_flat):
                 assert isinstance(v, nn.Tensor), f"unexpected {true_value!r}, only expects tensors, got {type(v)}"
@@ -129,7 +129,7 @@ class Cond(Generic[T]):
                     values_flat[i] = nn.copy(v, name=self.true_branch_name_ctx.get_child("output"))
                 else:
                     values_flat[i] = v.mark_as_output(_scope=self.true_branch_name_ctx)
-            true_value = nest.pack_sequence_as(true_value, values_flat)
+            true_value = tree.unflatten_as(true_value, values_flat)
         self.true_branch_name_ctx.__exit__(None, None, None)
         self.false_branch_name_ctx.__enter__()
         self._true_value = true_value
@@ -154,13 +154,13 @@ class Cond(Generic[T]):
         ), f"{self} you need to be in the False branch, have assigned :func:`true` before"
         assert false_value is not None
         assert self._false_value is None
-        nest.assert_same_structure(self._true_value, false_value)
+        tree.assert_same_structure(self._true_value, false_value)
         # This needs to match the true() setter logic.
         if isinstance(false_value, nn.Tensor):
             false_value = nn.copy(false_value, name=self.false_branch_name_ctx.get_child("output"))
         else:
-            true_values_flat = nest.flatten(self._true_value)  # type: List[nn.Tensor]
-            false_values_flat = nest.flatten(false_value)  # type: List[nn.Tensor]
+            true_values_flat = tree.flatten(self._true_value)  # type: List[nn.Tensor]
+            false_values_flat = tree.flatten(false_value)  # type: List[nn.Tensor]
             assert false_values_flat and len(false_values_flat) == len(true_values_flat)
             for i, (true_v, false_v) in enumerate(zip(true_values_flat, false_values_flat)):
                 assert isinstance(true_v, nn.Tensor)
@@ -172,7 +172,7 @@ class Cond(Generic[T]):
                 false_values_flat[i] = nn.copy(false_v, name=self.false_branch_name_ctx.get_child(name))
                 if name != "output":
                     false_values_flat[i].raw_tensor.layer_dict["is_output_layer"] = True
-            false_value = nest.pack_sequence_as(false_value, false_values_flat)
+            false_value = tree.unflatten_as(false_value, false_values_flat)
         self.false_branch_name_ctx.__exit__(None, None, None)
         self._false_value = false_value
         self._result_value = self.layer_module()
@@ -207,8 +207,8 @@ class CondModule(nn.Module):
         name_ctx = self.cond.name_ctx
         # noinspection PyProtectedMember
         true_value, false_value = self.cond._true_value, self.cond._false_value
-        true_values_flat = nest.flatten(true_value)  # type: List[nn.Tensor]
-        false_values_flat = nest.flatten(false_value)  # type: List[nn.Tensor]
+        true_values_flat = tree.flatten(true_value)  # type: List[nn.Tensor]
+        false_values_flat = tree.flatten(false_value)  # type: List[nn.Tensor]
         assert len(true_values_flat) == len(false_values_flat)
         res = nn.make_layer(
             {
@@ -243,4 +243,4 @@ class CondModule(nn.Module):
             results[-1].raw_tensor.layer_extra_dependencies.extend(
                 (self.cond.condition.raw_tensor, true_v.raw_tensor, false_v.raw_tensor)
             )
-        return nest.pack_sequence_as(true_value, results)
+        return tree.unflatten_as(true_value, results)

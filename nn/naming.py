@@ -62,7 +62,7 @@ from typing import Optional, Union, Any, Sequence, List, Tuple, Set, Dict, Colle
 import types
 import numpy
 import weakref
-from tensorflow.python.util import nest
+import tree
 from returnn.util.basic import NotSpecified
 
 from returnn.tensor.marked_dim import MarkedDim as _MarkedDim
@@ -317,7 +317,7 @@ class NameCtx:
                     assert v.name_ctx is old_name_ctx
                     v.name_ctx = self
 
-            nest.map_structure(_check_layer_opt_value, old_name_ctx.layer_dict)
+            tree.map_structure(_check_layer_opt_value, old_name_ctx.layer_dict)
 
     @property
     def root(self) -> NameCtx:
@@ -769,9 +769,9 @@ class NameCtx:
                 return _maybe_add_dep(x.name_ctx.children["output"].tensor)
 
         if _extra_layer_dict:
-            nest.map_structure(_maybe_add_dep, _extra_layer_dict)
+            tree.map_structure(_maybe_add_dep, _extra_layer_dict)
         if self.layer_dict:
-            nest.map_structure(_maybe_add_dep, self.layer_dict)
+            tree.map_structure(_maybe_add_dep, self.layer_dict)
         if self.children and "output" in self.children:
             _maybe_add_dep(self.children["output"].tensor)
         if self.parent and self.parent.tensor:
@@ -992,7 +992,7 @@ class ReturnnConfigSerializer:
     def _post_process_transform(cls, obj, *, imports: Dict[str, None]):
         # imports is a dict to keep insertion order.
         # Similar as ReturnnDimTagsProxy.collect_dim_tags_and_transform_config.
-        # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
+        # Cannot use tree because tree does not support sets. Also tree requires them to be sorted.
         # See also NetDictBuilderCtx.make_net_dict_raw.
         if isinstance(obj, (int, float, str, bool, type(None))):
             return obj
@@ -1171,7 +1171,7 @@ class NetDictBuilderCtx:
                     return nn.batch_dim
                 return obj
 
-            layer_dict = nest.map_structure(_map_elem_resolve, layer_dict)
+            layer_dict = tree.map_structure(_map_elem_resolve, layer_dict)
             net_dict[sub_name_ctx.name] = layer_dict
         net_dict.update(net.name_ctx.extra_net_dict)
         return net_dict
@@ -1449,7 +1449,7 @@ class ReturnnDimTagsProxy:
                     return name__
                 i += 1
 
-        # Cannot use nest because nest does not support sets. Also nest requires them to be sorted.
+        # Cannot use tree because tree does not support sets. Also tree requires them to be sorted.
         def _map(path, value, *, direct=True):
             if isinstance(value, _MarkedDim):
                 _map(path, value.tag)  # Register the dim tag

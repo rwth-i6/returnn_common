@@ -4,7 +4,7 @@ Loop. Provides :class:`Loop`.
 
 from __future__ import annotations
 from typing import Dict, Any, Optional, List, Union, Iterable
-from tensorflow.python.util import nest
+import tree
 from returnn.util.basic import NotSpecified
 from .. import nn
 
@@ -406,12 +406,12 @@ class _LoopState:
         """
         super(_LoopState, self).__init__()
         assert initial is not None
-        initial = nest.map_structure(nn.convert_to_tensor, initial)
+        initial = tree.map_structure(nn.convert_to_tensor, initial)
         self.initial = initial
         self.loop = loop
         self.name = name
         self.assigned_value = None
-        self.name_ctx = nest.map_structure_with_tuple_paths(
+        self.name_ctx = tree.map_structure_with_path(
             lambda path, ref: nn.NameCtx(
                 suggested_name=".".join(str(key) for key in ("state", name) + path), parent=loop.name_ctx
             ),
@@ -433,8 +433,8 @@ class _LoopState:
             f"Cannot assign the rec state {self.loop}/{self.name} multiple times, "
             f"assigned previously to {self.assigned_value}, now to {value}"
         )
-        nest.assert_same_structure(self.initial, value)
-        nest.assert_same_structure(self.name_ctx, value)
+        tree.assert_same_structure(self.initial, value)
+        tree.assert_same_structure(self.name_ctx, value)
         self.assigned_value = value
 
         def _map_ref_to_name_ctx(tensor: nn.Tensor, name_ctx: nn.NameCtx, initial: nn.Tensor):
@@ -491,7 +491,7 @@ class _LoopState:
                                 # So we don't need to pass it now.
                                 used_state_eliminate_optimization = True
                                 src_state_opt[key] = None
-                                if all(opt is None for opt in nest.flatten(src_state_opt)):
+                                if all(opt is None for opt in tree.flatten(src_state_opt)):
                                     del src.raw_tensor.layer_dict["state"]
                                 # We need to pass the initial_state instead though.
                                 src_initial_state_opt = src.raw_tensor.layer_dict.setdefault(
@@ -509,7 +509,6 @@ class _LoopState:
                         )
 
                 else:  # class != get_last_hidden_state
-
                     if tensor.raw_tensor.layer_dict["class"] == "cum_concat":
                         layer_state_opt = tensor.raw_tensor.layer_dict.get("state")
                         if isinstance(layer_state_opt, nn.LayerState) and set(layer_state_opt.keys()) == {"state"}:
@@ -544,7 +543,7 @@ class _LoopState:
 
             return tensor.raw_tensor
 
-        self.name_ctx = nest.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
+        self.name_ctx = tree.map_structure(_map_ref_to_name_ctx, value, self.name_ctx, self.initial)
 
     @staticmethod
     def _map_name_ctx_to_prev_tensor(name_ctx: nn.NameCtx, initial: nn.Tensor) -> PrevTensorRef:
@@ -562,7 +561,7 @@ class _LoopState:
             return self.initial
         if self.assigned_value is None:  # not yet assigned
             # Return prev value
-            return nest.map_structure(self._map_name_ctx_to_prev_tensor, self.name_ctx, self.initial)
+            return tree.map_structure(self._map_name_ctx_to_prev_tensor, self.name_ctx, self.initial)
         return self.assigned_value
 
     def _map_name_ctx_to_last_tensor(self, name_ctx: nn.NameCtx) -> nn.Tensor:
@@ -577,4 +576,4 @@ class _LoopState:
         """
         assert self.name_ctx is not None
         assert self.assigned_value is not None
-        return nest.map_structure(self._map_name_ctx_to_last_tensor, self.name_ctx)
+        return tree.map_structure(self._map_name_ctx_to_last_tensor, self.name_ctx)
