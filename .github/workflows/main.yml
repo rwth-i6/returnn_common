@@ -78,6 +78,7 @@ jobs:
         # pip install --user -r requirements.txt | cat
         pip install --user --upgrade tensorflow==${{ matrix.tf-version }} | cat
         pip install --user pytest
+        pip install --user dm-tree
 
         sudo apt-get install libsndfile1
         pip install --user pysoundfile
