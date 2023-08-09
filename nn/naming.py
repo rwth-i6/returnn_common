@@ -1286,7 +1286,13 @@ class ReturnnDimTagsProxy:
             assert not dim.match_priority
             # We assume Dim is imported.
             # generic fallback
-            return f"Dim(kind={dim.kind}, description={dim.description!r}, dimension={dim.dimension})"
+            kind_s = {
+                None: "None",
+                nn.Dim.Types.Batch: "Dim.Types.Batch",
+                nn.Dim.Types.Spatial: "Dim.Types.Spatial",
+                nn.Dim.Types.Feature: "Dim.Types.Feature",
+            }[dim.kind]
+            return f"Dim(description={dim.description!r}, dimension={dim.dimension}, kind={kind_s})"
 
     class SetProxy:
         """
