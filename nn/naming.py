@@ -879,10 +879,10 @@ class ReturnnConfigSerializer:
             root_module=root_module, with_imports=False, ref_extern_data_dims_via_global_config=False
         )
 
+    # avoid TF dependency
     ImportPyCodeStr = (
-        "from returnn.tf.util.data import (\n"
-        "  Dim, batch_dim, single_step_dim,"
-        " SpatialDim, FeatureDim, ImplicitDynSizeDim, ImplicitSparseDim)\n\n"
+        "from returnn.tensor import Dim, batch_dim, single_step_dim\n"
+        "from returnn.tensor.marked_dim import ImplicitDynSizeDim, ImplicitSparseDim\n\n"
     )
 
     def get_base_extern_data_py_code_str(self) -> str:
@@ -1284,14 +1284,7 @@ class ReturnnDimTagsProxy:
             if dim.derived_from_op:
                 return self.parent.dim_ref_repr(dim, brackets=False, prefer_ref=False)
             assert not dim.match_priority
-            # We assume FeatureDim, SpatialDim and Dim are imported.
-            if dim.kind == nn.Dim.Types.Feature:
-                return f"FeatureDim({dim.description!r}, {dim.dimension})"
-            if dim.kind == nn.Dim.Types.Spatial:
-                if dim.dimension is not None:
-                    return f"SpatialDim({dim.description!r}, {dim.dimension})"
-                else:
-                    return f"SpatialDim({dim.description!r})"
+            # We assume Dim is imported.
             # generic fallback
             return f"Dim(kind={dim.kind}, description={dim.description!r}, dimension={dim.dimension})"
 
