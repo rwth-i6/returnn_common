@@ -16,6 +16,16 @@ class DatasetConfig:
       globals().update(dataset.get_config_opts())
     """
 
+    def __repr__(self):
+        parts = []
+        if self.get_main_name():
+            parts.append(f"main_name={self.get_main_name()}")
+            ds = self.get_main_dataset()
+        else:
+            ds = self.get_train_dataset()
+        parts.insert(0, f"class={ds['class']}")
+        return f"<{self.__class__.__name__} {' '.join(parts)}>"
+
     def get_extern_data(self) -> Dict[str, Dict[str]]:
         """
         Get extern data
@@ -83,6 +93,9 @@ class VocabConfig:
     Defines a vocabulary, and esp also number of classes.
     See :func:`VocabConfigStatic.from_global_config` for a reasonable default.
     """
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} num_classes={self.get_num_classes()} eos_idx={self.get_eos_idx()}>"
 
     def get_num_classes(self) -> int:
         """
