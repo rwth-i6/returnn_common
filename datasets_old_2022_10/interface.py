@@ -26,19 +26,19 @@ class DatasetConfig:
         parts.insert(0, f"class={ds['class']}")
         return f"<{self.__class__.__name__} {' '.join(parts)}>"
 
-    def get_extern_data(self) -> Dict[str, Dict[str]]:
+    def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
         """
         Get extern data
         """
         raise NotImplementedError
 
-    def get_train_dataset(self) -> Dict[str]:
+    def get_train_dataset(self) -> Dict[str, Any]:
         """
         Get train dataset
         """
         raise NotImplementedError
 
-    def get_eval_datasets(self) -> Dict[str, Dict[str]]:
+    def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
         """
         :return: e.g. {"dev": ..., "devtrain": ...}
         This is intended for eval_datasets in the RETURNN config,
@@ -74,7 +74,7 @@ class DatasetConfig:
         """
         return "classes"
 
-    def get_config_opts(self) -> Dict[str]:
+    def get_config_opts(self) -> Dict[str, Any]:
         """
         E.g. in your main config, you could do::
 
