@@ -38,6 +38,12 @@ class DatasetConfig:
         """
         raise NotImplementedError
 
+    def get_train_dataset_for_forward(self) -> Dict[str, Any]:
+        """
+        Get train dataset for forward/eval (usually disables perturbations, enables sorting, no partition_epoch).
+        """
+        raise NotImplementedError
+
     def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
         """
         :return: e.g. {"dev": ..., "devtrain": ...}
@@ -109,7 +115,7 @@ class DatasetConfig:
         """
         return DatasetConfigStatic(
             main_name=name,
-            main_dataset=self.get_train_dataset(),
+            main_dataset=self.get_train_dataset_for_forward(),
             extern_data=self.get_extern_data(),
             default_input=self.get_default_input(),
             default_target=self.get_default_target(),

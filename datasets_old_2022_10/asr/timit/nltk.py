@@ -51,6 +51,9 @@ class NltkTimit(DatasetConfig):
         """
         Get train dataset
         """
+        return self.get_dataset("train", train=True)
+
+    def get_train_dataset_for_forward(self) -> Dict[str, Any]:
         return self.get_dataset("train")
 
     def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
@@ -64,12 +67,12 @@ class NltkTimit(DatasetConfig):
         assert self.main_key, "main key not defined"
         return self.main_key
 
-    def get_main_dataset(self) -> Dict[str]:
+    def get_main_dataset(self) -> Dict[str, Any]:
         """main dataset"""
         assert self.main_key, "main key not defined"
         return self.get_dataset(self.main_key)
 
-    def get_dataset(self, key, subset=None):
+    def get_dataset(self, key, *, subset=None, train: bool = False):
         """
         Get datasets_old_2022_10
         """
@@ -78,8 +81,8 @@ class NltkTimit(DatasetConfig):
         return {
             "class": "NltkTimitDataset",
             "train": (key == "train"),
-            "seq_ordering": {"train": "default" if self.debug_mode else "laplace:.10", "dev": "sorted_reverse"}[key],
-            "fixed_random_seed": {"train": None, "dev": 1}[key],
+            "seq_ordering": "default" if self.debug_mode and train else "laplace:.10" if train else "sorted_reverse",
+            "fixed_random_seed": None if train else 1,
             "estimated_num_seqs": _num_seqs[key],
             "num_feature_filters": self.audio_dim,
         }

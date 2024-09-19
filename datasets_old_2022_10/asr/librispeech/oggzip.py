@@ -73,6 +73,9 @@ class Librispeech(DatasetConfig):
         """
         return self.get_dataset("train", train=True, train_partition_epoch=self.train_epoch_split)
 
+    def get_train_dataset_for_forward(self) -> Dict[str, Any]:
+        return self.get_dataset("train", train=False)
+
     def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
         """
         Get eval datasets_old_2022_10
