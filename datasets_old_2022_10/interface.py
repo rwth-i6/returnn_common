@@ -88,6 +88,83 @@ class DatasetConfig:
             "target": self.get_default_target(),
         }
 
+    def copy_as_static(self) -> DatasetConfigStatic:
+        """
+        Static copy
+        """
+        return DatasetConfigStatic(
+            main_name=self.get_main_name(),
+            main_dataset=self.get_main_dataset(),
+            extern_data=self.get_extern_data(),
+            default_input=self.get_default_input(),
+            default_target=self.get_default_target(),
+            train_dataset=self.get_train_dataset(),
+            eval_datasets=self.get_eval_datasets(),
+        )
+
+    def copy_train_as_static(self, name: str = "train") -> DatasetConfigStatic:
+        """
+        Static copy of train dataset, putting train as the main dataset.
+        This provides train for forward or other jobs.
+        """
+        return DatasetConfigStatic(
+            main_name=name,
+            main_dataset=self.get_train_dataset(),
+            extern_data=self.get_extern_data(),
+            default_input=self.get_default_input(),
+            default_target=self.get_default_target(),
+        )
+
+
+class DatasetConfigStatic(DatasetConfig):
+    """
+    Static copy
+    """
+
+    def __init__(
+        self,
+        *,
+        main_name: Optional[str] = None,
+        main_dataset: Optional[Dict[str, Any]] = None,
+        extern_data: Dict[str, Dict[str, Any]],
+        default_input: Optional[str] = None,
+        default_target: Optional[str] = None,
+        train_dataset: Optional[Dict[str, Any]] = None,
+        eval_datasets: Optional[Dict[str, Dict[str, Any]]] = None,
+    ):
+        self.main_name = main_name
+        self.main_dataset = main_dataset
+        self.extern_data = extern_data
+        self.default_input = default_input
+        self.default_target = default_target
+        self.train_dataset = train_dataset
+        self.eval_datasets = eval_datasets
+
+    def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
+        return self.extern_data
+
+    def get_default_input(self) -> Optional[str]:
+        return self.default_input
+
+    def get_default_target(self) -> Optional[str]:
+        return self.default_target
+
+    def get_train_dataset(self) -> Dict[str, Any]:
+        assert self.train_dataset is not None, "train dataset not defined"
+        return self.train_dataset
+
+    def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
+        assert self.eval_datasets is not None, "eval datasets not defined"
+        return self.eval_datasets
+
+    def get_main_name(self) -> str:
+        assert self.main_name is not None, "main name not defined"
+        return self.main_name
+
+    def get_main_dataset(self) -> Dict[str, Any]:
+        assert self.main_dataset is not None, "main dataset not defined"
+        return self.main_dataset
+
 
 class VocabConfig:
     """
