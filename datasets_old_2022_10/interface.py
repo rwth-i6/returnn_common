@@ -157,11 +157,11 @@ class DatasetConfigStatic(DatasetConfig):
 
     def get_train_dataset(self) -> Dict[str, Any]:
         assert self.train_dataset is not None, "train dataset not defined"
-        return self.train_dataset
+        return self.train_dataset.copy()
 
     def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
         assert self.eval_datasets is not None, "eval datasets not defined"
-        return self.eval_datasets
+        return {k: v.copy() for k, v in self.eval_datasets.items()}
 
     def get_main_name(self) -> str:
         assert self.main_name is not None, "main name not defined"
@@ -169,7 +169,7 @@ class DatasetConfigStatic(DatasetConfig):
 
     def get_main_dataset(self) -> Dict[str, Any]:
         assert self.main_dataset is not None, "main dataset not defined"
-        return self.main_dataset
+        return self.main_dataset.copy()
 
 
 class VocabConfig:
