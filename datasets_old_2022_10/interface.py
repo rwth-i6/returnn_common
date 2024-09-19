@@ -84,6 +84,7 @@ class DatasetConfig:
             "extern_data": self.get_extern_data(),
             "train": self.get_train_dataset(),
             "eval_datasets": self.get_eval_datasets(),
+            "default_input": self.get_default_input(),
             "target": self.get_default_target(),
         }
 
