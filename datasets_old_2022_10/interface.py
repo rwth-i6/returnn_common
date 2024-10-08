@@ -110,7 +110,8 @@ class DatasetConfig:
 
     def copy_train_as_static(self, name: str = "train") -> DatasetConfigStatic:
         """
-        Static copy of train dataset, putting train as the main dataset.
+        Static copy of train dataset (via :func:`get_train_dataset_for_forward`),
+        putting train as the main dataset.
         This provides train for forward or other jobs.
         """
         return DatasetConfigStatic(
