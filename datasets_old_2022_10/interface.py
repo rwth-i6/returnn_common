@@ -94,13 +94,13 @@ class DatasetConfig:
             "target": self.get_default_target(),
         }
 
-    def copy_as_static(self) -> DatasetConfigStatic:
+    def copy_as_static(self, *, with_main_dataset: bool = True) -> DatasetConfigStatic:
         """
         Static copy
         """
         return DatasetConfigStatic(
             main_name=self.get_main_name(),
-            main_dataset=self.get_main_dataset(),
+            main_dataset=self.get_main_dataset() if with_main_dataset else None,
             extern_data=self.get_extern_data(),
             default_input=self.get_default_input(),
             default_target=self.get_default_target(),
