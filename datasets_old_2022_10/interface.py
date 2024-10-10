@@ -122,6 +122,19 @@ class DatasetConfig:
             default_target=self.get_default_target(),
         )
 
+    def copy_eval_as_static(self, name: str) -> DatasetConfigStatic:
+        """
+        Static copy of some eval dataset (via :func:`get_eval_datasets`),
+        putting it as the main dataset.
+        """
+        return DatasetConfigStatic(
+            main_name=name,
+            main_dataset=self.get_eval_datasets()[name],
+            extern_data=self.get_extern_data(),
+            default_input=self.get_default_input(),
+            default_target=self.get_default_target(),
+        )
+
 
 class DatasetConfigStatic(DatasetConfig):
     """
