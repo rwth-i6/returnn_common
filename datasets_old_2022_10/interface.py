@@ -161,7 +161,7 @@ class DatasetConfigStatic(DatasetConfig):
         self.eval_datasets = eval_datasets
 
     def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
-        return self.extern_data
+        return self.extern_data.copy()
 
     def get_default_input(self) -> Optional[str]:
         return self.default_input
