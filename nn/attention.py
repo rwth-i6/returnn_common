@@ -2,10 +2,9 @@
 Attention, self-attention, auto-regressive self-attention
 """
 
-from typing import Tuple, Union, Optional, Sequence
+from typing import Tuple, Union, Optional, Sequence, Protocol
 import weakref
 from .. import nn
-from ..py_compat import Protocol
 
 
 class AttentionFunc(Protocol):
