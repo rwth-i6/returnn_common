@@ -1115,10 +1115,10 @@ class NetDictBuilderCtx:
                     continue
                 # We need dyn_size_ext to know the implicit dims, to correctly set out_shape.
                 # If dyn_size_ext is not set yet, try to complete it.
-                if not dim.dyn_size_ext:
+                if dim.dyn_size_ext is None:
                     dim.complete_dyn_size()
                 assert (
-                    dim.dyn_size_ext
+                    dim.dyn_size_ext is not None
                 ), f"{sub_name_ctx}: need {dim} to be defined to be able to know about implicit dims"
             dim_tags.extend(data_template.dim_tags_set_implicit_only_wrapped)
             assert len(dim_tags) == len(
