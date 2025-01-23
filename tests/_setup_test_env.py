@@ -89,10 +89,6 @@ def setup():
         "RETURNN-common:", git_describe_head_version(os.path.dirname(returnn_common.__file__)), returnn_common.__file__
     )
 
-    import returnn.util.basic as util
-
-    util.init_thread_join_hack()
-
     from returnn.util import better_exchook
 
     better_exchook.install()
