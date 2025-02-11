@@ -18,7 +18,12 @@ class DatasetConfig:
 
     def __repr__(self):
         parts = []
-        if self.get_main_name():
+        # noinspection PyBroadException
+        try:
+            main_name = self.get_main_name()
+        except Exception:  # ignore anything
+            main_name = None
+        if main_name:
             parts.append(f"main_name={self.get_main_name()}")
             ds = self.get_main_dataset()
         else:
