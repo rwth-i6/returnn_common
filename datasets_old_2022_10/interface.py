@@ -156,6 +156,7 @@ class DatasetConfigStatic(DatasetConfig):
         default_target: Optional[str] = None,
         train_dataset: Optional[Dict[str, Any]] = None,
         eval_datasets: Optional[Dict[str, Dict[str, Any]]] = None,
+        use_deep_copy: bool = False,
     ):
         self.main_name = main_name
         self.main_dataset = main_dataset
@@ -164,9 +165,10 @@ class DatasetConfigStatic(DatasetConfig):
         self.default_target = default_target
         self.train_dataset = train_dataset
         self.eval_datasets = eval_datasets
+        self.use_deep_copy = use_deep_copy
 
     def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
-        return self.extern_data.copy()
+        return _deep_copy(self.extern_data) if self.use_deep_copy else self.extern_data.copy()
 
     def get_default_input(self) -> Optional[str]:
         return self.default_input
@@ -176,11 +178,15 @@ class DatasetConfigStatic(DatasetConfig):
 
     def get_train_dataset(self) -> Dict[str, Any]:
         assert self.train_dataset is not None, "train dataset not defined"
-        return self.train_dataset.copy()
+        return _deep_copy(self.train_dataset) if self.use_deep_copy else self.train_dataset.copy()
 
     def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
         assert self.eval_datasets is not None, "eval datasets not defined"
-        return {k: v.copy() for k, v in self.eval_datasets.items()}
+        return (
+            _deep_copy(self.eval_datasets)
+            if self.use_deep_copy
+            else {k: v.copy() for k, v in self.eval_datasets.items()}
+        )
 
     def get_main_name(self) -> str:
         assert self.main_name is not None, "main name not defined"
@@ -188,7 +194,7 @@ class DatasetConfigStatic(DatasetConfig):
 
     def get_main_dataset(self) -> Dict[str, Any]:
         assert self.main_dataset is not None, "main dataset not defined"
-        return self.main_dataset.copy()
+        return _deep_copy(self.main_dataset) if self.use_deep_copy else self.main_dataset.copy()
 
 
 class VocabConfig:
@@ -292,3 +298,9 @@ class TargetConfig:
         Get num classes
         """
         return self.vocab.get_num_classes()
+
+
+def _deep_copy(o):
+    import tree
+
+    return tree.map_structure(lambda x: x, o)
