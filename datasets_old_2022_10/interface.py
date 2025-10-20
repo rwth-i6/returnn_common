@@ -113,6 +113,18 @@ class DatasetConfig:
             eval_datasets=self.get_eval_datasets(),
         )
 
+    def copy_main_as_static(self) -> DatasetConfigStatic:
+        """
+        Static copy
+        """
+        return DatasetConfigStatic(
+            main_name=self.get_main_name(),
+            main_dataset=self.get_main_dataset(),
+            extern_data=self.get_extern_data(),
+            default_input=self.get_default_input(),
+            default_target=self.get_default_target(),
+        )
+
     def copy_train_as_static(self, name: str = "train") -> DatasetConfigStatic:
         """
         Static copy of train dataset (via :func:`get_train_dataset_for_forward`),
@@ -168,7 +180,11 @@ class DatasetConfigStatic(DatasetConfig):
         self.use_deep_copy = use_deep_copy
 
     def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
-        return _deep_copy(self.extern_data) if self.use_deep_copy else self.extern_data.copy()
+        return (
+            _deep_copy(self.extern_data)
+            if self.use_deep_copy
+            else self.extern_data.copy()
+        )
 
     def get_default_input(self) -> Optional[str]:
         return self.default_input
@@ -178,7 +194,11 @@ class DatasetConfigStatic(DatasetConfig):
 
     def get_train_dataset(self) -> Dict[str, Any]:
         assert self.train_dataset is not None, "train dataset not defined"
-        return _deep_copy(self.train_dataset) if self.use_deep_copy else self.train_dataset.copy()
+        return (
+            _deep_copy(self.train_dataset)
+            if self.use_deep_copy
+            else self.train_dataset.copy()
+        )
 
     def get_eval_datasets(self) -> Dict[str, Dict[str, Any]]:
         assert self.eval_datasets is not None, "eval datasets not defined"
@@ -194,7 +214,11 @@ class DatasetConfigStatic(DatasetConfig):
 
     def get_main_dataset(self) -> Dict[str, Any]:
         assert self.main_dataset is not None, "main dataset not defined"
-        return _deep_copy(self.main_dataset) if self.use_deep_copy else self.main_dataset.copy()
+        return (
+            _deep_copy(self.main_dataset)
+            if self.use_deep_copy
+            else self.main_dataset.copy()
+        )
 
 
 class VocabConfig:
@@ -249,7 +273,9 @@ class VocabConfigStatic(VocabConfig):
         config = get_global_config()
         extern_data_opts = config.typed_dict["extern_data"]
         data_opts = extern_data_opts[data_key]
-        return VocabConfigStatic(num_classes=data_opts["dim"], opts=data_opts.get("vocab", {}))
+        return VocabConfigStatic(
+            num_classes=data_opts["dim"], opts=data_opts.get("vocab", {})
+        )
 
     def get_num_classes(self) -> int:
         """
