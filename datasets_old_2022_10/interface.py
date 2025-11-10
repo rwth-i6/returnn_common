@@ -25,10 +25,19 @@ class DatasetConfig:
             main_name = None
         if main_name:
             parts.append(f"main_name={self.get_main_name()}")
-            ds = self.get_main_dataset()
+            try:
+                ds = self.get_main_dataset()
+            except Exception as exc:
+                parts.append(f"<get_main_dataset: {exc.__class__.__name__}: {exc}>")
+            else:
+                parts.insert(0, f"class={ds['class']}")
         else:
-            ds = self.get_train_dataset()
-        parts.insert(0, f"class={ds['class']}")
+            try:
+                ds = self.get_train_dataset()
+            except Exception as exc:
+                parts.append(f"<get_train_dataset: {exc.__class__.__name__}: {exc}>")
+            else:
+                parts.insert(0, f"class={ds['class']}")
         return f"<{self.__class__.__name__} {' '.join(parts)}>"
 
     def get_extern_data(self) -> Dict[str, Dict[str, Any]]:
