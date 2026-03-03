@@ -1,3 +1,11 @@
 [tool.black]
 line-length = 120
-target-version = ["py37"]  # https://github.com/rwth-i6/returnn_common/issues/43
+target-version = ["py38"]  # https://github.com/rwth-i6/returnn/issues/1326
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"  # https://github.com/rwth-i6/returnn/issues/1326
+
+[tool.ruff.lint]
+# Disable fix for unused imports (`F401`).
+unfixable = ["F401"]
